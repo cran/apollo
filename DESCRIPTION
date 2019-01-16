@@ -1,0 +1,30 @@
+Package: apollo
+Type: Package
+Title: Tools for Estimating Discrete Choice Models
+Version: 0.0.1
+Author: Stephane Hess, David Palma
+Maintainer: David Palma <D.Palma@leeds.ac.uk>
+Description: The Choice Modelling Centre at the 
+    University of Leeds has developed flexible 
+    estimation code for choice models in R. 
+    Users are able to write their own likelihood
+    functions or use a mix of already available 
+    ones. Mixing, in the form of random coefficients 
+    and components is allowed for all models. Both 
+    classical and Bayesian estimation are available. 
+    Multi-threading processing is supported. 
+    For more information on discrete choice models
+    see Train, K. (2009) <isbn:978-0-521-74738-7>.
+License: GPL-2
+Encoding: UTF-8
+LazyData: true
+Depends: R (>= 3.1.0)
+Imports: maxLik, sandwich, numDeriv, randtoolbox, RSGHB, parallel,
+        stats, utils, coda
+RoxygenNote: 6.1.1
+Suggests: testthat, knitr, rmarkdown
+VignetteBuilder: knitr
+NeedsCompilation: no
+Packaged: 2019-01-11 18:20:24 UTC; palma
+Repository: CRAN
+Date/Publication: 2019-01-16 17:10:03 UTC
