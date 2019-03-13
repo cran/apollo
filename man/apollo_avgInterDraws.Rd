@@ -4,50 +4,27 @@
 \alias{apollo_avgInterDraws}
 \title{Averages inter-individual draws}
 \usage{
-apollo_avgInterDraws(P, apollo_control, functionality, indivID)
+apollo_avgInterDraws(P, apollo_inputs, functionality)
 }
 \arguments{
-\item{P}{List. Contains the probabilities for each model component, for each inter-person draw.
-Intra-person draws must have been averaged over on \code{P}, before giving it as an argument to this function.}
+\item{P}{List of vectors, matrices or 3-dim arrays. Likelihood of the model components.}
 
-\item{apollo_control}{List. Contains options for the estimation
-See \link{apollo_validatecontrol} for details.}
+\item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
-\item{functionality}{Character. Can take different values depending on desired output.
-\describe{
-  \item{"estimate"}{Used for model estimation.}
-  \item{"prediction"}{Used for model predictions.}
-  \item{"validate"}{Used for validating input.}
-  \item{"zero_LL"}{Used for getting null likelihood.}
-  \item{"conditionals"}{Used for getting conditionals.}
-  \item{"output"}{Used for preparing output after model estimation.}
-  \item{"raw"}{Used for debugging.}
-}}
-
-\item{indivID}{Numeric vector. Vector with individual's ID. As long as the number of observations.}
+\item{functionality}{Character. Description of the desired output from \code{apollo_probabilities}. Can take the values: "estimate", "prediction", "validate", "zero_LL", "conditionals", "output", "raw".}
 }
 \value{
-Average probability over inter-individual draws (shape depends on argument \code{functionality}).
-        \describe{
-          \item{"estimate"}{Returns P averaged across inter-individual draws for the chosen alternative.}
-          \item{"prediction"}{Returns P averaged across inter-individual draws for all alternatives.}
-          \item{"validate"}{Returns P without changes.}
-          \item{"zero_LL"}{Returns P without changes.}
-          \item{"conditionals"}{Returns P without changes, but checks its shape.}
-          \item{"output"}{Returns the same than "estimate", but also prints a summary of estimation data.}
-          \item{"raw"}{Returns P without changes.}
+Likelihood averaged over inter-individual draws (shape depends on argument \code{functionality}).
+        \itemize{
+          \item"estimate": Returns the likelihood of the model averaged across inter-individual draws.
+          \item"prediction": Returns the likelihood of all alternatives and all model components across inter-individual draws.
+          \item"validate": Returns P without changes.
+          \item"zero_LL": Returns P without changes.
+          \item"conditionals": Returns P without changes.
+          \item"output": Returns the same as "estimate", but also prints a summary of the estimation data.
+          \item"raw": Returns P without changes.
         }
 }
 \description{
-Averages the likelihood across inter-individual draws.
-}
-\details{
-This function performs additional checks on the shape of the probabilities given as arguments.
-The shape of \code{P} should be consistent with the value of \code{functionality}, but compliance is
-assured if \code{P} comes from \link{apollo_mnl}.
-For \code{functionality} values of "estimate", "zero_LL, "conditionals" and "output", \code{P} should be a list of matrices,
-with each matrix containing the likelihood of the chosen alternative.
-For \code{functionality} values of "prediction" and "raw", \code{P} should be a list, with each of
-its elements a list of matrices, and each matrix containing the likelihood of a different alternative.
-For the \code{functionality} value of "validate", \code{P} can be anything, as it is not processed.
+Averages individual-specific likelihood across inter-individual draws.
 }

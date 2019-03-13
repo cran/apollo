@@ -1,0 +1,393 @@
+---
+title: "Model file examples"
+author: "David Palma, Stephane Hess"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Model file examples}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Recommended workflow
+
+The recommended way to use *Apollo* is to create different R scripts for each model the user wants to estimate. These scripts are refer to as *model files* and contain all the necessary information to estimate the model (except for the data), and can also include post-estimation analysis of the results.
+
+A model file should be structured around the following sections:
+
+1. **Definition of core settings**: In this section the *Apollo* library is loaded, and global variables such as the name of the model are defined.
+   
+1. **Data loading**: In this section the database is loaded. Any transformation to the data that does not chaneg throughout estimation (e.g. averages) should be performed here and stored inside the database object.
+   
+1. **Parameter definition**: In this section, a vector containing the names and starting values of parameter is defined, as well as details of their mixing distribution distributions if present.
+   
+1. **Input validation**: In this section, all inputs prepared in the previous sections are validated and stored toghether.
+   
+1. **Likelihood definition**: In this section, the user must write the a function that calculate the model likelihood.
+   
+1. **Model estimation and reporting**: In this section, the model is estimated and the results are displayed.
+   
+1. **Postprocessing of results**: This is an optional section where the user can do forecasting and other post-processing of the results.
+
+In this document, we present two example model files: a multinomial logit (MNL) model, and a mixed multinomial logit (MMNL) model. More examples, discussed with higher level of detail are available at www.apolloChoiceModelling.com.
+
+*Apollo* allows estimating Multinomial logit (MNL), Nested logit (NL), cross-nested logit (CNL), exploded logit (EL), ordered logit (OL), Integrated Choice and Latent Variable (ICLV), Multiple Discrete-Continuous Extreme Value (MDCEV), nested MDCEV (MDCNEV), and Decision Field Theory (DFT) models. The user can introduce continuous or discrete mixing (i.e. latent classes or finite mixtures) in all these kinds of models, both between and within individuals. Different models can be combined for join estimation. All these functionalities are described in the manual, available at the www.apolloChoiceModelling.com website.
+
+## MNL model file example
+
+In this section, we present code to estimate an MNL model using the synthetic data included in the package. In the postprocessing, we predict and study the impact of a 10% increase in the cost of the train fare. The utility functions of alternatives are defined as follows.
+
+$$U_{nsi} = asc_i + \beta_{tt}tt_{nsi} + \beta_{c}*cost_{nsi} + \varepsilon_{nsi}$$
+
+Where *n* indexes individuals, *s* choice scenarios, and *i* alternatives. $asc_i$ is the alternative specific constant, $tt_{si}$ is the travel time and $cost_{si}$ is the cost. $\varepsilon_{nsi}$ is an independent identically distributed standard Gumbel error term. $asc_i$, $\beta_{tt}$ and $\beta_{c}$ are parameters to be estimated.
+
+The likelihood function of this model for individual $n$ is as follows.
+
+$$L_{n}=\prod_{s}P_{nsi}$$
+
+Where 
+$$P_{nsi}=\frac{e^{V_{nsi}}}{\sum_{j}e^{V_{nsj}}}$$
+And $V_{nsi}=U_{nsi}-\varepsilon_{nsi}$, i.e. the deterministic part of the utility.
+
+The likelihood function of the MNL model is pre-coded in `Apollo`, so we do not need to type it ourselves. However, if the user prefers to write the likelihood themself, they can also do it. The pre-coded MNL likelihood function (`apollo_mnl`) requires a series of inputs defined inside the `mnl_settings` object.
+
+```{r}
+# ####################################################### #
+#### 1. Definition of core settings                        
+# ####################################################### #
+
+### Clear memory
+rm(list = ls())
+
+### Load libraries
+library(apollo)
+
+### Initialise code
+apollo_initialise()
+
+### Set core controls
+apollo_control = list(
+  modelName  ="MNL",
+  modelDescr ="Simple MNL model on mode choice SP data",
+  indivID    ="ID"
+)
+
+# ####################################################### #
+#### 2. Data loading                                   ####
+# ####################################################### #
+
+data("apollo_modeChoiceData")
+database = apollo_modeChoiceData
+rm(apollo_modeChoiceData)
+
+### Use only SP data
+database = subset(database,database$SP==1)
+
+### Create new variable with average income
+database$mean_income = mean(database$income)
+
+# ####################################################### #
+#### 3. Parameter definition                           ####
+# ####################################################### #
+
+### Vector of parameters, including any that are kept fixed 
+### during estimation
+apollo_beta=c(asc_car  = 0,
+              asc_bus  = 0,
+              asc_air  = 0,
+              asc_rail = 0,
+              b_tt_car = 0,
+              b_tt_bus = 0,
+              b_tt_air = 0,
+              b_tt_rail= 0,
+              b_c      = 0)
+
+### Vector with names (in quotes) of parameters to be
+###  kept fixed at their starting value in apollo_beta.
+### Use apollo_beta_fixed = c() for no fixed parameters.
+apollo_fixed = c("asc_car")
+
+# ####################################################### #
+#### 4. Input validation                               ####
+# ####################################################### #
+
+apollo_inputs = apollo_validateInputs()
+
+# ####################################################### #
+#### 5. Likelihood definition                          ####
+# ####################################################### #
+
+apollo_probabilities=function(apollo_beta, apollo_inputs, 
+                              functionality="estimate"){
+
+  ### Attach inputs and detach after function exit
+  apollo_attach(apollo_beta, apollo_inputs)
+  on.exit(apollo_detach(apollo_beta, apollo_inputs))
+
+  ### Create list of probabilities P
+  P = list()
+  
+  ### List of utilities: these must use the same names as
+  ### in mnl_settings, order is irrelevant.
+  V = list()
+  V[['car']] = asc_car + b_tt_car *time_car + b_c*cost_car
+  V[['bus']] = asc_bus + b_tt_bus *time_bus + b_c*cost_bus
+  V[['air']] = asc_air + b_tt_air *time_air + b_c*cost_air
+  V[['rail']]= asc_rail+ b_tt_rail*time_rail+ b_c*cost_rail
+  
+  ### Define settings for MNL model component
+  mnl_settings = list(
+    alternatives  = c(car=1, bus=2, air=3, rail=4), 
+    avail         = list(car=av_car, bus=av_bus, 
+                         air=av_air, rail=av_rail), 
+    choiceVar     = choice,
+    V             = V
+  )
+  
+  ### Compute probabilities using MNL model
+  P[['model']] = apollo_mnl(mnl_settings, functionality)
+
+  ### Take product across observation for same individual
+  P = apollo_panelProd(P, apollo_inputs, functionality)
+
+  ### Prepare and return outputs of function
+  P = apollo_prepareProb(P, apollo_inputs, functionality)
+  return(P)
+}
+
+# ####################################################### #
+#### 6. Model estimation and reporting                 ####
+# ####################################################### #
+
+model = apollo_estimate(apollo_beta, apollo_fixed, 
+                        apollo_probabilities, 
+                        apollo_inputs)
+
+apollo_modelOutput(model)
+
+apollo_saveOutput(model)
+
+# ####################################################### #
+#### 7. Postprocessing of results                      ####
+# ####################################################### #
+
+### Use the estimated model to make predictions
+predictions_base = apollo_prediction(model, 
+                                     apollo_probabilities, 
+                                     apollo_inputs)
+
+### Now imagine the cost for rail increases by 10% 
+### and predict again
+database$cost_rail = 1.1*database$cost_rail
+predictions_new = apollo_prediction(model, 
+                                    apollo_probabilities, 
+                                    apollo_inputs)
+
+### Compare predictions
+change=(predictions_new-predictions_base)/predictions_base
+### Not interested in chosen alternative now, 
+### so drop last column
+change=change[,-ncol(change)]
+### Summary of changes (possible presence of NAs due to
+### unavailable alternatives)
+summary(change)
+
+```
+
+## MMNL model file example
+
+In this section, we present code to estimate a mixed MNL model (MMNL) using the synthetic data included in the package. After estimation, we predict the effect of a 10% increase in the train fares. The utility function of the model remains the same than in the previous example, i.e.:
+
+$$U_{nsi} = asc_i + \beta_{tt}tt_{nsi} + \beta_{c}*cost_{nsi} + \varepsilon_{nsi}$$
+
+Where *n* indexes individuals, *s* choice scenarios, and *i* alternatives. $asc_i$ is the alternative specific constant, $tt_{si}$ is the travel time and $cost_{si}$ is the cost. $\varepsilon_{nsi}$ is an independent identically distributed standard Gumbel error term. $\beta_{tt}$ follows a log-normal distribution with the underlying normal having a mean $\mu_{tt}$ and standard deviation $\sigma_{tt}$. $asc_i$, $\beta_{c}$, $\mu_{tt}$ and $\sigma_{tt}$ are parameters to be estimated.
+
+The likelihood function of this model for individual $n$ is as follows.
+
+$$L_{n}=\int_{\beta_{tt}}\prod_{s}P_{nsi}f(\beta_{tt})d\beta_{tt}$$
+
+Where $P_{nsi}=\frac{e^{V_{nsi}}}{\sum_{j}e^{V_{nsj}}}$, $V_{nsi}=U_{nsi}-\varepsilon_{nsi}$, and $f$ is the probability density function of $\beta_{tt}$. As this function does not have an analytical closed form, we estimate it using Monte Carlo integration, i.e.:
+
+$$L_{n}\approx\frac{1}{R}\sum_{\beta_{tt}^r}\prod_{s}P_{nsi}$$
+Where $\beta_{tt}^r$ are random draws of $\beta_{tt}$ from its distribution $f$, and R is a big number.
+
+The code is very similar to the previous example, with only sections 1 and 3 changing. In section 1 we set `mixing = TRUE` inside apollo_control, and we set `nCores = 2` to speed up estimation by using two computing threads (this is not mandatory). In section 3 we define the mean (`b_tt_mu`) and standar deviation (`b_tt_sigma`) of the underlying normal distribution, then define the type, name and number of draws used, and we construct the random coefficient $\beta_{tt}$. We use 500 inter-individual draws that come from a standard normal distribution, which we later transform into log-normals inside `apollo_randCoeff`.
+
+Even though in this case we only use *inter*-individual draws, note that *inter* and *intra*-individuals draws can be used simultaneously. *Inter*-individual draws capture variability *between* individuals, while *intra*-individual draws capture variability *within* individuals. In terms of the Monte Carlo integration, *inter*-individual draws are common for all observations from the same individual, while *intra*-individual draws are different for each observations. In terms of the likelihood function, the use of *intra*-individual draws would lead to $L_{n}\approx\prod_{s}\frac{1}{R}\sum_{\beta_{tt}^r}P_{nsi}$, which is **not** the case in this model.
+
+Estimation of models with mixing is significantly more demanding than models without mixing. Furthermore, using both *inter* and *intra*-individual requires large amounts of memory, that can further slow the estimation process.
+
+```{r}
+# ####################################################### #
+#### 1. Definition of core settings                        
+# ####################################################### #
+
+### Clear memory
+rm(list = ls())
+
+### Load libraries
+library(apollo)
+
+### Initialise code
+apollo_initialise()
+
+### Set core controls
+apollo_control = list(
+  modelName  ="MMNL",
+  modelDescr ="Simple MMNL model on mode choice SP data",
+  indivID    ="ID",
+  mixing     = TRUE,
+  nCores     = 2
+)
+
+# ####################################################### #
+#### 2. Data loading                                   ####
+# ####################################################### #
+
+data("apollo_modeChoiceData")
+database = apollo_modeChoiceData
+rm(apollo_modeChoiceData)
+
+### Use only SP data
+database = subset(database,database$SP==1)
+
+### Create new variable with average income
+database$mean_income = mean(database$income)
+
+# ####################################################### #
+#### 3. Parameter definition                           ####
+# ####################################################### #
+
+### Vector of parameters, including any that are kept fixed 
+### during estimation
+apollo_beta=c(asc_car  = 0.0000,
+              asc_bus  =-2.4948,
+              asc_air  =-1.1510,
+              asc_rail =-0.7153,
+              mu_tt    =-4.4104,
+              sigma_tt = 0.4637,
+              b_c      =-0.0613)
+
+### Vector with names (in quotes) of parameters to be
+###  kept fixed at their starting value in apollo_beta.
+### Use apollo_beta_fixed = c() for no fixed parameters.
+apollo_fixed = c("asc_car")
+
+### Set parameters for generating draws
+apollo_draws = list(
+  interDrawsType = "halton",
+  interNDraws    = 200,
+  interUnifDraws = c(),
+  interNormDraws = c("draws_tt"),
+  intraDrawsType = "halton",
+  intraNDraws    = 0,
+  intraUnifDraws = c(),
+  intraNormDraws = c()
+)
+
+### Create random parameters
+apollo_randCoeff = function(apollo_beta, apollo_inputs){
+  randcoeff = list()
+
+  randcoeff[["b_tt"]] = -exp(mu_tt + sigma_tt*draws_tt)
+
+  return(randcoeff)
+}
+
+# ####################################################### #
+#### 4. Input validation                               ####
+# ####################################################### #
+
+apollo_inputs = apollo_validateInputs()
+
+# ####################################################### #
+#### 5. Likelihood definition                          ####
+# ####################################################### #
+
+apollo_probabilities=function(apollo_beta, apollo_inputs, 
+                              functionality="estimate"){
+
+  ### Attach inputs and detach after function exit
+  apollo_attach(apollo_beta, apollo_inputs)
+  on.exit(apollo_detach(apollo_beta, apollo_inputs))
+
+  ### Create list of probabilities P
+  P = list()
+  
+  ### List of utilities: these must use the same names as
+  ### in mnl_settings, order is irrelevant.
+  V = list()
+  V[['car']]  = asc_car  + b_tt*time_car  + b_c*cost_car
+  V[['bus']]  = asc_bus  + b_tt*time_bus  + b_c*cost_bus 
+  V[['air']]  = asc_air  + b_tt*time_air  + b_c*cost_air   
+  V[['rail']] = asc_rail + b_tt*time_rail + b_c*cost_rail  
+  
+  ### Define settings for MNL model component
+  mnl_settings = list(
+    alternatives  = c(car=1, bus=2, air=3, rail=4), 
+    avail         = list(car=av_car, bus=av_bus, 
+                         air=av_air, rail=av_rail), 
+    choiceVar     = choice,
+    V             = V
+  )
+  
+  ### Compute probabilities using MNL model
+  P[['model']] = apollo_mnl(mnl_settings, functionality)
+
+  ### Take product across observation for same individual
+  P = apollo_panelProd(P, apollo_inputs, functionality)
+  
+  ### Average draws
+  P = apollo_avgInterDraws(P, apollo_inputs, functionality)
+  
+  ### Prepare and return outputs of function
+  P = apollo_prepareProb(P, apollo_inputs, functionality)
+  return(P)
+}
+
+# ####################################################### #
+#### 6. Model estimation and reporting                 ####
+# ####################################################### #
+
+model = apollo_estimate(apollo_beta, apollo_fixed, 
+                        apollo_probabilities, 
+                        apollo_inputs)
+
+apollo_modelOutput(model)
+
+apollo_saveOutput(model)
+
+# ####################################################### #
+#### 7. Postprocessing of results                      ####
+# ####################################################### #
+
+### Use the estimated model to make predictions
+predictions_base = apollo_prediction(model, 
+                                     apollo_probabilities, 
+                                     apollo_inputs)
+
+### Now imagine the cost for rail increases by 10% 
+### and predict again
+database$cost_rail = 1.1*database$cost_rail
+predictions_new = apollo_prediction(model, 
+                                    apollo_probabilities, 
+                                    apollo_inputs)
+
+### Compare predictions
+change=(predictions_new-predictions_base)/predictions_base
+### Not interested in chosen alternative now, 
+### so drop last column
+change=change[,-ncol(change)]
+### Summary of changes (possible presence of NAs due to
+### unavailable alternatives)
+summary(change)
+```
+
+

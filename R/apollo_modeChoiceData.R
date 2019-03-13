@@ -39,5 +39,5 @@
 #'   \item{time_car}{Numeric. Travel time (in minutes) of mode car.}
 #'   \item{time_rail}{Numeric. Travel time (in minutes) of mode rail.}
 #' }
-#' @source \url{http://cmc.leeds.ac.uk/}
-"database"
+#' @source \url{http://www.apollochoicemodelling.com/}
+"apollo_modeChoiceData"

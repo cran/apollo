@@ -1,0 +1,37 @@
+#' Dataset of time use.
+#'
+#' A Revealed Preference dataset containing 2,826 full-day observations.
+#'
+#' This dataset is to be used for Multiple Discrete Continuous (MDC) modelling.
+#' Data comes from 447 individuals who provided activitry diaries for a total
+#' of 2,826 days. Each observation summarizes the amount of time spent in each 
+#' of twelve different activities. The dataset also incluides characteristics
+#' of the participants.
+#' This dataset comes from the following publication.
+#' Calastri, Crastes dit Sourd and Hess (2018) We want it all: experiences 
+#' from a survey seeking to capture social network structures, lifetime events 
+#' and short-term travel and activity planning. Transportation 2018 1-27.
+#' \describe{
+#'   \item{indivID}{Numeric. Identification number of the individual.}
+#'   \item{day}{Numeric. Index of the day for each individual (day 1 was excluded).}
+#'   \item{date}{Numeric. Date in format yyyymmdd.}
+#'   \item{budget}{Numeric. Total amount of time registered during the day (in minutes).}
+#'   \item{t_a01}{Numeric. Time spent dropping-of or picking up other people (in minutes).}
+#'   \item{t_a02}{Numeric. Time spent working (in minutes).}
+#'   \item{t_a03}{Numeric. Time spent on educational activities (in minutes).}
+#'   \item{t_a04}{Numeric. Time spent shopping (in minutes).}
+#'   \item{t_a05}{Numeric. Time spent on private business (in minutes).}
+#'   \item{t_a06}{Numeric. Time spent getting petrol (in minutes).}
+#'   \item{t_a07}{Numeric. Time spent on social or leasure activities (in minutes).}
+#'   \item{t_a08}{Numeric. Time spent on vacation or long (inter-city) travel (in minutes).}
+#'   \item{t_a09}{Numeric. Time spent doing exercise (in minutes).}
+#'   \item{t_a10}{Numeric. Time spent at home (in minutes).}
+#'   \item{t_a11}{Numeric. Time spent travelling (everyday travelling) (in minutes).}
+#'   \item{t_a12}{Numeric. Non-allocated time (in minutes).}
+#'   \item{female}{Numeric. 1 if respondent is female. 0 otherwise.}
+#'   \item{age}{Numeric. Age of respondent (in years, approximate).}
+#'   \item{occ_full_time}{Numeric. 1 if the respondent works full time.}
+#'   \item{weekend}{Numeric. 1 if the current date is a weekend.}
+#' }
+#' @source \url{http://www.apollochoicemodelling.com/}
+"apollo_timeUseData"

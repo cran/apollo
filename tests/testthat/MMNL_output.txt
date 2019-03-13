@@ -1,0 +1,160 @@
+Model run using Apollo for R, version 0.0.4 
+www.cmc.leeds.ac.uk
+
+Model name                       : MMNL
+Model description                : Mixed logit model with inter and intra draws
+Model run at                     : 2019-03-10 22:18:45
+Estimation method                : bfgs
+Model diagnosis                  : successful convergence 
+Number of individuals            : 100
+Number of observations           : 1400
+Estimated parameters             : 8
+Number of inter-person draws     : 10 (halton)
+Number of intra-person draws     : 10 (mlhs)
+
+LL(start)                        : -1066.482
+LL(0)                            : -1636.718
+LL(final)                        : -1066.479
+Rho-square (0)                   :  0.3484 
+Adj.Rho-square (0)               :  0.3435 
+AIC                              :  2148.96 
+BIC                              :  2190.91 
+Time taken (hh:mm:ss)            :  00:01:28.42 
+Iterations                       :  6 
+Number of cores used             :  2 
+
+Estimates:
+          Estimate Std.err. t.ratio(0) Rob.std.err. Rob.t.ratio(0)
+asc_car     0.0000       NA         NA           NA             NA
+asc_bus    -2.5111   0.2167     -11.59       0.2391         -10.50
+asc_air     0.1133   0.4408       0.26       0.4444           0.25
+asc_rail   -0.3724   0.2541      -1.47       0.2499          -1.49
+b_tt_mu    -0.0144   0.0018      -8.09       0.0017          -8.37
+b_tt_sgBe   0.0059   0.0008       7.58       0.0008           7.03
+b_tt_sgWi  -0.0032   0.0015      -2.18       0.0014          -2.21
+b_access   -0.0271   0.0061      -4.43       0.0062          -4.36
+b_cost     -0.0673   0.0042     -16.14       0.0057         -11.89
+
+
+Overview of choices for MNL model component: 
+                                     car     bus     air    rail 
+Times available                  1078.00 1204.00 1064.00 1260.00 
+Times chosen                      385.00   50.00  308.00  657.00 
+Percentage chosen overall          27.50    3.57   22.00   46.93 
+Percentage chosen when available   35.71    4.15   28.95   52.14 
+ 
+
+Classical covariance matrix:
+            asc_bus   asc_air  asc_rail   b_tt_mu b_tt_sgBe b_tt_sgWi  b_access
+asc_bus    0.046956  0.001262 -0.003098 -0.000036  -3.2e-05   8.6e-05 -0.000306
+asc_air    0.001262  0.194276  0.100656  0.000448  -2.8e-05   4.6e-05 -0.001674
+asc_rail  -0.003098  0.100656  0.064542  0.000323  -1.8e-05   3.2e-05 -0.000521
+b_tt_mu   -0.000036  0.000448  0.000323  0.000003  -1.0e-06   1.0e-06  0.000001
+b_tt_sgBe -0.000032 -0.000028 -0.000018 -0.000001   1.0e-06   0.0e+00 -0.000001
+b_tt_sgWi  0.000086  0.000046  0.000032  0.000001   0.0e+00   2.0e-06  0.000002
+b_access  -0.000306 -0.001674 -0.000521  0.000001  -1.0e-06   2.0e-06  0.000037
+b_cost     0.000224 -0.000088  0.000098  0.000004  -1.0e-06   3.0e-06  0.000006
+             b_cost
+asc_bus    0.000224
+asc_air   -0.000088
+asc_rail   0.000098
+b_tt_mu    0.000004
+b_tt_sgBe -0.000001
+b_tt_sgWi  0.000003
+b_access   0.000006
+b_cost     0.000017
+
+Robust covariance matrix:
+            asc_bus   asc_air  asc_rail   b_tt_mu b_tt_sgBe b_tt_sgWi  b_access
+asc_bus    0.057174 -0.000777 -0.004287 -0.000035  -8.0e-06  0.000129 -0.000212
+asc_air   -0.000777  0.197455  0.099314  0.000381   3.9e-05  0.000065 -0.001777
+asc_rail  -0.004287  0.099314  0.062430  0.000278   1.0e-06  0.000046 -0.000595
+b_tt_mu   -0.000035  0.000381  0.000278  0.000003  -1.0e-06  0.000001  0.000002
+b_tt_sgBe -0.000008  0.000039  0.000001 -0.000001   1.0e-06  0.000000 -0.000002
+b_tt_sgWi  0.000129  0.000065  0.000046  0.000001   0.0e+00  0.000002  0.000002
+b_access  -0.000212 -0.001777 -0.000595  0.000002  -2.0e-06  0.000002  0.000039
+b_cost     0.000351  0.000162  0.000195  0.000005   0.0e+00  0.000004  0.000007
+            b_cost
+asc_bus   0.000351
+asc_air   0.000162
+asc_rail  0.000195
+b_tt_mu   0.000005
+b_tt_sgBe 0.000000
+b_tt_sgWi 0.000004
+b_access  0.000007
+b_cost    0.000032
+
+Classical correlation matrix:
+            asc_bus   asc_air  asc_rail   b_tt_mu b_tt_sgBe b_tt_sgWi  b_access
+asc_bus    1.000000  0.013217 -0.056271 -0.092387 -0.187440  0.273145 -0.230602
+asc_air    0.013217  1.000000  0.898895  0.568883 -0.082431  0.071973 -0.620569
+asc_rail  -0.056271  0.898895  1.000000  0.710998 -0.092315  0.086050 -0.334818
+b_tt_mu   -0.092387  0.568883  0.710998  1.000000 -0.366105  0.420360  0.118145
+b_tt_sgBe -0.187440 -0.082431 -0.092315 -0.366105  1.000000 -0.327272 -0.111674
+b_tt_sgWi  0.273145  0.071973  0.086050  0.420360 -0.327272  1.000000  0.195113
+b_access  -0.230602 -0.620569 -0.334818  0.118145 -0.111674  0.195113  1.000000
+b_cost     0.247667 -0.047679  0.092024  0.485497 -0.306895  0.451498  0.250988
+             b_cost
+asc_bus    0.247667
+asc_air   -0.047679
+asc_rail   0.092024
+b_tt_mu    0.485497
+b_tt_sgBe -0.306895
+b_tt_sgWi  0.451498
+b_access   0.250988
+b_cost     1.000000
+
+Robust correlation matrix:
+            asc_bus   asc_air  asc_rail   b_tt_mu b_tt_sgBe b_tt_sgWi  b_access
+asc_bus    1.000000 -0.007311 -0.071760 -0.085794 -0.041959  0.375847 -0.142475
+asc_air   -0.007311  1.000000  0.894502  0.496703  0.103875  0.102103 -0.642973
+asc_rail  -0.071760  0.894502  1.000000  0.645658  0.002477  0.127752 -0.383040
+b_tt_mu   -0.085794  0.496703  0.645658  1.000000 -0.512083  0.483005  0.193253
+b_tt_sgBe -0.041959  0.103875  0.002477 -0.512083  1.000000 -0.337061 -0.426497
+b_tt_sgWi  0.375847  0.102103  0.127752  0.483005 -0.337061  1.000000  0.222520
+b_access  -0.142475 -0.642973 -0.383040  0.193253 -0.426497  0.222520  1.000000
+b_cost     0.259130  0.064508  0.137496  0.465470 -0.066122  0.526784  0.201816
+             b_cost
+asc_bus    0.259130
+asc_air    0.064508
+asc_rail   0.137496
+b_tt_mu    0.465470
+b_tt_sgBe -0.066122
+b_tt_sgWi  0.526784
+b_access   0.201816
+b_cost     1.000000
+
+20 worst outliers in terms of lowest average per choice prediction:
+ ID Avg prob per choice
+ 77           0.2490989
+ 82           0.2684602
+ 74           0.2781098
+ 25           0.2832889
+ 23           0.2848679
+ 61           0.3122410
+ 18           0.3191802
+ 12           0.3239212
+ 80           0.3299794
+  7           0.3336905
+ 86           0.3374899
+ 59           0.3426630
+ 84           0.3426928
+ 48           0.3434681
+ 35           0.3509370
+ 47           0.3547532
+ 73           0.3568783
+ 27           0.3594586
+ 19           0.3664104
+ 76           0.3671699
+
+Changes in parameter estimates from starting values:
+          Initial Estimate Difference
+asc_car    0.0000   0.0000          0
+asc_bus   -2.5111  -2.5111          0
+asc_air    0.1133   0.1133          0
+asc_rail  -0.3724  -0.3724          0
+b_tt_mu   -0.0144  -0.0144          0
+b_tt_sgBe  0.0059   0.0059          0
+b_tt_sgWi -0.0032  -0.0032          0
+b_access  -0.0271  -0.0271          0
+b_cost    -0.0673  -0.0673          0

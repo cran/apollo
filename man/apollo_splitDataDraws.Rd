@@ -4,24 +4,18 @@
 \alias{apollo_splitDataDraws}
 \title{Splits data and draws for loading in cluster}
 \usage{
-apollo_splitDataDraws(apollo_control, database, draws = NA,
-  silent = FALSE)
+apollo_splitDataDraws(apollo_inputs, silent = FALSE)
 }
 \arguments{
-\item{apollo_control}{List. Contains options for the estimation. See \link{apollo_validatecontrol}.}
-
-\item{database}{data.frame. Estimation data.}
-
-\item{draws}{List. Draws as created by \link{apollo_makeDraws}.}
+\item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
 \item{silent}{Boolean. If TRUE, no information is printed to console or default output.}
 }
 \value{
-List. Each element is a list containing two elements:
-        a fraction of the database and a fraction of the draws (if given).
+List. Each element is a copy of apollo_inputs, but with only a piece of \code{database} and \code{draws}.
 }
 \description{
-Splits the database and the draws (if given) in a list with as many elements as apollo_control$nCores.
+Copies \code{apollo_inputs} as many times as cores, but each copy contains only part of \code{database} and \code{draws}.
 }
 \details{
 Internal use only. This function is called by \link{apollo_makeCluster}.

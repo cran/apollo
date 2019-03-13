@@ -2,14 +2,14 @@
 % Please edit documentation in R/apollo_prepareProb.R
 \name{apollo_prepareProb}
 \alias{apollo_prepareProb}
-\title{Checks that likelihoods are ready to be returned}
+\title{Checks likelihood}
 \usage{
-apollo_prepareProb(P, apollo_control, functionality)
+apollo_prepareProb(P, apollo_inputs, functionality)
 }
 \arguments{
-\item{P}{List. Each element contains the probabilities of a component of the model. Should contain one element called "model".}
+\item{P}{List of vectors, matrices or 3-dim arrays. Likelihood of the model components.}
 
-\item{apollo_control}{List. Estimation settings. See \link{apollo_estimate}.}
+\item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
 \item{functionality}{Character. Can take different values depending on desired output of \code{apollo_probabilities}.
 \describe{
@@ -26,9 +26,9 @@ apollo_prepareProb(P, apollo_control, functionality)
 The likelihood (i.e. probability in the case of choice models) of the model in the appropriate form for the given functionality.
 }
 \description{
-Checks that likelihoods (i.e. probabilities in the case of choice models) are in the appropiate format to be returned.
+Checks that likelihoods, i.e. probabilities in the case of choice models, are in the appropiate format to be returned.
 }
 \details{
-This function should be called inside \code{apollo_probabilities}, near the end of it, just before \code{return(P)} and \code{apollo_detach()}.
+This function should be called inside \code{apollo_probabilities}, near the end of it, just before \code{return(P)}.
 This function only performs checks on the shape of P, but does not change its values in any way.
 }

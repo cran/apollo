@@ -2,45 +2,31 @@
 % Please edit documentation in R/apollo_makeDraws.R
 \name{apollo_makeDraws}
 \alias{apollo_makeDraws}
-\title{Create draws for models with mixing}
+\title{Creates draws for models with mixing}
 \usage{
-apollo_makeDraws(apollo_control, apollo_draws, database, silent = FALSE)
+apollo_makeDraws(apollo_inputs, silent = FALSE)
 }
 \arguments{
-\item{apollo_control}{List. Contains options for the estimation
-See \link{apollo_validatecontrol} for details.}
-
-\item{apollo_draws}{List of arguments describing the inter and intra individual draws.
-\describe{
-  \item{inter_drawsType}{Character. Type of inter-individual draws ('MLHS', 'halton' or 'pmc').}
-  \item{inter_nDraws}{Numeric scalar (>=0). Number of inter-individual draws per individual. Set to 0 if not using them.}
-  \item{inter_unifDraws}{Character vector. Names of uniform-distributed inter-individual draws.}
-  \item{inter_normDraws}{Character vector. Names of normaly distributed inter-individual draws.}
-  \item{intra_drawsType}{Character. Type of intra-individual draws ('MLHS', 'halton' or 'pmc').}
-  \item{intra_nDraws}{Numeric scalar (>=0). Number of intra-individual draws per individual. Set to 0 if not using them.}
-  \item{intra_unifDraws}{Character vector. Names of uniform-distributed intra-individual draws.}
-  \item{intra_normDraws}{Character vector. Names of normaly distributed intra-individual draws.}
-}}
-
-\item{database}{data.frame. Model data.}
+\item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
 \item{silent}{Boolean. If true, then no information is printed to console or default output. FALSE by default.}
 }
 \value{
-List. Each element is an array of draws representing a random component of the mixing model. The last element is a copy of argument \code{apollo_draws}.
+List. Each element is an array of draws representing a random component of the mixing model.
 }
 \description{
 Creates a list containing all draws necessary to estimate a model with mixing.
 }
 \details{
-This function creates a list whose elements are the sets of draws requested by the user for use in a model with mixing.
+Internal use only. Called by \code{apollo_validateInputs}.
+#' This function creates a list whose elements are the sets of draws requested by the user for use in a model with mixing.
 If the model does not include mixing, then it is not necessary to run this function.
 The number of draws have a massive impact on memory usage and estimation time. Memory usage and number of computations
-scale geometrically as N*inter_nDraws*intra_nDraws (where N is the number of observations). Special care should be taken
+scale geometrically as N*interNDraws*intraNDraws (where N is the number of observations). Special care should be taken
 when using both inter and intra draws, as memory usage can easily reach the GB order of magnitude. Also, keep in
 mind that using several threads (i.e. multicore) at least doubles the memory usage.
-This function returns a list, with each element representing a random component of the mixing model (except the last
-element, which is a copy of the argument \code{apollo_draws}). The dimensions of the array depends on the type of draws used.
+This function returns a list, with each element representing a random component of the mixing model. The dimensions 
+of the array depend on the type of draws used.
 \enumerate{
            \item If only inter-individual draws are used, then draws are stored as 2-dimensional arrays (i.e. matrices).
            \item If intra-individual draws are used, then draws are stored as 3-dimensional arrays.

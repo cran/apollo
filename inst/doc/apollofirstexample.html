@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<meta name="author" content="David Palma, Stephane Hess" />
+
+<meta name="date" content="2019-03-13" />
+
+<title>Model file examples</title>
+
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' || rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<link href="data:text/css;charset=utf-8,body%20%7B%0Abackground%2Dcolor%3A%20%23fff%3B%0Amargin%3A%201em%20auto%3B%0Amax%2Dwidth%3A%20700px%3B%0Aoverflow%3A%20visible%3B%0Apadding%2Dleft%3A%202em%3B%0Apadding%2Dright%3A%202em%3B%0Afont%2Dfamily%3A%20%22Open%20Sans%22%2C%20%22Helvetica%20Neue%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0Afont%2Dsize%3A%2014px%3B%0Aline%2Dheight%3A%201%2E35%3B%0A%7D%0A%23header%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0A%23TOC%20%7B%0Aclear%3A%20both%3B%0Amargin%3A%200%200%2010px%2010px%3B%0Apadding%3A%204px%3B%0Awidth%3A%20400px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Aborder%2Dradius%3A%205px%3B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Afont%2Dsize%3A%2013px%3B%0Aline%2Dheight%3A%201%2E3%3B%0A%7D%0A%23TOC%20%2Etoctitle%20%7B%0Afont%2Dweight%3A%20bold%3B%0Afont%2Dsize%3A%2015px%3B%0Amargin%2Dleft%3A%205px%3B%0A%7D%0A%23TOC%20ul%20%7B%0Apadding%2Dleft%3A%2040px%3B%0Amargin%2Dleft%3A%20%2D1%2E5em%3B%0Amargin%2Dtop%3A%205px%3B%0Amargin%2Dbottom%3A%205px%3B%0A%7D%0A%23TOC%20ul%20ul%20%7B%0Amargin%2Dleft%3A%20%2D2em%3B%0A%7D%0A%23TOC%20li%20%7B%0Aline%2Dheight%3A%2016px%3B%0A%7D%0Atable%20%7B%0Amargin%3A%201em%20auto%3B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dcolor%3A%20%23DDDDDD%3B%0Aborder%2Dstyle%3A%20outset%3B%0Aborder%2Dcollapse%3A%20collapse%3B%0A%7D%0Atable%20th%20%7B%0Aborder%2Dwidth%3A%202px%3B%0Apadding%3A%205px%3B%0Aborder%2Dstyle%3A%20inset%3B%0A%7D%0Atable%20td%20%7B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dstyle%3A%20inset%3B%0Aline%2Dheight%3A%2018px%3B%0Apadding%3A%205px%205px%3B%0A%7D%0Atable%2C%20table%20th%2C%20table%20td%20%7B%0Aborder%2Dleft%2Dstyle%3A%20none%3B%0Aborder%2Dright%2Dstyle%3A%20none%3B%0A%7D%0Atable%20thead%2C%20table%20tr%2Eeven%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Ap%20%7B%0Amargin%3A%200%2E5em%200%3B%0A%7D%0Ablockquote%20%7B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Apadding%3A%200%2E25em%200%2E75em%3B%0A%7D%0Ahr%20%7B%0Aborder%2Dstyle%3A%20solid%3B%0Aborder%3A%20none%3B%0Aborder%2Dtop%3A%201px%20solid%20%23777%3B%0Amargin%3A%2028px%200%3B%0A%7D%0Adl%20%7B%0Amargin%2Dleft%3A%200%3B%0A%7D%0Adl%20dd%20%7B%0Amargin%2Dbottom%3A%2013px%3B%0Amargin%2Dleft%3A%2013px%3B%0A%7D%0Adl%20dt%20%7B%0Afont%2Dweight%3A%20bold%3B%0A%7D%0Aul%20%7B%0Amargin%2Dtop%3A%200%3B%0A%7D%0Aul%20li%20%7B%0Alist%2Dstyle%3A%20circle%20outside%3B%0A%7D%0Aul%20ul%20%7B%0Amargin%2Dbottom%3A%200%3B%0A%7D%0Apre%2C%20code%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0Aborder%2Dradius%3A%203px%3B%0Acolor%3A%20%23333%3B%0Awhite%2Dspace%3A%20pre%2Dwrap%3B%20%0A%7D%0Apre%20%7B%0Aborder%2Dradius%3A%203px%3B%0Amargin%3A%205px%200px%2010px%200px%3B%0Apadding%3A%2010px%3B%0A%7D%0Apre%3Anot%28%5Bclass%5D%29%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20Consolas%2C%20Monaco%2C%20%27Courier%20New%27%2C%20monospace%3B%0Afont%2Dsize%3A%2085%25%3B%0A%7D%0Ap%20%3E%20code%2C%20li%20%3E%20code%20%7B%0Apadding%3A%202px%200px%3B%0A%7D%0Adiv%2Efigure%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0Aimg%20%7B%0Abackground%2Dcolor%3A%20%23FFFFFF%3B%0Apadding%3A%202px%3B%0Aborder%3A%201px%20solid%20%23DDDDDD%3B%0Aborder%2Dradius%3A%203px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Amargin%3A%200%205px%3B%0A%7D%0Ah1%20%7B%0Amargin%2Dtop%3A%200%3B%0Afont%2Dsize%3A%2035px%3B%0Aline%2Dheight%3A%2040px%3B%0A%7D%0Ah2%20%7B%0Aborder%2Dbottom%3A%204px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Apadding%2Dbottom%3A%202px%3B%0Afont%2Dsize%3A%20145%25%3B%0A%7D%0Ah3%20%7B%0Aborder%2Dbottom%3A%202px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Afont%2Dsize%3A%20120%25%3B%0A%7D%0Ah4%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23f7f7f7%3B%0Amargin%2Dleft%3A%208px%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Ah5%2C%20h6%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23ccc%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Aa%20%7B%0Acolor%3A%20%230033dd%3B%0Atext%2Ddecoration%3A%20none%3B%0A%7D%0Aa%3Ahover%20%7B%0Acolor%3A%20%236666ff%3B%20%7D%0Aa%3Avisited%20%7B%0Acolor%3A%20%23800080%3B%20%7D%0Aa%3Avisited%3Ahover%20%7B%0Acolor%3A%20%23BB00BB%3B%20%7D%0Aa%5Bhref%5E%3D%22http%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0Aa%5Bhref%5E%3D%22https%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0A%0Acode%20%3E%20span%2Ekw%20%7B%20color%3A%20%23555%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Edt%20%7B%20color%3A%20%23902000%3B%20%7D%20%0Acode%20%3E%20span%2Edv%20%7B%20color%3A%20%2340a070%3B%20%7D%20%0Acode%20%3E%20span%2Ebn%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Efl%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Ech%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Est%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Eco%20%7B%20color%3A%20%23888888%3B%20font%2Dstyle%3A%20italic%3B%20%7D%20%0Acode%20%3E%20span%2Eot%20%7B%20color%3A%20%23007020%3B%20%7D%20%0Acode%20%3E%20span%2Eal%20%7B%20color%3A%20%23ff0000%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Efu%20%7B%20color%3A%20%23900%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%20code%20%3E%20span%2Eer%20%7B%20color%3A%20%23a61717%3B%20background%2Dcolor%3A%20%23e3d2d2%3B%20%7D%20%0A" rel="stylesheet" type="text/css" />
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Model file examples</h1>
+<h4 class="author"><em>David Palma, Stephane Hess</em></h4>
+<h4 class="date"><em>2019-03-13</em></h4>
+
+
+
+<div id="recommended-workflow" class="section level2">
+<h2>Recommended workflow</h2>
+<p>The recommended way to use <em>Apollo</em> is to create different R scripts for each model the user wants to estimate. These scripts are refer to as <em>model files</em> and contain all the necessary information to estimate the model (except for the data), and can also include post-estimation analysis of the results.</p>
+<p>A model file should be structured around the following sections:</p>
+<ol style="list-style-type: decimal">
+<li><p><strong>Definition of core settings</strong>: In this section the <em>Apollo</em> library is loaded, and global variables such as the name of the model are defined.</p></li>
+<li><p><strong>Data loading</strong>: In this section the database is loaded. Any transformation to the data that does not chaneg throughout estimation (e.g. averages) should be performed here and stored inside the database object.</p></li>
+<li><p><strong>Parameter definition</strong>: In this section, a vector containing the names and starting values of parameter is defined, as well as details of their mixing distribution distributions if present.</p></li>
+<li><p><strong>Input validation</strong>: In this section, all inputs prepared in the previous sections are validated and stored toghether.</p></li>
+<li><p><strong>Likelihood definition</strong>: In this section, the user must write the a function that calculate the model likelihood.</p></li>
+<li><p><strong>Model estimation and reporting</strong>: In this section, the model is estimated and the results are displayed.</p></li>
+<li><p><strong>Postprocessing of results</strong>: This is an optional section where the user can do forecasting and other post-processing of the results.</p></li>
+</ol>
+<p>In this document, we present two example model files: a multinomial logit (MNL) model, and a mixed multinomial logit (MMNL) model. More examples, discussed with higher level of detail are available at www.apolloChoiceModelling.com.</p>
+<p><em>Apollo</em> allows estimating Multinomial logit (MNL), Nested logit (NL), cross-nested logit (CNL), exploded logit (EL), ordered logit (OL), Integrated Choice and Latent Variable (ICLV), Multiple Discrete-Continuous Extreme Value (MDCEV), nested MDCEV (MDCNEV), and Decision Field Theory (DFT) models. The user can introduce continuous or discrete mixing (i.e. latent classes or finite mixtures) in all these kinds of models, both between and within individuals. Different models can be combined for join estimation. All these functionalities are described in the manual, available at the www.apolloChoiceModelling.com website.</p>
+</div>
+<div id="mnl-model-file-example" class="section level2">
+<h2>MNL model file example</h2>
+<p>In this section, we present code to estimate an MNL model using the synthetic data included in the package. In the postprocessing, we predict and study the impact of a 10% increase in the cost of the train fare. The utility functions of alternatives are defined as follows.</p>
+<p><span class="math display">\[U_{nsi} = asc_i + \beta_{tt}tt_{nsi} + \beta_{c}*cost_{nsi} + \varepsilon_{nsi}\]</span></p>
+<p>Where <em>n</em> indexes individuals, <em>s</em> choice scenarios, and <em>i</em> alternatives. <span class="math inline">\(asc_i\)</span> is the alternative specific constant, <span class="math inline">\(tt_{si}\)</span> is the travel time and <span class="math inline">\(cost_{si}\)</span> is the cost. <span class="math inline">\(\varepsilon_{nsi}\)</span> is an independent identically distributed standard Gumbel error term. <span class="math inline">\(asc_i\)</span>, <span class="math inline">\(\beta_{tt}\)</span> and <span class="math inline">\(\beta_{c}\)</span> are parameters to be estimated.</p>
+<p>The likelihood function of this model for individual <span class="math inline">\(n\)</span> is as follows.</p>
+<p><span class="math display">\[L_{n}=\prod_{s}P_{nsi}\]</span></p>
+<p>Where <span class="math display">\[P_{nsi}=\frac{e^{V_{nsi}}}{\sum_{j}e^{V_{nsj}}}\]</span> And <span class="math inline">\(V_{nsi}=U_{nsi}-\varepsilon_{nsi}\)</span>, i.e. the deterministic part of the utility.</p>
+<p>The likelihood function of the MNL model is pre-coded in <code>Apollo</code>, so we do not need to type it ourselves. However, if the user prefers to write the likelihood themself, they can also do it. The pre-coded MNL likelihood function (<code>apollo_mnl</code>) requires a series of inputs defined inside the <code>mnl_settings</code> object.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># ####################################################### #</span>
+#### 1. Definition of core settings                        
+<span class="co"># ####################################################### #</span>
+
+### Clear memory
+<span class="kw">rm</span>(<span class="dt">list =</span> <span class="kw">ls</span>())
+
+### Load libraries
+<span class="kw">library</span>(apollo)
+
+### Initialise code
+<span class="kw">apollo_initialise</span>()
+
+### Set core controls
+apollo_control =<span class="st"> </span><span class="kw">list</span>(
+  <span class="dt">modelName  =</span><span class="st">&quot;MNL&quot;</span>,
+  <span class="dt">modelDescr =</span><span class="st">&quot;Simple MNL model on mode choice SP data&quot;</span>,
+  <span class="dt">indivID    =</span><span class="st">&quot;ID&quot;</span>
+)
+
+<span class="co"># ####################################################### #</span>
+#### 2. Data loading                                   ####
+<span class="co"># ####################################################### #</span>
+
+<span class="kw">data</span>(<span class="st">&quot;apollo_modeChoiceData&quot;</span>)
+database =<span class="st"> </span>apollo_modeChoiceData
+<span class="kw">rm</span>(apollo_modeChoiceData)
+
+### Use only SP data
+database =<span class="st"> </span><span class="kw">subset</span>(database,database<span class="op">$</span>SP<span class="op">==</span><span class="dv">1</span>)
+
+### Create new variable with average income
+database<span class="op">$</span>mean_income =<span class="st"> </span><span class="kw">mean</span>(database<span class="op">$</span>income)
+
+<span class="co"># ####################################################### #</span>
+#### 3. Parameter definition                           ####
+<span class="co"># ####################################################### #</span>
+
+### Vector of parameters, including any that are kept fixed 
+### during estimation
+apollo_beta=<span class="kw">c</span>(<span class="dt">asc_car  =</span> <span class="dv">0</span>,
+              <span class="dt">asc_bus  =</span> <span class="dv">0</span>,
+              <span class="dt">asc_air  =</span> <span class="dv">0</span>,
+              <span class="dt">asc_rail =</span> <span class="dv">0</span>,
+              <span class="dt">b_tt_car =</span> <span class="dv">0</span>,
+              <span class="dt">b_tt_bus =</span> <span class="dv">0</span>,
+              <span class="dt">b_tt_air =</span> <span class="dv">0</span>,
+              <span class="dt">b_tt_rail=</span> <span class="dv">0</span>,
+              <span class="dt">b_c      =</span> <span class="dv">0</span>)
+
+### Vector with names (in quotes) of parameters to be
+###  kept fixed at their starting value in apollo_beta.
+### Use apollo_beta_fixed = c() for no fixed parameters.
+apollo_fixed =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;asc_car&quot;</span>)
+
+<span class="co"># ####################################################### #</span>
+#### 4. Input validation                               ####
+<span class="co"># ####################################################### #</span>
+
+apollo_inputs =<span class="st"> </span><span class="kw">apollo_validateInputs</span>()
+<span class="co">#&gt; Missing setting for mixing, set to default of FALSE</span>
+<span class="co">#&gt; Missing setting for nCores, set to default of 1</span>
+<span class="co">#&gt; Missing setting for workInLogs, set to default of FALSE</span>
+<span class="co">#&gt; Missing setting for seed, set to default of 13</span>
+<span class="co">#&gt; Missing setting for HB, set to default of FALSE</span>
+<span class="co">#&gt; Several observations per individual detected based on the value of ID.</span>
+<span class="co">#&gt;   Setting panelData set to TRUE.</span>
+<span class="co">#&gt; All checks on apollo_control completed.</span>
+<span class="co">#&gt; All checks on data completed.</span>
+
+<span class="co"># ####################################################### #</span>
+#### 5. Likelihood definition                          ####
+<span class="co"># ####################################################### #</span>
+
+apollo_probabilities=<span class="cf">function</span>(apollo_beta, apollo_inputs, 
+                              <span class="dt">functionality=</span><span class="st">&quot;estimate&quot;</span>){
+
+  ### Attach inputs and detach after function exit
+  <span class="kw">apollo_attach</span>(apollo_beta, apollo_inputs)
+  <span class="kw">on.exit</span>(<span class="kw">apollo_detach</span>(apollo_beta, apollo_inputs))
+
+  ### Create list of probabilities P
+  P =<span class="st"> </span><span class="kw">list</span>()
+  
+  ### List of utilities: these must use the same names as
+  ### in mnl_settings, order is irrelevant.
+  V =<span class="st"> </span><span class="kw">list</span>()
+  V[[<span class="st">'car'</span>]] =<span class="st"> </span>asc_car <span class="op">+</span><span class="st"> </span>b_tt_car <span class="op">*</span>time_car <span class="op">+</span><span class="st"> </span>b_c<span class="op">*</span>cost_car
+  V[[<span class="st">'bus'</span>]] =<span class="st"> </span>asc_bus <span class="op">+</span><span class="st"> </span>b_tt_bus <span class="op">*</span>time_bus <span class="op">+</span><span class="st"> </span>b_c<span class="op">*</span>cost_bus
+  V[[<span class="st">'air'</span>]] =<span class="st"> </span>asc_air <span class="op">+</span><span class="st"> </span>b_tt_air <span class="op">*</span>time_air <span class="op">+</span><span class="st"> </span>b_c<span class="op">*</span>cost_air
+  V[[<span class="st">'rail'</span>]]=<span class="st"> </span>asc_rail<span class="op">+</span><span class="st"> </span>b_tt_rail<span class="op">*</span>time_rail<span class="op">+</span><span class="st"> </span>b_c<span class="op">*</span>cost_rail
+  
+  ### Define settings for MNL model component
+  mnl_settings =<span class="st"> </span><span class="kw">list</span>(
+    <span class="dt">alternatives  =</span> <span class="kw">c</span>(<span class="dt">car=</span><span class="dv">1</span>, <span class="dt">bus=</span><span class="dv">2</span>, <span class="dt">air=</span><span class="dv">3</span>, <span class="dt">rail=</span><span class="dv">4</span>), 
+    <span class="dt">avail         =</span> <span class="kw">list</span>(<span class="dt">car=</span>av_car, <span class="dt">bus=</span>av_bus, 
+                         <span class="dt">air=</span>av_air, <span class="dt">rail=</span>av_rail), 
+    <span class="dt">choiceVar     =</span> choice,
+    <span class="dt">V             =</span> V
+  )
+  
+  ### Compute probabilities using MNL model
+  P[[<span class="st">'model'</span>]] =<span class="st"> </span><span class="kw">apollo_mnl</span>(mnl_settings, functionality)
+
+  ### Take product across observation for same individual
+  P =<span class="st"> </span><span class="kw">apollo_panelProd</span>(P, apollo_inputs, functionality)
+
+  ### Prepare and return outputs of function
+  P =<span class="st"> </span><span class="kw">apollo_prepareProb</span>(P, apollo_inputs, functionality)
+  <span class="kw">return</span>(P)
+}
+
+<span class="co"># ####################################################### #</span>
+#### 6. Model estimation and reporting                 ####
+<span class="co"># ####################################################### #</span>
+
+model =<span class="st"> </span><span class="kw">apollo_estimate</span>(apollo_beta, apollo_fixed, 
+                        apollo_probabilities, 
+                        apollo_inputs)
+<span class="co">#&gt; Testing probability function (apollo_probabilities)</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; All checks passed for MNL model component</span>
+<span class="co">#&gt; Overview of choices for MNL model component:</span>
+<span class="co">#&gt;                                      car     bus     air    rail</span>
+<span class="co">#&gt; Times available                  5446.00 6314.00 5264.00 6118.00</span>
+<span class="co">#&gt; Times chosen                     1946.00  358.00 1522.00 3174.00</span>
+<span class="co">#&gt; Percentage chosen overall          27.80    5.11   21.74   45.34</span>
+<span class="co">#&gt; Percentage chosen when available   35.73    5.67   28.91   51.88</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Starting main estimation</span>
+<span class="co">#&gt; Initial function value: -8196.021 </span>
+<span class="co">#&gt; Initial gradient value:</span>
+<span class="co">#&gt;     asc_bus     asc_air    asc_rail    b_tt_car    b_tt_bus    b_tt_air </span>
+<span class="co">#&gt;   -1599.667     -39.000    1302.667   92447.083 -597397.501   -1820.833 </span>
+<span class="co">#&gt;   b_tt_rail         b_c </span>
+<span class="co">#&gt;  189332.083    8862.500 </span>
+<span class="co">#&gt; initial  value 8196.020532 </span>
+<span class="co">#&gt; iter   2 value 7456.688617</span>
+<span class="co">#&gt; iter   3 value 7375.154805</span>
+<span class="co">#&gt; iter   4 value 7260.844459</span>
+<span class="co">#&gt; iter   5 value 6670.816191</span>
+<span class="co">#&gt; iter   6 value 6618.448416</span>
+<span class="co">#&gt; iter   7 value 6471.224865</span>
+<span class="co">#&gt; iter   8 value 6429.069517</span>
+<span class="co">#&gt; iter   9 value 6216.357939</span>
+<span class="co">#&gt; iter  10 value 6052.604912</span>
+<span class="co">#&gt; iter  11 value 5838.718119</span>
+<span class="co">#&gt; iter  12 value 5815.462122</span>
+<span class="co">#&gt; iter  13 value 5804.515622</span>
+<span class="co">#&gt; iter  14 value 5802.299705</span>
+<span class="co">#&gt; iter  15 value 5802.031103</span>
+<span class="co">#&gt; iter  16 value 5802.023289</span>
+<span class="co">#&gt; iter  17 value 5802.022828</span>
+<span class="co">#&gt; iter  17 value 5802.022826</span>
+<span class="co">#&gt; iter  17 value 5802.022826</span>
+<span class="co">#&gt; final  value 5802.022826 </span>
+<span class="co">#&gt; converged</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Estimated values:</span>
+<span class="co">#&gt;              [,1]</span>
+<span class="co">#&gt; asc_car    0.0000</span>
+<span class="co">#&gt; asc_bus    0.0115</span>
+<span class="co">#&gt; asc_air   -0.6495</span>
+<span class="co">#&gt; asc_rail  -1.2357</span>
+<span class="co">#&gt; b_tt_car  -0.0101</span>
+<span class="co">#&gt; b_tt_bus  -0.0164</span>
+<span class="co">#&gt; b_tt_air  -0.0118</span>
+<span class="co">#&gt; b_tt_rail -0.0048</span>
+<span class="co">#&gt; b_c       -0.0529</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Computing covariance matrix using numDeriv package.</span>
+<span class="co">#&gt;  (this may take a while)</span>
+<span class="co">#&gt; 0%....25%....50%....75%....100%</span>
+<span class="co">#&gt; Hessian calculated with numDeriv will be used.</span>
+<span class="co">#&gt; Calculating LL(0)... -8196.02</span>
+<span class="co">#&gt; Updating inputs... Done.</span>
+<span class="co">#&gt; Calculating LL of each model component...Done.</span>
+
+<span class="kw">apollo_modelOutput</span>(model)
+<span class="co">#&gt; Model run using Apollo for R, version 0.0.6 </span>
+<span class="co">#&gt; www.apollochoicemodelling.com</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Model name                       : MNL</span>
+<span class="co">#&gt; Model description                : Simple MNL model on mode choice SP data</span>
+<span class="co">#&gt; Model run at                     : 2019-03-13 17:13:17</span>
+<span class="co">#&gt; Estimation method                : bfgs</span>
+<span class="co">#&gt; Model diagnosis                  : successful convergence </span>
+<span class="co">#&gt; Number of individuals            : 500</span>
+<span class="co">#&gt; Number of observations           : 7000</span>
+<span class="co">#&gt; Estimated parameters             : 8</span>
+<span class="co">#&gt; Model with no mixing</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; LL(start)                        : -8196.021</span>
+<span class="co">#&gt; LL(0)                            : -8196.021</span>
+<span class="co">#&gt; LL(final)                        : -5802.023</span>
+<span class="co">#&gt; Rho-square (0)                   :  0.2921 </span>
+<span class="co">#&gt; Adj.Rho-square (0)               :  0.2911 </span>
+<span class="co">#&gt; AIC                              :  11620.05 </span>
+<span class="co">#&gt; BIC                              :  11674.87 </span>
+<span class="co">#&gt; Time taken (hh:mm:ss)            :  00:00:20.37 </span>
+<span class="co">#&gt; Iterations                       :  19 </span>
+<span class="co">#&gt; Number of cores used             :  1 </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Estimates:</span>
+<span class="co">#&gt;           Estimate Std.err. t.ratio(0) Rob.std.err. Rob.t.ratio(0)</span>
+<span class="co">#&gt; asc_car     0.0000       NA         NA           NA             NA</span>
+<span class="co">#&gt; asc_bus     0.0115   0.5408       0.02       0.5411           0.02</span>
+<span class="co">#&gt; asc_air    -0.6495   0.2699      -2.41       0.2666          -2.44</span>
+<span class="co">#&gt; asc_rail   -1.2357   0.3218      -3.84       0.3125          -3.95</span>
+<span class="co">#&gt; b_tt_car   -0.0101   0.0006     -15.75       0.0007         -15.30</span>
+<span class="co">#&gt; b_tt_bus   -0.0164   0.0015     -11.30       0.0015         -11.11</span>
+<span class="co">#&gt; b_tt_air   -0.0118   0.0024      -4.93       0.0024          -5.00</span>
+<span class="co">#&gt; b_tt_rail  -0.0048   0.0016      -2.90       0.0016          -2.95</span>
+<span class="co">#&gt; b_c        -0.0529   0.0014     -37.21       0.0017         -31.14</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Overview of choices for MNL model component: </span>
+<span class="co">#&gt;                                      car     bus     air    rail </span>
+<span class="co">#&gt; Times available                  5446.00 6314.00 5264.00 6118.00 </span>
+<span class="co">#&gt; Times chosen                     1946.00  358.00 1522.00 3174.00 </span>
+<span class="co">#&gt; Percentage chosen overall          27.80    5.11   21.74   45.34 </span>
+<span class="co">#&gt; Percentage chosen when available   35.73    5.67   28.91   51.88 </span>
+<span class="co">#&gt; </span>
+
+<span class="kw">apollo_saveOutput</span>(model)
+<span class="co">#&gt; Estimates saved to MNL_estimates.csv </span>
+<span class="co">#&gt; Classical covariance matrix saved to MNL_covar.csv </span>
+<span class="co">#&gt; Robust covariance matrix saved to MNL_robcovar.csv </span>
+<span class="co">#&gt; Classical correlation matrix saved to MNL_covar.csv </span>
+<span class="co">#&gt; Robust correlation matrix saved to MNL_robcorr.csv </span>
+<span class="co">#&gt; Model object saved to MNL.rds</span>
+
+<span class="co"># ####################################################### #</span>
+#### 7. Postprocessing of results                      ####
+<span class="co"># ####################################################### #</span>
+
+### Use the estimated model to make predictions
+predictions_base =<span class="st"> </span><span class="kw">apollo_prediction</span>(model, 
+                                     apollo_probabilities, 
+                                     apollo_inputs)
+<span class="co">#&gt; Updating inputs...Done.</span>
+<span class="co">#&gt; Running predictions from model... Done.</span>
+
+### Now imagine the cost for rail increases by 10% 
+### and predict again
+database<span class="op">$</span>cost_rail =<span class="st"> </span><span class="fl">1.1</span><span class="op">*</span>database<span class="op">$</span>cost_rail
+predictions_new =<span class="st"> </span><span class="kw">apollo_prediction</span>(model, 
+                                    apollo_probabilities, 
+                                    apollo_inputs)
+<span class="co">#&gt; Updating inputs...Done.</span>
+<span class="co">#&gt; Running predictions from model... Done.</span>
+
+### Compare predictions
+change=(predictions_new<span class="op">-</span>predictions_base)<span class="op">/</span>predictions_base
+### Not interested in chosen alternative now, 
+### so drop last column
+change=change[,<span class="op">-</span><span class="kw">ncol</span>(change)]
+### Summary of changes (possible presence of NAs due to
+### unavailable alternatives)
+<span class="kw">summary</span>(change)
+<span class="co">#&gt;       car              bus              air              rail        </span>
+<span class="co">#&gt;  Min.   :0.0000   Min.   :0.0000   Min.   :0.0000   Min.   :-0.3028  </span>
+<span class="co">#&gt;  1st Qu.:0.0725   1st Qu.:0.0738   1st Qu.:0.0704   1st Qu.:-0.2060  </span>
+<span class="co">#&gt;  Median :0.1168   Median :0.1218   Median :0.1100   Median :-0.1340  </span>
+<span class="co">#&gt;  Mean   :0.1105   Mean   :0.1225   Mean   :0.1121   Mean   :-0.1434  </span>
+<span class="co">#&gt;  3rd Qu.:0.1509   3rd Qu.:0.1674   3rd Qu.:0.1517   3rd Qu.:-0.0723  </span>
+<span class="co">#&gt;  Max.   :0.2339   Max.   :0.4326   Max.   :0.3677   Max.   :-0.0022  </span>
+<span class="co">#&gt;  NA's   :1554     NA's   :686      NA's   :1736     NA's   :882</span></code></pre></div>
+</div>
+<div id="mmnl-model-file-example" class="section level2">
+<h2>MMNL model file example</h2>
+<p>In this section, we present code to estimate a mixed MNL model (MMNL) using the synthetic data included in the package. After estimation, we predict the effect of a 10% increase in the train fares. The utility function of the model remains the same than in the previous example, i.e.:</p>
+<p><span class="math display">\[U_{nsi} = asc_i + \beta_{tt}tt_{nsi} + \beta_{c}*cost_{nsi} + \varepsilon_{nsi}\]</span></p>
+<p>Where <em>n</em> indexes individuals, <em>s</em> choice scenarios, and <em>i</em> alternatives. <span class="math inline">\(asc_i\)</span> is the alternative specific constant, <span class="math inline">\(tt_{si}\)</span> is the travel time and <span class="math inline">\(cost_{si}\)</span> is the cost. <span class="math inline">\(\varepsilon_{nsi}\)</span> is an independent identically distributed standard Gumbel error term. <span class="math inline">\(\beta_{tt}\)</span> follows a log-normal distribution with the underlying normal having a mean <span class="math inline">\(\mu_{tt}\)</span> and standard deviation <span class="math inline">\(\sigma_{tt}\)</span>. <span class="math inline">\(asc_i\)</span>, <span class="math inline">\(\beta_{c}\)</span>, <span class="math inline">\(\mu_{tt}\)</span> and <span class="math inline">\(\sigma_{tt}\)</span> are parameters to be estimated.</p>
+<p>The likelihood function of this model for individual <span class="math inline">\(n\)</span> is as follows.</p>
+<p><span class="math display">\[L_{n}=\int_{\beta_{tt}}\prod_{s}P_{nsi}f(\beta_{tt})d\beta_{tt}\]</span></p>
+<p>Where <span class="math inline">\(P_{nsi}=\frac{e^{V_{nsi}}}{\sum_{j}e^{V_{nsj}}}\)</span>, <span class="math inline">\(V_{nsi}=U_{nsi}-\varepsilon_{nsi}\)</span>, and <span class="math inline">\(f\)</span> is the probability density function of <span class="math inline">\(\beta_{tt}\)</span>. As this function does not have an analytical closed form, we estimate it using Monte Carlo integration, i.e.:</p>
+<p><span class="math display">\[L_{n}\approx\frac{1}{R}\sum_{\beta_{tt}^r}\prod_{s}P_{nsi}\]</span> Where <span class="math inline">\(\beta_{tt}^r\)</span> are random draws of <span class="math inline">\(\beta_{tt}\)</span> from its distribution <span class="math inline">\(f\)</span>, and R is a big number.</p>
+<p>The code is very similar to the previous example, with only sections 1 and 3 changing. In section 1 we set <code>mixing = TRUE</code> inside apollo_control, and we set <code>nCores = 2</code> to speed up estimation by using two computing threads (this is not mandatory). In section 3 we define the mean (<code>b_tt_mu</code>) and standar deviation (<code>b_tt_sigma</code>) of the underlying normal distribution, then define the type, name and number of draws used, and we construct the random coefficient <span class="math inline">\(\beta_{tt}\)</span>. We use 500 inter-individual draws that come from a standard normal distribution, which we later transform into log-normals inside <code>apollo_randCoeff</code>.</p>
+<p>Even though in this case we only use <em>inter</em>-individual draws, note that <em>inter</em> and <em>intra</em>-individuals draws can be used simultaneously. <em>Inter</em>-individual draws capture variability <em>between</em> individuals, while <em>intra</em>-individual draws capture variability <em>within</em> individuals. In terms of the Monte Carlo integration, <em>inter</em>-individual draws are common for all observations from the same individual, while <em>intra</em>-individual draws are different for each observations. In terms of the likelihood function, the use of <em>intra</em>-individual draws would lead to <span class="math inline">\(L_{n}\approx\prod_{s}\frac{1}{R}\sum_{\beta_{tt}^r}P_{nsi}\)</span>, which is <strong>not</strong> the case in this model.</p>
+<p>Estimation of models with mixing is significantly more demanding than models without mixing. Furthermore, using both <em>inter</em> and <em>intra</em>-individual requires large amounts of memory, that can further slow the estimation process.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># ####################################################### #</span>
+#### 1. Definition of core settings                        
+<span class="co"># ####################################################### #</span>
+
+### Clear memory
+<span class="kw">rm</span>(<span class="dt">list =</span> <span class="kw">ls</span>())
+
+### Load libraries
+<span class="kw">library</span>(apollo)
+
+### Initialise code
+<span class="kw">apollo_initialise</span>()
+
+### Set core controls
+apollo_control =<span class="st"> </span><span class="kw">list</span>(
+  <span class="dt">modelName  =</span><span class="st">&quot;MMNL&quot;</span>,
+  <span class="dt">modelDescr =</span><span class="st">&quot;Simple MMNL model on mode choice SP data&quot;</span>,
+  <span class="dt">indivID    =</span><span class="st">&quot;ID&quot;</span>,
+  <span class="dt">mixing     =</span> <span class="ot">TRUE</span>,
+  <span class="dt">nCores     =</span> <span class="dv">2</span>
+)
+
+<span class="co"># ####################################################### #</span>
+#### 2. Data loading                                   ####
+<span class="co"># ####################################################### #</span>
+
+<span class="kw">data</span>(<span class="st">&quot;apollo_modeChoiceData&quot;</span>)
+database =<span class="st"> </span>apollo_modeChoiceData
+<span class="kw">rm</span>(apollo_modeChoiceData)
+
+### Use only SP data
+database =<span class="st"> </span><span class="kw">subset</span>(database,database<span class="op">$</span>SP<span class="op">==</span><span class="dv">1</span>)
+
+### Create new variable with average income
+database<span class="op">$</span>mean_income =<span class="st"> </span><span class="kw">mean</span>(database<span class="op">$</span>income)
+
+<span class="co"># ####################################################### #</span>
+#### 3. Parameter definition                           ####
+<span class="co"># ####################################################### #</span>
+
+### Vector of parameters, including any that are kept fixed 
+### during estimation
+apollo_beta=<span class="kw">c</span>(<span class="dt">asc_car  =</span> <span class="fl">0.0000</span>,
+              <span class="dt">asc_bus  =</span><span class="op">-</span><span class="fl">2.4948</span>,
+              <span class="dt">asc_air  =</span><span class="op">-</span><span class="fl">1.1510</span>,
+              <span class="dt">asc_rail =</span><span class="op">-</span><span class="fl">0.7153</span>,
+              <span class="dt">mu_tt    =</span><span class="op">-</span><span class="fl">4.4104</span>,
+              <span class="dt">sigma_tt =</span> <span class="fl">0.4637</span>,
+              <span class="dt">b_c      =</span><span class="op">-</span><span class="fl">0.0613</span>)
+
+### Vector with names (in quotes) of parameters to be
+###  kept fixed at their starting value in apollo_beta.
+### Use apollo_beta_fixed = c() for no fixed parameters.
+apollo_fixed =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;asc_car&quot;</span>)
+
+### Set parameters for generating draws
+apollo_draws =<span class="st"> </span><span class="kw">list</span>(
+  <span class="dt">interDrawsType =</span> <span class="st">&quot;halton&quot;</span>,
+  <span class="dt">interNDraws    =</span> <span class="dv">200</span>,
+  <span class="dt">interUnifDraws =</span> <span class="kw">c</span>(),
+  <span class="dt">interNormDraws =</span> <span class="kw">c</span>(<span class="st">&quot;draws_tt&quot;</span>),
+  <span class="dt">intraDrawsType =</span> <span class="st">&quot;halton&quot;</span>,
+  <span class="dt">intraNDraws    =</span> <span class="dv">0</span>,
+  <span class="dt">intraUnifDraws =</span> <span class="kw">c</span>(),
+  <span class="dt">intraNormDraws =</span> <span class="kw">c</span>()
+)
+
+### Create random parameters
+apollo_randCoeff =<span class="st"> </span><span class="cf">function</span>(apollo_beta, apollo_inputs){
+  randcoeff =<span class="st"> </span><span class="kw">list</span>()
+
+  randcoeff[[<span class="st">&quot;b_tt&quot;</span>]] =<span class="st"> </span><span class="op">-</span><span class="kw">exp</span>(mu_tt <span class="op">+</span><span class="st"> </span>sigma_tt<span class="op">*</span>draws_tt)
+
+  <span class="kw">return</span>(randcoeff)
+}
+
+<span class="co"># ####################################################### #</span>
+#### 4. Input validation                               ####
+<span class="co"># ####################################################### #</span>
+
+apollo_inputs =<span class="st"> </span><span class="kw">apollo_validateInputs</span>()
+<span class="co">#&gt; Missing setting for workInLogs, set to default of FALSE</span>
+<span class="co">#&gt; Missing setting for seed, set to default of 13</span>
+<span class="co">#&gt; Missing setting for HB, set to default of FALSE</span>
+<span class="co">#&gt; Several observations per individual detected based on the value of ID.</span>
+<span class="co">#&gt;   Setting panelData set to TRUE.</span>
+<span class="co">#&gt; All checks on apollo_control completed.</span>
+<span class="co">#&gt; All checks on data completed.</span>
+<span class="co">#&gt; Generating inter draws . Done</span>
+
+<span class="co"># ####################################################### #</span>
+#### 5. Likelihood definition                          ####
+<span class="co"># ####################################################### #</span>
+
+apollo_probabilities=<span class="cf">function</span>(apollo_beta, apollo_inputs, 
+                              <span class="dt">functionality=</span><span class="st">&quot;estimate&quot;</span>){
+
+  ### Attach inputs and detach after function exit
+  <span class="kw">apollo_attach</span>(apollo_beta, apollo_inputs)
+  <span class="kw">on.exit</span>(<span class="kw">apollo_detach</span>(apollo_beta, apollo_inputs))
+
+  ### Create list of probabilities P
+  P =<span class="st"> </span><span class="kw">list</span>()
+  
+  ### List of utilities: these must use the same names as
+  ### in mnl_settings, order is irrelevant.
+  V =<span class="st"> </span><span class="kw">list</span>()
+  V[[<span class="st">'car'</span>]]  =<span class="st"> </span>asc_car  <span class="op">+</span><span class="st"> </span>b_tt<span class="op">*</span>time_car  <span class="op">+</span><span class="st"> </span>b_c<span class="op">*</span>cost_car
+  V[[<span class="st">'bus'</span>]]  =<span class="st"> </span>asc_bus  <span class="op">+</span><span class="st"> </span>b_tt<span class="op">*</span>time_bus  <span class="op">+</span><span class="st"> </span>b_c<span class="op">*</span>cost_bus 
+  V[[<span class="st">'air'</span>]]  =<span class="st"> </span>asc_air  <span class="op">+</span><span class="st"> </span>b_tt<span class="op">*</span>time_air  <span class="op">+</span><span class="st"> </span>b_c<span class="op">*</span>cost_air   
+  V[[<span class="st">'rail'</span>]] =<span class="st"> </span>asc_rail <span class="op">+</span><span class="st"> </span>b_tt<span class="op">*</span>time_rail <span class="op">+</span><span class="st"> </span>b_c<span class="op">*</span>cost_rail  
+  
+  ### Define settings for MNL model component
+  mnl_settings =<span class="st"> </span><span class="kw">list</span>(
+    <span class="dt">alternatives  =</span> <span class="kw">c</span>(<span class="dt">car=</span><span class="dv">1</span>, <span class="dt">bus=</span><span class="dv">2</span>, <span class="dt">air=</span><span class="dv">3</span>, <span class="dt">rail=</span><span class="dv">4</span>), 
+    <span class="dt">avail         =</span> <span class="kw">list</span>(<span class="dt">car=</span>av_car, <span class="dt">bus=</span>av_bus, 
+                         <span class="dt">air=</span>av_air, <span class="dt">rail=</span>av_rail), 
+    <span class="dt">choiceVar     =</span> choice,
+    <span class="dt">V             =</span> V
+  )
+  
+  ### Compute probabilities using MNL model
+  P[[<span class="st">'model'</span>]] =<span class="st"> </span><span class="kw">apollo_mnl</span>(mnl_settings, functionality)
+
+  ### Take product across observation for same individual
+  P =<span class="st"> </span><span class="kw">apollo_panelProd</span>(P, apollo_inputs, functionality)
+  
+  ### Average draws
+  P =<span class="st"> </span><span class="kw">apollo_avgInterDraws</span>(P, apollo_inputs, functionality)
+  
+  ### Prepare and return outputs of function
+  P =<span class="st"> </span><span class="kw">apollo_prepareProb</span>(P, apollo_inputs, functionality)
+  <span class="kw">return</span>(P)
+}
+
+<span class="co"># ####################################################### #</span>
+#### 6. Model estimation and reporting                 ####
+<span class="co"># ####################################################### #</span>
+
+model =<span class="st"> </span><span class="kw">apollo_estimate</span>(apollo_beta, apollo_fixed, 
+                        apollo_probabilities, 
+                        apollo_inputs)
+<span class="co">#&gt; Testing probability function (apollo_probabilities)</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; All checks passed for MNL model component</span>
+<span class="co">#&gt; Overview of choices for MNL model component:</span>
+<span class="co">#&gt;                                      car     bus     air    rail</span>
+<span class="co">#&gt; Times available                  5446.00 6314.00 5264.00 6118.00</span>
+<span class="co">#&gt; Times chosen                     1946.00  358.00 1522.00 3174.00</span>
+<span class="co">#&gt; Percentage chosen overall          27.80    5.11   21.74   45.34</span>
+<span class="co">#&gt; Percentage chosen when available   35.73    5.67   28.91   51.88</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Attempting to split data into 2 pieces.</span>
+<span class="co">#&gt; Number of observations per worker (thread):</span>
+<span class="co">#&gt; worker_1 worker_2 </span>
+<span class="co">#&gt;     3500     3500 </span>
+<span class="co">#&gt;  87.7Mb of RAM in use before splitting.</span>
+<span class="co">#&gt; Splitting draws.. Done. 98.3Mb of RAM in use.</span>
+<span class="co">#&gt; Splitting database.. Done. 99.2Mb of RAM in use.</span>
+<span class="co">#&gt; Creating workers and loading libraries... Done. 227.7Mb of RAM in use.</span>
+<span class="co">#&gt; Copying data to workers... Done. 227.8Mb of RAM in use (max was 239.3Mb)</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Starting main estimation</span>
+<span class="co">#&gt; Initial function value: -5518.018 </span>
+<span class="co">#&gt; Initial gradient value:</span>
+<span class="co">#&gt;      asc_bus      asc_air     asc_rail        mu_tt     sigma_tt </span>
+<span class="co">#&gt; -0.105195795  0.132730747 -0.010276381  0.440247277  0.008943061 </span>
+<span class="co">#&gt;          b_c </span>
+<span class="co">#&gt; 16.505906387 </span>
+<span class="co">#&gt; initial  value 5518.017700 </span>
+<span class="co">#&gt; iter   2 value 5518.017599</span>
+<span class="co">#&gt; iter   2 value 5518.017598</span>
+<span class="co">#&gt; iter   2 value 5518.017548</span>
+<span class="co">#&gt; final  value 5518.017548 </span>
+<span class="co">#&gt; converged</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Estimated values:</span>
+<span class="co">#&gt;             [,1]</span>
+<span class="co">#&gt; asc_car   0.0000</span>
+<span class="co">#&gt; asc_bus  -2.4948</span>
+<span class="co">#&gt; asc_air  -1.1510</span>
+<span class="co">#&gt; asc_rail -0.7153</span>
+<span class="co">#&gt; mu_tt    -4.4104</span>
+<span class="co">#&gt; sigma_tt  0.4637</span>
+<span class="co">#&gt; b_c      -0.0613</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Computing covariance matrix using numDeriv package.</span>
+<span class="co">#&gt;  (this may take a while)</span>
+<span class="co">#&gt; 0%....25%....50%....75%...100%</span>
+<span class="co">#&gt; Hessian calculated with numDeriv will be used.</span>
+<span class="co">#&gt; Calculating LL(0)... -8196.02</span>
+<span class="co">#&gt; Updating inputs... Done.</span>
+<span class="co">#&gt; Calculating LL of each model component...Done.</span>
+
+<span class="kw">apollo_modelOutput</span>(model)
+<span class="co">#&gt; Model run using Apollo for R, version 0.0.6 </span>
+<span class="co">#&gt; www.apollochoicemodelling.com</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Model name                       : MMNL</span>
+<span class="co">#&gt; Model description                : Simple MMNL model on mode choice SP data</span>
+<span class="co">#&gt; Model run at                     : 2019-03-13 17:13:40</span>
+<span class="co">#&gt; Estimation method                : bfgs</span>
+<span class="co">#&gt; Model diagnosis                  : successful convergence </span>
+<span class="co">#&gt; Number of individuals            : 500</span>
+<span class="co">#&gt; Number of observations           : 7000</span>
+<span class="co">#&gt; Estimated parameters             : 6</span>
+<span class="co">#&gt; Number of inter-person draws     : 200 (halton)</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; LL(start)                        : -5518.018</span>
+<span class="co">#&gt; LL(0)                            : -8196.021</span>
+<span class="co">#&gt; LL(final)                        : -5518.018</span>
+<span class="co">#&gt; Rho-square (0)                   :  0.3267 </span>
+<span class="co">#&gt; Adj.Rho-square (0)               :  0.326 </span>
+<span class="co">#&gt; AIC                              :  11048.04 </span>
+<span class="co">#&gt; BIC                              :  11089.16 </span>
+<span class="co">#&gt; Time taken (hh:mm:ss)            :  00:05:56.71 </span>
+<span class="co">#&gt; Iterations                       :  4 </span>
+<span class="co">#&gt; Number of cores used             :  2 </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Estimates:</span>
+<span class="co">#&gt;          Estimate Std.err. t.ratio(0) Rob.std.err. Rob.t.ratio(0)</span>
+<span class="co">#&gt; asc_car    0.0000       NA         NA           NA             NA</span>
+<span class="co">#&gt; asc_bus   -2.4948   0.0763     -32.68       0.0805         -31.01</span>
+<span class="co">#&gt; asc_air   -1.1510   0.1353      -8.51       0.1376          -8.36</span>
+<span class="co">#&gt; asc_rail  -0.7153   0.0960      -7.45       0.1006          -7.11</span>
+<span class="co">#&gt; mu_tt     -4.4104   0.0561     -78.68       0.0538         -82.01</span>
+<span class="co">#&gt; sigma_tt   0.4637   0.0296      15.65       0.0296          15.65</span>
+<span class="co">#&gt; b_c       -0.0613   0.0016     -38.35       0.0019         -32.13</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Overview of choices for MNL model component: </span>
+<span class="co">#&gt;                                      car     bus     air    rail </span>
+<span class="co">#&gt; Times available                  5446.00 6314.00 5264.00 6118.00 </span>
+<span class="co">#&gt; Times chosen                     1946.00  358.00 1522.00 3174.00 </span>
+<span class="co">#&gt; Percentage chosen overall          27.80    5.11   21.74   45.34 </span>
+<span class="co">#&gt; Percentage chosen when available   35.73    5.67   28.91   51.88 </span>
+<span class="co">#&gt; </span>
+
+<span class="kw">apollo_saveOutput</span>(model)
+<span class="co">#&gt; Estimates saved to MMNL_estimates.csv </span>
+<span class="co">#&gt; Classical covariance matrix saved to MMNL_covar.csv </span>
+<span class="co">#&gt; Robust covariance matrix saved to MMNL_robcovar.csv </span>
+<span class="co">#&gt; Classical correlation matrix saved to MMNL_covar.csv </span>
+<span class="co">#&gt; Robust correlation matrix saved to MMNL_robcorr.csv </span>
+<span class="co">#&gt; Model object saved to MMNL.rds</span>
+
+<span class="co"># ####################################################### #</span>
+#### 7. Postprocessing of results                      ####
+<span class="co"># ####################################################### #</span>
+
+### Use the estimated model to make predictions
+predictions_base =<span class="st"> </span><span class="kw">apollo_prediction</span>(model, 
+                                     apollo_probabilities, 
+                                     apollo_inputs)
+<span class="co">#&gt; Updating inputs...Done.</span>
+<span class="co">#&gt; Running predictions from model... Done.</span>
+
+### Now imagine the cost for rail increases by 10% 
+### and predict again
+database<span class="op">$</span>cost_rail =<span class="st"> </span><span class="fl">1.1</span><span class="op">*</span>database<span class="op">$</span>cost_rail
+predictions_new =<span class="st"> </span><span class="kw">apollo_prediction</span>(model, 
+                                    apollo_probabilities, 
+                                    apollo_inputs)
+<span class="co">#&gt; Updating inputs...Done.</span>
+<span class="co">#&gt; Running predictions from model... Done.</span>
+
+### Compare predictions
+change=(predictions_new<span class="op">-</span>predictions_base)<span class="op">/</span>predictions_base
+### Not interested in chosen alternative now, 
+### so drop last column
+change=change[,<span class="op">-</span><span class="kw">ncol</span>(change)]
+### Summary of changes (possible presence of NAs due to
+### unavailable alternatives)
+<span class="kw">summary</span>(change)
+<span class="co">#&gt;       car              bus              air              rail        </span>
+<span class="co">#&gt;  Min.   :0.0000   Min.   :0.0000   Min.   :0.0000   Min.   :-0.3454  </span>
+<span class="co">#&gt;  1st Qu.:0.0768   1st Qu.:0.0724   1st Qu.:0.0701   1st Qu.:-0.2257  </span>
+<span class="co">#&gt;  Median :0.1216   Median :0.1213   Median :0.1327   Median :-0.1480  </span>
+<span class="co">#&gt;  Mean   :0.1131   Mean   :0.1246   Mean   :0.1361   Mean   :-0.1553  </span>
+<span class="co">#&gt;  3rd Qu.:0.1594   3rd Qu.:0.1679   3rd Qu.:0.1962   3rd Qu.:-0.0762  </span>
+<span class="co">#&gt;  Max.   :0.2338   Max.   :0.4307   Max.   :0.4586   Max.   :-0.0026  </span>
+<span class="co">#&gt;  NA's   :1554     NA's   :686      NA's   :1736     NA's   :882</span></code></pre></div>
+</div>
+
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

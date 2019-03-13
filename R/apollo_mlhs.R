@@ -1,7 +1,7 @@
 #' Generate random draws using MLHS algorithm
-#'
+#' 
 #' Generate random draws using the Modified Latin Hypercube Sampling algorithm.
-#'
+#' 
 #' Internal use only.
 #' Algorithm described in
 #' Hess, S., Train, K., and Polak, J. (2006) Transportation Research 40B, 147 - 163.
@@ -13,18 +13,18 @@ apollo_mlhs=function(N,d,i){
   shuffle=function(inv){
     out=inv[rank(stats::runif(length(inv)))];
     out}
-
+  
   temp=seq(0,N-1)/N;
   out=matrix(0,N*i,d);
   j=1;
   k=1;
-  while(j<i+1){
-    k=1;
-    while(k<d+1){
-      out[(1+N*(j-1)):(N*j),k]=shuffle(temp+stats::runif(1)/N);
-      k=k+1
+  while(k<d+1){
+    j=1;
+    while(j<i+1){
+      out[(1+N*(j-1)):(N*j),k] = shuffle(temp + stats::runif(1)/N);
+      j=j+1
     }
-    j=j+1
+    k=k+1
   }
   out
 }

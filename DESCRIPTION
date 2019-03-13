@@ -1,9 +1,10 @@
 Package: apollo
 Type: Package
-Title: Tools for Estimating Discrete Choice Models
-Version: 0.0.1
-Author: Stephane Hess, David Palma
-Maintainer: David Palma <D.Palma@leeds.ac.uk>
+Title: Tools for Choice Model Estimation and Application
+Version: 0.0.6
+Authors@R: c(
+    person("Stephane", "Hess", email="S.Hess@leeds.ac.uk", role="aut"),
+    person("David", "Palma", email="D.Palma@leeds.ac.uk", role=c("aut","cre")) )
 Description: The Choice Modelling Centre at the 
     University of Leeds has developed flexible 
     estimation code for choice models in R. 
@@ -18,13 +19,17 @@ Description: The Choice Modelling Centre at the
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
-Depends: R (>= 3.1.0)
-Imports: maxLik, sandwich, numDeriv, randtoolbox, RSGHB, parallel,
-        stats, utils, coda
-RoxygenNote: 6.1.1
-Suggests: testthat, knitr, rmarkdown
+Depends: R (>= 3.1.0), stats, utils
+Imports: Rcpp (>= 1.0.0), maxLik, mnormt, graphics, coda, sandwich,
+        randtoolbox, numDeriv, RSGHB, parallel
+LinkingTo: Rcpp, RcppArmadillo, RcppEigen
+Suggests: knitr, rmarkdown, testthat
 VignetteBuilder: knitr
-NeedsCompilation: no
-Packaged: 2019-01-11 18:20:24 UTC; palma
+RoxygenNote: 6.1.1
+NeedsCompilation: yes
+Packaged: 2019-03-13 17:19:49 UTC; palma
+Author: Stephane Hess [aut],
+  David Palma [aut, cre]
+Maintainer: David Palma <D.Palma@leeds.ac.uk>
 Repository: CRAN
-Date/Publication: 2019-01-16 17:10:03 UTC
+Date/Publication: 2019-03-13 21:13:53 UTC

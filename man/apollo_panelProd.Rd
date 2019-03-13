@@ -4,13 +4,12 @@
 \alias{apollo_panelProd}
 \title{Calculates product of panel observations.}
 \usage{
-apollo_panelProd(P, apollo_control, functionality, work_in_logs, indivID)
+apollo_panelProd(P, apollo_inputs, functionality)
 }
 \arguments{
-\item{P}{List of probabilities. It must contain one element called "model" containing the full likelihood of the model.}
+\item{P}{List of vectors, matrices or 3-dim arrays. Likelihood of the model components.}
 
-\item{apollo_control}{List. Options controlling the running of the code.
-See \code{?apollo_validatecontrol} for details.}
+\item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
 \item{functionality}{Character. Can take different values depending on desired output.
 \describe{
@@ -22,10 +21,6 @@ See \code{?apollo_validatecontrol} for details.}
   \item{"output"}{Checks that the model is well defined.}
   \item{"raw"}{For debugging, returns probabilities of all alternatives}
 }}
-
-\item{work_in_logs}{Boolean. TRUE for higher numeric stability at the expense of computational time. Useful for panel models only. Default is FALSE.}
-
-\item{indivID}{Numeric vector. Vector with individual's ID. As long as the number of observations.}
 }
 \value{
 Probabilities at the individual level.

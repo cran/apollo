@@ -2,39 +2,37 @@
 % Please edit documentation in R/apollo_makeLogLike.R
 \name{apollo_makeLogLike}
 \alias{apollo_makeLogLike}
-\title{Creates loglikelihood function.}
+\title{Creates log-likelihood function.}
 \usage{
-apollo_makeLogLike(theta_fix_val, database, apollo_probabilities,
-  apollo_control, draws = NA, apollo_randcoeff = NA,
-  apollo_lcpars = NA, cl = NA, estimation_routine, work_in_logs)
+apollo_makeLogLike(apollo_beta, apollo_fixed, apollo_probabilities,
+  apollo_inputs, apollo_estSet, cl = NA)
 }
 \arguments{
-\item{theta_fix_val}{Named numeric vector. Names an values of fixed parameters.}
+\item{apollo_beta}{Named numeric vector. Names and values for parameters.}
 
-\item{database}{data.frame Data to be used by model. Gets splitted and copied into the cluster.}
+\item{apollo_fixed}{Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.}
 
-\item{apollo_probabilities}{Function. likelihood provided by the user.}
+\item{apollo_probabilities}{Function. Returns probabilities of the model to be estimated. Must receive three arguments:
+\itemize{
+  \item apollo_beta: Named numeric vector. Names and values of model parameters.
+  \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
+  \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
+}}
 
-\item{apollo_control}{List of model options.}
+\item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
-\item{draws}{List of draws (numeric arrays). Default is NA. Get splitted and copied into the cluster.}
+\item{apollo_estSet}{List of estimation options. It must contain at least one element called
+estimationRoutine defining the estimation algorithm. See \link{apollo_estimate}.}
 
-\item{apollo_randcoeff}{Function. Creates the random coeff or error terms by mixing draws and params. Provided by the user.}
-
-\item{apollo_lcpars}{Function. Used for latent class models. Not implemented yet.}
-
-\item{cl}{Cluster.}
-
-\item{estimation_routine}{Character.}
-
-\item{work_in_logs}{Boolean.}
+\item{cl}{Cluster as provided by \link[parallel]{makeCluster}. Assumed to be PSock.}
 }
 \value{
 apollo_logLike function.
 }
 \description{
-Creates loglikelihood function from the likelihood function apollo_probabilities provided by the user.
+Creates log-likelihood function from the likelihood function apollo_probabilities provided by the user.
 }
 \details{
-Internal use only. Called by apollo_estimate before estimation.
+Internal use only. Called by \code{apollo_estimate} before estimation.
+The returned function can be single-threaded or multi-threaded based on the model options.
 }

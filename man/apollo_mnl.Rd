@@ -4,83 +4,72 @@
 \alias{apollo_mnl}
 \title{Calculates multinomial logit probabilities}
 \usage{
-apollo_mnl(alternatives, avail, choice, V, functionality = "estimate",
-  rows = "all")
+apollo_mnl(mnl_settings, functionality)
 }
 \arguments{
-\item{alternatives}{Named numeric vector. This vector contains the name of the alternatives and the
-value representing them in the \code{choice} argument. All different elements in argument
-\code{choice} must be included in argument \code{alternatives}.}
-
-\item{avail}{Named list. Availabilities of alternatives, one element per alternative.
-Names of elements must match those in argument \code{alternatives}.
-Value for each element can be 1 (scalar if always available) or a vector with values 0 or 1 for each observation.
-If all alternatives then the user can just set \code{avail=1}.}
-
-\item{choice}{Numeric vector. Contains choices for all observations. It will usually be a column from the database.}
-
-\item{V}{Named list. Utilities, names of elements must match those in argument \code{alternatives}.}
-
-\item{functionality}{Character. Can take different values depending on desired output.
-\describe{
-  \item{"estimate"}{Used for model estimation.}
-  \item{"prediction"}{Used for model predictions.}
-  \item{"validate"}{Used for validating input.}
-  \item{"zero_LL"}{Used for getting null likelihood.}
-  \item{"conditionals"}{Used for getting conditionals.}
-  \item{"output"}{Used for preparing output after model estimation.}
-  \item{"raw"}{Used for debugging.}
+\item{mnl_settings}{List of inputs of the MNL model. It should contain the following.
+\itemize{
+  \item alternatives: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
+  \item avail: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
+  \item choiceVar: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
+  \item V: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
+  \item rows: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
 }}
 
-\item{rows}{Boolean vector. TRUE if a row must be considered in the calculations, FALSE if it must be excluded.
-It must have length equal to the length of argument \code{choice}.
-Default value is \code{"all"}, meaning all rows are considered in the calculation.}
+\item{functionality}{Character. Can take different values depending on desired output.
+\itemize{
+  \item "estimate": Used for model estimation.
+  \item "prediction": Used for model predictions.
+  \item "validate": Used for validating input.
+  \item "zero_LL": Used for calculating null likelihood.
+  \item "conditionals": Used for calculating conditionals.
+  \item "output": Used for preparing output after model estimation.
+  \item "raw": Used for debugging.
+}}
 }
 \value{
 The returned object depends on the value of argument \code{functionality} as follows.
-\describe{
-  \item{"estimate"}{vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.}
-  \item{"prediction"}{List. Returns a list with the probabilities for all alternatives and additionaly the probability of the chosen alternative.}
-  \item{"validate"}{Boolean. Returns TRUE if all tests are passed.}
-  \item{"zero_LL"}{vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.}
-  \item{"conditionals"}{Same as "estimation".}
-  \item{"output"}{Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modeloutput}).}
-  \item{"raw"}{Same as "prediction".}
-}
+        \itemize{
+          \item "estimate": vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
+          \item "prediction": List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
+          \item "validate": Boolean. Returns TRUE if all tests are passed.
+          \item "zero_LL": vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
+          \item "conditionals": Same as "prediction".
+          \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
+          \item "raw": Same as "prediction".
+        }
 }
 \description{
-Calculates the probabilities of a multinomial logit model and can also perform other operations based on the value of the \code{functionality} argument.
-}
-\details{
-The behaviour of the function depends on the value of the \code{functionality} argument.
-Calculated probabilities will take the same form than V. The shape of V varies automatically depending
-on whether draws are used or not, and if used, what kind of draws they are. In general, this should not
-be a concern for the user, as all re-shapes and dimension matching are handled internally. Only when
-the user does not use pre-coded likelihood functions (such as \link{apollo_mnl}), and instead programs
-his/her own likelihood, should the user be concern about the dimensionality of V. For those cases,
-consider the following guide.
-\describe{
-  \item{No mixing}{V should be a vector with as many elements as observations in the database (nObs).}
-  \item{inter-individual draws only}{V should be a matrix with as many rows as observations (nObs) and as many columns as inter-individual draws (nInterDraws).}
-  \item{intra-individual draws}{V should be a 3-dimensional array with dimensions nObs x nInterDraws x nIntraDraws. If nInterDraws=0, then dimensions are nObs x 1 x nIntraDraws.}
-}
+Calculates probabilities of a multinomial logit model.
 }
 \examples{
+### Load data
 data(apollo_modeChoiceData)
-x            = database
-b            = list(asc_1=0, asc_2=0, asc_3=0, asc_4=0, tt=0, tc=0, acc=0)
-alternatives = c(car=1, bus=2, air=3, rail=4)
-avail        = list(car=x$av_car, bus=x$av_bus, air=x$av_air, rail=x$av_rail)
-choiceVar    = x$choice
+database <- apollo_modeChoiceData
+rm(apollo_modeChoiceData)
+
+### Parameters
+b = list(asc_1=0, asc_2=0, asc_3=0, asc_4=0, tt=0, tc=0, acc=0)
 
 ### List of utilities
 V = list()
-V[['car' ]] = b$asc_1 + b$tt*x$time_car  + b$tc*x$cost_car
-V[['bus' ]] = b$asc_2 + b$tt*x$time_bus  + b$tc*x$cost_bus  + b$acc*x$access_bus
-V[['air' ]] = b$asc_3 + b$tt*x$time_air  + b$tc*x$cost_air  + b$acc*x$access_air
-V[['rail']] = b$asc_4 + b$tt*x$time_rail + b$tc*x$cost_rail + b$acc*x$access_rail
+V[['car' ]] = b$asc_1 + b$tt*database$time_car  + b$tc*database$cost_car
+V[['bus' ]] = b$asc_2 + b$tt*database$time_bus  + b$tc*database$cost_bus  +
+              b$acc*database$access_bus
+V[['air' ]] = b$asc_3 + b$tt*database$time_air  + b$tc*database$cost_air  +
+              b$acc*database$access_air
+V[['rail']] = b$asc_4 + b$tt*database$time_rail + b$tc*database$cost_rail +
+              b$acc*database$access_rail
+
+### MNL settings
+mnl_settings <- list(
+   alternatives = c(car=1, bus=2, air=3, rail=4),
+   avail        = list(car=database$av_car, bus=database$av_bus,
+                       air=database$av_air, rail=database$av_rail),
+   choiceVar    = database$choice,
+   V            = V
+)
 
 ### Compute choice probabilities using MNL model
-apollo_mnl(alternatives, avail, choiceVar, V)
-
+apollo_mnl(mnl_settings, functionality="estimate")
 }

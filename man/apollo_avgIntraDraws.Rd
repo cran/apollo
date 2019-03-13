@@ -4,31 +4,27 @@
 \alias{apollo_avgIntraDraws}
 \title{Averages intra-individual draws}
 \usage{
-apollo_avgIntraDraws(P, apollo_control, functionality)
+apollo_avgIntraDraws(P, apollo_inputs, functionality)
 }
 \arguments{
-\item{P}{List. Contains the probabilities for each model component, for each inter- and intra-person draw.}
+\item{P}{List of vectors, matrices or 3-dim arrays. Likelihood of the model components.}
 
-\item{apollo_control}{List. Contains options for the estimation
-See \link{apollo_validatecontrol} for details.}
+\item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
-\item{functionality}{Character. Can take different values depending on desired output.
-\describe{
-  \item{"estimate"}{For model estimation, returns probabilities of chosen alternatives.}
-  \item{"prediction"}{For model predictions, returns probabilities of all alternatives.}
-  \item{"validate"}{Validates input.}
-  \item{"zero_LL"}{Return probabilities with all parameters at zero.}
-  \item{"conditionals"}{For conditionals, returns probabilities of chosen alternatives.}
-  \item{"output"}{Checks that the model is well defined.}
-  \item{"raw"}{For debugging, returns probabilities of all alternatives}
-}}
+\item{functionality}{Character. Description of the desired output from \code{apollo_probabilities}. Can take the values: "estimate", "prediction", "validate", "zero_LL", "conditionals", "output", "raw".}
 }
 \value{
-Average probability over intra-individual draws (shape depends on argument \code{functionality}).
+Likelihood averaged over intra-individual draws (shape depends on argument \code{functionality}).
+        \itemize{
+          \item"estimate": Returns the likelihood of the model averaged across intra-individual draws.
+          \item"prediction": Returns the likelihood of all alternatives and all model components across intra-individual draws.
+          \item"validate": Returns P without changes.
+          \item"zero_LL": Returns P without changes.
+          \item"conditionals": Returns P without changes.
+          \item"output": Returns the same than "estimate", but also prints a summary of estimation data.
+          \item"raw": Returns P without changes.
+        }
 }
 \description{
-Averages the likelihood across intra-individual draws.
-}
-\details{
-This function performs additional checks on the shape of the probabilities given as arguments.
+Averages observation-specific likelihood across intra-individual draws.
 }

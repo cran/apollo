@@ -4,31 +4,26 @@
 \alias{apollo_makeCluster}
 \title{Creates cluster for estimation.}
 \usage{
-apollo_makeCluster(apollo_control, apollo_probabilities, database,
-  draws = NA, apollo_randcoeff = NA, apollo_lcpars = NA,
-  silent = FALSE)
+apollo_makeCluster(apollo_probabilities, apollo_inputs, silent = FALSE)
 }
 \arguments{
-\item{apollo_control}{List of model options.}
+\item{apollo_probabilities}{Function. Returns probabilities of the model to be estimated. Must receive three arguments:
+\itemize{
+  \item apollo_beta: Named numeric vector. Names and values of model parameters.
+  \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
+  \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
+}}
 
-\item{apollo_probabilities}{Function. likelihood provided by the user.}
+\item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
-\item{database}{data.frame Data to be used by model. Gets splitted and copied into the cluster.}
-
-\item{draws}{List of draws (numeric arrays). Default is NA. Get splitted and copied into the cluster.}
-
-\item{apollo_randcoeff}{Function. Creates the random coeff or error terms by mixing draws and params. Provided by the user.}
-
-\item{apollo_lcpars}{Function. Used for latent class models. Not implemented yet.}
-
-\item{silent}{Boolean. Default is FALSE.}
+\item{silent}{Boolean. If TRUE, it reports progress to the console. Default is FALSE.}
 }
 \value{
 Cluster (i.e. an object of class cluster from package parallel)
 }
 \description{
-Creates cluster and loads pieces of the database in each worker.
+Creates cluster and loads pieces of the database for each worker.
 }
 \details{
-Internal use only. Called by apollo_estimate before estimation. AT least doubles up memory usage. But during the splitting it uses even more (~250% of the original).
+Internal use only. Called by \code{apollo_estimate} before estimation. AT least doubles up memory usage. But during the splitting it uses even more (~250% of the original).
 }

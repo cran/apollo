@@ -1,15 +1,15 @@
 #' Splits data and draws for loading in cluster
 #' 
-#' Splits the database and the draws (if given) in a list with as many elements as apollo_control$nCores.
+#' Copies \code{apollo_inputs} as many times as cores, but each copy contains only part of \code{database} and \code{draws}.
 #' 
 #' Internal use only. This function is called by \link{apollo_makeCluster}.
-#' @param apollo_control List. Contains options for the estimation. See \link{apollo_validatecontrol}.
-#' @param database data.frame. Estimation data.
-#' @param draws List. Draws as created by \link{apollo_makeDraws}.
+#' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param silent Boolean. If TRUE, no information is printed to console or default output.
-#' @return List. Each element is a list containing two elements:
-#'         a fraction of the database and a fraction of the draws (if given).
-apollo_splitDataDraws <- function(apollo_control, database, draws=NA, silent=FALSE){
+#' @return List. Each element is a copy of apollo_inputs, but with only a piece of \code{database} and \code{draws}.
+apollo_splitDataDraws <- function(apollo_inputs, silent=FALSE){
+  apollo_control = apollo_inputs[["apollo_control"]]
+  database       = apollo_inputs[["database"]]
+  draws          = apollo_inputs[["draws"]]
   
   nObs    <- nrow(database)
   indivID <- database[,apollo_control$indivID]
@@ -20,8 +20,7 @@ apollo_splitDataDraws <- function(apollo_control, database, draws=NA, silent=FAL
   nCores  <- apollo_control$nCores
   
   database <- database[order(indivID),]
-  
-  if(!silent) cat('Attempting to split data into',nCores,' pieces.\n',sep=' ')
+  if(!silent) cat('Attempting to split data into',nCores,'pieces.\n',sep=' ')
   obj          <- ceiling(nObs/nCores)
   counter      <- 0
   currentCore  <- 1
@@ -37,20 +36,26 @@ apollo_splitDataDraws <- function(apollo_control, database, draws=NA, silent=FAL
     }
   }
   nCores <- max(assignedCore)
-  if(!silent) cat(nCores, ' workers (threads) will be used for estimation.\n', sep='')
-  if(!silent) cat('Worker load (number of observations per thread):\n')
+  if(!silent && nCores!=apollo_inputs$apollo_control$nCores) cat(nCores, ' workers (threads) will be used for estimation.\n', sep='')
+  if(!silent) cat('Number of observations per worker (thread):\n')
   coreLoad <- as.vector(table(assignedCore)) 
   names(coreLoad) <- paste('worker',1:nCores,sep='_')
   if(!silent) print(coreLoad)
   rm(obj, counter, currentCore, i, n)
+  if(!silent) cat(" ", sum(gc()[,2]),'Mb of RAM in use before splitting.\n', sep="")
+  
   
   LL <- vector(mode="list", length=nCores)
   
-  if(!silent){
-    mbRAM <- sum(gc()[,2])
-    cat('Splitting data. (',mbRAM,'Mb of RAM in use before splitting)', sep='')
-  }
-  if(apollo_control$mixing){ 
+  
+  tmp <- names(apollo_inputs)
+  tmp <- tmp[!(tmp %in% c("database", "draws"))]
+  for(i in 1:nCores) LL[[i]] <- apollo_inputs[ tmp ]
+  rm(tmp, i)
+  
+  
+  if(mixing){ 
+    if(!silent) cat('Splitting draws')
     getDrawsPiece <- function(d,rowsID){
       if(length(dim(d))==3){
         nObsW  <- length(rowsID)
@@ -63,25 +68,23 @@ apollo_splitDataDraws <- function(apollo_control, database, draws=NA, silent=FAL
       } else return(d[rowsID,])
     }
     environment(getDrawsPiece) <- new.env(parent=parent.env(environment(getDrawsPiece)))
-    
     for(i in 1:nCores){
-      rowsID <- which(assignedCore==i)
-      LL[[i]] <- list(database=database[rowsID,],
-                      draws=c(lapply(draws[-length(draws)], getDrawsPiece, rowsID=rowsID),
-                              draws[[length(draws)]]))
+      LL[[i]][["draws"]] <- lapply(draws, getDrawsPiece, rowsID=which(assignedCore==i))
+      if(!silent) cat(".")
     }
+    rm(getDrawsPiece)
+    if(!silent) cat(" Done. ", sum(gc()[,2]),'Mb of RAM in use.\n', sep="")
   } else { 
-    for(i in 1:nCores){
-      rowsID <- which(assignedCore==i)
-      LL[[i]] <- list(database=database[rowsID,],
-                      draws=NA)
-    }
+    for(i in 1:nCores) LL[[i]][["draws"]] <- NA
+  }
+  
+  
+  if(!silent) cat('Splitting database')
+  for(i in 1:nCores){
+    LL[[i]][["database"]] <- database[which(assignedCore==i),]
     if(!silent)cat('.')
   }
-  if(!silent){
-    mbRAM <- sum(gc()[,2])
-    cat('\nData splitting completed. (',mbRAM,'Mb of RAM in use)\n\n', sep='')
-  }
+  if(!silent) cat(" Done. ", sum(gc()[,2]), 'Mb of RAM in use.\n', sep="")
   
   return(LL)
 }

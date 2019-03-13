@@ -1,104 +1,68 @@
-#' Creates loglikelihood function.
+#' Creates log-likelihood function.
 #'
-#' Creates loglikelihood function from the likelihood function apollo_probabilities provided by the user.
+#' Creates log-likelihood function from the likelihood function apollo_probabilities provided by the user.
 #'
-#' Internal use only. Called by apollo_estimate before estimation.
-#'
-#' @param theta_fix_val Named numeric vector. Names an values of fixed parameters.
-#' @param database data.frame Data to be used by model. Gets splitted and copied into the cluster.
-#' @param apollo_probabilities Function. likelihood provided by the user.
-#' @param apollo_control List of model options.
-#' @param draws List of draws (numeric arrays). Default is NA. Get splitted and copied into the cluster.
-#' @param apollo_randcoeff Function. Creates the random coeff or error terms by mixing draws and params. Provided by the user.
-#' @param apollo_lcpars Function. Used for latent class models. Not implemented yet.
-#' @param cl Cluster.
-#' @param estimation_routine Character.
-#' @param work_in_logs Boolean.
+#' Internal use only. Called by \code{apollo_estimate} before estimation.
+#' The returned function can be single-threaded or multi-threaded based on the model options.
+#' @param apollo_beta Named numeric vector. Names and values for parameters.
+#' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
+#' @param apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:
+#'                          \itemize{
+#'                            \item apollo_beta: Named numeric vector. Names and values of model parameters.
+#'                            \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
+#'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
+#'                          }
+#' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
+#' @param apollo_estSet List of estimation options. It must contain at least one element called
+#'                      estimationRoutine defining the estimation algorithm. See \link{apollo_estimate}.
+#' @param cl Cluster as provided by \link[parallel]{makeCluster}. Assumed to be PSock.
 #' @return apollo_logLike function.
-apollo_makeLogLike <- function(theta_fix_val, database, apollo_probabilities, apollo_control,
-                            draws=NA, apollo_randcoeff=NA, apollo_lcpars=NA, cl=NA, estimation_routine, work_in_logs){
+apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, apollo_estSet, cl=NA){
+  singleCore <- apollo_inputs$apollo_control$nCores==1
+  panelData  <- apollo_inputs$apollo_control$panelData
+  modelName  <- apollo_inputs$apollo_control$modelName
+  bFixedVal  <- apollo_beta[apollo_fixed]
+  workInLogs <- apollo_inputs$apollo_control$workInLogs
+  estAlg     <- apollo_estSet$estimationRoutine
 
   nIter <- 0
 
-  if(apollo_control$nCores==1){
-    apollo_logLike <- function(theta_var, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE){
-
+  if(singleCore){
+    apollo_logLike <- function(bVar, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE){
       if(getNIter) return(nIter)
-
-      theta <- c(theta_var, theta_fix_val)
-      ### Function initialisation: do not change the following four commands
-      b <- as.list(theta)
-      if(apollo_control$mixing) b <- c(b, apollo_randcoeff(theta, draws))
-      x <- database
-      ### Calculate likelihood
-      P <- apollo_probabilities(b, database, functionality="estimate")
-      isVec <- is.vector(P[["model"]])
-      isMat <- is.matrix(P[["model"]])
-      isCub <- (is.array(P[["model"]]) && length(dim(P[["model"]]))==3)
-      ### Average across intra-individual draws (comment out this line if intra-individual mixing not used)
-      if(isCub) P = apollo_avgIntraDraws(P, apollo_control, functionality="estimate")
-      ### Product across choices for same individual (comment out this line if not using panel data)
-      if(apollo_control$panelData) P = apollo_panelProd(P,apollo_control,functionality="estimate", work_in_logs, database[,apollo_control$indivID])
-      ### Average across inter-individual draws (comment out this line if inter-individual mixing not used)
-      if(isMat || isCub) P = apollo_avgInterDraws(P, apollo_control, functionality="estimate", database[,apollo_control$indivID])
-      ### Prepares output for function (do not change this line)
-      P = apollo_prepareProb(P,apollo_control,functionality="estimate")
-
-      if(work_in_logs & apollo_control$panelData) ll <- P  else ll <- log(P)
+      b <- c(bVar, bFixedVal)
+      P <- apollo_probabilities(b, apollo_inputs, functionality="estimate")
+      if(workInLogs) ll <- P  else ll <- log(P) 
       if(sumLL) ll <- sum(ll)
-      if(countIter & (estimation_routine=="bfgs")){
-        if(exists('lastFuncParam')){
-          lastFuncParam <- get("lastFuncParam", envir=.GlobalEnv)
-          if(!anyNA(lastFuncParam) & all(lastFuncParam==theta_var)) nIter <<- nIter + 1
-        }
+      if(countIter && estAlg=="bfgs" && exists('lastFuncParam', envir=globalenv())){
+        lastFuncParam <- get("lastFuncParam", envir=globalenv())
+        if(!anyNA(lastFuncParam) && all(lastFuncParam==bVar)) nIter <<- nIter + 1
       }
-      #if(writeIter) apollo_writeTheta(theta_var, sum(ll), apollo_control$modelName)
+      if(writeIter) apollo_writeTheta(bVar, sum(ll), modelName)
       return(ll)
     }
   } else {
 
-    rm(database, apollo_probabilities, draws)
+    rm(apollo_inputs, apollo_probabilities, apollo_beta, apollo_fixed, singleCore)
+    if(length(cl)==1 && is.na(cl)) stop("Cluster is missing on 'apollo_makeLogLike' despite nCores>1.")
 
-    apollo_parProb <- function(th){
-      ### Function initialisation: do not change the following four commands
-      b <- as.list(th)
-      if(apollo_control$mixing) b <- c(b, apollo_randcoeff(th, draws))
-      x <- database
-      ### Calculate likelihood
-      P <- apollo_probabilities(b, database, functionality="estimate")
-      isVec <- is.vector(P[["model"]])
-      isMat <- is.matrix(P[["model"]])
-      isCub <- (is.array(P[["model"]]) && length(dim(P[["model"]]))==3)
-      ### Average across intra-individual draws (comment out this line if intra-individual mixing not used)
-      if(isCub) P = apollo_avgIntraDraws(P, apollo_control, functionality="estimate")
-      ### Product across choices for same individual (comment out this line if not using panel data)
-      if(apollo_control$panelData) P = apollo_panelProd(P,apollo_control,functionality="estimate", work_in_logs, database[,apollo_control$indivID])
-      ### Average across inter-individual draws (comment out this line if inter-individual mixing not used)
-      if(isMat || isCub) P = apollo_avgInterDraws(P, apollo_control, functionality="estimate", database[,apollo_control$indivID])
-      ### Prepares output for function (do not change this line)
-      P = apollo_prepareProb(P,apollo_control,functionality="estimate")
+    apollo_parProb <- function(b){
+      P <- apollo_probabilities(b, apollo_inputs, functionality="estimate")
       return(P)
     }
-
     environment(apollo_parProb) <- new.env(parent=parent.env(environment(apollo_parProb)))
-    assign("work_in_logs" , work_in_logs , envir=environment(apollo_parProb))
-    assign("apollo_control" , apollo_control , envir=environment(apollo_parProb))
-    assign("apollo_randcoeff" , apollo_randcoeff , envir=environment(apollo_parProb))
 
-
-    apollo_logLike <- function(theta_var, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE){
+    apollo_logLike <- function(bVar, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE){
       if(getNIter) return(nIter)
-      theta <- c(theta_var, theta_fix_val)
-      P <- parallel::clusterCall(cl=cl, fun=apollo_parProb, th=theta)
+      b <- c(bVar, bFixedVal)
+      P <- parallel::clusterCall(cl=cl, fun=apollo_parProb, b=b)
       P <- unlist(P)
-      if(work_in_logs & apollo_control$panelData) ll <- P  else ll <- log(P)
-      if(countIter && (estimation_routine=="bfgs")){
-        if(exists('lastFuncParam')){
-          lastFuncParam <- get("lastFuncParam", envir=.GlobalEnv)
-          if(!anyNA(lastFuncParam) & all(lastFuncParam==theta_var)) nIter <<- nIter + 1
-        }
+      if(workInLogs) ll <- P  else ll <- log(P) 
+      if(countIter && estAlg=="bfgs" && exists('lastFuncParam', envir=globalenv())){
+        lastFuncParam <- get("lastFuncParam", envir=globalenv())
+        if(!anyNA(lastFuncParam) && all(lastFuncParam==bVar)) nIter <<- nIter + 1
       }
-      #if(writeIter) apollo_writeTheta(theta_var,sum(ll),apollo_control$modelName)
+      if(writeIter) apollo_writeTheta(bVar, sum(ll), modelName)
       if(sumLL) ll <- sum(ll)
       return(ll)
     }
