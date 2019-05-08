@@ -30,6 +30,7 @@ apollo_unconditionals <- function(model, apollo_probabilities, apollo_inputs){
   apollo_randCoeff = apollo_inputs[["apollo_randCoeff"]]
   apollo_draws     = apollo_inputs[["apollo_draws"]]
   
+  ### Validate input
   if(!apollo_control$mixing) stop("Sample level random parameters can only be produced for mixture models!")
   if(anyNA(draws)) stop("Random draws have not been specified despite setting mixing=TRUE")
   
@@ -50,8 +51,7 @@ apollo_unconditionals <- function(model, apollo_probabilities, apollo_inputs){
       randcoeff[[j]]=randcoeff[[j]][firstRows,]  
       j=j+1    
     }
-  } 
-  
+  }
   
   cat("Unconditional distributions computed\n") 
   return(randcoeff)

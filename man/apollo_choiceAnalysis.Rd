@@ -4,7 +4,7 @@
 \alias{apollo_choiceAnalysis}
 \title{Reports market share for subsamples}
 \usage{
-apollo_choiceAnalysis(choiceAnalysis_settings, apollo_inputs)
+apollo_choiceAnalysis(choiceAnalysis_settings, apollo_control, database)
 }
 \arguments{
 \item{choiceAnalysis_settings}{List containing settings for this function. The settings must be:
@@ -15,7 +15,9 @@ apollo_choiceAnalysis(choiceAnalysis_settings, apollo_inputs)
   \item explanators: data.frame. Variables determining subsamples of the database. Values in each column must describe a group or groups of individuals (e.g. socio-demographics). Most usually a subset of columns from database.
 }}
 
-\item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
+\item{apollo_control}{List. Options controlling the running of the code. See \link{apollo_validateInputs}.}
+
+\item{database}{data.frame. Data used by model.}
 }
 \value{
 nothing, but prints the output to screen and writes a csv file to the working directory.

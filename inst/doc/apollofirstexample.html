@@ -12,7 +12,7 @@
 
 <meta name="author" content="David Palma, Stephane Hess" />
 
-<meta name="date" content="2019-03-13" />
+<meta name="date" content="2019-05-08" />
 
 <title>Model file examples</title>
 
@@ -92,35 +92,39 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Model file examples</h1>
 <h4 class="author"><em>David Palma, Stephane Hess</em></h4>
-<h4 class="date"><em>2019-03-13</em></h4>
+<h4 class="date"><em>2019-05-08</em></h4>
 
 
 
+<div id="about-the-package" class="section level2">
+<h2>About the package</h2>
+<p><em>Apollo</em> is an R package designed for estimation and analysis of choice models (Train, 2008). This package allows estimating Multinomial logit (MNL), Nested logit (NL), cross-nested logit (CNL), exploded logit (EL), ordered logit (OL), Integrated Choice and Latent Variable (ICLV, Ben-Akiva et al. 2002), Multiple Discrete-Continuous Extreme Value (MDCEV, Bhat 2008), nested MDCEV (MDCNEV, Pinjari and Bhat 2010), and Decision Field Theory (DFT, Hancock and Hess 2018) models. All models support both continuous and discrete mixing (e.g. continuous random parameters, latent classes or finite mixtures), both between and within individuals (i.e at the individual and observation level). Different models can be easily combined for joint estimation. The package allows for classical estimation (i.e. maximum likelihood) as well as Bayesian estimation (i.e. hierarchical Bayes, through package RSGHB).</p>
+<p>All functionalities are described in the manual, available at www.ApolloChoiceModelling.com. Examples can also be found on the website.</p>
+</div>
 <div id="recommended-workflow" class="section level2">
 <h2>Recommended workflow</h2>
-<p>The recommended way to use <em>Apollo</em> is to create different R scripts for each model the user wants to estimate. These scripts are refer to as <em>model files</em> and contain all the necessary information to estimate the model (except for the data), and can also include post-estimation analysis of the results.</p>
+<p>The recommended way to use <em>Apollo</em> is to create a different R script for each model to estimate. These scripts are refer to as <em>model files</em> and contain all the necessary information to estimate the model (except for the data), and can also include post-estimation analysis of the results.</p>
 <p>A model file should be structured around the following sections:</p>
 <ol style="list-style-type: decimal">
 <li><p><strong>Definition of core settings</strong>: In this section the <em>Apollo</em> library is loaded, and global variables such as the name of the model are defined.</p></li>
-<li><p><strong>Data loading</strong>: In this section the database is loaded. Any transformation to the data that does not chaneg throughout estimation (e.g. averages) should be performed here and stored inside the database object.</p></li>
-<li><p><strong>Parameter definition</strong>: In this section, a vector containing the names and starting values of parameter is defined, as well as details of their mixing distribution distributions if present.</p></li>
-<li><p><strong>Input validation</strong>: In this section, all inputs prepared in the previous sections are validated and stored toghether.</p></li>
-<li><p><strong>Likelihood definition</strong>: In this section, the user must write the a function that calculate the model likelihood.</p></li>
+<li><p><strong>Data loading</strong>: In this section the database is loaded. Any transformation to the data that does not depend on parameters to be estimated (e.g. averages of explanatory variables) should be performed here and stored inside the database object.</p></li>
+<li><p><strong>Parameter definition</strong>: In this section, a vector containing the names and starting values of parameters is defined, as well as details of their mixing distributions if present.</p></li>
+<li><p><strong>Input validation</strong>: In this section, all inputs prepared in the previous sections are validated and stored together.</p></li>
+<li><p><strong>Likelihood definition</strong>: In this section, the user must write a function that calculates the model likelihood.</p></li>
 <li><p><strong>Model estimation and reporting</strong>: In this section, the model is estimated and the results are displayed.</p></li>
-<li><p><strong>Postprocessing of results</strong>: This is an optional section where the user can do forecasting and other post-processing of the results.</p></li>
+<li><p><strong>Postprocessing of results</strong>: This is an optional section where the user can do forecasting and other post-processing of the estrimated model.</p></li>
 </ol>
-<p>In this document, we present two example model files: a multinomial logit (MNL) model, and a mixed multinomial logit (MMNL) model. More examples, discussed with higher level of detail are available at www.apolloChoiceModelling.com.</p>
-<p><em>Apollo</em> allows estimating Multinomial logit (MNL), Nested logit (NL), cross-nested logit (CNL), exploded logit (EL), ordered logit (OL), Integrated Choice and Latent Variable (ICLV), Multiple Discrete-Continuous Extreme Value (MDCEV), nested MDCEV (MDCNEV), and Decision Field Theory (DFT) models. The user can introduce continuous or discrete mixing (i.e. latent classes or finite mixtures) in all these kinds of models, both between and within individuals. Different models can be combined for join estimation. All these functionalities are described in the manual, available at the www.apolloChoiceModelling.com website.</p>
+<p>In this document, we present two example model files: a multinomial logit (MNL) model, and a mixed multinomial logit (MMNL) model. More examples, discussed in more detail are available at www.ApolloChoiceModelling.com.</p>
 </div>
 <div id="mnl-model-file-example" class="section level2">
 <h2>MNL model file example</h2>
-<p>In this section, we present code to estimate an MNL model using the synthetic data included in the package. In the postprocessing, we predict and study the impact of a 10% increase in the cost of the train fare. The utility functions of alternatives are defined as follows.</p>
+<p>In this section, we present code to estimate an MNL model using the synthetic data included in the package. In the postprocessing, we predict the impact on mode share of a 10% increase in the cost of the train fare. The utility functions of alternatives are defined as follows.</p>
 <p><span class="math display">\[U_{nsi} = asc_i + \beta_{tt}tt_{nsi} + \beta_{c}*cost_{nsi} + \varepsilon_{nsi}\]</span></p>
-<p>Where <em>n</em> indexes individuals, <em>s</em> choice scenarios, and <em>i</em> alternatives. <span class="math inline">\(asc_i\)</span> is the alternative specific constant, <span class="math inline">\(tt_{si}\)</span> is the travel time and <span class="math inline">\(cost_{si}\)</span> is the cost. <span class="math inline">\(\varepsilon_{nsi}\)</span> is an independent identically distributed standard Gumbel error term. <span class="math inline">\(asc_i\)</span>, <span class="math inline">\(\beta_{tt}\)</span> and <span class="math inline">\(\beta_{c}\)</span> are parameters to be estimated.</p>
+<p>Where <em>n</em> indexes individuals, <em>s</em> choice scenarios, and <em>i</em> alternatives. <span class="math inline">\(asc_i\)</span> is the alternative specific constant, <span class="math inline">\(tt_{nsi}\)</span> is the travel time and <span class="math inline">\(cost_{nsi}\)</span> is the cost. <span class="math inline">\(\varepsilon_{nsi}\)</span> is an independent identically distributed standard Gumbel error term. <span class="math inline">\(asc_i\)</span>, <span class="math inline">\(\beta_{tt}\)</span> and <span class="math inline">\(\beta_{c}\)</span> are parameters to be estimated.</p>
 <p>The likelihood function of this model for individual <span class="math inline">\(n\)</span> is as follows.</p>
 <p><span class="math display">\[L_{n}=\prod_{s}P_{nsi}\]</span></p>
 <p>Where <span class="math display">\[P_{nsi}=\frac{e^{V_{nsi}}}{\sum_{j}e^{V_{nsj}}}\]</span> And <span class="math inline">\(V_{nsi}=U_{nsi}-\varepsilon_{nsi}\)</span>, i.e. the deterministic part of the utility.</p>
-<p>The likelihood function of the MNL model is pre-coded in <code>Apollo</code>, so we do not need to type it ourselves. However, if the user prefers to write the likelihood themself, they can also do it. The pre-coded MNL likelihood function (<code>apollo_mnl</code>) requires a series of inputs defined inside the <code>mnl_settings</code> object.</p>
+<p>The likelihood function of the MNL model is pre-coded in <code>Apollo</code>, so we do not need to type it ourselves. However, if the user prefers to write the likelihood themselves, they can also do it. The pre-coded MNL likelihood function (<code>apollo_mnl</code>) requires a series of inputs defined inside the <code>mnl_settings</code> object.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># ####################################################### #</span>
 #### 1. Definition of core settings                        
 <span class="co"># ####################################################### #</span>
@@ -130,6 +134,9 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 ### Load libraries
 <span class="kw">library</span>(apollo)
+<span class="co">#&gt; Apollo 0.0.7</span>
+<span class="co">#&gt; See www.ApolloChoiceModelling.com for </span>
+<span class="co">#&gt;  a detailed manual, examples and a help forum.</span>
 
 ### Initialise code
 <span class="kw">apollo_initialise</span>()
@@ -241,15 +248,12 @@ model =<span class="st"> </span><span class="kw">apollo_estimate</span>(apollo_b
                         apollo_probabilities, 
                         apollo_inputs)
 <span class="co">#&gt; Testing probability function (apollo_probabilities)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; All checks passed for MNL model component</span>
 <span class="co">#&gt; Overview of choices for MNL model component:</span>
 <span class="co">#&gt;                                      car     bus     air    rail</span>
 <span class="co">#&gt; Times available                  5446.00 6314.00 5264.00 6118.00</span>
 <span class="co">#&gt; Times chosen                     1946.00  358.00 1522.00 3174.00</span>
 <span class="co">#&gt; Percentage chosen overall          27.80    5.11   21.74   45.34</span>
 <span class="co">#&gt; Percentage chosen when available   35.73    5.67   28.91   51.88</span>
-<span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Starting main estimation</span>
@@ -298,22 +302,28 @@ model =<span class="st"> </span><span class="kw">apollo_estimate</span>(apollo_b
 <span class="co">#&gt; 0%....25%....50%....75%....100%</span>
 <span class="co">#&gt; Hessian calculated with numDeriv will be used.</span>
 <span class="co">#&gt; Calculating LL(0)... -8196.02</span>
-<span class="co">#&gt; Updating inputs... Done.</span>
 <span class="co">#&gt; Calculating LL of each model component...Done.</span>
+<span class="co">#&gt; Overview of choices for MNL model component:</span>
+<span class="co">#&gt;                                      car     bus     air    rail</span>
+<span class="co">#&gt; Times available                  5446.00 6314.00 5264.00 6118.00</span>
+<span class="co">#&gt; Times chosen                     1946.00  358.00 1522.00 3174.00</span>
+<span class="co">#&gt; Percentage chosen overall          27.80    5.11   21.74   45.34</span>
+<span class="co">#&gt; Percentage chosen when available   35.73    5.67   28.91   51.88</span>
 
 <span class="kw">apollo_modelOutput</span>(model)
-<span class="co">#&gt; Model run using Apollo for R, version 0.0.6 </span>
-<span class="co">#&gt; www.apollochoicemodelling.com</span>
+<span class="co">#&gt; Model run using Apollo for R, version 0.0.7 </span>
+<span class="co">#&gt; www.ApolloChoiceModelling.com</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Model name                       : MNL</span>
 <span class="co">#&gt; Model description                : Simple MNL model on mode choice SP data</span>
-<span class="co">#&gt; Model run at                     : 2019-03-13 17:13:17</span>
+<span class="co">#&gt; Model run at                     : 2019-05-08 13:47:49</span>
 <span class="co">#&gt; Estimation method                : bfgs</span>
 <span class="co">#&gt; Model diagnosis                  : successful convergence </span>
 <span class="co">#&gt; Number of individuals            : 500</span>
 <span class="co">#&gt; Number of observations           : 7000</span>
-<span class="co">#&gt; Estimated parameters             : 8</span>
-<span class="co">#&gt; Model with no mixing</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Number of cores used             :  1 </span>
+<span class="co">#&gt; Model without mixing</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; LL(start)                        : -8196.021</span>
 <span class="co">#&gt; LL(0)                            : -8196.021</span>
@@ -322,9 +332,9 @@ model =<span class="st"> </span><span class="kw">apollo_estimate</span>(apollo_b
 <span class="co">#&gt; Adj.Rho-square (0)               :  0.2911 </span>
 <span class="co">#&gt; AIC                              :  11620.05 </span>
 <span class="co">#&gt; BIC                              :  11674.87 </span>
-<span class="co">#&gt; Time taken (hh:mm:ss)            :  00:00:20.37 </span>
+<span class="co">#&gt; Estimated parameters             :  8</span>
+<span class="co">#&gt; Time taken (hh:mm:ss)            :  00:00:20.11 </span>
 <span class="co">#&gt; Iterations                       :  19 </span>
-<span class="co">#&gt; Number of cores used             :  1 </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Estimates:</span>
 <span class="co">#&gt;           Estimate Std.err. t.ratio(0) Rob.std.err. Rob.t.ratio(0)</span>
@@ -338,14 +348,12 @@ model =<span class="st"> </span><span class="kw">apollo_estimate</span>(apollo_b
 <span class="co">#&gt; b_tt_rail  -0.0048   0.0016      -2.90       0.0016          -2.95</span>
 <span class="co">#&gt; b_c        -0.0529   0.0014     -37.21       0.0017         -31.14</span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Overview of choices for MNL model component: </span>
-<span class="co">#&gt;                                      car     bus     air    rail </span>
-<span class="co">#&gt; Times available                  5446.00 6314.00 5264.00 6118.00 </span>
-<span class="co">#&gt; Times chosen                     1946.00  358.00 1522.00 3174.00 </span>
-<span class="co">#&gt; Percentage chosen overall          27.80    5.11   21.74   45.34 </span>
-<span class="co">#&gt; Percentage chosen when available   35.73    5.67   28.91   51.88 </span>
-<span class="co">#&gt; </span>
+<span class="co">#&gt; Overview of choices for MNL model component:</span>
+<span class="co">#&gt;                                      car     bus     air    rail</span>
+<span class="co">#&gt; Times available                  5446.00 6314.00 5264.00 6118.00</span>
+<span class="co">#&gt; Times chosen                     1946.00  358.00 1522.00 3174.00</span>
+<span class="co">#&gt; Percentage chosen overall          27.80    5.11   21.74   45.34</span>
+<span class="co">#&gt; Percentage chosen when available   35.73    5.67   28.91   51.88</span>
 
 <span class="kw">apollo_saveOutput</span>(model)
 <span class="co">#&gt; Estimates saved to MNL_estimates.csv </span>
@@ -396,14 +404,14 @@ change=change[,<span class="op">-</span><span class="kw">ncol</span>(change)]
 <h2>MMNL model file example</h2>
 <p>In this section, we present code to estimate a mixed MNL model (MMNL) using the synthetic data included in the package. After estimation, we predict the effect of a 10% increase in the train fares. The utility function of the model remains the same than in the previous example, i.e.:</p>
 <p><span class="math display">\[U_{nsi} = asc_i + \beta_{tt}tt_{nsi} + \beta_{c}*cost_{nsi} + \varepsilon_{nsi}\]</span></p>
-<p>Where <em>n</em> indexes individuals, <em>s</em> choice scenarios, and <em>i</em> alternatives. <span class="math inline">\(asc_i\)</span> is the alternative specific constant, <span class="math inline">\(tt_{si}\)</span> is the travel time and <span class="math inline">\(cost_{si}\)</span> is the cost. <span class="math inline">\(\varepsilon_{nsi}\)</span> is an independent identically distributed standard Gumbel error term. <span class="math inline">\(\beta_{tt}\)</span> follows a log-normal distribution with the underlying normal having a mean <span class="math inline">\(\mu_{tt}\)</span> and standard deviation <span class="math inline">\(\sigma_{tt}\)</span>. <span class="math inline">\(asc_i\)</span>, <span class="math inline">\(\beta_{c}\)</span>, <span class="math inline">\(\mu_{tt}\)</span> and <span class="math inline">\(\sigma_{tt}\)</span> are parameters to be estimated.</p>
+<p>Where <em>n</em> indexes individuals, <em>s</em> choice scenarios, and <em>i</em> alternatives. <span class="math inline">\(asc_i\)</span> is the alternative specific constant, <span class="math inline">\(tt_{nsi}\)</span> is the travel time and <span class="math inline">\(cost_{nsi}\)</span> is the cost. <span class="math inline">\(\varepsilon_{nsi}\)</span> is an independent identically distributed standard Gumbel error term. <span class="math inline">\(\beta_{tt}\)</span> follows a log-normal distribution with the underlying normal having a mean <span class="math inline">\(\mu_{tt}\)</span> and standard deviation <span class="math inline">\(\sigma_{tt}\)</span>. <span class="math inline">\(asc_i\)</span>, <span class="math inline">\(\beta_{c}\)</span>, <span class="math inline">\(\mu_{tt}\)</span> and <span class="math inline">\(\sigma_{tt}\)</span> are parameters to be estimated.</p>
 <p>The likelihood function of this model for individual <span class="math inline">\(n\)</span> is as follows.</p>
 <p><span class="math display">\[L_{n}=\int_{\beta_{tt}}\prod_{s}P_{nsi}f(\beta_{tt})d\beta_{tt}\]</span></p>
 <p>Where <span class="math inline">\(P_{nsi}=\frac{e^{V_{nsi}}}{\sum_{j}e^{V_{nsj}}}\)</span>, <span class="math inline">\(V_{nsi}=U_{nsi}-\varepsilon_{nsi}\)</span>, and <span class="math inline">\(f\)</span> is the probability density function of <span class="math inline">\(\beta_{tt}\)</span>. As this function does not have an analytical closed form, we estimate it using Monte Carlo integration, i.e.:</p>
-<p><span class="math display">\[L_{n}\approx\frac{1}{R}\sum_{\beta_{tt}^r}\prod_{s}P_{nsi}\]</span> Where <span class="math inline">\(\beta_{tt}^r\)</span> are random draws of <span class="math inline">\(\beta_{tt}\)</span> from its distribution <span class="math inline">\(f\)</span>, and R is a big number.</p>
-<p>The code is very similar to the previous example, with only sections 1 and 3 changing. In section 1 we set <code>mixing = TRUE</code> inside apollo_control, and we set <code>nCores = 2</code> to speed up estimation by using two computing threads (this is not mandatory). In section 3 we define the mean (<code>b_tt_mu</code>) and standar deviation (<code>b_tt_sigma</code>) of the underlying normal distribution, then define the type, name and number of draws used, and we construct the random coefficient <span class="math inline">\(\beta_{tt}\)</span>. We use 500 inter-individual draws that come from a standard normal distribution, which we later transform into log-normals inside <code>apollo_randCoeff</code>.</p>
+<p><span class="math display">\[L_{n}\approx\frac{1}{R}\sum_{\beta_{tt}^r}\prod_{s}P_{nsi}^r\]</span> Where <span class="math inline">\(P_{nsi}^r=P_{nsi}(\beta_{tt}^r)\)</span>, with <span class="math inline">\(\beta_{tt}^r\)</span> a random draw of <span class="math inline">\(\beta_{tt}\)</span> from its distribution <span class="math inline">\(f\)</span>, and R is a big number.</p>
+<p>The code is very similar to the previous example, with only sections 1 and 3 changing. * In section 1 we set <code>mixing = TRUE</code> inside apollo_control, and we set <code>nCores = 2</code> to speed up estimation by using two computing threads (this is not mandatory). * In section 3 we define the mean (<code>b_tt_mu</code>) and standar deviation (<code>b_tt_sigma</code>) of the underlying normal distribution. We then define the type, name and number of draws used. Finally, we construct the random coefficient <span class="math inline">\(\beta_{tt}\)</span> inside a function called <code>apollo_randCoeff</code>. We use 500 inter-individual draws that come from a standard normal distribution, which we later transform into log-normals inside <code>apollo_randCoeff</code>.</p>
 <p>Even though in this case we only use <em>inter</em>-individual draws, note that <em>inter</em> and <em>intra</em>-individuals draws can be used simultaneously. <em>Inter</em>-individual draws capture variability <em>between</em> individuals, while <em>intra</em>-individual draws capture variability <em>within</em> individuals. In terms of the Monte Carlo integration, <em>inter</em>-individual draws are common for all observations from the same individual, while <em>intra</em>-individual draws are different for each observations. In terms of the likelihood function, the use of <em>intra</em>-individual draws would lead to <span class="math inline">\(L_{n}\approx\prod_{s}\frac{1}{R}\sum_{\beta_{tt}^r}P_{nsi}\)</span>, which is <strong>not</strong> the case in this model.</p>
-<p>Estimation of models with mixing is significantly more demanding than models without mixing. Furthermore, using both <em>inter</em> and <em>intra</em>-individual requires large amounts of memory, that can further slow the estimation process.</p>
+<p>Estimation of models with mixing is computationally more demanding than models without mixing. Furthermore, using both <em>inter</em> and <em>intra</em>-individual requires large amounts of memory, which can further slow the estimation process. For this reason, this example is not run automatically. Yet, the users may copy and paste the code in a script, and run it themselves.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># ####################################################### #</span>
 #### 1. Definition of core settings                        
 <span class="co"># ####################################################### #</span>
@@ -446,13 +454,13 @@ database<span class="op">$</span>mean_income =<span class="st"> </span><span cla
 
 ### Vector of parameters, including any that are kept fixed 
 ### during estimation
-apollo_beta=<span class="kw">c</span>(<span class="dt">asc_car  =</span> <span class="fl">0.0000</span>,
-              <span class="dt">asc_bus  =</span><span class="op">-</span><span class="fl">2.4948</span>,
-              <span class="dt">asc_air  =</span><span class="op">-</span><span class="fl">1.1510</span>,
-              <span class="dt">asc_rail =</span><span class="op">-</span><span class="fl">0.7153</span>,
-              <span class="dt">mu_tt    =</span><span class="op">-</span><span class="fl">4.4104</span>,
-              <span class="dt">sigma_tt =</span> <span class="fl">0.4637</span>,
-              <span class="dt">b_c      =</span><span class="op">-</span><span class="fl">0.0613</span>)
+apollo_beta=<span class="kw">c</span>(<span class="dt">asc_car  =</span> <span class="dv">0</span>,
+              <span class="dt">asc_bus  =</span> <span class="dv">0</span>,
+              <span class="dt">asc_air  =</span> <span class="dv">0</span>,
+              <span class="dt">asc_rail =</span> <span class="dv">0</span>,
+              <span class="dt">mu_tt    =</span> <span class="dv">0</span>,
+              <span class="dt">sigma_tt =</span> <span class="dv">1</span>,
+              <span class="dt">b_c      =</span> <span class="dv">0</span>)
 
 ### Vector with names (in quotes) of parameters to be
 ###  kept fixed at their starting value in apollo_beta.
@@ -462,7 +470,7 @@ apollo_fixed =<span class="st"> </span><span class="kw">c</span>(<span class="st
 ### Set parameters for generating draws
 apollo_draws =<span class="st"> </span><span class="kw">list</span>(
   <span class="dt">interDrawsType =</span> <span class="st">&quot;halton&quot;</span>,
-  <span class="dt">interNDraws    =</span> <span class="dv">200</span>,
+  <span class="dt">interNDraws    =</span> <span class="dv">500</span>,
   <span class="dt">interUnifDraws =</span> <span class="kw">c</span>(),
   <span class="dt">interNormDraws =</span> <span class="kw">c</span>(<span class="st">&quot;draws_tt&quot;</span>),
   <span class="dt">intraDrawsType =</span> <span class="st">&quot;halton&quot;</span>,
@@ -485,14 +493,6 @@ apollo_randCoeff =<span class="st"> </span><span class="cf">function</span>(apol
 <span class="co"># ####################################################### #</span>
 
 apollo_inputs =<span class="st"> </span><span class="kw">apollo_validateInputs</span>()
-<span class="co">#&gt; Missing setting for workInLogs, set to default of FALSE</span>
-<span class="co">#&gt; Missing setting for seed, set to default of 13</span>
-<span class="co">#&gt; Missing setting for HB, set to default of FALSE</span>
-<span class="co">#&gt; Several observations per individual detected based on the value of ID.</span>
-<span class="co">#&gt;   Setting panelData set to TRUE.</span>
-<span class="co">#&gt; All checks on apollo_control completed.</span>
-<span class="co">#&gt; All checks on data completed.</span>
-<span class="co">#&gt; Generating inter draws . Done</span>
 
 <span class="co"># ####################################################### #</span>
 #### 5. Likelihood definition                          ####
@@ -546,110 +546,10 @@ apollo_probabilities=<span class="cf">function</span>(apollo_beta, apollo_inputs
 model =<span class="st"> </span><span class="kw">apollo_estimate</span>(apollo_beta, apollo_fixed, 
                         apollo_probabilities, 
                         apollo_inputs)
-<span class="co">#&gt; Testing probability function (apollo_probabilities)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; All checks passed for MNL model component</span>
-<span class="co">#&gt; Overview of choices for MNL model component:</span>
-<span class="co">#&gt;                                      car     bus     air    rail</span>
-<span class="co">#&gt; Times available                  5446.00 6314.00 5264.00 6118.00</span>
-<span class="co">#&gt; Times chosen                     1946.00  358.00 1522.00 3174.00</span>
-<span class="co">#&gt; Percentage chosen overall          27.80    5.11   21.74   45.34</span>
-<span class="co">#&gt; Percentage chosen when available   35.73    5.67   28.91   51.88</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Attempting to split data into 2 pieces.</span>
-<span class="co">#&gt; Number of observations per worker (thread):</span>
-<span class="co">#&gt; worker_1 worker_2 </span>
-<span class="co">#&gt;     3500     3500 </span>
-<span class="co">#&gt;  87.7Mb of RAM in use before splitting.</span>
-<span class="co">#&gt; Splitting draws.. Done. 98.3Mb of RAM in use.</span>
-<span class="co">#&gt; Splitting database.. Done. 99.2Mb of RAM in use.</span>
-<span class="co">#&gt; Creating workers and loading libraries... Done. 227.7Mb of RAM in use.</span>
-<span class="co">#&gt; Copying data to workers... Done. 227.8Mb of RAM in use (max was 239.3Mb)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Starting main estimation</span>
-<span class="co">#&gt; Initial function value: -5518.018 </span>
-<span class="co">#&gt; Initial gradient value:</span>
-<span class="co">#&gt;      asc_bus      asc_air     asc_rail        mu_tt     sigma_tt </span>
-<span class="co">#&gt; -0.105195795  0.132730747 -0.010276381  0.440247277  0.008943061 </span>
-<span class="co">#&gt;          b_c </span>
-<span class="co">#&gt; 16.505906387 </span>
-<span class="co">#&gt; initial  value 5518.017700 </span>
-<span class="co">#&gt; iter   2 value 5518.017599</span>
-<span class="co">#&gt; iter   2 value 5518.017598</span>
-<span class="co">#&gt; iter   2 value 5518.017548</span>
-<span class="co">#&gt; final  value 5518.017548 </span>
-<span class="co">#&gt; converged</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Estimated values:</span>
-<span class="co">#&gt;             [,1]</span>
-<span class="co">#&gt; asc_car   0.0000</span>
-<span class="co">#&gt; asc_bus  -2.4948</span>
-<span class="co">#&gt; asc_air  -1.1510</span>
-<span class="co">#&gt; asc_rail -0.7153</span>
-<span class="co">#&gt; mu_tt    -4.4104</span>
-<span class="co">#&gt; sigma_tt  0.4637</span>
-<span class="co">#&gt; b_c      -0.0613</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Computing covariance matrix using numDeriv package.</span>
-<span class="co">#&gt;  (this may take a while)</span>
-<span class="co">#&gt; 0%....25%....50%....75%...100%</span>
-<span class="co">#&gt; Hessian calculated with numDeriv will be used.</span>
-<span class="co">#&gt; Calculating LL(0)... -8196.02</span>
-<span class="co">#&gt; Updating inputs... Done.</span>
-<span class="co">#&gt; Calculating LL of each model component...Done.</span>
 
 <span class="kw">apollo_modelOutput</span>(model)
-<span class="co">#&gt; Model run using Apollo for R, version 0.0.6 </span>
-<span class="co">#&gt; www.apollochoicemodelling.com</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Model name                       : MMNL</span>
-<span class="co">#&gt; Model description                : Simple MMNL model on mode choice SP data</span>
-<span class="co">#&gt; Model run at                     : 2019-03-13 17:13:40</span>
-<span class="co">#&gt; Estimation method                : bfgs</span>
-<span class="co">#&gt; Model diagnosis                  : successful convergence </span>
-<span class="co">#&gt; Number of individuals            : 500</span>
-<span class="co">#&gt; Number of observations           : 7000</span>
-<span class="co">#&gt; Estimated parameters             : 6</span>
-<span class="co">#&gt; Number of inter-person draws     : 200 (halton)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; LL(start)                        : -5518.018</span>
-<span class="co">#&gt; LL(0)                            : -8196.021</span>
-<span class="co">#&gt; LL(final)                        : -5518.018</span>
-<span class="co">#&gt; Rho-square (0)                   :  0.3267 </span>
-<span class="co">#&gt; Adj.Rho-square (0)               :  0.326 </span>
-<span class="co">#&gt; AIC                              :  11048.04 </span>
-<span class="co">#&gt; BIC                              :  11089.16 </span>
-<span class="co">#&gt; Time taken (hh:mm:ss)            :  00:05:56.71 </span>
-<span class="co">#&gt; Iterations                       :  4 </span>
-<span class="co">#&gt; Number of cores used             :  2 </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Estimates:</span>
-<span class="co">#&gt;          Estimate Std.err. t.ratio(0) Rob.std.err. Rob.t.ratio(0)</span>
-<span class="co">#&gt; asc_car    0.0000       NA         NA           NA             NA</span>
-<span class="co">#&gt; asc_bus   -2.4948   0.0763     -32.68       0.0805         -31.01</span>
-<span class="co">#&gt; asc_air   -1.1510   0.1353      -8.51       0.1376          -8.36</span>
-<span class="co">#&gt; asc_rail  -0.7153   0.0960      -7.45       0.1006          -7.11</span>
-<span class="co">#&gt; mu_tt     -4.4104   0.0561     -78.68       0.0538         -82.01</span>
-<span class="co">#&gt; sigma_tt   0.4637   0.0296      15.65       0.0296          15.65</span>
-<span class="co">#&gt; b_c       -0.0613   0.0016     -38.35       0.0019         -32.13</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Overview of choices for MNL model component: </span>
-<span class="co">#&gt;                                      car     bus     air    rail </span>
-<span class="co">#&gt; Times available                  5446.00 6314.00 5264.00 6118.00 </span>
-<span class="co">#&gt; Times chosen                     1946.00  358.00 1522.00 3174.00 </span>
-<span class="co">#&gt; Percentage chosen overall          27.80    5.11   21.74   45.34 </span>
-<span class="co">#&gt; Percentage chosen when available   35.73    5.67   28.91   51.88 </span>
-<span class="co">#&gt; </span>
 
 <span class="kw">apollo_saveOutput</span>(model)
-<span class="co">#&gt; Estimates saved to MMNL_estimates.csv </span>
-<span class="co">#&gt; Classical covariance matrix saved to MMNL_covar.csv </span>
-<span class="co">#&gt; Robust covariance matrix saved to MMNL_robcovar.csv </span>
-<span class="co">#&gt; Classical correlation matrix saved to MMNL_covar.csv </span>
-<span class="co">#&gt; Robust correlation matrix saved to MMNL_robcorr.csv </span>
-<span class="co">#&gt; Model object saved to MMNL.rds</span>
 
 <span class="co"># ####################################################### #</span>
 #### 7. Postprocessing of results                      ####
@@ -659,8 +559,6 @@ model =<span class="st"> </span><span class="kw">apollo_estimate</span>(apollo_b
 predictions_base =<span class="st"> </span><span class="kw">apollo_prediction</span>(model, 
                                      apollo_probabilities, 
                                      apollo_inputs)
-<span class="co">#&gt; Updating inputs...Done.</span>
-<span class="co">#&gt; Running predictions from model... Done.</span>
 
 ### Now imagine the cost for rail increases by 10% 
 ### and predict again
@@ -668,8 +566,6 @@ database<span class="op">$</span>cost_rail =<span class="st"> </span><span class
 predictions_new =<span class="st"> </span><span class="kw">apollo_prediction</span>(model, 
                                     apollo_probabilities, 
                                     apollo_inputs)
-<span class="co">#&gt; Updating inputs...Done.</span>
-<span class="co">#&gt; Running predictions from model... Done.</span>
 
 ### Compare predictions
 change=(predictions_new<span class="op">-</span>predictions_base)<span class="op">/</span>predictions_base
@@ -678,15 +574,18 @@ change=(predictions_new<span class="op">-</span>predictions_base)<span class="op
 change=change[,<span class="op">-</span><span class="kw">ncol</span>(change)]
 ### Summary of changes (possible presence of NAs due to
 ### unavailable alternatives)
-<span class="kw">summary</span>(change)
-<span class="co">#&gt;       car              bus              air              rail        </span>
-<span class="co">#&gt;  Min.   :0.0000   Min.   :0.0000   Min.   :0.0000   Min.   :-0.3454  </span>
-<span class="co">#&gt;  1st Qu.:0.0768   1st Qu.:0.0724   1st Qu.:0.0701   1st Qu.:-0.2257  </span>
-<span class="co">#&gt;  Median :0.1216   Median :0.1213   Median :0.1327   Median :-0.1480  </span>
-<span class="co">#&gt;  Mean   :0.1131   Mean   :0.1246   Mean   :0.1361   Mean   :-0.1553  </span>
-<span class="co">#&gt;  3rd Qu.:0.1594   3rd Qu.:0.1679   3rd Qu.:0.1962   3rd Qu.:-0.0762  </span>
-<span class="co">#&gt;  Max.   :0.2338   Max.   :0.4307   Max.   :0.4586   Max.   :-0.0026  </span>
-<span class="co">#&gt;  NA's   :1554     NA's   :686      NA's   :1736     NA's   :882</span></code></pre></div>
+<span class="kw">summary</span>(change)</code></pre></div>
+</div>
+<div id="references" class="section level2">
+<h2>References</h2>
+<ul>
+<li>Ben-Akiva, M. and Lerman, S. (1985) <em>Discrete Choice Analysis</em>. Cambridge, Massachusetts. The MIT Press. ISBN 978-0-262-02217-0</li>
+<li>Ben-Akiva, M.; McFadden, D.; Train, K.; Walker, J.; Bhat, C.; Bierlaire, M.; Bolduc, D.; Boersch-Supan, A.; Brownstone, D.; Bunch, D.; Daly, A.; De Palma, A.; Gopinath, D.; Karlstrom, A.; Munizaga, M. (2002) Hybrid Choice Models: Progress and Challenges. <em>Marketing Letters</em> <strong>13</strong>, 163 - 175.</li>
+<li>Bhat, C. (2008) The multiple discrete-continuous extreme value (MDCEV) model: Role of utility function parameters, identification considerations,and model extensions. <em>Transportation Research</em> <strong>42B</strong>, 274 - 303.</li>
+<li>Hancock, T.; Hess, S. and Choudhury, C. (2018) Decision field theory: Improvements to current methodology and comparisons with standard choice modelling techniques. <em>Transportation Research</em> <strong>107B</strong>, 18-40.</li>
+<li>Pinjari, A. and Bhat, C. (2010) A multiple discrete–continuous nested extreme value (MDCNEV) model: Formulation and application to non-worker activity time-use and timing behavior on weekdays. <em>Transportation Research</em> <strong>44B</strong>, 562 - 583.</li>
+<li>Train, K. (2009) <em>Discrete Choice Methods with Simulation</em>, 2nd edition. New York, New York. Cambridge University Press. ISBN 978-0-521-76655-5</li>
+</ul>
 </div>
 
 

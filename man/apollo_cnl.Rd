@@ -81,7 +81,7 @@ cnlStructure[2,] = c( 0,  1, 0, 1-b$alpha_rail_fastPT) # groundPT
 cnlStructure[3,] = c( 1,  0, 0, 0                    ) # car
 
 ### CNL settings
-cnl_settings <- list(
+cnlSettings <- list(
    alternatives = c(car=1, bus=2, air=3, rail=4),
    avail        = list(car=database$av_car, bus=database$av_bus,
                        air=database$av_air, rail=database$av_rail),
@@ -92,5 +92,5 @@ cnl_settings <- list(
 )
 
 ### Compute choice probabilities using CNL model
-apollo_cnl(cnl_settings, functionality="estimate")
+apollo_cnl(cnlSettings, functionality="estimate")
 }

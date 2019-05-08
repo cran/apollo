@@ -52,3 +52,10 @@ The returned object depends on the value of argument \code{functionality} as fol
 \description{
 Calculate probabilities of a Decision Field Theory (DFT) with external thresholds.
 }
+\section{References}{
+
+Hancock, T.; Hess, S. and Choudhury, C. (2018) Decision field theory: Improvements to current methodology and comparisons with standard choice modelling techniques. Transportation Research 107B, 18 - 40.
+Hancock, T.; Hess, S. and Choudhury, C. (Submitted) An accumulation of preference: two alternative dynamic models for understanding transport choices.
+Roe, R.; Busemeyer, J. and Townsend, J. (2001) Multialternative decision field theory: A dynamic connectionist model of decision making. Psychological Review 108, 370
+}
+

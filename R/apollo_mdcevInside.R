@@ -33,18 +33,32 @@
 #'           \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
 #'           \item "raw": Same as "prediction".
 #'         }
+#' @importFrom stats setNames
 apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail, continuousChoice,budget,functionality,minConsumption=NA, rows="all"){
   
+  # ############################## #
+  #### functionality="validate" ####
+  # ############################## #
+  
   if(functionality=="validate"){
+    # Store useful values
     nObs  <- length(continuousChoice[[1]])
     nAlts <- length(V)
+    avail_set <- FALSE
     
+    # check rows statement
     if(length(rows)!=nObs & !(length(rows)==1 && rows=="all")) stop("The argument \"rows\" needs to either be \"all\" or a boolean vector of length equal to the number of the rows in the data!")
     if(length(rows)==1 && rows=="all") rows <- rep(TRUE, nObs) else {
       if(length(budget)==length(continuousChoice[[1]])) continuousChoice[[1]][!rows] = budget[!rows] else {
         continuousChoice[[1]][!rows] = budget
       }
       for(j in 2:nAlts) continuousChoice[[j]][!rows] = 0
+    }
+    
+    # Create availability if needed
+    if(!is.list(avail)){
+      avail_set <- TRUE
+      avail <- setNames(as.list(rep(1,nAlts)), alternatives)
     }
     
     discrete_choice=list()
@@ -54,20 +68,25 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
       k=k+1
     }
     
+    # set minConsumption to NA if they are all zero
     if(!anyNA(minConsumption)) if(Reduce('+',lapply(minConsumption, sum))==0) minConsumption=NA
     
     apollo_control <- tryCatch( get("apollo_inputs", parent.frame(), inherits=TRUE )$apollo_control,
                                 error=function(e) return(list(noValidation=FALSE, noDiagnostics=FALSE)) )
     
     if(apollo_control$noValidation==FALSE){
+      # Check that sigma is not random (actually, it could be, but it leads to weird results)
       if(!is.vector(sigma)) stop("Sigma should not be random")
       if(length(sigma)!=1 && length(sigma)!=nObs) stop("Sigma should be either a scalar or a vector with as many elements as observations")
       
+      # Check there are at least two alternatives
       if(nAlts<2) stop("MDCEV requires at least two products")
       
+      # Check that choice vector is not empty
       if(nObs==0) stop("No choices to model")  
       
       
+      # Check labels
       if(!all(alternatives %in% names(V))) stop("Labels in \"alternatives\" do not match those in \"V\"!")
       if(!all(alternatives %in% names(alpha))) stop("Labels in \"alternatives\" do not match those in \"alpha\"!")
       if(!all(alternatives %in% names(gamma))) stop("Labels in \"alternatives\" do not match those in \"gamma\"!")
@@ -75,6 +94,7 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
       if(!all(alternatives %in% names(cost))) stop("Labels in \"alternatives\" do not match those in \"cost\"!")
       if(!all(alternatives %in% names(avail))) stop("Labels in \"alternatives\" do not match those in \"avail\"!")
       
+      # check that nothing unavailable is chosen
       chosenunavail=0
       j=1
       while(j<= length(V)){
@@ -82,23 +102,30 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
         j=j+1}
       if(chosenunavail==1) stop("Some product(s) chosen despite being listed as unavailable!")
       
+      # checks for individual products
       budget_check=0*budget
       
       k=1
       while(k<= length(V)){
+        # check that all costs are positive
         if(sum(cost[[k]]==0)>0) stop("Need strictly positive costs for all products!")
         
+        # check that no negative consumptions for any products
         if(sum(continuousChoice[[k]]<0)>0) stop("Negative consumption for some products for some observations!")
         budget_check=budget_check+continuousChoice[[k]]*cost[[k]]
         k=k+1
       }
       
+      # turn scalar availabilities into vectors
       for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs)
       
+      # check that all availabilities are either 0 or 1
       for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values are not 0 or 1.")
       
+      # check that if minimum consumption exists, it has the same names as alternatives, and that no consumptions are less than minConsumption if alternative is available
       if(!anyNA(minConsumption)){
         if(!all(alternatives %in% names(minConsumption))) stop("Labels in \"alternatives\" do not match those in \"minConsumption\"!")
+        # first ensure order is correct
         if(any(alternatives != names(continuousChoice))) continuousChoice <- continuousChoice[alternatives]
         if(any(alternatives != names(minConsumption))) minConsumption <- minConsumption[alternatives]
         consumption_below_min_flag=0
@@ -110,12 +137,14 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
         if(consumption_below_min_flag) stop("\nSome consumptions are below the lower limits listed in \"minConsumption\"!")
       }
       
-      cat("\nAll checks passed for MDEV model component\n")
+      # confirm all checks are passed, print output and return TRUE
+      #cat("\nAll checks passed for MDCEV model component\n")
     }
     
     if(apollo_control$noDiagnostics==FALSE){
       choicematrix = matrix(0,nrow=4,ncol=length(V))
       choicematrix[1,] = unlist(lapply(avail, function(x) sum(x[rows])))
+      #choicematrix[1,] = colSums(matrix(unlist(avail), ncol = length(avail))[rows,])
       j=1
       while(j<= length(V)){
         choicematrix[2,j]=sum(discrete_choice[[j]][rows]==1)
@@ -127,16 +156,27 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
       rownames(choicematrix) = c("Times available","Observations in which chosen","Average consumption when available","Average consumption when chosen")
       colnames(choicematrix) = names(V)
       
-      cat('Overview of choices for MDEV model component:\n')
-      print(round(choicematrix,2))
-      cat("\n")
+      #cat('Overview of choices for MDEV model component:\n')
+      #print(round(choicematrix,2))
+      #cat("\n")
+      #if(any(choicematrix[2,]==0)) cat("Warning: some alternatives are never chosen in your data!\n")
+      #if(any(choicematrix[2,]==1)) cat("Warning: some alternatives are always chosen when available!\n")
       
-      if(any(choicematrix[2,]==0)) cat("Warning: some alternatives are never chosen in your data!\n")
-      if(any(choicematrix[2,]==1)) cat("Warning: some alternatives are always chosen when available!\n")
+      content <- list(round(choicematrix,2))
+      if(any(choicematrix[4,]==0)) content[[length(content) + 1]] <- "Warning: some alternatives are never chosen in your data!"
+      if(any(choicematrix[4,]==1)) content[[length(content) + 1]] <- "Warning: some alternatives are always chosen when available!"
+      if(avail_set) content[[length(content)+1]] <- paste0("Warning: Availability not provided (or some elements are NA).",
+                                                           "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
+      apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
+      apollo_addLog("Overview of choices for MDCEV model component:", content, apolloLog)
     }
     
     return(TRUE)
   }
+  
+  # ############################## #
+  #### functionality="zero_LL" ####
+  # ############################## #
   
   if(functionality=="zero_LL"){
     nObs  <- length(continuousChoice[[1]])
@@ -151,10 +191,18 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
     return(P)
   }
   
-    
+  
+  
+  
+  # ############################################### #
+  #### functionality="estimate/conditionals/raw" ####
+  # ################################################# #
+  
   if(functionality%in%c("estimate","conditionals","raw")){
+    # Store useful values
     nObs  <- length(continuousChoice[[1]])
     nAlts <- length(V)
+    # check rows statement
     if(length(rows)!=nObs & !(length(rows)==1 && rows=="all")) stop("The argument \"rows\" needs to either be \"all\" or a boolean vector of length equal to the number of the rows in the data!")
     if(length(rows)==1 && rows=="all") rows <- rep(TRUE, nObs) else {
       if(length(budget)==length(continuousChoice[[1]])) continuousChoice[[j]][1] = budget[!rows] else {
@@ -162,14 +210,22 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
       }
       for(j in 2:nAlts) continuousChoice[[j]][!rows] = 0
     }
+    # Create availability if needed
+    if(!is.list(avail)){
+      avail_set <- TRUE
+      avail <- setNames(as.list(rep(1,nAlts)), alternatives)
+    }
+    # Get discrete_choice
     discrete_choice=list()
     k=1
     while(k<= nAlts){
       discrete_choice[[alternatives[k]]]=(continuousChoice[[k]]>0)
       k=k+1
     }
+    # set minConsumption to NA if they are all zero
     if(!anyNA(minConsumption)) if(Reduce('+',lapply(minConsumption, sum))==0) minConsumption=NA
     
+    # Reorder V and avail to match alternatives order, if necessary
     if(any(alternatives != names(V))) V <- V[alternatives]
     if(any(alternatives != names(avail))) avail <- avail[alternatives]
     if(any(alternatives != names(alpha))) alpha <- alpha[alternatives]
@@ -179,6 +235,7 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
     if(any(alternatives != names(cost))) cost <- cost[alternatives]
     if(!anyNA(minConsumption)) if(any(alternatives != names(minConsumption))) minConsumption <- minConsumption[alternatives]
     
+    # Compute V
     j=1      
     while(j<=length(V)){
       if(!anyNA(minConsumption)){
@@ -190,10 +247,13 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
       j=j+1
     }
     
+    # Get M (number of different chosen products)
     totalChosen=Reduce("+",discrete_choice)
     
+    # first term
     term1=(1-totalChosen)*log(sigma)
     
+    # compute log of fi for inside goods for use in second term, this has one column per inside good
     logfi=list()
     j=1   
     while(j<=length(V)){
@@ -206,6 +266,7 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
       j=j+1
     }
     
+    # second term
     term2=0  
     j=1  
     while(j<=length(V)){
@@ -213,6 +274,7 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
       j=j+1
     }
     
+    # Third term
     term3 = 0  
     j=1       
     while(j<=length(V)){
@@ -220,6 +282,7 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
       j=j+1}
     term3 = log(term3)
     
+    # Fourth term
     term4_1 = 0
     term4_2 = 0
     j=1        
@@ -228,11 +291,13 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
       term4_2 = term4_2+avail[[j]]*exp(V[[j]]/sigma)
       j=j+1
     }
-    term4_2 = totalChosen * log(term4_2) 
-    term4 =  term4_1 - term4_2 
+    term4_2 = totalChosen * log(term4_2) # log of the above to the power of M (totalChosen)
+    term4 =  term4_1 - term4_2 # log of fourth term is now the difference of the two parts
     
+    # fifth term: log of factorial
     term5 = lfactorial(totalChosen-1)
     
+    # probability is simply the exp of the sum of the logs of the individual terms
     P = exp(term1 + term2 + term3 + term4 + term5)
     
     if(is.vector(P)) P[!rows]   <- 1
@@ -243,27 +308,42 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
   }
   
   
+  # ############################## #
+  #### functionality="output" ####
+  # ############################## #
+  
   if(functionality=="output"){
+    # Calculate likelihood
     P <- apollo_mdcevInside(V, alternatives, alpha, gamma, sigma, cost, avail, continuousChoice, budget, functionality="estimate", minConsumption, rows)
     
+    # Useful values
     nObs  <- length(continuousChoice[[1]])
     nAlts <- length(V)
+    avail_set <- FALSE
+    # Check 'rows' command
     if(length(rows)==1 && rows=="all") rows <- rep(TRUE, nObs) else {
       if(length(budget)==length(continuousChoice[[1]])) continuousChoice[[1]][!rows] = budget[!rows] else {
         continuousChoice[[1]][!rows] = budget
       }
       for(j in 2:nAlts) continuousChoice[[j]][!rows] = 0
     }
+    # Create availability if needed
+    if(!is.list(avail)){
+      avail_set <- TRUE
+      avail <- setNames(as.list(rep(1,nAlts)), alternatives)
+    }
+    
     discrete_choice=list()
     for(k in 1:nAlts) discrete_choice[[alternatives[k]]] = (continuousChoice[[k]]>0)*1
-    if(!anyNA(minConsumption)) if(Reduce('+',lapply(minConsumption, sum))==0) minConsumption=NA 
-    if(any(alternatives != names(V))) V <- V[alternatives] 
+    if(!anyNA(minConsumption)) if(Reduce('+',lapply(minConsumption, sum))==0) minConsumption=NA # set minConsumption to NA if they are all zero
+    if(any(alternatives != names(V))) V <- V[alternatives] # Reorder V and avail to match alternatives order, if necessary
     if(any(alternatives != names(avail))) avail <- avail[alternatives]
     if(any(alternatives != names(alpha))) alpha <- alpha[alternatives]
     if(any(alternatives != names(gamma))) gamma <- gamma[alternatives]
     if(any(alternatives != names(continuousChoice))) continuousChoice <- continuousChoice[alternatives]
     if(any(alternatives != names(cost))) cost <- cost[alternatives]
     
+    # turn scalar availabilities into vectors
     for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs)
     
     availprint = colSums(matrix(unlist(avail), ncol = length(avail))[rows,])
@@ -282,36 +362,49 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
     rownames(choicematrix) = c("Times available","Observations in which chosen","Average consumption when available","Average consumption when chosen")
     colnames(choicematrix) = names(V)
     
-    apollo_control <- tryCatch( get("apollo_inputs", parent.frame(), inherits=TRUE )$apollo_control,
-                                error=function(e){
-                                  cat("apollo_mdcev could not retrieve apollo_control. No diagnostics in output.\n")
-                                  return(NA)
-                                } )
-    if(!(length(apollo_control)==1 && is.na(apollo_control))){
-      fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
-      fileName <- file.path(tempdir(),fileName)
-      fileConn <- tryCatch( file(fileName, open="at"),
-                            error=function(e){
-                              cat('apollo_mdcev could not write diagnostics to temporary file. No diagnostics in output.\n')
-                              return(NA)
-                            })
-      if(!anyNA(fileConn)){
-        sink(fileConn)
-        on.exit({if(sink.number()>0) sink(); close(fileConn)})
-        if(apollo_control$noDiagnostics==FALSE){
-          cat('\nOverview of choices for MDEV model component:\n')
-          print(round(choicematrix,2))
-          cat('\n')}
-        if(sum(choicematrix[2,]==0)>0) cat("Warning: some alternatives are never chosen in your data!\n")
-      }
-    }
+    ## write diagnostics to a file named "modelName_tempOutput.txt" in a temporary directory.
+    #apollo_control <- tryCatch( get("apollo_inputs", parent.frame(), inherits=TRUE )$apollo_control,
+    #                            error=function(e){
+    #                              cat("apollo_mdcev could not retrieve apollo_control. No diagnostics in output.\n")
+    #                              return(NA)
+    #                            } )
+    #if(!(length(apollo_control)==1 && is.na(apollo_control))){
+    #  fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
+    #  fileName <- file.path(tempdir(),fileName)
+    #  fileConn <- tryCatch( file(fileName, open="at"),
+    #                        error=function(e){
+    #                          cat('apollo_mdcev could not write diagnostics to temporary file. No diagnostics in output.\n')
+    #                          return(NA)
+    #                        })
+    #  if(!anyNA(fileConn)){
+    #    sink(fileConn)
+    #    on.exit({if(sink.number()>0) sink(); close(fileConn)})
+    #    if(apollo_control$noDiagnostics==FALSE){
+    #      cat('\nOverview of choices for MDEV model component:\n')
+    #      print(round(choicematrix,2))
+    #      cat('\n')}
+    #    if(sum(choicematrix[2,]==0)>0) cat("Warning: some alternatives are never chosen in your data!\n")
+    #  }
+    #}
     
+    content <- list(round(choicematrix,2))
+    if(any(choicematrix[4,]==0)) content[[length(content) + 1]] <- "Warning: some alternatives are never chosen in your data!"
+    if(any(choicematrix[4,]==1)) content[[length(content) + 1]] <- "Warning: some alternatives are always chosen when available!"
+    if(avail_set==TRUE) content[[length(content)+1]] <- paste0("Warning: Availability not provided (or some elements are NA).",
+                                                               "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
+    apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
+    apollo_addLog("Overview of choices for MDCEV model component:", content, apolloLog)
     
     return(P)
   }
   
+  # ################################ #
+  #### functionality="prediction" ####
+  # ################################ #
+  
   if(functionality=="prediction"){
     
+    # Useful values
     nObs  <- length(continuousChoice[[1]])
     nAlts <- length(V)
     if(length(rows)==1 && rows=="all") rows <- rep(TRUE, nObs) else {
@@ -323,8 +416,10 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
     discrete_choice=list()
     for(k in 1:nAlts) discrete_choice[[alternatives[k]]] = (continuousChoice[[k]]>0)*1
     
+    # set minConsumption to NA if they are all zero
     if(!anyNA(minConsumption)) if(Reduce('+',lapply(minConsumption, sum))==0) minConsumption=NA
     
+    # Reorder V and avail to match alternatives order, if necessary
     if(any(alternatives != names(V))) V <- V[alternatives]
     if(any(alternatives != names(avail))) avail <- avail[alternatives]
     if(any(alternatives != names(alpha))) alpha <- alpha[alternatives]
@@ -332,6 +427,7 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
     if(any(alternatives != names(continuousChoice))) continuousChoice <- continuousChoice[alternatives]
     if(any(alternatives != names(cost))) cost <- cost[alternatives]
     
+    # first include a check to make sure that all alphas are equal across alts
     equality_check=1
     j=2
     while(j<= length(alpha)){
@@ -340,6 +436,7 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
     }
     if(equality_check!=1) stop("\nMDCEV prediction only implemented for profile where alpha is generic across all products!")
     
+    # include a check to make sure there are no minimum consumption limits
     if(!anyNA(minConsumption)) stop("\nMDCEV prediction only implemented for case without non-zero minimum consumptions!")
     
     forecasting=function(V,alternatives,alpha,gamma,sigma,cost,avail,budget,continuousChoice)
@@ -350,7 +447,9 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
       nObs=length(continuousChoice[[1]])[1]
       consumption_total=array(0,dim=c(nObs,length(alternatives),ND))
       
-    
+      # create uniform draws for value draws
+      # this needs to change still if we also have random alpha, gamma or V
+      
       Ndraws=apollo_mlhs(ND*nObs,length(alternatives),1)
       draws_base=cbind(x=rep(seq(1,ND),nObs),Ndraws)
           
@@ -379,6 +478,7 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
         for(i in 1:length(gamma)) if(length(gamma[[i]])==1) gamma[[i]] <- rep(gamma[[i]], nObs)
         for(i in 1:length(cost)) if(length(cost[[i]])==1) cost[[i]] <- rep(cost[[i]], nObs)
                
+        # turn into matrices
         V_trans_use=Reduce("cbind",V_trans)
         alpha_use=Reduce("cbind",alpha)
         gamma_use=Reduce("cbind",gamma)
@@ -387,6 +487,7 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
         
         consumption_total[,,k]=forecasting_subroutine(V_trans_use,alpha_use,gamma_use,avail_use,cost_use,budget,continuousChoice)
         
+        # increment draws  
         if(k%%round(ND/10,0)==0) if(k==round(ND/2,0)) cat("50%") else if(k==ND) cat("100%") else cat(".")
         k=k+1
       }
@@ -409,12 +510,14 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
         while(stopping<1)
         {
           use=(orderofV<=M)   
+          #step2
           lambda_1=((budget[i]+sum(cost[i,(1:ncol(cost))]*gamma[i,(1:ncol(gamma))]*use)))   
           lambda_21 = 0                                   
           lambda_22=sum(cost[i,(1:ncol(cost))]*gamma[i,(1:ncol(gamma))]*use*(V_trans[i,1:NALT])^(1/(1-alpha[i,1])))  
           lambda=(lambda_1/(lambda_21+lambda_22))^(alpha[i,1]-1)
           if((sum(lambda<V_trans[i,1:NALT]))<=(M))   
           {              
+            #step3
             consumption_inside_1=(V_trans[i,1:NALT])^(1/(1-alpha[i,1:NALT]))*(budget[i]+sum(use*cost[i,(1:ncol(cost))]*gamma[i,(1:ncol(gamma))]))
             consumption_inside_2=lambda_21+lambda_22
             consumption[i,1:NALT]=use*((consumption_inside_1/consumption_inside_2)-1)*gamma[i,(1:ncol(gamma))]  
@@ -422,6 +525,7 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
           }
           else
           {
+            #step4
             M=M+1  
             use=(orderofV<=M)   
             if(M==(sum(avail[i,1:NALT])))  
@@ -475,6 +579,7 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
       return(answer)
     } else {
       cat("You have mixing")
+      # check for intra-respondent, and if it exists, give a message, and average out third dimension. applies to all inputs (V,alpha,gamma,sigma)
       Ninter = apollo_inputs$apollo_draws$interNDraws
 
       ND=250
@@ -494,7 +599,7 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
         consumption_overall[,,,r] = forecasting(Vdraw,alternatives,alphadraw,gammadraw,sigma,cost,avail,budget,continuousChoice)
         r=r+1
       }
-      consumption <- apply(consumption_overall, MARGIN=c(1,2), mean) 
+      consumption <- apply(consumption_overall, MARGIN=c(1,2), mean) # Average intra-draws
       consumption[!rows, ] <- NA
       return( consumption )
     }

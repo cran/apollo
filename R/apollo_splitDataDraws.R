@@ -11,6 +11,7 @@ apollo_splitDataDraws <- function(apollo_inputs, silent=FALSE){
   database       = apollo_inputs[["database"]]
   draws          = apollo_inputs[["draws"]]
   
+  ### Extract useful elements
   nObs    <- nrow(database)
   indivID <- database[,apollo_control$indivID]
   namesID <- unique(indivID)
@@ -19,6 +20,7 @@ apollo_splitDataDraws <- function(apollo_inputs, silent=FALSE){
   mixing  <- apollo_control$mixing
   nCores  <- apollo_control$nCores
   
+  ### Figure out how to split the database per individual
   database <- database[order(indivID),]
   if(!silent) cat('Attempting to split data into',nCores,'pieces.\n',sep=' ')
   obj          <- ceiling(nObs/nCores)
@@ -42,20 +44,25 @@ apollo_splitDataDraws <- function(apollo_inputs, silent=FALSE){
   names(coreLoad) <- paste('worker',1:nCores,sep='_')
   if(!silent) print(coreLoad)
   rm(obj, counter, currentCore, i, n)
-  if(!silent) cat(" ", sum(gc()[,2]),'Mb of RAM in use before splitting.\n', sep="")
+  if(!silent) cat(" ", sum(gc()[,2]),'MB of RAM in use before splitting.\n', sep="")
   
   
+  ### Create list of data to be copied to each thread.
+  # Each element is a copy of apollo_inputs with fewer elements in database and draws
   LL <- vector(mode="list", length=nCores)
   
   
+  ### Copy unchanged elements to each apollo_inputs
   tmp <- names(apollo_inputs)
   tmp <- tmp[!(tmp %in% c("database", "draws"))]
   for(i in 1:nCores) LL[[i]] <- apollo_inputs[ tmp ]
   rm(tmp, i)
   
   
+  ### Split draws and copy into corresponding apollo_inputs (LL)
   if(mixing){ 
     if(!silent) cat('Splitting draws')
+    # function to split draws both for both cubes and matrices
     getDrawsPiece <- function(d,rowsID){
       if(length(dim(d))==3){
         nObsW  <- length(rowsID)
@@ -73,18 +80,19 @@ apollo_splitDataDraws <- function(apollo_inputs, silent=FALSE){
       if(!silent) cat(".")
     }
     rm(getDrawsPiece)
-    if(!silent) cat(" Done. ", sum(gc()[,2]),'Mb of RAM in use.\n', sep="")
+    if(!silent) cat(" Done. ", sum(gc()[,2]),'MB of RAM in use.\n', sep="")
   } else { 
     for(i in 1:nCores) LL[[i]][["draws"]] <- NA
   }
   
   
+  ### Split database and copy to each apollo_inputs
   if(!silent) cat('Splitting database')
   for(i in 1:nCores){
     LL[[i]][["database"]] <- database[which(assignedCore==i),]
     if(!silent)cat('.')
   }
-  if(!silent) cat(" Done. ", sum(gc()[,2]), 'Mb of RAM in use.\n', sep="")
+  if(!silent) cat(" Done. ", sum(gc()[,2]), 'MB of RAM in use.\n', sep="")
   
   return(LL)
 }

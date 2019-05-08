@@ -16,37 +16,42 @@ knitr::opts_chunk$set(
 )
 ```
 
+## About the package
+
+*Apollo* is an R package designed for estimation and analysis of choice models (Train, 2008). This package allows estimating Multinomial logit (MNL), Nested logit (NL), cross-nested logit (CNL), exploded logit (EL), ordered logit (OL), Integrated Choice and Latent Variable (ICLV, Ben-Akiva et al. 2002), Multiple Discrete-Continuous Extreme Value (MDCEV, Bhat 2008), nested MDCEV (MDCNEV, Pinjari and Bhat 2010), and Decision Field Theory (DFT, Hancock and Hess 2018) models. All models support both  continuous and discrete mixing (e.g. continuous random parameters, latent classes or finite mixtures), both between and within individuals (i.e at the individual and observation level). Different models can be easily combined for joint estimation. The package allows for classical estimation (i.e. maximum likelihood) as well as Bayesian estimation (i.e. hierarchical Bayes, through package RSGHB).
+
+All functionalities are described in the manual, available at www.ApolloChoiceModelling.com. Examples can also be found on the website.
+
 ## Recommended workflow
 
-The recommended way to use *Apollo* is to create different R scripts for each model the user wants to estimate. These scripts are refer to as *model files* and contain all the necessary information to estimate the model (except for the data), and can also include post-estimation analysis of the results.
+The recommended way to use *Apollo* is to create a different R script for each model to estimate. These scripts are refer to as *model files* and contain all the necessary information to estimate the model (except for the data), and can also include post-estimation analysis of the results.
 
 A model file should be structured around the following sections:
 
 1. **Definition of core settings**: In this section the *Apollo* library is loaded, and global variables such as the name of the model are defined.
    
-1. **Data loading**: In this section the database is loaded. Any transformation to the data that does not chaneg throughout estimation (e.g. averages) should be performed here and stored inside the database object.
+1. **Data loading**: In this section the database is loaded. Any transformation to the data that does not depend on parameters to be estimated (e.g. averages of explanatory variables) should be performed here and stored inside the database object.
    
-1. **Parameter definition**: In this section, a vector containing the names and starting values of parameter is defined, as well as details of their mixing distribution distributions if present.
+1. **Parameter definition**: In this section, a vector containing the names and starting values of parameters is defined, as well as details of their mixing distributions if present.
    
-1. **Input validation**: In this section, all inputs prepared in the previous sections are validated and stored toghether.
+1. **Input validation**: In this section, all inputs prepared in the previous sections are validated and stored together.
    
-1. **Likelihood definition**: In this section, the user must write the a function that calculate the model likelihood.
+1. **Likelihood definition**: In this section, the user must write a function that calculates the model likelihood.
    
 1. **Model estimation and reporting**: In this section, the model is estimated and the results are displayed.
    
-1. **Postprocessing of results**: This is an optional section where the user can do forecasting and other post-processing of the results.
+1. **Postprocessing of results**: This is an optional section where the user can do forecasting and other post-processing of the estrimated model.
 
-In this document, we present two example model files: a multinomial logit (MNL) model, and a mixed multinomial logit (MMNL) model. More examples, discussed with higher level of detail are available at www.apolloChoiceModelling.com.
+In this document, we present two example model files: a multinomial logit (MNL) model, and a mixed multinomial logit (MMNL) model. More examples, discussed in more detail are available at www.ApolloChoiceModelling.com.
 
-*Apollo* allows estimating Multinomial logit (MNL), Nested logit (NL), cross-nested logit (CNL), exploded logit (EL), ordered logit (OL), Integrated Choice and Latent Variable (ICLV), Multiple Discrete-Continuous Extreme Value (MDCEV), nested MDCEV (MDCNEV), and Decision Field Theory (DFT) models. The user can introduce continuous or discrete mixing (i.e. latent classes or finite mixtures) in all these kinds of models, both between and within individuals. Different models can be combined for join estimation. All these functionalities are described in the manual, available at the www.apolloChoiceModelling.com website.
 
 ## MNL model file example
 
-In this section, we present code to estimate an MNL model using the synthetic data included in the package. In the postprocessing, we predict and study the impact of a 10% increase in the cost of the train fare. The utility functions of alternatives are defined as follows.
+In this section, we present code to estimate an MNL model using the synthetic data included in the package. In the postprocessing, we predict the impact on mode share of a 10% increase in the cost of the train fare. The utility functions of alternatives are defined as follows.
 
 $$U_{nsi} = asc_i + \beta_{tt}tt_{nsi} + \beta_{c}*cost_{nsi} + \varepsilon_{nsi}$$
 
-Where *n* indexes individuals, *s* choice scenarios, and *i* alternatives. $asc_i$ is the alternative specific constant, $tt_{si}$ is the travel time and $cost_{si}$ is the cost. $\varepsilon_{nsi}$ is an independent identically distributed standard Gumbel error term. $asc_i$, $\beta_{tt}$ and $\beta_{c}$ are parameters to be estimated.
+Where *n* indexes individuals, *s* choice scenarios, and *i* alternatives. $asc_i$ is the alternative specific constant, $tt_{nsi}$ is the travel time and $cost_{nsi}$ is the cost. $\varepsilon_{nsi}$ is an independent identically distributed standard Gumbel error term. $asc_i$, $\beta_{tt}$ and $\beta_{c}$ are parameters to be estimated.
 
 The likelihood function of this model for individual $n$ is as follows.
 
@@ -56,7 +61,7 @@ Where
 $$P_{nsi}=\frac{e^{V_{nsi}}}{\sum_{j}e^{V_{nsj}}}$$
 And $V_{nsi}=U_{nsi}-\varepsilon_{nsi}$, i.e. the deterministic part of the utility.
 
-The likelihood function of the MNL model is pre-coded in `Apollo`, so we do not need to type it ourselves. However, if the user prefers to write the likelihood themself, they can also do it. The pre-coded MNL likelihood function (`apollo_mnl`) requires a series of inputs defined inside the `mnl_settings` object.
+The likelihood function of the MNL model is pre-coded in `Apollo`, so we do not need to type it ourselves. However, if the user prefers to write the likelihood themselves, they can also do it. The pre-coded MNL likelihood function (`apollo_mnl`) requires a series of inputs defined inside the `mnl_settings` object.
 
 ```{r}
 # ####################################################### #
@@ -207,7 +212,7 @@ In this section, we present code to estimate a mixed MNL model (MMNL) using the 
 
 $$U_{nsi} = asc_i + \beta_{tt}tt_{nsi} + \beta_{c}*cost_{nsi} + \varepsilon_{nsi}$$
 
-Where *n* indexes individuals, *s* choice scenarios, and *i* alternatives. $asc_i$ is the alternative specific constant, $tt_{si}$ is the travel time and $cost_{si}$ is the cost. $\varepsilon_{nsi}$ is an independent identically distributed standard Gumbel error term. $\beta_{tt}$ follows a log-normal distribution with the underlying normal having a mean $\mu_{tt}$ and standard deviation $\sigma_{tt}$. $asc_i$, $\beta_{c}$, $\mu_{tt}$ and $\sigma_{tt}$ are parameters to be estimated.
+Where *n* indexes individuals, *s* choice scenarios, and *i* alternatives. $asc_i$ is the alternative specific constant, $tt_{nsi}$ is the travel time and $cost_{nsi}$ is the cost. $\varepsilon_{nsi}$ is an independent identically distributed standard Gumbel error term. $\beta_{tt}$ follows a log-normal distribution with the underlying normal having a mean $\mu_{tt}$ and standard deviation $\sigma_{tt}$. $asc_i$, $\beta_{c}$, $\mu_{tt}$ and $\sigma_{tt}$ are parameters to be estimated.
 
 The likelihood function of this model for individual $n$ is as follows.
 
@@ -215,16 +220,18 @@ $$L_{n}=\int_{\beta_{tt}}\prod_{s}P_{nsi}f(\beta_{tt})d\beta_{tt}$$
 
 Where $P_{nsi}=\frac{e^{V_{nsi}}}{\sum_{j}e^{V_{nsj}}}$, $V_{nsi}=U_{nsi}-\varepsilon_{nsi}$, and $f$ is the probability density function of $\beta_{tt}$. As this function does not have an analytical closed form, we estimate it using Monte Carlo integration, i.e.:
 
-$$L_{n}\approx\frac{1}{R}\sum_{\beta_{tt}^r}\prod_{s}P_{nsi}$$
-Where $\beta_{tt}^r$ are random draws of $\beta_{tt}$ from its distribution $f$, and R is a big number.
+$$L_{n}\approx\frac{1}{R}\sum_{\beta_{tt}^r}\prod_{s}P_{nsi}^r$$
+Where $P_{nsi}^r=P_{nsi}(\beta_{tt}^r)$, with $\beta_{tt}^r$ a random draw of $\beta_{tt}$ from its distribution $f$, and R is a big number.
 
-The code is very similar to the previous example, with only sections 1 and 3 changing. In section 1 we set `mixing = TRUE` inside apollo_control, and we set `nCores = 2` to speed up estimation by using two computing threads (this is not mandatory). In section 3 we define the mean (`b_tt_mu`) and standar deviation (`b_tt_sigma`) of the underlying normal distribution, then define the type, name and number of draws used, and we construct the random coefficient $\beta_{tt}$. We use 500 inter-individual draws that come from a standard normal distribution, which we later transform into log-normals inside `apollo_randCoeff`.
+The code is very similar to the previous example, with only sections 1 and 3 changing.
+* In section 1 we set `mixing = TRUE` inside apollo_control, and we set `nCores = 2` to speed up estimation by using two computing threads (this is not mandatory).
+* In section 3 we define the mean (`b_tt_mu`) and standar deviation (`b_tt_sigma`) of the underlying normal distribution. We then define the type, name and number of draws used. Finally, we construct the random coefficient $\beta_{tt}$ inside a function called `apollo_randCoeff`. We use 500 inter-individual draws that come from a standard normal distribution, which we later transform into log-normals inside `apollo_randCoeff`.
 
 Even though in this case we only use *inter*-individual draws, note that *inter* and *intra*-individuals draws can be used simultaneously. *Inter*-individual draws capture variability *between* individuals, while *intra*-individual draws capture variability *within* individuals. In terms of the Monte Carlo integration, *inter*-individual draws are common for all observations from the same individual, while *intra*-individual draws are different for each observations. In terms of the likelihood function, the use of *intra*-individual draws would lead to $L_{n}\approx\prod_{s}\frac{1}{R}\sum_{\beta_{tt}^r}P_{nsi}$, which is **not** the case in this model.
 
-Estimation of models with mixing is significantly more demanding than models without mixing. Furthermore, using both *inter* and *intra*-individual requires large amounts of memory, that can further slow the estimation process.
+Estimation of models with mixing is computationally more demanding than models without mixing. Furthermore, using both *inter* and *intra*-individual requires large amounts of memory, which can further slow the estimation process. For this reason, this example is not run automatically. Yet, the users may copy and paste the code in a script, and run it themselves.
 
-```{r}
+```{r, eval=FALSE}
 # ####################################################### #
 #### 1. Definition of core settings                        
 # ####################################################### #
@@ -267,13 +274,13 @@ database$mean_income = mean(database$income)
 
 ### Vector of parameters, including any that are kept fixed 
 ### during estimation
-apollo_beta=c(asc_car  = 0.0000,
-              asc_bus  =-2.4948,
-              asc_air  =-1.1510,
-              asc_rail =-0.7153,
-              mu_tt    =-4.4104,
-              sigma_tt = 0.4637,
-              b_c      =-0.0613)
+apollo_beta=c(asc_car  = 0,
+              asc_bus  = 0,
+              asc_air  = 0,
+              asc_rail = 0,
+              mu_tt    = 0,
+              sigma_tt = 1,
+              b_c      = 0)
 
 ### Vector with names (in quotes) of parameters to be
 ###  kept fixed at their starting value in apollo_beta.
@@ -283,7 +290,7 @@ apollo_fixed = c("asc_car")
 ### Set parameters for generating draws
 apollo_draws = list(
   interDrawsType = "halton",
-  interNDraws    = 200,
+  interNDraws    = 500,
   interUnifDraws = c(),
   interNormDraws = c("draws_tt"),
   intraDrawsType = "halton",
@@ -390,4 +397,12 @@ change=change[,-ncol(change)]
 summary(change)
 ```
 
+## References
+
+* Ben-Akiva, M. and Lerman, S. (1985) *Discrete Choice Analysis*. Cambridge, Massachusetts. The MIT Press. ISBN 978-0-262-02217-0
+* Ben-Akiva, M.; McFadden, D.; Train, K.; Walker, J.; Bhat, C.; Bierlaire, M.; Bolduc, D.; Boersch-Supan, A.; Brownstone, D.; Bunch, D.; Daly, A.; De Palma, A.; Gopinath, D.; Karlstrom, A.; Munizaga, M. (2002) Hybrid Choice Models: Progress and Challenges. *Marketing Letters* **13**, 163 - 175.
+* Bhat, C. (2008) The multiple discrete-continuous extreme value (MDCEV) model: Role of utility function parameters, identification considerations,and model extensions. *Transportation Research* **42B**, 274 - 303.
+* Hancock, T.; Hess, S. and Choudhury, C. (2018) Decision field theory: Improvements to current methodology and comparisons with standard choice modelling techniques. *Transportation Research* **107B**, 18-40.
+* Pinjari, A. and Bhat, C. (2010) A multiple discrete–continuous nested extreme value (MDCNEV) model: Formulation and application to non-worker activity time-use and timing behavior on weekdays. *Transportation Research* **44B**, 562 - 583.
+* Train, K. (2009) *Discrete Choice Methods with Simulation*, 2nd edition. New York, New York. Cambridge University Press. ISBN 978-0-521-76655-5
 

@@ -23,11 +23,29 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
   apollo_control = apollo_inputs[["apollo_control"]]
   workInLogs     = apollo_control$workInLogs
   
+### DONE WITH NEW LINES  
+  
+  # ############################### #
+  #### ignored for HB estimation ####
+  # ############################### #
+  
   if(apollo_control$HB==TRUE) return(P)
+  
+  # ############################### #
+  #### pre-checks                ####
+  # ############################### #
   
   if(!apollo_control$panelData) stop('Panel data setting not used, so multiplying over choices not applicable!')
   
+  # ############################################# #
+  #### functionality="prediction/validate/raw" ####
+  # ############################################# #
+  
   if(functionality %in% c("prediction","raw","validate")) return(P)
+  
+  # ########################################################## #
+  #### functionality="estimate/conditionals/zero_LL/output" ####
+  # ########################################################## #
   
   inputIsList <- is.list(P)
   indivID <- apollo_inputs$database[, apollo_control$indivID]
@@ -49,10 +67,12 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
       if(!workInLogs) Pout <- exp(Pout)
     }
     if(apollo_control$panelData && is.matrix(P) && workInLogs){
-      B    <- rowsum(log(P), group=indivID) 
-      Bbar <- rowMeans(B) 
-      Pout <- Bbar + log( rowMeans(exp(B-Bbar)) ) 
+      # approach to use if working in logs with mixing
+      B    <- rowsum(log(P), group=indivID) # nIndiv x nDraws
+      Bbar <- rowMeans(B) # nIndiv x 1
+      Pout <- Bbar + log( rowMeans(exp(B-Bbar)) ) # nIndiv x 1
     }
+    if(is.matrix(Pout) && ncol(Pout)==1) Pout <- as.vector(Pout) ### Added on 16 April due to Fangqing spotted bug
     if(inputIsList) Pout <- list(model=Pout)
     return(Pout)
   }
@@ -68,10 +88,12 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
         if(!workInLogs) Pout[[j]] <- exp(Pout[[j]])
       }
       if(apollo_control$panelData && is.matrix(P[[j]]) && workInLogs){
-        B    <- rowsum(log(P[[j]]), group=indivID) 
-        Bbar <- rowMeans(B) 
-        Pout[[j]] <- Bbar + log( rowMeans(exp(B-Bbar)) ) 
+        # approach to use if working in logs with mixing
+        B    <- rowsum(log(P[[j]]), group=indivID) # nIndiv x nDraws
+        Bbar <- rowMeans(B) # nIndiv x 1
+        Pout[[j]] <- Bbar + log( rowMeans(exp(B-Bbar)) ) # nIndiv x 1
       }
+      if(is.matrix(Pout[[j]]) && ncol(Pout[[j]])==1) Pout[[j]] <- as.vector(Pout[[j]])
       j=j+1
     }
     if(!inputIsList) Pout <- Pout[[1]]

@@ -18,6 +18,7 @@
 #' @param cl Cluster as provided by \link[parallel]{makeCluster}. Assumed to be PSock.
 #' @return apollo_logLike function.
 apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, apollo_estSet, cl=NA){
+  ### Copying from apollo_inputs to current environment
   singleCore <- apollo_inputs$apollo_control$nCores==1
   panelData  <- apollo_inputs$apollo_control$panelData
   modelName  <- apollo_inputs$apollo_control$modelName
@@ -25,14 +26,16 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   workInLogs <- apollo_inputs$apollo_control$workInLogs
   estAlg     <- apollo_estSet$estimationRoutine
 
+  ### Iterations count
   nIter <- 0
 
+  ### SINGLE CORE
   if(singleCore){
     apollo_logLike <- function(bVar, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE){
       if(getNIter) return(nIter)
       b <- c(bVar, bFixedVal)
       P <- apollo_probabilities(b, apollo_inputs, functionality="estimate")
-      if(workInLogs) ll <- P  else ll <- log(P) 
+      if(workInLogs) ll <- P  else ll <- log(P) # condition used to be workInLogs & panelData
       if(sumLL) ll <- sum(ll)
       if(countIter && estAlg=="bfgs" && exists('lastFuncParam', envir=globalenv())){
         lastFuncParam <- get("lastFuncParam", envir=globalenv())
@@ -42,22 +45,26 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
       return(ll)
     }
   } else {
+    ### MULTI CORE
 
+    # Clean up parent environment and check that cluster exists
     rm(apollo_inputs, apollo_probabilities, apollo_beta, apollo_fixed, singleCore)
     if(length(cl)==1 && is.na(cl)) stop("Cluster is missing on 'apollo_makeLogLike' despite nCores>1.")
 
+    # Function to be run on each thread
     apollo_parProb <- function(b){
       P <- apollo_probabilities(b, apollo_inputs, functionality="estimate")
       return(P)
     }
     environment(apollo_parProb) <- new.env(parent=parent.env(environment(apollo_parProb)))
 
+    # Loglike
     apollo_logLike <- function(bVar, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE){
       if(getNIter) return(nIter)
       b <- c(bVar, bFixedVal)
       P <- parallel::clusterCall(cl=cl, fun=apollo_parProb, b=b)
       P <- unlist(P)
-      if(workInLogs) ll <- P  else ll <- log(P) 
+      if(workInLogs) ll <- P  else ll <- log(P) # condition used to be workInLogs & panelData
       if(countIter && estAlg=="bfgs" && exists('lastFuncParam', envir=globalenv())){
         lastFuncParam <- get("lastFuncParam", envir=globalenv())
         if(!anyNA(lastFuncParam) && all(lastFuncParam==bVar)) nIter <<- nIter + 1
@@ -68,6 +75,6 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     }
 
   }
-
+  
   return(apollo_logLike)
 }

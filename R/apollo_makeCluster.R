@@ -15,29 +15,37 @@
 #' @return Cluster (i.e. an object of class cluster from package parallel)
 apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE){
   
+  ### Split data and draws
   LL <- apollo_splitDataDraws(apollo_inputs, silent)
   nCores <- length(LL)
   for(i in 1:nCores) LL[[i]]$apollo_control$nCores <- nCores
   
+  ### Create cluster
   if(!silent) cat('Creating workers and loading libraries...')
   cl <- parallel::makeCluster(nCores)
   
+  ### Load libraries in the cluster (same as in workspace)
   excludePackages<- c('parallel')
   loadedPackages <- search()
   loadedPackages <- loadedPackages[grepl("^(package:)", loadedPackages)]
   loadedPackages <- substr(loadedPackages, start=9, stop=100)
   loadedPackages <- loadedPackages[!(loadedPackages %in% excludePackages)]
+  #if(!("apollo" %in% loadedPackages)) loadedPackages <- c(loadedPackages, "apollo")
   if(length(loadedPackages)>0){
-    parallel::clusterCall(cl=cl, function(lib) {
+    parallel::clusterCall(cl=cl, function(lib, path) {
+      .libPaths(path)
       for(i in 1:length(lib)) library(lib[i],character.only=TRUE)
-    }, lib=loadedPackages)
+    }, lib=loadedPackages, path=.libPaths())
   }
   
+  ### Copy functions in the workspace to the workers
+  # apollo_probabilities is copied separately to ensure it keeps its name
   funcs <- as.vector(utils::lsf.str(envir=.GlobalEnv))
   parallel::clusterExport(cl, funcs, envir=.GlobalEnv)
   parallel::clusterExport(cl, "apollo_probabilities", envir=environment())
   
   
+  ### Report memory usage
   if(!silent){
     mbRAM <- sum(gc()[,2])
     if(nCores>1){
@@ -45,15 +53,18 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
       gcClusters <- Reduce('+',lapply(gcClusters, function(x) sum(x[,2])))
       mbRAM <- mbRAM + gcClusters
     }
-    cat(' Done. ',mbRAM,'Mb of RAM in use.\n',sep='')
+    cat(' Done. ',mbRAM,'MB of RAM in use.\n',sep='')
   }
   
+  ### Copy apollo_inputs (with corresponding database and draws piece) to each workers
   if(!silent) cat("Copying data to workers...")
+  #parallel::parLapply(cl, LL, fun=function(ll) assign("apollo_inputs", ll, envir=globalenv()) )
   parallel::parLapply(cl, LL, fun=function(ll){
     tmp <- globalenv()
     assign("apollo_inputs", ll, envir=tmp)
   }  )
   
+  ### Report memory usage
   if(!silent){
     mbRAM1 <- sum(gc()[,2])
     mbRAM2 <- 0
@@ -64,8 +75,12 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
     mbRAMmax <- mbRAM1+mbRAM2
     rm(LL)
     mbRAMcurrent <- sum(gc()[,2]) + mbRAM2
-    cat(' Done. ', mbRAMcurrent, 'Mb of RAM in use (max was ',mbRAMmax,'Mb)\n', sep='')
+    cat(' Done. ', mbRAMcurrent, 'MB of RAM in use (max was ',mbRAMmax,'MB)\n', sep='')
   }
   
+  # The following two lines do the same thing, i.e. enumerate 
+  # elements in the workspace of each worker.
+  #parallel::clusterEvalQ(cl, ls())
+  #parallel::clusterCall(cl, ls, envir=.GlobalEnv)
   return(cl)
 }

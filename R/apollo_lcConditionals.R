@@ -19,11 +19,13 @@ apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
   apollo_control = apollo_inputs[["apollo_control"]]
   database       = apollo_inputs[["database"]]
   apollo_lcPars  = apollo_inputs[["apollo_lcPars"]]
-  class_prob     = "pi_values" 
+  class_prob     = "pi_values" # name of lcpars component with allocation probabilities
   
+  ### Validation
   if(apollo_control$mixing) stop("apollo_lcConditionals can only be used for latent class models without continuous random heterogeneity")
   
   cat("Calculating conditionals...")
+  ### Get allocation and inClass probs
   lcpars = with(c(apollo_beta, apollo_inputs$database, apollo_inputs$draws), {
     environment(apollo_lcPars) <- environment()
     apollo_lcPars(apollo_beta, apollo_inputs)
@@ -35,9 +37,11 @@ apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
   if(components>(classes+1)) stop("apollo_lcConditionals can only be used for latent class models alone (i.e. no hybrid choice)")
   if(components!=(classes+1)) stop("Model should contain one component per class, and an overall model!")
   
+  ### Calculate posterior class allocation probs
   post_pi = vector(mode="list", length=classes)
   for(s in 1:classes) post_pi[[s]] = lcpars[[class_prob]][[s]]*L[[s]]/L[["model"]]
   
+  ### Prepare output
   conditionals = matrix(unlist(post_pi), ncol = length(post_pi), byrow = FALSE)
   classnames   = paste("Class ",seq(1:classes),sep="")
   rownames(conditionals) = c(unique(database[,apollo_control$indivID]))

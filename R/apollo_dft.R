@@ -40,8 +40,14 @@
 #'           \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
 #'           \item "raw": Same as "prediction".
 #'         }
+#' @section References:
+#' Hancock, T.; Hess, S. and Choudhury, C. (2018) Decision field theory: Improvements to current methodology and comparisons with standard choice modelling techniques. Transportation Research 107B, 18 - 40.
+#' Hancock, T.; Hess, S. and Choudhury, C. (Submitted) An accumulation of preference: two alternative dynamic models for understanding transport choices.
+#' Roe, R.; Busemeyer, J. and Townsend, J. (2001) Multialternative decision field theory: A dynamic connectionist model of decision making. Psychological Review 108, 370
 #' @export
 #' @importFrom mnormt pmnorm
+#' @importFrom stats setNames
+#' @import Rcpp
 #' @useDynLib apollo, .registration=TRUE
 apollo_dft = function(dft_settings,functionality){
   
@@ -60,6 +66,7 @@ apollo_dft = function(dft_settings,functionality){
   if(is.null(dft_settings[["procPars"]])) stop("The \"dft_settings\" list needs to include an object called \"procPars\"!")
   if(is.null(dft_settings[["rows"]])) dft_settings[["rows"]]="all"
   
+  ###### get values from DFT settings
   alternatives=dft_settings[["alternatives"]]
   avail       =dft_settings[["avail"]]
   choiceVar   =dft_settings[["choiceVar"]]
@@ -90,14 +97,20 @@ apollo_dft = function(dft_settings,functionality){
                                return(tmp)
                              })
   
+  # ############################## #
+  #### functionality="validate" ####
+  # ############################## #
   
   if (functionality=="validate"){
     
+    #############################################################
+    ## check that all four process parameter values are provided
     if(is.null(procPars[["error_sd"]])) stop("The \"procPars\" list needs to include an object called \"error_sd\"!")
     if(is.null(procPars[["timesteps"]])) stop("The \"procPars\" list needs to include an object called \"timesteps\"!")
     if(is.null(procPars[["phi1"]])) stop("The \"procPars\" list needs to include an object called \"phi1\"!")
     if(is.null(procPars[["phi2"]])) stop("The \"procPars\" list needs to include an object called \"phi2\"!")
     
+    # Store useful values
     apollo_control <- tryCatch(get("apollo_inputs", parent.frame(), inherits=FALSE)$apollo_control,
                                error = function(e) list(noValidation=FALSE, noDiagnostics=FALSE))
     nObs  <- length(choiceVar)
@@ -108,24 +121,28 @@ apollo_dft = function(dft_settings,functionality){
     altcodes=alternatives
     if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(choiceVar))
     choiceVar[!rows]=alternatives[1]
+    warn1 <- FALSE
+    warn2 <- FALSE
+    warn3 <- FALSE
     
-    
+    # check rows statement
     if(length(rows)!=length(choiceVar)) stop("The argument \"rows\" needs to either be \"all\" or a vector of length equal to the number of rows in the data!")
     
+    # Create availability if necessary
     if(!is.list(avail)){
       avail_set <- TRUE
-      avail <- vector(mode="list", length=nAlts)
-      avail <- lapply(avail, function(a) 1)
-      names(avail) <- altnames
-      warning("Full availability of alternatives assumed for the DFT probability calculation.")
+      avail <- setNames(as.list(rep(1,nAlts)), altnames)
     }
     
+    # Reorder avail to match altnames order, if necessary
     if(all(altnames != names(avail))) avail <- avail[altnames]
     
+    ## increase length of avail if necessary
     for (i in 1:nAlts){
       if(length(avail[[i]])==1) avail[[i]]=rep(c(avail[[i]]),nObs)
     }
     
+    #### check that only one of attrWeights, attrScalings is supplied
     attrWeights=dft_settings[["attrWeights"]]
     attrScalings=dft_settings[["attrScalings"]]
     s1=sum(lengths(attrWeights))
@@ -134,29 +151,34 @@ apollo_dft = function(dft_settings,functionality){
     if(s1>1&s2>1) stop("Please set one of attrWeights or attrScalings to 1")
     if(s1>1) attrnames=names(attrWeights) else attrnames=names(attrScalings)
     
+    # Check that the elements of attrValues match altnames
     if(any(!names(attrValues)%in%altnames)) stop("The \"attrValues\" attribute names do not match those given in \"alternatives\"!") 
     
-    for (i in 1:nAlts){
-      if(any(!names(attrValues[[i]])%in%attrnames)) warning("Not all of the attributes given in \"attrValues\" are named in \"attrScalings\" or \"attrWeights\". These will consequently be ignored.") 
-    }
+    # Give warning message if any of the elements in attrValues are not in attrnames
+    for (i in 1:nAlts) if(any(!names(attrValues[[i]])%in%attrnames)) warn1 <- TRUE 
     
+    # Add zero for attrValues not supplied (functionality later will expand it to the correct dimension)
     for (i in 1:nAlts){
       for (j in 1:nAttrs){
         if(is.null(attrValues[[altnames[i]]][[attrnames[j]]])) attrValues[[altnames[i]]][[attrnames[j]]]=0
       }
     }
     
-    if(any(!names(altStart)%in%altnames)) warning("Not all of the alternatives given in \"altStart\" are named in \"alternatives\". These will consequently be ignored.") 
+    # Give warning message if any of the elements in altStarts are not in altnames
+    if(any(!names(altStart)%in%altnames)) warn2 <- TRUE 
     
+    # Check altStart is a list:
     if(!is.list(altStart)) {
       altStart=list()
-      warning("A list was not supplied for \"altStart\". Starting values for all alternatives will be set to zero")
+      warn3 <- TRUE
     }
     
+    # Add zero for altStarts that are not supplied
     for(i in 1:nAlts){
       if(is.null(altStart[[altnames[i]]])) altStart[[altnames[i]]] = 0 
     }
     
+    # Reorder attrValues, attrScalings (components) ,altStart to match altnames order, if necessary
     if(any(altnames != names(attrValues))) attrValues <- attrValues[altnames]
     
     if(is.list(attrScalings)){
@@ -167,20 +189,27 @@ apollo_dft = function(dft_settings,functionality){
     
     if(any(altnames != names(altStart))) altStart <- altStart[altnames]
     
+    # Reorder attrValues such that attribute order matches with attrScalings or attrWeights
     for (i in 1:nAlts){
       if(is.list(attrValues[[i]])) if(any(attrnames != names(attrValues[[i]]))) attrValues[[i]] <- attrValues[[i]][attrnames]
     }
     
+    ### check which bits stay above, and which go into the section below
     if(apollo_control$noValidation==FALSE){
+      # Check that there are at least two alternatives
       if(nAlts<2) stop("DFT requires at least two alternatives")
       
+      # Check that choice vector is not empty
       if(nObs==0) stop("No choices to model")
       
+      # Check that labels in choice match those in the utilities and availabilities
       choiceLabs <- unique(choiceVar)
       if(!all(altnames %in% names(avail))) stop("Alternative labels in \"altnames\" do not match those in \"avail\".")
       
+      # Check that there are no values in the choice column for undefined alternatives
       if(!all(choiceLabs %in% altcodes)) stop("Value in choice column that is not included in altcodes.")
       
+      # check that nothing unavailable is chosen
       chosenunavail=0
       j=1
       while(j <= length(altnames)){
@@ -189,41 +218,68 @@ apollo_dft = function(dft_settings,functionality){
       }
       if(chosenunavail==1) stop("Some alternative(s) chosen despite being listed as unavailable\n")
       
+      # check that all availabilities are either 0 or 1
       for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values are not 0 or 1.")
-          
-      cat("\nAll checks passed for DFT model component\n")
+      
+      ###### further checks for dims of objects?
+      
+      #cat("\nAll checks passed for DFT model component\n")
       
     }
     
     if(apollo_control$noDiagnostics==FALSE){
-      if(avail_set==TRUE) warning("Availability not provided to 'apollo_dft' (or some elements are NA). Full availability assumed.")
+      #if(avail_set==TRUE) warning("Availability not provided to 'apollo_dft' (or some elements are NA). Full availability assumed.")
       
+      # turn scalar availabilities into vectors
       for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs)
       
-      availprint = colSums(rows*matrix(unlist(avail), ncol = length(avail))) 
+      # Construct summary table of availabilities and market share
+      availprint = colSums(rows*matrix(unlist(avail), ncol = length(avail))) # number of times each alt is available
       choicematrix = matrix(0,nrow=4,ncol=length(altnames))
       choicematrix[1,] = availprint
       j=1
       while(j<= length(altnames)){
-        choicematrix[2,j] = sum(choiceVar==altcodes[j] & rows) 
+        choicematrix[2,j] = sum(choiceVar==altcodes[j] & rows) # number of times each alt is chosen
         j=j+1
       }
-      choicematrix[3,] = choicematrix[2,]/sum(rows)*100 
-      choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 
+      choicematrix[3,] = choicematrix[2,]/sum(rows)*100 # market share
+      choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 # market share controlled by availability
       rownames(choicematrix) = c("Times available","Times chosen","Percentage of choice overall","Percentage of choice when available")
       colnames(choicematrix) = altnames
-      cat('Overview of choices for DFT model component:\n')
-      print(round(choicematrix,2))
-      cat("\n")
-      if(any(choicematrix[4,]==0)) cat("Warning: some alternatives are never chosen in your data!\n")
-      if(any(choicematrix[4,]==1)) cat("Warning: some alternatives are always chosen when available!\n")
+      #cat('Overview of choices for DFT model component:\n')
+      #print(round(choicematrix,2))
+      #cat("\n")
+      #if(any(choicematrix[4,]==0)) cat("Warning: some alternatives are never chosen in your data!\n")
+      #if(any(choicematrix[4,]==1)) cat("Warning: some alternatives are always chosen when available!\n")
+      
+      content <- list(round(choicematrix,2))
+      if(any(choicematrix[4,]==0)) content[[length(content) + 1]] <- "Warning: some alternatives are never chosen in your data!"
+      if(any(choicematrix[4,]==1)) content[[length(content) + 1]] <- "Warning: some alternatives are always chosen when available!"
+      if(avail_set) content[[length(content)+1]] <- paste0("Warning: Availability not provided (or some elements are NA).",
+                                                           "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
+      if(warn1) content[[length(content)+1]] <- paste0("Notice: Not all of the attributes given in \"attrValues\" are \n",
+                                                       paste0(rep(" ",8), collapse=""), "named in \"attrScalings\" or \"attrWeights\". These will\n", 
+                                                       paste0(rep(" ",8), collapse=""), "consequently be ignored.")
+      if(warn2) content[[length(content)+1]] <- paste0("Notice: Not all of the alternatives given in \"altStart\" are\n",
+                                                       paste0(rep(" ",8), collapse=""),"named in \"alternatives\". These will consequently be ignored.")
+      if(warn3) content[[length(content)+1]] <- paste0("Notice: A list was not supplied for \"altStart\".\n",
+                                                       paste0(rep(" ",8), collapse=""),"Starting values for all alternatives will be set to zero.")
+      apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
+      apollo_addLog("Overview of choices for DFT model component:", content, apolloLog)
     }
+    
+    
+    
+    
     
     
     return(invisible(TRUE))
     
   }
   
+  
+  ####################################################
+  ###### get the dimensionality of the lists
   Dims = 1
   if(is.null(apollo_control$mixing)==FALSE){
     if(apollo_control$mixing==TRUE){
@@ -233,7 +289,12 @@ apollo_dft = function(dft_settings,functionality){
   } 
   
   
+  # ############################## #
+  #### functionality="zero_LL" ####
+  # ############################## #
+  
   if(functionality=="zero_LL"){
+    # Store useful values
     nObs  <- length(choiceVar)
     nAlts <- length(alternatives)
     avail_set <- FALSE
@@ -242,6 +303,7 @@ apollo_dft = function(dft_settings,functionality){
     if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(choiceVar))
     choiceVar[!rows]=alternatives[1]
     
+    # Create availability if necessary
     if(!is.list(avail)){
       avail_set <- TRUE
       avail <- vector(mode="list", length=nAlts)
@@ -250,14 +312,20 @@ apollo_dft = function(dft_settings,functionality){
     }
     
     if(!anyNA(avail)) if(all(altnames != names(avail))) avail <- avail[altnames]
-    for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs) 
-    nAvAlt <- rowSums(matrix(unlist(avail), ncol = length(avail))) 
-    P = 1/nAvAlt 
+    for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs) # turn scalar availabilities into vectors
+    nAvAlt <- rowSums(matrix(unlist(avail), ncol = length(avail))) # number of available alts in each observation
+    P = 1/nAvAlt # likelihood at zero
     P[!rows] = 1
     return(P)
   }
   
-    
+  
+  
+  # ############################################################ #
+  #### functionality="estimate/prediction/conditionals/raw" ####
+  # ############################################################ #
+  
+  
   if(functionality %in% c("estimate","prediction","conditionals","raw","output")){
     
     s1=sum(lengths(attrWeights))
@@ -265,17 +333,23 @@ apollo_dft = function(dft_settings,functionality){
     if(s1>1) attrnames=names(attrWeights) else attrnames=names(attrScalings)
     
     
+    ### Not really sure how this will impact DFT code?..
+    # Fix choiceVar if "raw" and choiceVar==NA
     choiceNA = FALSE
     if(length(choiceVar)==1 && is.na(choiceVar)){
       choiceVar = alternatives[1]
       choiceNA = TRUE
     }
     
+    ###### get process parameter values
+    ### other parameter adjustments?...
+    ### square error here? DFT calculation requires variance, but might be simpler to expect that sd is provided
     erv=procPars[["error_sd"]]^2
     ts=procPars[["timesteps"]]
     phi1=procPars[["phi1"]]
     phi2=procPars[["phi2"]]
     
+    # Store useful values
     nObs  <- length(choiceVar)
     nAlts <- length(altStart)
     nAttrs <- max(length(attrWeights),length(attrScalings))
@@ -285,29 +359,41 @@ apollo_dft = function(dft_settings,functionality){
     if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(choiceVar))
     choiceVar[!rows]=alternatives[1]
     
+    # Create availability if necessary
     if(!is.list(avail)){
       avail_set <- TRUE
-      avail <- vector(mode="list", length=nAlts)
-      avail <- lapply(avail, function(a) 1)
-      names(avail) <- altnames
+      avail <- setNames(as.list(rep(1,nAlts)), altnames)
     }
     
+    ### Reorder avail to match altnames order, if necessary
     if(all(altnames != names(avail))) avail <- avail[altnames]
     
+    ## increase length of avail if necessary
     for (i in 1:nAlts){
       if(length(avail[[i]])==1) avail[[i]]=rep(c(avail[[i]]),nObs)
     }
     
+    # Check for additional warnings
+    # Give warning message if any of the elements in attrValues are not in attrnames
+    for (i in 1:nAlts) if(any(!names(attrValues[[i]])%in%attrnames)) warn1 <- TRUE else warn1 <- FALSE
+    # Give warning message if any of the elements in altStarts are not in altnames
+    if(any(!names(altStart)%in%altnames)) warn2 <- TRUE  else warn2 <- FALSE
+    # Check altStart is a list:
+    if(!is.list(altStart)) warn3 <- TRUE else warn3 <- FALSE
+    
+    # Add zero for attrValues not supplied (functionality later will expand it to the correct dimension)
     for (i in 1:nAlts){
       for (j in 1:nAttrs){
         if(is.null(attrValues[[altnames[i]]][[attrnames[j]]])) attrValues[[altnames[i]]][[attrnames[j]]]=0
       }
     }
     
+    # Add zero for altStarts that are not supplied
     for(i in 1:nAlts){
       if(is.null(altStart[[altnames[i]]])) altStart[[altnames[i]]] = 0 
     }
     
+    # Reorder attrValues, attrScalings (components) ,altStart to match altnames order, if necessary
     if(any(altnames != names(attrValues))) attrValues <- attrValues[altnames]
     
     if(is.list(attrScalings)){
@@ -318,16 +404,25 @@ apollo_dft = function(dft_settings,functionality){
     
     if(any(altnames != names(altStart))) altStart <- altStart[altnames]
     
+    # Reorder attrValues such that attribute order matches with attrScalings or attrWeights
     for (i in 1:nAlts){
       if(is.list(attrValues[[i]])) if(any(attrnames != names(attrValues[[i]]))) attrValues[[i]] <- attrValues[[i]][attrnames]
     }
     
+    ## check that each alternative attribute is of length nObs and update if neccessary (will extend zeros, for examples)
     for (i in 1:nAttrs){
       for (j in 1:nAlts){
         if(length(attrValues[[j]][[i]])==1) attrValues[[j]][[i]] = rep(attrValues[[j]][[i]],nObs)
       }
     }
     
+    
+    
+    #############################################
+    ######### DFT Probability part
+    
+    ### if dimension = 1 (no mixing)
+    ##### then need to rearrange all lists into matrices, so that mapply can be used
     if (Dims==1){
       
       attrValuesM<-array(c(unlist(attrValues,use.names=F)),c(nObs,nAttrs*nAlts))
@@ -358,6 +453,7 @@ apollo_dft = function(dft_settings,functionality){
         attrWeightsM<-array(1/nAttrs,c(nObs,nAttrs))
       }
       
+      ### could still have alternative and attribute specific scalings
       if(sum(lengths(attrScalings))!=1){
         attrScalingsM<-c()
         for(i in 1:nAttrs) if(is.list(attrScalings[[i]])) {
@@ -381,6 +477,7 @@ apollo_dft = function(dft_settings,functionality){
         attrScalingsM<-array(1,c(nObs,nAttrs*nAlts))
       }
       
+      ### create a value for each choice for the process parameters if just a single value is passed in
       if(length(erv)==1) erv = rep(erv,nObs)
       if(length(ts)==1) ts = rep(ts,nObs)
       if(length(phi1)==1) phi1 = rep(phi1,nObs)
@@ -392,10 +489,13 @@ apollo_dft = function(dft_settings,functionality){
     if(Dims==2){
       Dim2Length =  apollo_draws$interNDraws
       
+      #### attrValues (all will be 1D)
       attrValuesM<-array(c(rep(c(unlist(attrValues,use.names=F)),each=Dim2Length)),c(nObs*Dim2Length,nAttrs*nAlts))
       
+      #### avail (all will be 1D)
       availM<-array(c(rep(c(unlist(avail,use.names=F)),each=Dim2Length)),c(nObs*Dim2Length,nAlts))
       
+      #### altStart
       altStartM<-c()
       for(i in 1:nAlts){
         if(is.null(dim(altStart[[i]]))) {
@@ -405,6 +505,7 @@ apollo_dft = function(dft_settings,functionality){
             altStartM<-c(altStartM,rep(altStart[[i]],nObs*Dim2Length))
           }
         } else {
+          ## 2D
           if(dim(altStart[[i]])[1]==nObs){
             altStartM<-c(altStartM,t(altStart[[i]])) 
           } else {
@@ -414,6 +515,7 @@ apollo_dft = function(dft_settings,functionality){
       }
       dim(altStartM)<-c(nObs*Dim2Length,nAlts)
       
+      #### attrWeights
       if(sum(lengths(attrWeights))!=1){
         attrWeightsM<-c()
         for(i in 1:nAttrs){
@@ -424,6 +526,7 @@ apollo_dft = function(dft_settings,functionality){
               attrWeightsM<-c(attrWeightsM,rep(attrWeights[[i]],nObs*Dim2Length))
             }
           } else {
+            ## 2D
             if(dim(attrWeights[[i]])[1]==nObs){
               attrWeightsM<-c(attrWeightsM,t(attrWeights[[i]])) 
             } else {
@@ -436,18 +539,27 @@ apollo_dft = function(dft_settings,functionality){
         attrWeightsM<-array(1/nAttrs,c(nObs*Dim2Length,nAttrs))
       }
       
+      #### attrScalings
+      ## could not be provided (=1)
+      ## then for each attribute:
+      ## could be attribute specific -> not mixed, some mixed, all mixed
+      ## could be general -> not mixed, some mixed, all mixed
+      ## for each attribute:
       if(sum(lengths(attrScalings))!=1){
         attrScalingsM<-c()
         for(i in 1:nAttrs) {
           if (is.list(attrScalings[[i]])) {
+            ### attribute-specific
             for (j in 1:nAlts){
               if(is.null(dim(attrScalings[[i]][[j]]))){
+                ### not mixed
                 if(length(attrScalings[[i]][[j]])==nObs){
                   attrScalingsM<-c(attrScalingsM,rep(c(attrScalings[[i]][[j]]),each=Dim2Length))
                 } else{
                   attrScalingsM<-c(attrScalingsM,rep(c(attrScalings[[i]][[j]]),each=nObs*Dim2Length))
                 }
               } else {
+                ### is mixed
                 if(length(attrScalings[[i]][[j]])==nObs*Dim2Length){
                   attrScalingsM<-c(attrScalingsM,c(t(attrScalings[[i]][[j]])))
                 } else{
@@ -456,13 +568,16 @@ apollo_dft = function(dft_settings,functionality){
               }
             }
           } else {
+            ### is not attribute-specific
             if(is.null(dim(attrScalings[[i]]))){
+              ## not mixed
               if(length(attrScalings[[i]])==nObs) {
                 attrScalingsM<-c(attrScalingsM,rep(c(rep(c(attrScalings[[i]]),each=Dim2Length)),nAlts))
               } else {
                 attrScalingsM<-c(attrScalingsM,rep(c(attrScalings[[i]]),nAlts*Dim2Length*nObs))
               }
             } else{
+              ## is mixed
               if(length(attrScalings[[i]])==nObs*Dim2Length) {
                 attrScalingsM<-c(attrScalingsM,rep(c(t(attrScalings[[i]])),nAlts))
               } else {
@@ -471,12 +586,14 @@ apollo_dft = function(dft_settings,functionality){
             }
           }
         }
+        ### build matrix
         attrScalingsM<-array(attrScalingsM,c(nObs*Dim2Length,nAttrs*nAlts))
       } else {
         attrScalingsM<-array(1,c(nObs*Dim2Length,nAttrs))
         if (attrScalings!=1) warning("If you are not using attrScalings, please set it to 1")
       }
       
+      ### process parameters:
       if(is.null(dim(erv))){
         if(length(erv)==nObs){
           erv = rep(erv,each=Dim2Length)
@@ -543,27 +660,36 @@ apollo_dft = function(dft_settings,functionality){
       Dim2Length =  apollo_draws$interNDraws
       Dim3Length =  apollo_draws$intraNDraws 
       
+      #### attrValues (all will be 1D)
       attrValuesM<-array(c(rep(c(unlist(attrValues,use.names=F)),each=Dim2Length*Dim3Length)),c(nObs*Dim2Length*Dim3Length,nAttrs*nAlts))
       
+      #### avail (all will be 1D)
       availM<-array(c(rep(c(unlist(avail,use.names=F)),each=Dim2Length*Dim3Length)),c(nObs*Dim2Length*Dim3Length,nAlts))
       
+      #### altStart
       altStartM<-c()
       for(i in 1:nAlts) {
         if(is.null(dim(altStart[[i]]))) {
+          ### 1D, no mixing:
           if(length(altStart[[i]])==nObs){
+            ### diff value for different obs
             altStartM<-c(altStartM,rep(c(altStart[[i]]),each=Dim2Length*Dim3Length))
           } else {
             altStartM<-c(altStartM,c(rep(c(altStart[[i]]),nObs*Dim2Length*Dim3Length)))
           } 
         } else {
+          ### check if 2D:
           if (length(dim(altStart[[i]]))==2) {
+            ### 2D
             if(dim(altStart[[i]])[1]==nObs){
               altStartM<-c(altStartM,rep(t(altStart[[i]]),each=Dim3Length)) 
             } else {
               altStartM<-c(altStartM,rep(rep(altStart[[i]],nObs),each=Dim3Length))
             }
           } else {
+            ### 3D
             if(dim(altStart[[i]])[1]==nObs){
+              ### may or may not have 2nd dim
               if(dim(altStart[[i]])[2]==Dim2Length){
                 altStartM<-c(altStartM,c(aperm(altStart[[i]])))
               } else {
@@ -582,24 +708,31 @@ apollo_dft = function(dft_settings,functionality){
       altStartM<-array(altStartM,c(nObs*Dim2Length*Dim3Length,nAlts))
       
       
+      #### attrWeights
       if(sum(lengths(attrWeights))!=1){
         attrWeightsM<-c()
         for(i in 1:nAttrs) {
           if(is.null(dim(attrWeights[[i]]))) {
+            ### 1D, no mixing:
             if(length(attrWeights[[i]])==nObs){
+              ### diff value for different obs
               attrWeightsM<-c(attrWeightsM,rep(c(attrWeights[[i]]),each=Dim2Length*Dim3Length))
             } else {
               attrWeightsM<-c(attrWeightsM,c(rep(c(attrWeights[[i]]),nObs*Dim2Length*Dim3Length)))
             } 
           } else {
+            ### check if 2D:
             if (length(dim(attrWeights[[i]]))==2) {
+              ### 2D
               if(dim(attrWeights[[i]])[1]==nObs){
                 attrWeightsM<-c(attrWeightsM,rep(t(attrWeights[[i]]),each=Dim3Length)) 
               } else {
                 attrWeightsM<-c(attrWeightsM,rep(rep(attrWeights[[i]],nObs),each=Dim3Length))
               }
             } else {
+              ### 3D
               if(dim(attrWeights[[i]])[1]==nObs){
+                ### may or may not have 2nd dim
                 if(dim(attrWeights[[i]])[2]==Dim2Length){
                   attrWeightsM<-c(attrWeightsM,c(aperm(attrWeights[[i]])))
                 } else {
@@ -620,25 +753,39 @@ apollo_dft = function(dft_settings,functionality){
         attrWeightsM<-array(1/nAlts,c(nObs*Dim2Length*Dim3Length,nAttrs))
       }
       
+      #### attrScalings
+      ## could not be provided (=1)
+      ## then for each attribute:
+      ## could be attribute specific -> not mixed, some mixed, all mixed (2 or 3 dim)
+      ## could be general -> not mixed, some mixed, all mixed (2 or 3 dim)
+      ## 16 cases: attribute specific, choice specific, inter, intra...
+      ## for each attribute:
       if(sum(lengths(attrScalings))!=1){
         attrScalingsM<-c()
         if(is.list(attrScalings)){
+          ## attribute specific
           for(i in 1:nAttrs) {
             if(is.null(dim(attrScalings[[i]]))) {
+              ### 1D, no mixing:
               if(length(attrScalings[[i]])==nObs){
+                ### diff value for different obs
                 attrScalingsM<-c(attrScalingsM,rep(c(attrScalings[[i]]),each=Dim2Length*Dim3Length))
               } else {
                 attrScalingsM<-c(attrScalingsM,c(rep(c(attrScalings[[i]]),nObs*Dim2Length*Dim3Length)))
               } 
             } else {
+              ### check if 2D:
               if (length(dim(attrScalings[[i]]))==2) {
+                ### 2D
                 if(dim(attrScalings[[i]])[1]==nObs){
                   attrScalingsM<-c(attrScalingsM,rep(t(attrScalings[[i]]),each=Dim3Length)) 
                 } else {
                   attrScalingsM<-c(attrScalingsM,rep(rep(attrScalings[[i]],nObs),each=Dim3Length))
                 }
               } else {
+                ### 3D
                 if(dim(attrScalings[[i]])[1]==nObs){
+                  ### may or may not have 2nd dim
                   if(dim(attrScalings[[i]])[2]==Dim2Length){
                     attrScalingsM<-c(attrScalingsM,c(aperm(attrScalings[[i]])))
                   } else {
@@ -655,21 +802,28 @@ apollo_dft = function(dft_settings,functionality){
             }
           }
         } else {
+          ## not attribute specific
           if(is.null(dim(attrScalings))) {
+            ### 1D, no mixing:
             if(length(attrScalings)==nObs){
+              ### diff value for different obs
               attrScalingsM<-c(attrScalingsM,rep(rep(c(attrScalings),each=Dim2Length*Dim3Length),nAlts))
             } else {
               attrScalingsM<-c(attrScalingsM,rep(c(rep(c(attrScalings),nObs*Dim2Length*Dim3Length)),nAlts))
             } 
           } else {
+            ### check if 2D:
             if (length(dim(attrScalings))==2) {
+              ### 2D
               if(dim(attrScalings)[1]==nObs){
                 attrScalingsM<-c(attrScalingsM,rep(rep(t(attrScalings),each=Dim3Length),nAlts)) 
               } else {
                 attrScalingsM<-c(attrScalingsM,rep(rep(rep(attrScalings,nObs),each=Dim3Length),nAlts))
               }
             } else {
+              ### 3D
               if(dim(attrScalings)[1]==nObs){
+                ### may or may not have 2nd dim
                 if(dim(attrScalings)[2]==Dim2Length){
                   attrScalingsM<-c(attrScalingsM,rep(c(aperm(attrScalings)),nAlts))
                 } else {
@@ -685,12 +839,16 @@ apollo_dft = function(dft_settings,functionality){
             }
           }
         }
+        ### build matrix
         attrScalingsM<-array(attrScalingsM,c(nObs*Dim2Length*Dim3Length,nAttrs*nAlts))
       } else {
         attrScalingsM<-array(1,c(nObs*Dim2Length,nAttrs))
         if (attrScalings!=1) warning("If you are not using attrScalings, please set it to 1")
       }
       
+      ### process parameters:
+      ### 8 cases:
+      ### 3rd, 2nd, 1st dims different
       if(is.null(dim(erv))){
         if(length(erv)==nObs) {
           erv = rep(erv,each=Dim2Length*Dim3Length)
@@ -702,9 +860,10 @@ apollo_dft = function(dft_settings,functionality){
           if(dim(erv)[1]==nObs){
             erv = rep(t(erv),each=Dim3Length)
           } else {
-            erv = rep(rep(erv,each=Dim3Length),nObs) 
+            erv = rep(rep(erv,each=Dim3Length),nObs) #doesn't matter here which rep first...
           }
         } else {
+          ## dim ==3, 4 more cases
           if(dim(erv)[2]==Dim2Length){
             if(dim(erv)[1]==nObs){
               erv<-c(aperm(erv))
@@ -732,9 +891,10 @@ apollo_dft = function(dft_settings,functionality){
           if(dim(ts)[1]==nObs){
             ts = rep(t(ts),each=Dim3Length)
           } else {
-            ts = rep(rep(ts,each=Dim3Length),nObs) 
+            ts = rep(rep(ts,each=Dim3Length),nObs) #doesn't matter here which rep first...
           }
         } else {
+          ## dim ==3, 4 more cases
           if(dim(ts)[2]==Dim2Length){
             if(dim(ts)[1]==nObs){
               ts<-c(aperm(ts))
@@ -762,9 +922,10 @@ apollo_dft = function(dft_settings,functionality){
           if(dim(phi1)[1]==nObs){
             phi1 = rep(t(phi1),each=Dim3Length)
           } else {
-            phi1 = rep(rep(phi1,each=Dim3Length),nObs) 
+            phi1 = rep(rep(phi1,each=Dim3Length),nObs) #doesn't matter here which rep first...
           }
         } else {
+          ## dim ==3, 4 more cases
           if(dim(phi1)[2]==Dim2Length){
             if(dim(phi1)[1]==nObs){
               phi1<-c(aperm(phi1))
@@ -792,9 +953,10 @@ apollo_dft = function(dft_settings,functionality){
           if(dim(phi2)[1]==nObs){
             phi2 = rep(t(phi2),each=Dim3Length)
           } else {
-            phi2 = rep(rep(phi2,each=Dim3Length),nObs) 
+            phi2 = rep(rep(phi2,each=Dim3Length),nObs) #doesn't matter here which rep first...
           }
         } else {
+          ## dim ==3, 4 more cases
           if(dim(phi2)[2]==Dim2Length){
             if(dim(phi2)[1]==nObs){
               phi2<-c(aperm(phi2))
@@ -815,7 +977,10 @@ apollo_dft = function(dft_settings,functionality){
       
     }
     
-   
+    
+    
+    ##### Get probabilities under DFT model
+    
     if((functionality=="prediction")|(functionality=="raw")){
       P=list()
       for (j in 1:nAlts){
@@ -833,6 +998,7 @@ apollo_dft = function(dft_settings,functionality){
       }
       
       P <- lapply(P, function(p) {
+        # change likelihood of excluded columns
         if(is.vector(p)) p[!rows]  <- ifelse(functionality=="prediction",NA,1)
         if(is.matrix(p)) p[!rows,] <- ifelse(functionality=="prediction",NA,1)
         if(is.array(p) & length(dim(p))==3) p[!rows,,] <- ifelse(functionality=="prediction",NA,1)
@@ -864,47 +1030,65 @@ apollo_dft = function(dft_settings,functionality){
     
     if(functionality=="output"){
       
+      # turn scalar availabilities into vectors
       for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs)
       
-      availprint = colSums(rows*matrix(unlist(avail), ncol = length(avail))) 
+      # Construct summary table of availabilities and market share
+      availprint = colSums(rows*matrix(unlist(avail), ncol = length(avail))) # number of times each alt is available
       choicematrix = matrix(0,nrow=4,ncol=length(altnames))
       choicematrix[1,] = availprint
       j=1
       while(j<= length(altnames)){
-        choicematrix[2,j]=sum(choiceVar==altcodes[j] & rows) 
+        choicematrix[2,j]=sum(choiceVar==altcodes[j] & rows) # number of times each alt is chosen
         j=j+1
       }
-      choicematrix[3,] = choicematrix[2,]/sum(rows)*100 
-      choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 
+      choicematrix[3,] = choicematrix[2,]/sum(rows)*100 # market share
+      choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 # market share controlled by availability
       rownames(choicematrix) = c("Times available","Times chosen","Percentage of choice overall","Percentage of choice when available")
       colnames(choicematrix) = altnames
       
-      apollo_control <- tryCatch( get("apollo_inputs", parent.frame(), inherits=FALSE )$apollo_control,
-                                  error=function(e){
-                                    cat("apollo_dft could not retrieve apollo_control. No diagnostics in output.\n")
-                                    return(NA)
-                                  } )
-      if(!(length(apollo_control)==1 && is.na(apollo_control))){
-        fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
-        fileName <- file.path(tempdir(),fileName)
-        fileConn <- tryCatch( file(fileName, open="at"),
-                              error=function(e){
-                                cat('apollo_dft could not write diagnostics to temporary file. No diagnostics in output.\n')
-                                return(NA)
-                              })
-        if(!anyNA(fileConn)){
-          sink(fileConn)
-          on.exit({if(sink.number()>0) sink(); close(fileConn)})
-          if(apollo_control$noDiagnostics==FALSE){
-            cat('Overview of choices for DFT model component:\n')
-            print(round(choicematrix,2))
-            cat("\n")}
-          if(sum(choicematrix[4,]==0)>0) cat("Warning: some alternatives are never chosen in your data!\n")
-          if(any(choicematrix[4,]==1)) cat("Warning: some alternatives are always chosen when available!\n")
-        }
-      }
       
       
+      ## write diagnostics to a file named "modelName_tempOutput.txt" in a temporary directory.
+      #apollo_control <- tryCatch( get("apollo_inputs", parent.frame(), inherits=FALSE )$apollo_control,
+      #                            error=function(e){
+      #                              cat("apollo_dft could not retrieve apollo_control. No diagnostics in output.\n")
+      #                              return(NA)
+      #                            } )
+      #if(!(length(apollo_control)==1 && is.na(apollo_control))){
+      #  fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
+      #  fileName <- file.path(tempdir(),fileName)
+      #  fileConn <- tryCatch( file(fileName, open="at"),
+      #                        error=function(e){
+      #                          cat('apollo_dft could not write diagnostics to temporary file. No diagnostics in output.\n')
+      #                          return(NA)
+      #                        })
+      #  if(!anyNA(fileConn)){
+      #    sink(fileConn)
+      #    on.exit({if(sink.number()>0) sink(); close(fileConn)})
+      #    if(apollo_control$noDiagnostics==FALSE){
+      #      cat('Overview of choices for DFT model component:\n')
+      #      print(round(choicematrix,2))
+      #      cat("\n")}
+      #    if(sum(choicematrix[4,]==0)>0) cat("Warning: some alternatives are never chosen in your data!\n")
+      #    if(any(choicematrix[4,]==1)) cat("Warning: some alternatives are always chosen when available!\n")
+      #  }
+      #}
+      
+      content <- list(round(choicematrix,2))
+      if(any(choicematrix[4,]==0)) content[[length(content) + 1]] <- "Warning: some alternatives are never chosen in your data!"
+      if(any(choicematrix[4,]==1)) content[[length(content) + 1]] <- "Warning: some alternatives are always chosen when available!"
+      if(avail_set==TRUE) content[[length(content)+1]] <- paste0("Warning: Availability not provided (or some elements are NA).",
+                                                                 "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
+      if(warn1) content[[length(content)+1]] <- paste0("Notice: Not all of the attributes given in \"attrValues\" are \n",
+                                                       paste0(rep(" ",8), collapse=""), "named in \"attrScalings\" or \"attrWeights\". These will\n", 
+                                                       paste0(rep(" ",8), collapse=""), "consequently be ignored.")
+      if(warn2) content[[length(content)+1]] <- paste0("Notice: Not all of the alternatives given in \"altStart\" are\n",
+                                                       paste0(rep(" ",8), collapse=""),"named in \"alternatives\". These will consequently be ignored.")
+      if(warn3) content[[length(content)+1]] <- paste0("Notice: A list was not supplied for \"altStart\".\n",
+                                                       paste0(rep(" ",8), collapse=""),"Starting values for all alternatives will be set to zero.")
+      apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
+      apollo_addLog("Overview of choices for DFT model component:", content, apolloLog)
     }
     
     return(P)
@@ -921,6 +1105,7 @@ calculateDFTProbs<-function(choiceVar,attribs, avail, altStart, attrWeights, att
   
   if(avail[choiceVar]==0) {P=0;return(P)}
   
+  ### check for values in pars that will break the function-> set to a very low probability if so:
   if(is.na(phi2))          {P=0;return(P)} 
   if(is.na(phi1))          {P=0;return(P)} 
   if(is.na(ts))            {P=0;return(P)} 
@@ -932,17 +1117,26 @@ calculateDFTProbs<-function(choiceVar,attribs, avail, altStart, attrWeights, att
   if(any(is.na(M)))        {P=0;return(P)} 
   if(any(is.infinite(M)))  {P=0;return(P)} 
   if(phi2>=0.999)          {P=0;return(P)} 
-
+  ### catch scenarios where M and altStart are basically zeros...
+  ### check eigenvalues instead?.
+  
+  
+  ### catch scenarios where phi2 is very close to zero- will break the function-> set to zero
+  #### check that this is appropriate?...
   if(ts<1) ts=1
   if (phi2<0.0000001) phi2=0
-
+  #if (phi1<0.0000001) phi1=0.0000001
+  
+  ### remove unavailable alternatives
   kp=(avail)*c(1:nAlts)
   nAvail = sum(avail)
   M=matrix(c(M[c(kp),]),nAvail,nAttrs)
   altStart = altStart[kp]
   
+  ### adjust choice as required...
   newChoice = sum((choiceVar>=kp&(kp!=0)))
   
+  ### apply DFT function
   MVN=DFTprob(M,altStart,attrWeights,newChoice, erv, ts, phi1, phi2)
   
   if(any(is.nan(MVN[[1]])))  {P=0;return(P)} 

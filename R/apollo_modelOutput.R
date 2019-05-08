@@ -38,25 +38,38 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   printOutliers    = modelOutput_settings[["printOutliers"]]
   printChange      = modelOutput_settings[["printChange"]]
   
+  if(length(model$scaling)>0 && !is.na(model$scaling)){
+    scaling_used=TRUE
+  }else{
+    scaling_used=FALSE
+  }
+  # ####################### #
+  #### MODEL DESCRIPTION ####
+  # ####################### #
+  
   apollo_control <- model$apollo_control
   nParams     <- length(model$apollo_beta)
   nFreeParams <- nParams
   if(!is.null(model$apollo_fixed)) nFreeParams <- nFreeParams - length(model$apollo_fixed)
   
   
-  apolloVersion <- tryCatch(utils::packageDescription("apollo", fields = "Version"),
-                            warning=function(w) return("alpha"),
-                            error=function(e) return("alpha"))
+  # Printing model information
+  if("package:apollo" %in% search()){
+    apolloVersion <- tryCatch(utils::packageDescription("apollo", fields = "Version"),
+                              warning=function(w) return("alpha"),
+                              error=function(e) return("alpha"))
+  } else apolloVersion <- "alpha"
+  
   cat("Model run using Apollo for R, version", apolloVersion,"\n")
-  cat("www.apollochoicemodelling.com\n\n")
+  cat("www.ApolloChoiceModelling.com\n\n")
   cat("Model name                       : ", model$apollo_control$modelName,"\n", sep="")
   cat("Model description                : ", model$apollo_control$modelDescr,"\n", sep="")
   cat("Model run at                     : ", paste(model$startTime),"\n", sep="")
   cat("Estimation method                : ", model$estimationRoutine, "\n", sep="")
   if(!apollo_control$HB) cat("Model diagnosis                  : ",model$message,"\n", sep="")
   cat("Number of individuals            : ", model$nIndivs,"\n", sep="")
-  cat("Number of observations           : ", model$nObs,"\n", sep="")
-  cat("Estimated parameters             : ", nFreeParams,"\n", sep="")
+  cat("Number of observations           : ", model$nObs,"\n\n", sep="")
+  cat("Number of cores used             : ",model$apollo_control$nCores,"\n")
   if(model$apollo_control$mixing){
     d <- model$apollo_draws
     if(d$interNDraws>0 && length(c(d$interUnifDraws, d$interNormDraws))>0){
@@ -70,116 +83,108 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       cat("         without a panel data structure.\n")
     }
     rm(d)
-  } else { if(!apollo_control$HB) cat("Model with no mixing\n") }
+  } else { if(!apollo_control$HB) cat("Model without mixing\n") }
   cat("\n")
   
   
+  # ####################### #
+  #### HB OUTPUT         ####
+  # ####################### #
   if(apollo_control$HB){
     apollo_HB <- model$apollo_HB
-    cat("Average posterior log-likelihood post burn-in",mean(colSums(log(model$cmcLLout))),"\n")
-    cat("Average posterior RLH post burn-in",mean(colMeans((model$cmcRLHout))),"\n")
+    cat("Estimation carried out using RSGHB\n")
+    cat("Burn-in iterations               : ",model$gNCREP,"\n", sep="")
+    cat("Post burn-in iterations          : ",model$gNEREP,"\n", sep="")
+    cat("LL(start)                        : ",model$LLStart,"\n", sep="")
+    if(!anyNA(model$LL0)) cat("LL(0)                            : ",model$LL0,"\n",sep="")
+    cat("Average post. LL post burn-in    : ",mean(colSums(log(model$cmcLLout))),"\n",sep="")
+    cat("Average post. RLH post burn-in   : ",round(mean(colMeans((model$cmcRLHout))),4),"\n",sep="")
+    if(!apollo_control$HB) cat("Estimated parameters             :  ", nFreeParams,"\n", sep="")
     cat("\n\n")
     
-    cat("Chain convergence report:\n")
+    cat("Chain convergence report\n\n")
     if(!is.null(model$F)){
-      cat("Fixed (non random) parameters:\n")
-      tmp <- coda::geweke.diag(model$F[,2:(ncol(model$F))], frac1=0.1, frac2=0.5)[[1]]
-      names(tmp) <- model$params.fixed
-      print( round(tmp, 4) )
+      cat("Fixed (non random) parameters\n")
+      #tmp <- coda::geweke.diag(model$F[,2:(ncol(model$F))], frac1=0.1, frac2=0.5)[[1]]
+      #names(tmp) <- model$params.fixed
+      #print( round(tmp, 4) )
+      print( round(model$F_convergence, 4) )
       cat("\n")
     }
     if(!is.null(model$A)){
-      cat("Random parameters:\n")
-      tmp <- coda::geweke.diag(model$A[,2:(ncol(model$A))], frac1=0.1, frac2=0.5)[[1]]
-      print( round(tmp, 4) )
+      cat("Random parameters\n")
+      #tmp <- coda::geweke.diag(model$A[,2:(ncol(model$A))], frac1=0.1, frac2=0.5)[[1]]
+      #print( round(tmp, 4) )
+      print( round(model$A_convergence, 4) )
       cat("\n")
     }
     if(!is.null(model$D)){
-      cat("Covariances of random parameters:\n")
-      tmp <- c()
-      for(i in 1:dim(model$D)[1]) for(j in 1:i){
-        if(i==1 & j==1) Dmatrix <- as.vector(model$D[i,j,]) else Dmatrix <- cbind(Dmatrix, as.vector(model$D[i,j,]))
-        tmp <- c(tmp, paste(colnames(model$A)[i+1],colnames(model$A)[j+1], sep="_"))
-      }
-      colnames(Dmatrix) <- tmp
-      tmp <- coda::geweke.diag(Dmatrix, frac1=0.1, frac2=0.5)[[1]]
-      print( round(tmp, 4) )
+      cat("Covariances of random parameters\n")
+      # This assumes the matrix is square
+      #tmp <- c()
+      #for(i in 1:dim(model$D)[1]) for(j in 1:i){
+      #  if(i==1 & j==1) Dmatrix <- as.matrix(model$D[i,j,]) else Dmatrix <- cbind(Dmatrix, as.vector(model$D[i,j,]))
+      #  tmp <- c(tmp, paste(colnames(model$A)[i+1],colnames(model$A)[j+1], sep="_"))
+      #}
+      #colnames(Dmatrix) <- tmp
+      #tmp <- coda::geweke.diag(Dmatrix, frac1=0.1, frac2=0.5)[[1]]
+      #print( round(tmp, 4) )
+      print( round(model$D_convergence, 4) )
     }
     cat("\n\n")
-    
-    
-    cat("Summary of parameters chains:\n")
+
+    cat("Summary of parameter chains\n\n")
     ans <- list()
     
     if(length(apollo_HB$gVarNamesFixed)>0 | length(model$apollo_fixed)>0){
-      if(length(apollo_HB$gVarNamesFixed)>0){
-        non_random=matrix(0,nrow=length(apollo_HB$gVarNamesFixed),2)
-        non_random[,1]=colMeans(model$F)[2:ncol(model$F)]
-        non_random[,2]=apply(model$F,FUN=stats::sd,2)[2:ncol(model$F)]
-        rownames(non_random)=apollo_HB$gVarNamesFixed}
-      if(length(model$apollo_fixed)>0){
-        if(length(apollo_HB$gVarNamesFixed)>0){
-          non_random=rbind(non_random,cbind(matrix(model$apollo_beta[model$apollo_fixed]),NA))
-          rownames(non_random)[(length(apollo_HB$gVarNamesFixed)+1):nrow(non_random)]=model$apollo_fixed
-        } else{
-          non_random=cbind(matrix(model$apollo_beta[model$apollo_fixed]),NA)
-          rownames(non_random)=model$apollo_fixed
-        }
-      }
       cat("Non-random coefficients","\n")
-      colnames(non_random)=c("Mean","SD")
-      originalOrder <- names(model$apollo_beta)[names(model$apollo_beta) %in% rownames(non_random)]
-      print(round(non_random[originalOrder,],4))
+      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n\n")
+      print(round(model$chain_non_random,4))
       cat("\n")
-      
-      ans[["non_random"]] <- non_random
+      ans[["non_random"]] <- model$chain_non_random
     }
     
     apollo_HB$gVarNamesFixed <- model$params.fixed
     apollo_HB$gVarNamesNormal <- model$params.vary
     if(any(!is.null(apollo_HB$gVarNamesNormal)) && length(apollo_HB$gVarNamesNormal)>0){
-      random_mean     = matrix(0,nrow=length(apollo_HB$gVarNamesNormal),2)
-      random_mean[,1] = colMeans(model$A)[2:ncol(model$A)]
-      random_mean[,2] = apply(model$A,FUN=stats::sd,2)[2:ncol(model$A)]
-      rownames(random_mean)=apollo_HB$gVarNamesNormal
       cat("Upper level model results for mean parameters for underlying Normals","\n")
-      colnames(random_mean)=c("Mean","SD")
-      print(round(random_mean,4))
+      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
+      print(round(model$chain_random_mean,4))
       cat("\n")
       
-      random_cov_mean           = apply(model$D,FUN=mean,c(1,2))
-      random_cov_sd             = apply(model$D,FUN=stats::sd,c(1,2))
-      rownames(random_cov_mean) = apollo_HB$gVarNamesNormal
-      colnames(random_cov_mean) = apollo_HB$gVarNamesNormal
       cat("Upper level model results for covariance matrix for underlying Normals (means across iterations)","\n")
-      print(round(random_cov_mean,4))
+      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
+      print(round(model$chain_random_cov_mean,4))
       cat("\n")
       
-      rownames(random_cov_sd) = apollo_HB$gVarNamesNormal
-      colnames(random_cov_sd) = apollo_HB$gVarNamesNormal
       cat("Upper level model results for covariance matrix for underlying Normals (SD across iterations)","\n")
-      print(round(random_cov_sd,4))
+      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
+      print(round(model$chain_random_cov_sd,4))
       cat("\n")
       
-      posterior=matrix(0,nrow=length(apollo_HB$gVarNamesNormal),2)
-      posterior[,1]=colMeans(model$C)[3:ncol(model$C)]
-      posterior[,2]=apply(model$C,FUN=stats::sd,2)[3:ncol(model$C)]
-      rownames(posterior)=apollo_HB$gVarNamesNormal
+      cat("Summary of distributions of random coeffients (after distributional transforms)","\n")
+      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
+      print(round(model$random_coeff_summary,4))
+      cat("\n")
+
       cat("Results for posterior means for random coefficients","\n")
-      colnames(posterior)=c("Mean","SD")
-      print(round(posterior,4))
+      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
+      print(round(model$posterior_mean,4))
       cat("\n")
-      
-      ans[["random_mean"]]   <- random_mean
-      ans[["random_cov_mean"]] <- random_cov_mean
-      ans[["random_cov_sd"]] <- random_cov_sd
-      ans[["posterior"]]     <- posterior
-    }
-    
+
+      ans[["random_mean"]]   <- model$chain_random_mean
+      ans[["random_cov_mean"]] <- model$chain_random_cov_mean
+      ans[["random_cov_sd"]] <- model$chain_random_cov_sd
+      ans[["random_coeff_summary"]]     <- model$random_coeff_summary
+      ans[["posterior"]]     <- model$posterior_mean
+    }    
     return(invisible(ans))
   }
   
   
+  # ####################### #
+  #### CLASSICAL OUTPUT  ####
+  # ####################### #
   output=cbind(round(model$estimate,4),
                round(model$se,4),
                round(model$estimate/model$se,2),
@@ -222,6 +227,8 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   
   cat("AIC                              : ",round(-2*model$maximum + 2*nFreeParams,2),"\n")
   cat("BIC                              : ",round(-2*model$maximum + nFreeParams*log(model$nObs),2),"\n")
+  cat("Estimated parameters             :  ", nFreeParams,"\n", sep="")
+  #cat("Norm of the gradient at optimum  : ",round( sqrt(sum(model$gradient^2)),2), "\n\n")
   tmpH <- floor(model$timeTaken/60^2)
   tmpM <- floor((model$timeTaken-tmpH*60^2)/60)
   tmpS <- round(model$timeTaken-tmpH*60^2-tmpM*60,2)
@@ -230,7 +237,6 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
                      tmpS,sep=':')
   cat("Time taken (hh:mm:ss)            : ",timeTaken,"\n")
   cat("Iterations                       : ",model$nIter,"\n")
-  cat("Number of cores used             : ",model$apollo_control$nCores,"\n")
   cat("\n")
   
   if(!printClassical & anyNA(model$se[!(names(model$estimate) %in% model$apollo_fixed)]) ){
@@ -238,22 +244,33 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     cat("\n         This could point to an identification or estimation problem.")
   }
   
+  if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
   cat("Estimates:\n")
   if(nrow(output)>options("max.print")) options(max.print=nrow(output)+100)
   print(output)
   cat('\n')
-    cat("\n")
-    
-    fileName <- paste(model$apollo_control$modelName, "_tempOutput.txt", sep="")
-    fileName <- file.path(tempdir(),fileName)
-    if(file.exists(fileName)){
-      fileConn <- tryCatch(file(fileName, open="rt"), error=function(e) NA)
-      if(!is.na(fileConn)){
-        txt <- readLines(fileConn)
-        for(l in txt) cat(l ,"\n")
-        close(fileConn)
-      } else cat('Could not read additional output from temp file.\n')
-    }
+  #if(length(model$apollo_fixed)>0) cat("The following parameters were fixed (they have no std.err.):\n",
+  #                                          paste(model$apollo_fixed, collapse=", ", sep=""),
+  #                                          "\n", sep="")
+  
+  #if(printDiagnostics==TRUE){
+  # The things printed in the temporary outfile are always printed out.
+  # noDiagnostics controls what is printed in that file.
+    ##cat("\n")
+    ##
+    ##fileName <- paste(model$apollo_control$modelName, "_tempOutput.txt", sep="")
+    ##fileName <- file.path(tempdir(),fileName)
+    ##if(file.exists(fileName)){
+    ##  fileConn <- tryCatch(file(fileName, open="rt"), error=function(e) NA)
+    ##  if(!is.na(fileConn)){
+    ##    txt <- readLines(fileConn)
+    ##    for(l in txt) cat(l ,"\n")
+    ##    close(fileConn)
+    ##  } else cat('Could not read additional output from temp file.\n')
+    ##}
+  #}
+  cat(apollo_printLog(model$apolloLog))
+  cat("\n")
   
   if(printCovar){
     if(printClassical==TRUE){

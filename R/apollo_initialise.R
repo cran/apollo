@@ -12,5 +12,5 @@ doDetach <- !grepl("^(.GlobalEnv|package:|tools:|Autoloads|CheckExEnv|TempEnv)",
 doDetach <- (search())[which(doDetach)]
 if(length(doDetach)>0) for(i in 1:length(doDetach)) detach(pos=(which(doDetach[i]==search()))[1])
 if(sink.number()>0) sink()
-cat("\nApollo ignition sequence completed\n")
+cat("Apollo ignition sequence completed\n")
 }

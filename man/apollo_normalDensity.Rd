@@ -66,6 +66,6 @@ normalDensity_settings <- list(
    sigma = 0.5
 )
 
-### Compute choice probabilities using normal density
+### Compute choice probabilities using MNL model
 apollo_normalDensity(normalDensity_settings, functionality="estimate")
 }

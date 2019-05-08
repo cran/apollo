@@ -53,6 +53,10 @@ apollo_ol  <- function(ol_settings, functionality){
   coding=ol_settings[["coding"]]
   rows=ol_settings[["rows"]]
 
+  # ############################## #
+  #### functionality="validate" ####
+  # ############################## #
+
   if(functionality=="validate"){
     apollo_control <- tryCatch(get("apollo_control", parent.frame(), inherits=FALSE),
                             error = function(e) list(noValidation=FALSE, noDiagnostics=FALSE))
@@ -60,21 +64,34 @@ apollo_ol  <- function(ol_settings, functionality){
     if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(outcomeOrdered))
 
     if(!apollo_control$noValidation){
-      if(!is.vector(tau)) stop("Thresholds for ordered logit needs to be a vector! (no random components allowed).")
-      if( !is.null(coding) && (length(tau)+1)!=length(coding) ) stop("Threshold vector length +1 does not match number of elements in argument 'coding'.")
-      if(is.null(coding)) coding <- 1:(length(tau)+1)
-      if( (length(tau)+1)!=length(unique(outcomeOrdered[rows])) ) stop("Threshold vector length +1 does not match number of unique elements in dependent 'outcomeOrdered'.")
+      if(!is.vector(tau)) stop("Thresholds for ordered logit needs to be a vector (no random components allowed)!")
+      values_present=unique(outcomeOrdered[rows])
+      if(is.null(coding)){
+        coding <- 1:(length(tau)+1)  
+        cat("\nNo coding provided for ordered logit, so assuming outcomeOrdered goes from 1 to",max(coding))
+      }
+      if(!(all(values_present %in% coding ))) stop("Some levels specified in outcomeOrdered do not exist in coding!")
+      if(!(all(coding %in% values_present ))) stop("Some levels specified in coding do not exist in outcomeOrdered!")
+      if( (length(tau)+1)!=length(coding) ) stop("Threshold vector length +1 does not match number of elements in argument 'coding'.")  
+      #cat("\nAll checks passed for Ordered Logit (OL) model component.")
     }
 
     if(!apollo_control$noDiagnostics){
       choicematrix <- t(as.matrix(table(outcomeOrdered[rows])))
       choicematrix <- rbind(choicematrix, choicematrix[1,]/sum(rows)*100)
       rownames(choicematrix) <- c("Times chosen", "Percentage chosen overall")
-      print(round(choicematrix,0))
+      #cat('Overview of choices for OL model component:\n')
+      #print(round(choicematrix,0))
+      apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
+      apollo_addLog("Overview of choices for OL model component:", round(choicematrix,0), apolloLog)
     }
 
     return(TRUE)
   }
+
+  # ########################################################## #
+  #### functionality="zero_LL"                              ####
+  # ########################################################## #
 
   if(functionality=="zero_LL"){
     if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(outcomeOrdered))
@@ -83,6 +100,10 @@ apollo_ol  <- function(ol_settings, functionality){
     P[!rows] <- 1
     return(P)
   }
+
+  # ########################################################## #
+  #### functionality="estimate | conditionals | raw"        ####
+  # ########################################################## #
 
   if(functionality %in% c("estimate","conditionals")){
 
@@ -105,6 +126,9 @@ apollo_ol  <- function(ol_settings, functionality){
     return(p)
   }
 
+  # ########################################################## #
+  #### functionality="prediction"                           ####
+  # ########################################################## #
   if(functionality %in% c("prediction", "raw")){
 
     if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(outcomeOrdered))
@@ -121,12 +145,14 @@ apollo_ol  <- function(ol_settings, functionality){
     if(is.null(coding)) coding <- 1:(length(tau)-1)
     names(p) <- coding
 	
+	# Add chosen alternative (unless outcomeOrdered is NA)
     if(!(length(outcomeOrdered)==1 && is.na(outcomeOrdered))){
       map <- stats::setNames(1:length(coding), coding)
       outcomeOrdered2  <- map[as.character(outcomeOrdered)]
       p[["chosen"]] <- 1/(1 + exp(V-tau[outcomeOrdered2+1])) - 1/(1 + exp(V-tau[outcomeOrdered2]))
     }
 	
+	# change likelihood of excluded columns for NA (prediction) or 1 (raw)
     p <- lapply(p, function(x) {
       tmp <- ifelse(functionality=="prediction",NA,1)
       if(is.vector(x)) x[!rows]  <- tmp
@@ -138,6 +164,9 @@ apollo_ol  <- function(ol_settings, functionality){
     return(p)
   }
 
+  # ############################# #
+  #### functionality="output"  ####
+  # ############################# #
   if(functionality=="output"){
 
     p <- apollo_ol(ol_settings, functionality="estimate")
@@ -147,28 +176,32 @@ apollo_ol  <- function(ol_settings, functionality){
     choicematrix <- rbind(choicematrix, choicematrix[1,]/sum(rows)*100)
     rownames(choicematrix) <- c("Times chosen", "Percentage chosen overall")
 
-    apollo_control <- tryCatch( get("apollo_inputs", parent.frame(), inherits=FALSE )$apollo_control,
-                                error=function(e){
-                                  cat("apollo_ol could not retrieve apollo_control. No diagnostics in output.\n")
-                                  return(NA)
-                                } )
-    if(!(length(apollo_control)==1 && is.na(apollo_control))){
-      fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
-      fileName <- file.path(tempdir(),fileName)
-      fileConn <- tryCatch( file(fileName, open="at"),
-                            error=function(e){
-                              cat('apollo_ol could not write diagnostics to temporary file. No diagnostics in output.\n')
-                              return(NA)
-                            })
-      if(!anyNA(fileConn)){
-        sink(fileConn)
-        on.exit({if(sink.number()>0) sink(); close(fileConn)})
-        if(apollo_control$noDiagnostics==FALSE){
-          cat('Overview of choices for OL model component:\n')
-          print(round(choicematrix,0))
-          cat('\n')}
-      }
-    }
+    ## write diagnostics to a file named "modelName_tempOutput.txt" in a temporary directory.
+    #apollo_control <- tryCatch( get("apollo_inputs", parent.frame(), inherits=FALSE )$apollo_control,
+    #                            error=function(e){
+    #                              cat("apollo_ol could not retrieve apollo_control. No diagnostics in output.\n")
+    #                              return(NA)
+    #                            } )
+    #if(!(length(apollo_control)==1 && is.na(apollo_control))){
+    #  fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
+    #  fileName <- file.path(tempdir(),fileName)
+    #  fileConn <- tryCatch( file(fileName, open="at"),
+    #                        error=function(e){
+    #                          cat('apollo_ol could not write diagnostics to temporary file. No diagnostics in output.\n')
+    #                          return(NA)
+    #                        })
+    #  if(!anyNA(fileConn)){
+    #    sink(fileConn)
+    #    on.exit({if(sink.number()>0) sink(); close(fileConn)})
+    #    if(apollo_control$noDiagnostics==FALSE){
+    #      cat('Overview of choices for OL model component:\n')
+    #      print(round(choicematrix,0))
+    #      cat('\n')}
+    #  }
+    #}
+    
+    apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
+    apollo_addLog("Overview of choices for OL model component:", round(choicematrix,0), apolloLog)
 
     return(p)
   }

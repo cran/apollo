@@ -47,13 +47,15 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
                                                       silent=TRUE),
                                outOfSample_settings=list(nRep=10,
                                                          validationSize=0.1)){
+  ### Set missing settings to default values
   default <- list(estimationRoutine="bfgs", maxIterations=200, writeIter=TRUE, hessianRoutine="numDeriv", printLevel=3L, silent=FALSE)
-  tmp <- names(default)[!(names(default) %in% names(estimate_settings))] 
+  tmp <- names(default)[!(names(default) %in% names(estimate_settings))] # options missing in estimate_settings
   for(i in tmp) estimate_settings[[i]] <- default[[i]]
   default <- list(nRep=10, validationSize=0.1)
-  tmp <- names(default)[!(names(default) %in% names(outOfSample_settings))] 
+  tmp <- names(default)[!(names(default) %in% names(outOfSample_settings))] # options missing in estimate_settings
   for(i in tmp) outOfSample_settings[[i]] <- default[[i]]
 
+  # Extract values from apollo_inputs
   database         <- apollo_inputs$database
   apollo_inputs$apollo_control$noDiagnostics = TRUE
   apollo_control   <- apollo_inputs$apollo_control
@@ -61,12 +63,14 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   apollo_randCoeff <- apollo_inputs$apollo_randCoeff
   workInLogs       <- apollo_inputs$apollo_control$workInLogs
   
+  # Extract values from estimate_settings and estimate_settings
   estimationRoutine <- estimate_settings$estimationRoutine
   maxIterations     <- estimate_settings$maxIterations
   nRep              <- outOfSample_settings$nRep
   validationSize    <- outOfSample_settings$validationSize
 
 
+  # Validate arguments
   estimationRoutine <- tolower(estimationRoutine)
   if( !(estimationRoutine %in% c("bfgs","bhhh", "nr")) ) stop("Invalid estimationRoutine. Use 'bfgs', 'bhhh' or 'nr'.")
   if( (length(apollo_fixed) > 0) & any(!(apollo_fixed %in% names(apollo_beta))) ) stop("Some parameters included in 'apollo_fixed' are not included in 'apollo_beta'")
@@ -79,11 +83,14 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
     if(!is.function(apollo_randCoeff)) stop("Argument 'apollo_randCoeff' must be provided when estimating mixture models.")
   }
 
+  # Separate theta into variable and fixed part
   theta_var_val <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
   theta_fix_val <- apollo_beta[apollo_fixed]
 
+  # Start clock
   starttime <- Sys.time()
 
+  # Prepare loop
   indivs  <- sort(unique(database[,apollo_control$indivID]))
   nIndivs <- length(indivs)
   if(validationSize < 1) validationSize <- round(outOfSample_settings$validationSize*nIndivs)
@@ -93,6 +100,7 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   cat("\n Total number of individuals in sample: ", nIndivs, sep="")
   cat("\n")
 
+  # Get number of LL components in model
   cat("\n Preparing loop.")
   cat("\n")
   llComponents       <- apollo_probabilities(apollo_beta, apollo_inputs, functionality="output")
@@ -102,22 +110,28 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   nObsStack <- rep(0,nRep)
   rm(llComponents)
 
+  # BOOTSTRAP LOOP
+  cat("\n Result of apollo_outOfSample will be written to:\n  ",paste(apollo_control$modelName, "outOfSample.csv", sep="_"), "\n")
   for(i in 1:nRep){
 
+    # Filter database and create draws
     for(j in 1:i) obsForecast <- database[,apollo_control$indivID] %in% sample(indivs, size=validationSize)
     database2   <- database[!obsForecast,]
     apollo_inputs2 <- apollo_validateInputs(database=database2, silent=TRUE)
 	apollo_inputs2$apollo_control$noDiagnostics <- TRUE
     if(apollo_control$mixing) draws <- apollo_makeDraws(apollo_inputs2, silent=TRUE)
 
+    # Initialize cluster if user asked for it
     if(apollo_control$nCores==1) cl <- NA else {
       cl <- apollo_makeCluster(apollo_probabilities, apollo_inputs2, silent=TRUE)
       apollo_control$nCores <- length(cl)
     }
 
+    # Create logLike function
     apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, apollo_probabilities,
                                          apollo_inputs2, estimate_settings, cl)
 
+    # Estimate
     cat("\nEstimation cycle ", i, sep="")
     cat("\nUsing ",nrow(database2)," observations\n", sep="")
     nObsStack[i]=nrow(database2)
@@ -125,6 +139,7 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
                             method=estimationRoutine, print.level=2, finalHessian=FALSE,
                             iterlim=maxIterations, countIter=FALSE, writeIter=FALSE, sumLL=FALSE)
 
+    # Check convergence
     succesfulEstimation <- FALSE
     if(exists("model")){
       if(estimationRoutine=="bfgs" & model$code==0) succesfulEstimation <- TRUE
@@ -132,32 +147,40 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
       if(estimationRoutine=="nr" && model$code<=2) succesfulEstimation <- TRUE
     }
 
+    # Write results
     if(succesfulEstimation){
 
+      # Closes clusters if using multicore
       if(exists('cl') & apollo_control$nCores>1) parallel::stopCluster(cl)
       
+      # Store estimated parameters
       temp           = c(model$estimate, apollo_beta[apollo_fixed])
       temp = temp[names(apollo_beta)]
       paramStack[i,] <- temp
 
+      # Store in-sample LL components
       llin <- apollo_probabilities(c(model$estimate, theta_fix_val), apollo_inputs2, functionality="output")
       for(j in 1:ncol(llInSampleStack)) llInSampleStack[i,j] <- ifelse(workInLogs, sum(llin[[j]]), sum(log(llin[[j]])))
 
+      # Store out-of-sample LL components
       database2 <- database[obsForecast,]
       apollo_inputs2 <- apollo_validateInputs(database=database2, silent=TRUE)
 	  apollo_inputs2$apollo_control$noDiagnostics <- TRUE
       llout <- apollo_probabilities(c(model$estimate, theta_fix_val), apollo_inputs2, functionality="output")
       for(j in 1:ncol(llOutOfSampleStack)) llOutOfSampleStack[i,j] <- ifelse(workInLogs, sum(llout[[j]]), sum(log(llout[[j]])))
 
+      # Save results from bootstrap iteration
       utils::write.csv(cbind(paramStack, llInSampleStack, llOutOfSampleStack,inSampleObs=nObsStack,outOfSampleObs=nrow(database)-nObsStack), paste(apollo_control$modelName, "outOfSample.csv", sep="_"), row.names=FALSE)
-      cat("\nResult of apollo_outOfSample written to:",paste(apollo_control$modelName, "outOfSample.csv", sep="_"))
+      cat("Estimation results written to file.\n")
     } else {
+      # Report error but continue with next iteration
       cat("\nERROR: Estimation failed in cycle ", i, ".", sep="")
       if(estimationRoutine=="bfgs") print(as.matrix(round(get("lastFuncParam", envir=globalenv()),4)))
     }
 
   }
 
+  # Stop clock
   endtime   <- Sys.time()
   timeTaken <- difftime(endtime, starttime, units='auto')
   cat("\nProcessing time: ", format(timeTaken), "\n",sep="")

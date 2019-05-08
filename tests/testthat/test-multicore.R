@@ -39,7 +39,7 @@ test_that("multicore estimation works", {
     explanators  = database[,c("female","business","income")]
   )
 
-  apollo_choiceAnalysis(choiceAnalysis_settings, apollo_inputs)
+  apollo_choiceAnalysis(choiceAnalysis_settings, apollo_control, database)
 
   apollo_probabilities=function(apollo_beta, apollo_inputs, functionality="estimate"){
     apollo_attach(apollo_beta, apollo_inputs)

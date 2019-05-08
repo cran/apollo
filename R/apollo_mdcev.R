@@ -50,17 +50,18 @@ apollo_mdcev <- function(mdcev_settings,functionality){
   if(is.null(mdcev_settings[["minConsumption"]])) mdcev_settings[["minConsumption"]]=NA
   if(is.null(mdcev_settings[["rows"]])) mdcev_settings[["rows"]]="all"
 
-  alternatives      = mdcev_settings[["alternatives"]]
-  avail             = mdcev_settings[["avail"]]
+  alternatives     = mdcev_settings[["alternatives"]]
+  avail            = mdcev_settings[["avail"]]
   continuousChoice = mdcev_settings[["continuousChoice"]]
-  V                 = mdcev_settings[["V"]]
-  alpha             = mdcev_settings[["alpha"]]
-  gamma             = mdcev_settings[["gamma"]]
-  sigma             = mdcev_settings[["sigma"]]
-  cost              = mdcev_settings[["cost"]]
-  budget            = mdcev_settings[["budget"]]
+  V                = mdcev_settings[["V"]]
+  alpha            = mdcev_settings[["alpha"]]
+  gamma            = mdcev_settings[["gamma"]]
+  sigma            = mdcev_settings[["sigma"]]
+  cost             = mdcev_settings[["cost"]]
+  budget           = mdcev_settings[["budget"]]
   minConsumption   = mdcev_settings[["minConsumption"]]
-  rows              = mdcev_settings[["rows"]]
+  rows             = mdcev_settings[["rows"]]
+  apollo_inputs <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE ), error=function(e) return(NA))
 
   if("outside" %in% names(V)){
     ans <- apollo_mdcevOutside(V, alternatives, alpha, gamma, sigma, cost, avail, continuousChoice, budget, functionality, minConsumption, rows)

@@ -4,6 +4,7 @@
 #'                           FALSE by default.
 #' @return Nothing.
 apollo_writeF12 <- function(model, truncateCoeffNames=TRUE){
+  ### Remove fixed parameters from the estimated ones
   if(length(model$apollo_fixed)>0){
     model$estimate <- model$estimate[!(names(model$estimate) %in% model$apollo_fixed)]
   } 
@@ -53,7 +54,7 @@ apollo_writeF12 <- function(model, truncateCoeffNames=TRUE){
   
   lineK4 <- '  -1\n'
   
-  LLC <- 0 
+  LLC <- 0 # THIS SHOULD BE UPDATED
   LL0 <- model$LL0; if(is.na(LL0)) LL0 <- model$LLStart
   lineK5 <- paste(format( model$nObs, width=8 ),
                   sprintf("%20.12E", LLC),

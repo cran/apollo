@@ -23,11 +23,26 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
   nIndiv <- length(unique(apollo_inputs$database[, apollo_inputs$apollo_control$indivID]))
   HB <- apollo_inputs$apollo_control$HB
   
+  if(functionality %in% c("validate", "output") && is.list(P) && length(P)>1){
+    ### Add name of components to titles in apolloLog
+    apolloLog <- apollo_inputs$apolloLog
+    if(is.environment(apolloLog)){
+      newTitles <- names(P)
+      for(i in 1:min(length(apolloLog$title), length(newTitles))){
+        apolloLog$title[i] <- paste(apolloLog$title[i], newTitles[i])
+      }
+    }
+  }
+  
   if(functionality %in% c("prediction", "validate")) return(P)
   
   if(is.null(P[["model"]])) stop('Element called model is missing in list P!')
   
   if(HB) return(P[["model"]])
+  
+  # ############################### #
+  #### ignored for HB estimation ####
+  # ############################### #
   
   if(functionality=="estimate"){
     
@@ -42,8 +57,9 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
     P_out=P[["model"]]
   } 
   
-  if(functionality=="output") {
+  if(functionality=="output"){
     P_out=P
+    # Give name to unnamed components
     origNames <- names(P_out)
     newNames  <- paste0("component_", 1:length(P_out))
     if(!is.null(origNames)) newNames <- ifelse(origNames!="", origNames, newNames)

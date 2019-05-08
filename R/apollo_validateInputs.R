@@ -21,6 +21,7 @@
 #'                         \item noValidation: Boolean. TRUE if user does not wish model input to be validated before estimation - FALSE by default.
 #'                         \item noDiagnostics: Boolean. TRUE if user does not wish model diagnostics to be printed - FALSE by default.
 #'                         \item panelData: Boolean. TRUE if using panelData data (created automatically by \code{apollo_validateControl}).
+#'                         \item weights: Character. Name of column in database containing weights for estimation.
 #'                       }
 #' @param apollo_HB List. Contains options for bayesian estimation. See \code{?RSGHB::doHB} for details.
 #'                   Parameters \code{modelname}, \code{gVarNamesFixed}, \code{gVarNamesNormal},
@@ -68,16 +69,22 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
                                  apollo_randCoeff=NA, apollo_lcPars=NA,
                                  silent=FALSE){
   
+  ### Try to recover mandatory variables from global environment if not provided
   tmp <- c("database", paste0("apollo_", c("beta", "fixed", "control"))) 
   for(i in tmp){
     x <- get(i, envir=environment(), inherits=FALSE)
     if(length(x)==1 && is.na(x)) x <- tryCatch( get(i, envir=globalenv()), error=function(e) NA )
     if(length(x)==1 && is.na(x)) stop("No variable called ", i, " found in user workspace (i.e. global environment).") else assign(i, x, envir=environment())
   }; rm(tmp, x, i)
+  
 
+  
+
+  ### Validate apollo_control, database
   apollo_control <- apollo_validateControl(database, apollo_control, silent=silent)
   database       <- apollo_validateData(database, apollo_control, silent=silent)
 
+  ### Try to recover apollo_HB if appropiate, and sets the default value for the missing parts
   if(!apollo_control$HB) apollo_HB <- NA else{
     if(length(apollo_HB)==1 && is.na(apollo_HB)) apollo_HB <- tryCatch( get("apollo_HB", envir=globalenv()), error=function(e) NA )
     if(length(apollo_HB)==1 && is.na(apollo_HB)) stop("No variable called 'apollo_HB' found in user workspace (i.e. global environment).")
@@ -85,6 +92,7 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
   }
   if(apollo_control$HB && anyNA(apollo_HB)) stop("Argument 'apollo_HB' must be provided when using Bayesian estimation.")
 
+  ### Try to recover apollo_draws and apollo_randCoeff if appropiate, and sets the default value for the missing parts
   if(!apollo_control$mixing){
     apollo_draws <- NA
     draws <- NA
@@ -92,18 +100,29 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
   } else{
     if(length(apollo_draws)==1 && is.na(apollo_draws)) apollo_draws <- tryCatch( get("apollo_draws", envir=globalenv()), error=function(e) NA )
     if(length(apollo_draws)==1 && is.na(apollo_draws)) stop("No variable called 'apollo_draws' found in user workspace (i.e. global environment).")
+    default <- list(interDrawsType="halton", interNDraws=0, interUnifDraws=c(), interNormDraws=c(), 
+                    intraDrawsType='halton', intraNDraws=0, intraUnifDraws=c(), intraNormDraws=c())
+    for(i in names(default)) if(!(i %in% names(apollo_draws))) apollo_draws[[i]] <- default[[i]]
+    
     if(!is.function(apollo_randCoeff)) apollo_randCoeff <- tryCatch( get("apollo_randCoeff", envir=globalenv()), error=function(e) NA )
     if(!is.function(apollo_randCoeff)) stop("No variable called 'apollo_randCoeff' found in user workspace (i.e. global environment).")
   }
 
+  ### Try to recover apollo_lcPars if not provided
   if(length(apollo_lcPars)==1 && is.na(apollo_lcPars)) apollo_lcPars <- tryCatch( get("apollo_lcPars", envir=globalenv()), error=function(e) NA )
-
+  
+  ### Create apolloLog
+  apolloLog <- new.env(parent=emptyenv())
+  
+  ### Pack everything into a single list
   apollo_inputs <- list(database=database, apollo_control=apollo_control, 
                        apollo_HB=apollo_HB, apollo_draws=apollo_draws, apollo_randCoeff=apollo_randCoeff,
-                       apollo_lcPars=apollo_lcPars, draws=NA)
+                       apollo_lcPars=apollo_lcPars, draws=NA, apolloLog=apolloLog)
 
+  ### Make draws
   if(apollo_control$mixing) apollo_inputs$draws <- apollo_makeDraws(apollo_inputs, silent=silent)
 
+  ### Check that if mixing, everything necessary was provided
   if(apollo_control$mixing){
     if(anyNA(apollo_inputs$draws)) stop("Argument 'draws' must be provided when estimating mixture models. Use apollo_makeDraws.")
     if(!is.function(apollo_inputs$apollo_randCoeff)) stop("Argument 'apollo_randCoeff' must be provided when estimating mixture models.")

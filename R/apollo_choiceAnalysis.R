@@ -10,24 +10,44 @@
 #'                                  \item choiceVar: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
 #'                                  \item explanators: data.frame. Variables determining subsamples of the database. Values in each column must describe a group or groups of individuals (e.g. socio-demographics). Most usually a subset of columns from database.
 #'                                }
-#' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
+#' @param apollo_control List. Options controlling the running of the code. See \link{apollo_validateInputs}.
+#' @param database data.frame. Data used by model.
 #' @return nothing, but prints the output to screen and writes a csv file to the working directory.
 #' @export
-apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_inputs){
+apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database){
   tmp <- c("alternatives", "avail", "choiceVar", "explanators")
   for(i in tmp) if(is.null(choiceAnalysis_settings[[i]])) stop("The choiceAnalysis_settings list needs to include an object called \"",i,"\"!")
 
-  modelName   = apollo_inputs$apollo_control$modelName
+  ### added these to run checks as this function can now run before validateInputs
+  apollo_control <- apollo_validateControl(database, apollo_control, silent=TRUE)
+  database       <- apollo_validateData(database, apollo_control, silent=TRUE)
+  
+  ### changed next line to not use apollo_inputs
+  modelName   = apollo_control$modelName
   alternatives= choiceAnalysis_settings[["alternatives"]]
   avail       = choiceAnalysis_settings[["avail"]]
   choiceVar   = choiceAnalysis_settings[["choiceVar"]]
   explanators = choiceAnalysis_settings[["explanators"]]
+  if(is.vector(explanators)) explanators <- data.frame(explanators)
 
-  database=apollo_inputs[["database"]]
+  ### dropped this
+  #database=apollo_inputs[["database"]]
 
   output=matrix(0,nrow=length(alternatives),ncol=ncol(explanators)*3)
   rownames(output)=names(alternatives)
-  colnames(output)=paste(c("Mean unchosen","Mean chosen","t-test p-val"),rep(colnames(explanators),each=3))
+  
+  
+  outputnames=c(rep(0,ncol(output)))
+  s=1
+  while(s<=ncol(explanators)){
+    outputnames[(s-1)*3+1]=paste("Mean for",colnames(explanators)[s],"if chosen")
+    outputnames[(s-1)*3+2]=paste("Mean for",colnames(explanators)[s],"if not chosen")
+    outputnames[(s-1)*3+3]=paste("p-val for difference")
+    s=s+1
+  }
+  
+  colnames(output)=outputnames
+  
   j=1
   s=1
 
@@ -44,8 +64,8 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_inputs){
     s=1
     while(s<=ncol(explanators)){
       x=tapply(explanators_sub[,s],chosen, mean,na.rm=TRUE)
-      output[j,((s-1)*3+1)]=x[1]
-      output[j,((s-1)*3+2)]=x[2]
+      output[j,((s-1)*3+1)]=x[2]
+      output[j,((s-1)*3+2)]=x[1]
       if(x[1]==x[2]){
         output[j,((s-1)*3+3)]=NA
       }else{

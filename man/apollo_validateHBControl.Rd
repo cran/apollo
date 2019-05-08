@@ -8,7 +8,7 @@ apollo_validateHBControl(apollo_HB, apollo_beta, apollo_fixed,
   apollo_control)
 }
 \arguments{
-\item{apollo_HB}{List. Contains options for bayesian estimation. See \code{?RSGHB::doHB} for details.
+\item{apollo_HB}{List. Contains options for bayesian estimation. See \link[RSGHB]{doHB} for details.
 Parameters \code{modelname}, \code{gVarNamesFixed}, \code{gVarNamesNormal},
 \code{gDIST}, \code{svN} and \code{FC} are automatically set based on the
 other arguments of this function.

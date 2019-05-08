@@ -39,6 +39,7 @@ apollo_combineResults = function(combineResults_settings=NULL){
    estimateDigits=combineResults_settings[["estimateDigits"]]
    tDigits=combineResults_settings[["tDigits"]]
    pDigits=combineResults_settings[["pDigits"]]
+### END NEW LINES
 
   outputfile_check=paste(modelNames,"_output.txt",sep="")
   estimatefile_check=paste(modelNames,"_estimates.csv",sep="")

@@ -53,7 +53,7 @@
 #'    sigma = 0.5
 #' )
 #'
-#' ### Compute choice probabilities using normal density
+#' ### Compute choice probabilities using MNL model
 #' apollo_normalDensity(normalDensity_settings, functionality="estimate")
 #' @export
 apollo_normalDensity <- function(normalDensity_settings, functionality){
@@ -68,6 +68,10 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
   mu=normalDensity_settings[["mu"]]
   sigma=normalDensity_settings[["sigma"]]
   rows=normalDensity_settings[["rows"]]
+
+  # ############################## #
+  #### functionality="validate" ####
+  # ############################## #
 
   if(functionality=="validate"){
 
@@ -84,23 +88,36 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
       if(xlength!=length(outcomeNormal)) stop("Incompatible dimensions for dependent and explanatory variables for Normal density model!")
       if(length(mu)!=1) stop("Need to use a scalar for mean parameter for Normal density model!")
       if(length(sigma)!=1) stop("Need to use a scalar for standard deviation parameter for Normal density model!")
-      cat("\nAll checks passed for Normal density model component\n")
+      #cat("\nAll checks passed for Normal density model component.")
     }
     if(apollo_control$noDiagnostics==FALSE){
-      cat("\nSummary statistics for dependent variable for Normal density model component\n")
-      print(summary(outcomeNormal[rows]))
+      #cat("\nSummary statistics for dependent variable for Normal density model component\n")
+      #print(summary(outcomeNormal[rows]))
+      apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
+      apollo_addLog("Summary statistics for dependent variable for Normal density model component:", summary(outcomeNormal[rows]), apolloLog)
     }
     return(invisible(TRUE))
   }
+
+  # ############################## #
+  #### functionality="zero_LL" ####
+  # ############################## #
 
   if(functionality=="zero_LL"){
     return(NA)
   }
 
+  # ################################ #
+  #### functionality="prediction" ####
+  # ################################ #
+
   if(functionality=="prediction"){
     return(NA)
   }
 
+  # ############################################### #
+  #### functionality="estimate/conditionals/raw" ####
+  # ############################################### #
 
   if(functionality %in% c("estimate", "conditionals", "raw")){
     if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(outcomeNormal))
@@ -110,32 +127,39 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
     return(ans)
   }
 
+  # ################################ #
+  #### functionality="output"     ####
+  # ################################ #
 
   if(functionality=="output"){
     if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(outcomeNormal))
 
-    apollo_control <- tryCatch( get("apollo_inputs", parent.frame(), inherits=FALSE )$apollo_control,
-                                error=function(e){
-                                  cat("apollo_normalDensity could not retrieve apollo_control. No diagnostics in output.\n")
-                                  return(NA)
-                                } )
-    if(!(length(apollo_control)==1 && is.na(apollo_control))){
-      fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
-      fileName <- file.path(tempdir(),fileName)
-      fileConn <- tryCatch( file(fileName, open="at"),
-                            error=function(e){
-                              cat('apollo_normalDensity could not write diagnostics to temporary file. No diagnostics in output.\n')
-                              return(NA)
-                            })
-      if(!anyNA(fileConn)){
-        sink(fileConn)
-        on.exit({if(sink.number()>0) sink(); close(fileConn)})
-        if(apollo_control$noDiagnostics==FALSE){
-          cat("\nSummary statistics for dependent variable for Normal density model component\n")
-          print(summary(outcomeNormal[rows]))}
-      }
-    }
-
+    ## write diagnostics to a file named "modelName_tempOutput.txt" in a temporary directory.
+    #apollo_control <- tryCatch( get("apollo_inputs", parent.frame(), inherits=FALSE )$apollo_control,
+    #                            error=function(e){
+    #                              cat("apollo_normalDensity could not retrieve apollo_control. No diagnostics in output.\n")
+    #                              return(NA)
+    #                            } )
+    #if(!(length(apollo_control)==1 && is.na(apollo_control))){
+    #  fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
+    #  fileName <- file.path(tempdir(),fileName)
+    #  fileConn <- tryCatch( file(fileName, open="at"),
+    #                        error=function(e){
+    #                          cat('apollo_normalDensity could not write diagnostics to temporary file. No diagnostics in output.\n')
+    #                          return(NA)
+    #                        })
+    #  if(!anyNA(fileConn)){
+    #    sink(fileConn)
+    #    on.exit({if(sink.number()>0) sink(); close(fileConn)})
+    #    if(apollo_control$noDiagnostics==FALSE){
+    #      cat("\nSummary statistics for dependent variable for Normal density model component\n")
+    #      print(summary(outcomeNormal[rows]))}
+    #  }
+    #}
+    
+    apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
+    apollo_addLog("Summary statistics for dependent variable for Normal density model component:", summary(outcomeNormal[rows]), apolloLog)
+    
     ans <- apollo_normalDensity(normalDensity_settings, functionality="estimate")
 
     return(ans)

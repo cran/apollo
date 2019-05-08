@@ -1,35 +1,41 @@
 Package: apollo
 Type: Package
 Title: Tools for Choice Model Estimation and Application
-Version: 0.0.6
+Version: 0.0.7
 Authors@R: c(
     person("Stephane", "Hess", email="S.Hess@leeds.ac.uk", role="aut"),
     person("David", "Palma", email="D.Palma@leeds.ac.uk", role=c("aut","cre")) )
-Description: The Choice Modelling Centre at the 
-    University of Leeds has developed flexible 
-    estimation code for choice models in R. 
-    Users are able to write their own likelihood
-    functions or use a mix of already available 
-    ones. Mixing, in the form of random coefficients 
-    and components is allowed for all models. Both 
-    classical and Bayesian estimation are available. 
-    Multi-threading processing is supported. 
-    For more information on discrete choice models
-    see Train, K. (2009) <isbn:978-0-521-74738-7>.
+Description: The Choice Modelling Centre (CMC) at the University of Leeds 
+    has developed flexible code for the estimation and application 
+    of choice models in R. Users are able to write their own 
+    model functions or use a mix of already available ones. Random heterogeneity, 
+    both continuous and discrete and at the level of individuals and 
+    choices, can be incorporated for all models. There is support for both standalone 
+    models and hybrid model structures.  Both classical 
+    and Bayesian estimation is available, and multiple discrete 
+    continuous models are covered in addition to discrete choice. 
+    Multi-threading processing is supported for estimation and a large
+    number of pre and post-estimation routines, including for computing posterior
+    (individual-level) distributions are available. 
+    For examples, a manual, and a support forum, visit 
+    www.ApolloChoiceModelling.com. For more information on choice 
+    models see Train, K. (2009) <isbn:978-0-521-74738-7> and Hess, 
+    S. & Daly, A.J. (2014) <isbn:978-1-781-00314-5> for an overview 
+    of the field.
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
 Depends: R (>= 3.1.0), stats, utils
-Imports: Rcpp (>= 1.0.0), maxLik, mnormt, graphics, coda, sandwich,
-        randtoolbox, numDeriv, RSGHB, parallel
+Imports: Rcpp (>= 1.0.0), maxLik, mnormt, mvtnorm, graphics, coda,
+        sandwich, randtoolbox, numDeriv, RSGHB, parallel
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen
 Suggests: knitr, rmarkdown, testthat
 VignetteBuilder: knitr
 RoxygenNote: 6.1.1
 NeedsCompilation: yes
-Packaged: 2019-03-13 17:19:49 UTC; palma
+Packaged: 2019-05-08 12:48:14 UTC; palma
 Author: Stephane Hess [aut],
   David Palma [aut, cre]
 Maintainer: David Palma <D.Palma@leeds.ac.uk>
 Repository: CRAN
-Date/Publication: 2019-03-13 21:13:53 UTC
+Date/Publication: 2019-05-08 14:20:03 UTC

@@ -14,7 +14,7 @@
 #' @param silent Boolean. If TRUE, no information is printed to the console by the function. Default is FALSE.
 #' @return A list of vectors. Each vector corresponds to the log-likelihood of the whole model (first element) or a model component.
 #' @export
-apollo_llCalc <- function(apollo_beta, apollo_probabilities, apollo_inputs,silent=FALSE){
+apollo_llCalc <- function(apollo_beta, apollo_probabilities, apollo_inputs, silent=FALSE){
   apollo_fixed=c()
   if(!silent) cat("Updating inputs...")
   dataUpdated <- TRUE
@@ -31,10 +31,12 @@ apollo_llCalc <- function(apollo_beta, apollo_probabilities, apollo_inputs,silen
                    error=function(e) return(NA))
   
   if(!anyNA(Pout) && is.list(Pout)){
+    # Give name to unnamed components
     origNames <- names(Pout)
     newNames  <- paste0("component_", 1:length(Pout))
     if(!is.null(origNames)) newNames <- ifelse(origNames!="", origNames, newNames)
     names(Pout) <- newNames
+    # Get log of likelihood with "model" first
     tmp <- c("model", newNames[newNames!="model"])
     if(!workInLogs) LLout <- lapply(Pout[tmp], log) else LLout <- Pout[tmp]
     LLout <-lapply(LLout,sum)

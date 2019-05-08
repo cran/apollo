@@ -19,7 +19,6 @@
 #'                              \item choiceVar: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
 #'                              \item subsamples: Named list of boolean vectors. Each element of the list defines whether a given observation belongs to a given subsample (e.g. by sociodemographics).
 #'                              \item modelComponent: Name of model component. Set to model by default.
-
 #'                            }
 #' @return Nothing
 #' @export
@@ -43,6 +42,20 @@ apollo_sharesTest=function(model,apollo_probabilities,apollo_inputs,sharesTest_s
   
   categories      = sharesTest_settings[["subsamples"]]
   
+  ### Check that values in 'categories' are either 0/1 or boolean
+  isValid <- function(x){
+    ux <- unique(x)
+    if(all(ux %in% 0:1) || is.logical(ux)) return(TRUE)
+    return(FALSE)
+  }
+  txt <- "Subsamples must be defined by logical (boolean) or dummy (0/1) variables."
+  if(is.data.frame(categories) || is.list(categories)){
+    if(!all(sapply(categories, isValid))) stop(txt)
+  }
+  if(is.array(categories)) if(!isValid(as.vector(categories))) stop(txt)
+  if(!is.list(categories) && is.vector(categories)) if(!isValid(categories)) stop(txt)
+  
+  ### Calculate shares
   trueShares = list()
   for(i in 1:length(sharesTest_settings[["alternatives"]])) trueShares[[names(sharesTest_settings[["alternatives"]])[i]]] <- (sharesTest_settings[["choiceVar"]]==sharesTest_settings[["alternatives"]][i])
   

@@ -29,17 +29,21 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
 
   if(!apollo_control$mixing) return(NA)
 
+  # ################################## #
+  #### Input validation             ####
+  # ################################## #
+
   testEGen <- rep(FALSE, 5)
-  testEUsr    <- !is.null(d$interDrawsType) && d$interDrawsType!="" && length(d$interDrawsType)==1 && ( !(tolower(d$interDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolOwen','sobolFaureTezuka','sobolOwenFaureTezuka')) && exists(d$interDrawsType, envir=globalenv()) )
-  testEGen[1] <- !is.null(d$interDrawsType) && d$interDrawsType!="" && length(d$interDrawsType)==1 && (tolower(d$interDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolOwen','sobolFaureTezuka','sobolOwenFaureTezuka'))
+  testEUsr    <- !is.null(d$interDrawsType) && d$interDrawsType!="" && length(d$interDrawsType)==1 && ( !(tolower(d$interDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka')) && exists(d$interDrawsType, envir=globalenv()) )
+  testEGen[1] <- !is.null(d$interDrawsType) && d$interDrawsType!="" && length(d$interDrawsType)==1 && (tolower(d$interDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka'))
   testEGen[2] <- !is.null(d$interNDraws) && is.numeric(d$interNDraws) && d$interNDraws>0
   testEGen[3] <- length(d$interUnifDraws)==0 || is.character(d$interUnifDraws)
   testEGen[4] <- length(d$interNormDraws)==0 || is.character(d$interNormDraws)
   testEGen[5] <- length(c(d$interUnifDraws, d$interNormDraws)) > 0
 
   testAGen <- rep(FALSE, 5)
-  testAUsr    <- !is.null(d$intraDrawsType) && d$intraDrawsType!="" && length(d$intraDrawsType)==1 && ( !(tolower(d$intraDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolOwen','sobolFaureTezuka','sobolOwenFaureTezuka')) && exists(d$intraDrawsType, envir=globalenv()) )
-  testAGen[1] <- !is.null(d$intraDrawsType) && d$intraDrawsType!="" && length(d$intraDrawsType)==1 && (tolower(d$intraDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolOwen','sobolFaureTezuka','sobolOwenFaureTezuka'))
+  testAUsr    <- !is.null(d$intraDrawsType) && d$intraDrawsType!="" && length(d$intraDrawsType)==1 && ( !(tolower(d$intraDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka')) && exists(d$intraDrawsType, envir=globalenv()) )
+  testAGen[1] <- !is.null(d$intraDrawsType) && d$intraDrawsType!="" && length(d$intraDrawsType)==1 && (tolower(d$intraDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka'))
   testAGen[2] <- !is.null(d$intraNDraws) && is.numeric(d$intraNDraws) && d$intraNDraws>0
   testAGen[3] <- length(d$intraUnifDraws)==0 || is.character(d$intraUnifDraws)
   testAGen[4] <- length(d$intraNormDraws)==0 || is.character(d$intraNormDraws)
@@ -59,12 +63,17 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   }
   
   
+  # Validate input
   if(!testEUsr & !all(testEGen) & !testAUsr & !all(testAGen)){
     if(!testEGen[1] | !testAGen[1]) stop("Type of draws must be 'halton', 'mlhs', 'pmc', 'sobol','sobolOwen','sobolFaureTezuka' or 'sobolOwenFaureTezuka' to generate draws, or the name of a variable containing user generated draws.")
     if(!testEGen[2] | !testAGen[2]) stop("Number of draws must be larger than 0.")
     if(!testEGen[5] | !testAGen[5]) stop("No names for the draws were specified.")
   }
 
+
+  # ################################## #
+  #### Initialisation                ####
+  # ################################## #
 
   panelData <- apollo_control$panelData
   indivID   <- database[,apollo_control$indivID]
@@ -85,7 +94,9 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   if(!testEUsr) d$interDrawsType <- tolower(d$interDrawsType)
   if(!testAUsr) d$intraDrawsType <- tolower(d$intraDrawsType)
 
+  # Function that expand the dimensions of a matrix of draws to whatever is necessary
   expand <- function(M, isInter){
+    # Repeat rows if necesary
     if(isInter & nrow(M)<nObs){
       M1 <- matrix(0, nrow=nObs, ncol=ncol(M))
       r1 <- 1
@@ -98,11 +109,13 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
       rm(M1, r1, r2, i)
     }
 
+    # Turn into cube if necessary
     if(nIntra>0){
       C <- array(0, dim=c(nObs, max(1,nInter), nIntra))
       if(isInter) for(k in 1:nIntra) C[,,k] <- M
       if(!isInter) for(j in 1:max(1,nInter)) C[,j,] <- M
       M <- C
+      # Get rid of third dimension if nIntra=1
       if(dim(M)[3]==1) M <- M[,,1,drop=TRUE]
     }
 
@@ -110,12 +123,17 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
     return(M)
   }
 
+  # Create list container for the draws
   drawsList <- list()
 
+  # ############################################ #
+  ### Load inter draws from global environment ###
+  # ############################################ #
   if(testEUsr){
-    if(!silent) cat("Reshaping inter draws ")
+    if(!silent) cat("Reshaping inter-individual draws ")
     draws <- get(d$interDrawsType, envir=globalenv())
 
+    # Validate input
     if( !is.list(draws) ) stop("Draws provided by user must be contained in a list.")
     for(i in draws ){
       if(!is.matrix(i)) stop("At least one element of ", d$interDrawsType, " is not a matrix.")
@@ -123,16 +141,22 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
       if(ncol(i)!=nInter) stop("At least one element of ", d$interDrawsType, " does not have ", nInter, " columns.")
     }
     
+    # Turn uniform to standard normal if applicable
     for(i in d$interNormDraws) draws[[i]] <- stats::qnorm(draws[[i]])
     
+    # Reshape draws into correct dimensionality
     drawsList <- c( drawsList, lapply(draws, expand, isInter=TRUE) )
     if(!silent) cat(" Done.\n")
   }
 
+  # ############################################ #
+  ### Load intra draws from global environment ###
+  # ############################################ #
   if(testAUsr){
-    if(!silent) cat("Reshaping intra draws ")
+    if(!silent) cat("Reshaping intra-individual draws ")
     draws <- get(d$intraDrawsType, envir=globalenv())
 
+    # Validate input
     if( !is.list(draws) ) stop("Draws provided by user must be contained in a list.")
     for(i in draws ){
       if(!is.matrix(i)) stop("At least one element of ", d$interDrawsType, " is not a matrix.")
@@ -140,41 +164,57 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
       if(ncol(i)!=nIntra) stop("At least one element of ", d$intraDrawsType, " does not have ", nIntra, " columns.")
     }
     
+    # Turn uniform to standard normal if applicable
     for(i in d$intraNormDraws) draws[[i]] <- stats::qnorm(draws[[i]])
 
+    # Reshape draws into correct dimensionality
     drawsList <- c( drawsList, lapply(draws, expand, isInter=FALSE) )
     if(!silent) cat(" Done.\n")
   }
 
+  # ######################################## #
+  #### Generate inter draws               ####
+  # ######################################## #
   if(all(testEGen)){
-    if(!silent) cat("Generating inter draws ")
+    if(!silent) cat("Generating inter-individual draws ")
 
+    # Generate draws in a matrix. One column per dimension (i.e. random component)
+    # and as many rows as nDraws*nIndiv
     if(d$interDrawsType=='halton') draws <- randtoolbox::halton(nInter*nIndiv, dimInter)
     if(d$interDrawsType=='mlhs') draws <- apollo_mlhs(nInter, dimInter, nIndiv)
     if(d$interDrawsType=='pmc') draws <- matrix(stats::runif(nIndiv*nInter*dimInter),
                                                             nrow=nIndiv*nInter, ncol=dimInter,
                                                             byrow=TRUE)
     if(d$interDrawsType=='sobol') draws <- randtoolbox::sobol(nInter*nIndiv, dimInter, scrambling=0)                                                            
-    if(d$interDrawsType=='sobolOwen') draws <- randtoolbox::sobol(nInter*nIndiv, dimInter, scrambling=1)
-    if(d$interDrawsType=='sobolFaureTezuka') draws <- randtoolbox::sobol(nInter*nIndiv, dimInter, scrambling=2)
-    if(d$interDrawsType=='sobolOwenFaureTezuka') draws <- randtoolbox::sobol(nInter*nIndiv, dimInter, scrambling=3)
+    if(d$interDrawsType=='sobolowen') draws <- randtoolbox::sobol(nInter*nIndiv, dimInter, scrambling=1)
+    if(d$interDrawsType=='sobolfauretezuka') draws <- randtoolbox::sobol(nInter*nIndiv, dimInter, scrambling=2)
+    if(d$interDrawsType=='sobolowenfauretezuka') draws <- randtoolbox::sobol(nInter*nIndiv, dimInter, scrambling=3)
     
     draws <- as.matrix(draws)
 
+    # Turn draws into a list of dimInter matrices of dimensions nIndiv x nInter.
     draws <- split(draws, rep(1:ncol(draws), each = nrow(draws)))
     draws <- lapply(draws, matrix, nrow=nIndiv, ncol=nInter, byrow=TRUE)
     names(draws) <- c(d$interUnifDraws, d$interNormDraws)
 
+    # Turn uniform to standard normal if applicable
     for(i in d$interNormDraws) draws[[i]] <- stats::qnorm(draws[[i]])
 
+    # Reshape draws into correct dimensionality
     drawsList <- c( drawsList, lapply(draws, expand, isInter=TRUE) )
     if(!silent) cat(" Done\n")
   }
 
+  # ######################################## #
+  #### Generate intra draws               ####
+  # ######################################## #
   if(all(testAGen)){
-    if(!silent) cat("Generating intra draws ")
+    if(!silent) cat("Generating intra-individual draws ")
 
+    # Generate draws in a matrix. One column per dimension (i.e. random component)
+    # and as many rows as observations (nObs)
     if(d$intraDrawsType=='halton'){
+      # Skip dimensions already used for inter
       haltonInter <- dimInter>0 && d$interDrawsType=='halton'
       draws <- randtoolbox::halton(nIntra*nObs, dimInter*haltonInter + dimIntra)
       if(haltonInter) draws <- draws[,(dimInter+1):(dimInter+dimIntra)]
@@ -182,7 +222,7 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
     if(d$intraDrawsType=='mlhs') draws <- apollo_mlhs(nIntra, dimIntra, nObs)
     if(d$intraDrawsType=='pmc') draws <- matrix(stats::runif(nIntra*nObs*dimIntra),
                                                  nrow=nIntra*nObs, ncol=dimIntra)
-    sobolNames <- c('sobol', 'sobolOwen', 'sobolFaureTezuka', 'sobolOwenFaureTezuka')
+    sobolNames <- c('sobol', 'sobolowen', 'sobolfauretezuka', 'sobolowenfauretezuka')
     sobolInter <- dimInter>0 && (d$interDrawsType %in% sobolNames)
     if(d$intraDrawsType %in% sobolNames){
       sobolScrambling <- c(sobol=0, sobolOwen=1, sobolFaureTezuka=2, sobolOwenFaureTezuka=3)
@@ -193,16 +233,23 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
                                                 
     draws <- as.matrix(draws)
 
+    # Turn draws into a list of dimInter matrices of dimensions nIndiv x nInter.
     draws <- split(draws, rep(1:ncol(draws), each = nrow(draws)))
     draws <- lapply(draws, matrix, nrow=nObs, ncol=nIntra, byrow=TRUE)
     names(draws) <- c(d$intraUnifDraws, d$intraNormDraws)
 
+    # Turn uniform to standard normal if applicable
     for(i in d$intraNormDraws) draws[[i]] <- stats::qnorm(draws[[i]])
 
+    # Reshape draws into correct dimensionality
     drawsList <- c( drawsList, lapply(draws, expand, isInter=FALSE) )
     if(!silent) cat(" Done\n")
   }
 
+
+  # ################################## #
+  #### Returning draws              ####
+  # ################################## #
 
   if(!panelData & dimInter>0) warning('Inter-person draws are being used without a panel structure.')
 

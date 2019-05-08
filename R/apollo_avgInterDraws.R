@@ -19,7 +19,16 @@
 apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   apollo_control = apollo_inputs[["apollo_control"]]
   workInLogs    <- apollo_control$workInLogs
+
+  # ############################### #
+  #### ignored for HB estimation ####
+  # ############################### #
+
   if(apollo_control$HB==TRUE) return(P)
+
+  # ############################### #
+  #### pre-checks                ####
+  # ############################### #
 
   if(!apollo_control$mixing) stop('No mixing used in model!')
 
@@ -38,7 +47,15 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
 
   if(inputIsList && functionality!="prediction" && functionality!="raw" && is.null(P[["model"]])) stop('Element called "model" is missing in list P!')
 
+  # ########################################## #
+  #### functionality="zero_LL/raw/validate" ####
+  # ########################################## #
+
   if(functionality %in% c("zero_LL","raw","validate")) return(P)
+
+  # ########################################## #
+  #### functionality="estimate" ####
+  # ########################################## #
 
   if(functionality=="estimate"){
     if(inputIsList) P <- P[["model"]]
@@ -48,6 +65,10 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
     if(inputIsList) P <- list(model=P)
     return(P)
   }
+
+  # ########################################## #
+  #### functionality="prediction"           ####
+  # ########################################## #
 
   if(functionality=="prediction"){
     if(!inputIsList){
@@ -76,6 +97,10 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
     }
   }
 
+  # ########################################## #
+  #### functionality="conditionals"         ####
+  # ########################################## #
+
   if(functionality=="conditionals"){
     if(inputIsList) P <- P[["model"]]
     if(!is.array(P)) stop('No draws present to average over!')
@@ -83,6 +108,10 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
     if(inputIsList) P <- list(model=P)
     return(P)
   }
+
+  # ########################################## #
+  #### functionality="output"               ####
+  # ########################################## #
 
   if(functionality=="output"){
     if(!inputIsList) P <- list(model=P)

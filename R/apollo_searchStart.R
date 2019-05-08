@@ -55,7 +55,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
  default <- list(nCandidates=100, apolloBetaMin=apollo_beta - 0.1, apolloBetaMax=apollo_beta + 0.1,
                  smartStart=FALSE, maxStages=5, dTest=1, gTest=10^-3, llTest=3, bfgsIter=20)
  if(length(searchStart_settings)==1 && is.na(searchStart_settings)) searchStart_settings <- default
- tmp <- names(default)[!(names(default) %in% names(searchStart_settings))] 
+ tmp <- names(default)[!(names(default) %in% names(searchStart_settings))] # options missing in searchStart_settings
  for(i in tmp) searchStart_settings[[i]] <- default[[i]]
 
  nCandidates     = searchStart_settings[["nCandidates"]]
@@ -68,6 +68,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
  llTest           = searchStart_settings[["llTest"]]
  bfgsIter        = searchStart_settings[["bfgsIter"]]
 
+  ### checks
   if(nCandidates<2) stop("Argument 'nCandidates' should be at least 2.")
   if(maxStages<1) stop("Argument 'maxStages' should be at least 1.")
   if(anyNA(c(apolloBetaMin,apolloBetaMax)) & !smartStart) stop("Invalid 'apolloBetaMin' and/or 'apolloBetaMax' parameters.")
@@ -75,10 +76,12 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   apollo_control$noDiagnostics <- TRUE
   apollo_probabilities(apollo_beta, apollo_inputs, functionality="validate")
 
+  ### Separate beta into variable and fixed part
   beta_var_val <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
   beta_fix_val <- apollo_beta[apollo_fixed]
   K <- length(beta_var_val)
 
+  ### Create logLike function
   if(apollo_control$nCores==1) cl <- NA else {
     cat("Initializing cluster.\n")
     cl <- apollo_makeCluster(apollo_probabilities, apollo_inputs, silent=TRUE)
@@ -88,10 +91,15 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
                          hessianRoutine="none", printLevel=0, silent=FALSE)
   apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, apollo_estSet, cl=cl)
 
+  ### Create candidates.
+  ### Only non-fixed parameters are considered.
+  ### Candidates are stored in a list of matrices called 'candidates'
+  ### Each element of the list is a matrix where each row is a candidate
   set.seed(2)
   candidates <- list()
   cat("Creating initial set of",nCandidates,"candidate values.\n")
   if(smartStart){
+    # Create neighbors of starting value using Hessian (Bierlaire et al. 2007)
     cat(" (using Hessian, this might take a while).\n")
     H <- numDeriv::hessian(apollo_logLike, beta_var_val, sumLL=TRUE)
     eig <- eigen(H)
@@ -103,18 +111,20 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     w <- split(w, rep(1:ncol(w), each = nrow(w)))
     a <- as.list(stats::runif(length(w), min=0.75, max=1))
     z <- beta_var_val + mapply(function(wi,ai) wi*ai , w, a)
-    z <- cbind(beta_var_val,z) 
+    z <- cbind(beta_var_val,z) # matrix where each column is a candidate
     candidates[[1]] <- t(z)
     rm(H, eig, w, p, a, z)
   } else{
+    # Create random starting values using apolloBetaMin & apolloBetaMax.
     apolloBetaMin <- apolloBetaMin[names(beta_var_val)]
     apolloBetaMax <- apolloBetaMax[names(beta_var_val)]
-    candidates[[1]] <- t(apollo_mlhs(nCandidates-1,K,1)) 
+    candidates[[1]] <- t(apollo_mlhs(nCandidates-1,K,1)) #matrix(stats::runif((nCandidates-1)*K), nrow=K, ncol=nCandidates-1)
     candidates[[1]] <- apolloBetaMin + (apolloBetaMax-apolloBetaMin)*candidates[[1]]
     candidates[[1]] <- cbind(beta_var_val, candidates[[1]])
     candidates[[1]] <- t(candidates[[1]])
   }
 
+  ### Calculate LL of all candidates
   LL <- rep(0, nCandidates)
   cat("Calculating LL of candidates 0%")
   for(j in 1:nCandidates){
@@ -125,6 +135,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   }
   cat("100%")
 
+  ### Remove candidates with infinite or NA loglike
   if(any(!is.finite(LL))){
     removeRows <- which(!is.finite(LL))
     candidates[[1]] <- candidates[[1]][-removeRows,]
@@ -135,9 +146,11 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     if(nCandidates==1) return(candidates[[1]])
   }
 
+  ### Write candidates
   fileName <- paste0(apollo_control$modelName,"_searchStart.csv")
   utils::write.csv(cbind(candidates[[1]], LL=LL, stage=1), fileName, row.names=FALSE)
 
+  ### MAIN LOOP
   active    <- rep(TRUE, nCandidates)
   converged <- rep(FALSE, nCandidates)
   i <- 2
@@ -148,6 +161,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     cat("\n Estimating", bfgsIter, "BFGS iteration(s) for each active candidate.")
     cat("\n Candidate......LLstart.....LLfinish.....GradientNorm...Converged")
 
+    # Apply BFGS for each active candidate
     LL              <- cbind(LL, NA)
     candidates[[i]] <- matrix(NA, nrow=nCandidates, ncol=K)
     gradientNorm    <- rep(NA, nCandidates)
@@ -174,19 +188,24 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     }
     rm(LLstart, candidateParam, model, LLfinish, gradFin)
 
+    # Update active list
     for(j in activeRows){
       candParam    <- as.vector(candidates[[i]][j,])
       candLL       <- LL[j,i]
       betterLLRows <- activeRows[LL[activeRows,i]>=candLL & activeRows!=j]
 
+      # Test 0: It hasn't converged
       if(converged[j]) active[j] <- FALSE
 
+      # Apply tests only if it is not the best LL of the stage
       if(length(betterLLRows)>0 & !converged[j]){
+        # Test 1: Distance in parameter space to a better one
         betterParams <- candidates[[i]][betterLLRows,]
         if(length(betterLLRows)==1) betterParams <- matrix(betterParams, nrow=1)
         distParam <- apply(betterParams, MARGIN=1, function(x) sqrt(sum((x-candParam)^2)) )
         failedT1Rows <- betterLLRows[ distParam<dTest ]
 
+        # Test 2: small gradient norm and close to another
         distLL <- abs(as.vector(LL[betterLLRows,i] - candLL))
         failedT2Rows <- betterLLRows[ gradientNorm[betterLLRows]<gTest & distLL>=llTest ]
 
@@ -200,6 +219,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     }
     rm(candParam, candLL, betterLLRows, betterParams, distParam, failedT1Rows, failedT2Rows)
 
+    # Print best candidate to screen
     bestCandRow <- which.max(LL[,i])
     bestCandParam <- as.vector(candidates[[i]][j,])
     names(bestCandParam) <- names(beta_var_val)
@@ -208,6 +228,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     cat("\n Best candidate so far (LL=", round(LL[bestCandRow,i],1), ")\n", sep="")
     print(as.matrix(round(bestCandParam,4)))
 
+    # Update candidates file
     if(!file.exists(fileName)){
       tmp <- cbind(candidates[[1]], logLike=LL[,1], stage=1)
       tmp[activeRows, ] <- cbind(candidates[[i]][activeRows,], logLike=LL[activeRows,i], stage=i)
@@ -222,6 +243,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     }
 
 
+    # Next iteration
     i <- i+1
   }
 

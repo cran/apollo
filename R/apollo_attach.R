@@ -28,10 +28,25 @@ apollo_attach=function(apollo_beta, apollo_inputs){
   draws            = apollo_inputs[["draws"]]
   apollo_randCoeff = apollo_inputs[["apollo_randCoeff"]]
   apollo_lcPars    = apollo_inputs[["apollo_lcPars"]]
-
+  
+  ### Scale and attach parameters
+  if(!is.null(apollo_inputs$scaling) && !is.na(apollo_inputs$scaling)){
+    r <- names(apollo_beta) %in% names(apollo_inputs$scaling)
+    r <- names(apollo_beta)[r]
+    if(is.list(apollo_beta)){
+      j=1
+      while(j<=length(r)){
+        apollo_beta[[r[j]]] <- apollo_inputs$scaling[r[j]]*apollo_beta[[r[j]]]  
+        j=j+1
+      }
+    }else{
+      apollo_beta[r] <- apollo_inputs$scaling[r]*apollo_beta[r]
+    }
+  }
   attach(as.list(apollo_beta))
   attach(database)
-
+  
+  ### Build and attach random parameters
   if(apollo_control$HB==FALSE && apollo_control$mixing){
     if(anyNA(draws)) stop("Random draws have not been specified despite setting apollo_control$mixing==TRUE!")
     if(!is.function(apollo_randCoeff)) stop("apollo_randCoeff function has not been defined despite setting apollo_control$mixing==TRUE!")
@@ -41,11 +56,12 @@ apollo_attach=function(apollo_beta, apollo_inputs){
     if("randcoeff" %in% search()) detach("randcoeff")
     attach(randcoeff)
   }
-
+  
+  ### Build and attach latent class parameters
   if(is.function(apollo_lcPars)){
     lcpars = apollo_lcPars(apollo_beta, apollo_inputs)
     if("lcpars" %in% search()) detach("lcpars")
     attach(lcpars)
   }
-
+  
 }

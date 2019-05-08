@@ -44,7 +44,7 @@ apollo_deltaMethod=function(model, deltaMethod_settings){
   if( !(operation %in% c("sum","diff","ratio","exp","logistic","lognormal")) ) stop("Invalid value of 'operation' parameter. See ?apollo_deltaMethod.")
   if(is.na(parName2) & !(operation %in% c("logistic","exp"))) stop("Need two parameters if using operation: ",operation)
   if(!(parName1 %in% names(model$estimate))) stop("parName1=", parName1, " not found among model estimates.")
-  if(!(parName2 %in% names(model$estimate))) stop("parName2=", parName2, " not found among model estimates.")
+  if(!is.na(parName2) && !(parName2 %in% names(model$estimate))) stop("parName2=", parName2, " not found among model estimates.")
   if(!is.na(parName2) & (operation=="exp")) stop("Should only have one parameters if using operation: ",operation)
 
   est <- model$estimate

@@ -36,6 +36,7 @@
 apollo_firstRow=function(P, apollo_inputs){
   apollo_sequence <- apollo_inputs$database$apollo_sequence
   
+  ### If P is a list
   if(is.list(P)){
     j=1
     while(j<=length(P)){
@@ -48,7 +49,7 @@ apollo_firstRow=function(P, apollo_inputs){
       if(isCub) P[[j]] = P[[j]][(apollo_sequence==1),,,drop=FALSE]
       j=j+1
     }
-  }else{ 
+  }else{ ### If P is not a list
     isSca <- length(P)==1
     isVec <- is.vector(P) && !isSca
     isMat <- is.matrix(P)

@@ -20,6 +20,7 @@ apollo_validateControl(database, apollo_control, silent = FALSE)
   \item{HB}{Boolean. TRUE if using RSGHB for Bayesian estimation of model.}
   \item{noValidation}{Boolean. TRUE if user does not wish model input to be validated before estimation - FALSE by default.}
   \item{noDiagnostics}{Boolean. TRUE if user does not wish model diagnostics to be printed - FALSE by default.}
+  \item{weights}{Character. Name of column in database containing weights for estimation.}
 }}
 
 \item{silent}{Boolean. If TRUE, no messages are printed to screen.}

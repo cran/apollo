@@ -30,6 +30,7 @@ apollo_validateInputs(apollo_beta = NA, apollo_fixed = NA,
   \item noValidation: Boolean. TRUE if user does not wish model input to be validated before estimation - FALSE by default.
   \item noDiagnostics: Boolean. TRUE if user does not wish model diagnostics to be printed - FALSE by default.
   \item panelData: Boolean. TRUE if using panelData data (created automatically by \code{apollo_validateControl}).
+  \item weights: Character. Name of column in database containing weights for estimation.
 }}
 
 \item{apollo_HB}{List. Contains options for bayesian estimation. See \code{?RSGHB::doHB} for details.

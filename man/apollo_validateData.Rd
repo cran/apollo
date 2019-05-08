@@ -19,8 +19,9 @@ Default is FALSE.}
 Data.frame. Validated version of database.
 }
 \description{
-Checks consistency of the database with \code{apollo_control}, orders it by indivID, and adds an internal ID variable (\code{apollo_sequence})
+Checks consistency of the database with \code{apollo_control}, sorts it by indivID, and adds an internal ID variable (\code{apollo_sequence})
 }
 \details{
 This function should be called after calling apollo_validateControl.
+Observations are sorted only if apollo_control$panelData=TRUE.
 }

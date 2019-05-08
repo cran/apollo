@@ -64,9 +64,19 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
   saveModelObject = saveOutput_settings[["saveModelObject"]]
   writeF12        = saveOutput_settings[["writeF12"]]
   
+  if(length(model$scaling)>0 && !is.na(model$scaling)){
+    scaling_used=TRUE
+  }else{
+    scaling_used=FALSE
+  }
+  
   sink(paste(model$apollo_control$modelName,"_output.txt",sep=""))
   tmp <- apollo_modelOutput(model,saveOutput_settings)
   sink()
+  
+  # ################################## #
+  #### HB only components           ####
+  # ################################## #
   
   if(model$apollo_control$HB){
     if(saveEst){
@@ -74,38 +84,68 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
       cat("RSGHB output saved in following files\n")
       cat("\nOutputs at iteration level (post burn-in chains)\n")
       if(!is.null(tmp$non_random)) cat("Non-random parameters:",paste(model$apollo_control$modelName, "_F"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
+      cat("\n")
       if(!is.null(tmp$random_mean)) cat("Means for underlying normals:",paste(model$apollo_control$modelName, "_A"   ,".csv", sep=""),"\n")
-      
+      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
+      cat("\n")
       cat("\nPosteriors\n")
       if(!is.null(tmp$random_mean)) cat("Mean individual-level draws for underlying normals:",paste(model$apollo_control$modelName, "_B"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
+      cat("\n")
       if(!is.null(tmp$random_mean)) cat("SD of individual-level draws for underlying normals:",paste(model$apollo_control$modelName, "_Bsd"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
+      cat("\n")
       if(!is.null(tmp$random_mean)) cat("Mean individual-level draws after transformations to underlying normals:",paste(model$apollo_control$modelName, "_C"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
+      cat("\n")
       if(!is.null(tmp$random_mean)) cat("SD of individual-level draws after transformations to underlying normals:",paste(model$apollo_control$modelName, "_Csd"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
+      cat("\n")
       if(!is.null(tmp$random_mean)) cat("Sample variance-covariance matrix for underlying normals:",paste(model$apollo_control$modelName, "_D"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
+      cat("\n")
       cat("\nRSGHB log file saved to",paste(model$apollo_control$modelName, ".log", sep=""),"\n")
+      cat("\n")
       if(!is.null(tmp$non_random)){
       cat("\nAdditional output files:\n")
       utils::write.csv(tmp$non_random   , paste(model$apollo_control$modelName, "_param_non_random"   ,".csv", sep=""))
       cat("Summary of chains for non-random parameters:",paste(model$apollo_control$modelName, "_param_non_random"   ,".csv", sep=""),"\n")}
+      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
       if(!is.null(tmp$random_mean)){utils::write.csv(tmp$random_mean  , paste(model$apollo_control$modelName, "_param_random_mean"  ,".csv", sep=""))
+      cat("\n")
       cat("Summary of chains for means of normals:",paste(model$apollo_control$modelName, "_param_random_mean"   ,".csv", sep=""),"\n")}
+      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
       if(!is.null(tmp$random_cov_mean)){utils::write.csv(tmp$random_cov_mean, paste(model$apollo_control$modelName, "_param_random_cov_mean",".csv", sep=""))
+      cat("\n")
       cat("Means of chains for covariance of normals:",paste(model$apollo_control$modelName, "_param_random_cov_mean"   ,".csv", sep=""),"\n")}
+      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
       if(!is.null(tmp$random_cov_sd)){utils::write.csv(tmp$random_cov_sd, paste(model$apollo_control$modelName, "_param_random_cov_sd",".csv", sep=""))
+      cat("\n")
       cat("SDs of chains for covariance of normals:",paste(model$apollo_control$modelName, "_param_random_cov_sd"   ,".csv", sep=""),"\n")}
+      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
       if(!is.null(tmp$posterior)){utils::write.csv(tmp$posterior    , paste(model$apollo_control$modelName, "_param_posterior"    ,".csv", sep=""))
+      cat("\n")
       cat("Summary of posteriors for random parameters:",paste(model$apollo_control$modelName, "_param_posterior"   ,".csv", sep=""),"\n")}
+      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
+      cat("\n")
      }
     if(saveModelObject){
       tryCatch( {
         saveRDS(model, file=paste0(model$apollo_control$modelName,"_model.rds"))
         cat("\nModel object saved to",paste(model$apollo_control$modelName, ".rds", sep=""),"\n")
+        cat("\n")
         }, error=function(e) cat("Model object could not be written to file."))
     }
     return(invisible(TRUE))
   }
   
+  # ################################## #
+  #### for all                      ####
+  # ################################## #
+  
   if(saveEst){
+    # Build matrix with results table
     output <- matrix(model$estimate, nrow=length(model$estimate), ncol=1, dimnames=list(names(model$estimate)))
     colnames(output) <- c("Estimate")
     if(printClassical){
@@ -123,6 +163,7 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
       if(printPVal) output <- cbind(output, `Rob.p-val(1)`=2*(1-stats::pnorm(abs((model$estimate-1)/model$robse))) )
     }
     
+    # Write to file
     utils::write.csv(output,paste(model$apollo_control$modelName,"_estimates.csv",sep=""))
     cat("Estimates saved to",paste(model$apollo_control$modelName, "_estimates.csv"   , sep=""),"\n")
   }

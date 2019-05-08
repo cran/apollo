@@ -22,13 +22,28 @@
 #' @export
 apollo_combineModels=function(P, apollo_inputs, functionality){
   
+  # ############################### #
+  #### pre-checks                ####
+  # ############################### #
+  
   if(!is.null(P[["model"]])) warning("\nA component called \"model\" already exists in P before calling apollo_combineModels!")
   
   if(length(P)==1) warning("\nNo need to call apollo_combineModels for models with only one component!")
   
+  # ########################################## #
+  #### functionality="prediction"           ####
+  # ########################################## #
+  
   if(functionality=="prediction" | functionality=="raw") return(P)
 
+  # ########################################## #
+  #### functionality!="prediction"          ####
+  # ########################################## #
+  
   elements = names(P)
+  if(is.null(elements) || length(unique(elements))<length(elements)){
+    stop("For models using multiple components, all components in P must be named and all names must be unique!")
+  } 
   
   if(!apollo_inputs$apollo_control$workInLogs){
     P[["model"]] = P[[elements[1]]]

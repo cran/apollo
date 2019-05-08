@@ -48,6 +48,7 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   
   apollo_control=apollo_inputs[["apollo_control"]]
   
+  # Count number of rows in classProb
   nRowsClassProb <- 0
   if(is.vector(classProb[[1]])) nRowsClassProb <- length(classProb[[1]]) else {
     nRowsClassProb <- dim(classProb[[1]])[1]
@@ -63,33 +64,44 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
       class_summary[c,1]=mean(classProb[[c]])
       c=c+1
     }
-    cat("\n\nClass allocation summary for LC before estimation:\n")
-    print(round(class_summary,2))
+    #cat("\nAll checks passed for latent class structure.")
+    #cat("\nClass allocation summary for LC before estimation:\n")
+    #print(round(class_summary,2))
+    apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
+    apollo_addLog("Class allocation summary for LC before estimation:", round(class_summary,2), apolloLog)
     return(TRUE)
   } 
   
   if(functionality %in% c("estimate", "conditionals", "output", "zero_LL")){
     
+    # Count number of rows in inClassProb
     nRowsInClassProb <- 0
     if(is.vector(inClassProb[[1]])) nRowsInClassProb <- length(inClassProb[[1]]) else {
       nRowsInClassProb <- dim(inClassProb[[1]])[1]
     }
     
+    # Match the number of rows in each list
+    # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
     if( nRowsInClassProb!=nRowsClassProb & nRowsClassProb!=1 ){
       indivID <- get(apollo_control$indivID) 
       nObsPerIndiv <- as.vector(table(indivID))
       if( nRowsInClassProb < nRowsClassProb ){
+        # If classProb is calculated at the obs level while the inClassProb is at the indiv level
         classProb <- lapply(classProb, rowsum, group=indivID)
         classProb <- lapply(classProb, '/', nObsPerIndiv)
         warning('Class probability averaged across observations of each individual.')
       } else {
+        # If inClassProb is calculated at the obs level while the classProb is at the indiv level
         classProb <- lapply(classProb, rep, nObsPerIndiv)
+        ### warning('Class probability repeated for all observations of the same individual.')
       }
     }
     
+    # Returns inClassProb*classProb
     Pout <- mapply(function(p,pi) pi*p, inClassProb, classProb, SIMPLIFY=FALSE)
     Pout <- Reduce('+', Pout)
     if(functionality=="output"){
+      #if(!apollo_control$noDiagnostics){
       class_summary=matrix(0,nrow=length(classProb),ncol=1)
       rownames(class_summary)=paste0("class_", 1:length(classProb))
       colnames(class_summary)=c("Mean prob.")
@@ -98,47 +110,58 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
         class_summary[c,1]=mean(classProb[[c]])
         c=c+1
       }
-
-      on.exit(sink())
-      fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
-      fileName <- file.path(tempdir(),fileName)
-      fileConn <- tryCatch( file(fileName, open="at"),
-                            error=function(e){
-                              cat('apollo_lc could not write diagnostics to temporary file. No diagnostics in output.\n')
-                              return(NA)
-                            })
-      if(!anyNA(fileConn)){
-        sink(fileConn)
-        on.exit({if(sink.number()>0) sink(); close(fileConn)})
-        cat('Class allocation summary for LC after estimation:\n')
-        print(round(class_summary,2))
-        cat("\n")
-      }
+      
+      ## Write class allocation summary to temp file
+      #on.exit(sink())
+      #fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
+      #fileName <- file.path(tempdir(),fileName)
+      #fileConn <- tryCatch( file(fileName, open="at"),
+      #                      error=function(e){
+      #                        cat('apollo_lc could not write diagnostics to temporary file. No diagnostics in output.\n')
+      #                        return(NA)
+      #                      })
+      #if(!anyNA(fileConn)){
+      #  sink(fileConn)
+      #  on.exit({if(sink.number()>0) sink(); close(fileConn)})
+      #  cat('Class allocation summary for LC after estimation:\n')
+      #  print(round(class_summary,2))
+      #  cat("\n")
+      #}
+      
+      apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
+      apollo_addLog("Class allocation summary for LC after estimation:", round(class_summary,2), apolloLog)
     }
     return( Pout )
   }
   
   if((functionality=="prediction")|(functionality=="raw")){
     
+    # Count number of rows in inClassProb
     nRowsInClassProb <- 0
     if(is.vector(inClassProb[[1]][[1]])) nRowsInClassProb <- length(inClassProb[[1]][[1]]) else {
       nRowsInClassProb <- dim(inClassProb[[1]][[1]])[1]
     }
     
+    # Match the number of rows in each list
+    # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
     if( nRowsInClassProb!=nRowsClassProb  & nRowsClassProb!=1 ){
       indivID <- get(apollo_control$indivID) 
       nObsPerIndiv <- as.vector(table(indivID))
       if( nRowsInClassProb < nRowsClassProb ){
+        # If classProb is calculated at the obs level while the inClassProb is at the indiv level
         stop('Class-probability variable has more elements than in-class-probability.')
       } else {
+        # If inClassProb is calculated at the obs level while the classProb is at the indiv level
         S=length(classProb)
         s=1
         while(s<=S){
           isMat <- is.matrix(classProb[[s]])
           isCub <- is.array(classProb[[s]]) && !isMat && length(dim(classProb[[s]]))==3
           if(isCub){
+            # first average out over intra
             classProb[[s]]=colSums(aperm(classProb[[s]], perm=c(3,1,2)))/dim(classProb[[s]])[3]
           } 
+          # now check what's left
           isVec <- is.vector(classProb[[s]])
           isMat <- is.matrix(classProb[[s]])
           if(isVec) classProb[[s]]=rep(classProb[[s]],nObsPerIndiv)

@@ -28,6 +28,7 @@
 #'                                   }
 #' @return A matrix with the average time per evaluation for each number of threads and draws combination. A graph is also plotted.
 #' @importFrom graphics matplot title legend
+#' @export
 apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, speedTest_settings=NA){
   tmp <- parallel::detectCores(); if(is.na(tmp)) tmp <- 3
   default <- list(nDrawsTry = c(50, 100, 200),
@@ -45,7 +46,6 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
   nDrawsTry        = speedTest_settings[["nDrawsTry"]]
   nCoresTry        = speedTest_settings[["nCoresTry"]]
   nRep             = speedTest_settings[["nRep"]]
-  
   
   if(apollo_control$mixing){
     if(anyNA(apollo_draws)) stop("Argument 'apollo_draws' must be provided when estimating mixture models.")
