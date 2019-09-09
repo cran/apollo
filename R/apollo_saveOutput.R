@@ -21,7 +21,7 @@
 #'                               \item printDiagnostics: Boolean. TRUE for printing summary of choices in database and other diagnostics. TRUE by default.
 #'                               \item printCovar: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
 #'                               \item printCorr: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
-#'                               \item printOutliers: Boolean. TRUE for printing 20 individuals with worst average fit across observations. TRUE by default.
+#'                               \item printOutliers: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
 #'                               \item printChange: Boolean. TRUE for printing difference between starting values and estimates. TRUE by default.
 #'                               \item saveEst: Boolean. TRUE for saving estimated parameters and standard errors to a CSV file. TRUE by default.
 #'                               \item saveCov: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.
@@ -174,6 +174,10 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
       }
     utils::write.csv(model$robvarcov,paste(model$apollo_control$modelName,"_robcovar.csv",sep=""))
     cat("Robust covariance matrix saved to",paste(model$apollo_control$modelName, "_robcovar.csv"   , sep=""),"\n")
+    if(!is.null(model$bootstrapSE) && model$bootstrapSE>0){
+      utils::write.csv(model$bootvarcov,paste(model$apollo_control$modelName,"_bootcovar.csv",sep=""))
+      cat("Bootstrap covariance matrix saved to",paste(model$apollo_control$modelName, "_bootcovar.csv"   , sep=""),"\n")
+    }
   }
   if(saveCorr){
     if(printClassical==TRUE){ 
@@ -182,6 +186,10 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
     }
     utils::write.csv(model$robcorrmat,paste(model$apollo_control$modelName,"_robcorr.csv",sep=""))
     cat("Robust correlation matrix saved to",paste(model$apollo_control$modelName, "_robcorr.csv"   , sep=""),"\n")
+    if(!is.null(model$bootstrapSE) && model$bootstrapSE>0){
+      utils::write.csv(model$bootcorrmat, paste(model$apollo_control$modelName,"_bootcorr.csv",sep=""))
+      cat("Bootstrap correlation matrix saved to",paste(model$apollo_control$modelName, "_bootcorr.csv"   , sep=""),"\n")
+    }
   }
   
   if(saveModelObject){

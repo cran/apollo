@@ -24,6 +24,10 @@ apollo_llCalc <- function(apollo_beta, apollo_probabilities, apollo_inputs, sile
   })
   if(!silent){ if(dataUpdated) cat(" Done.\n") else cat(" Not updated.") }
   
+  apollo_randCoeff  = apollo_inputs[["apollo_randCoeff"]]
+  apollo_lcPars     = apollo_inputs[["apollo_lcPars"]]
+  apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
+  
   workInLogs <- apollo_inputs$apollo_control$workInLogs
   
   if(!silent) cat("Calculating LL of each model component...")

@@ -13,7 +13,7 @@ apollo_ol(ol_settings, functionality)
   \item{V}{Numeric vector. A single explanatory variable (usually a latent variable). Must have the same number of rows as outcomeOrdered.}
   \item{tau}{Numeric vector. Thresholds. As many as number of different levels in the dependent variable - 1. Extreme thresholds are fixed at -inf and +inf. No mixing allowed in thresholds.}
   \item{coding}{Numeric or character vector. Optional argument. Defines the order of the levels in \code{outcomeOrdered}. The first value is associated with the lowest level of \code{V}, and the last one with the highest value. If not provided, is assumed to be \code{1:(length(tau) + 1)}.}
-  \item{rows}{Boolean vector. TRUE if a row must be considered in the calculations, FALSE if it must be excluded. It must have length equal to the length of argument \code{choiceVar}. Default value is \code{"all"}, meaning all rows are considered in the calculation.}
+  \item{rows}{Boolean vector. TRUE if a row must be considered in the calculations, FALSE if it must be excluded. It must have length equal to the length of argument \code{outcomeOrdered}. Default value is \code{"all"}, meaning all rows are considered in the calculation.}
 }}
 
 \item{functionality}{Character. Can take different values depending on desired output.

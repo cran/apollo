@@ -137,6 +137,19 @@ apollo_dft = function(dft_settings,functionality){
     # Reorder avail to match altnames order, if necessary
     if(all(altnames != names(avail))) avail <- avail[altnames]
     
+    # # Set utility of non available alternatives to 0
+    # for(a in 1:nAlts){
+    #   isSca <- length(V[[a]])==1
+    #   isVec <- is.vector(V[[a]]) & !isSca
+    #   isMat <- is.matrix(V[[a]])
+    #   isCub <- is.array(V[[a]]) && !isMat && length(dim(V[[a]]))==3
+    #   if(isSca & !avail[[a]]) V[[a]]  <- 0
+    #   if(isVec) V[[a]][!avail[[a]]]   <- 0
+    #   if(isMat) V[[a]][!avail[[a]],]  <- 0
+    #   if(isCub) V[[a]][!avail[[a]],,] <- 0
+    #   if(anyNA(V[[a]])) stop(paste0("Alternative ", altnames[a], " has utility = NA for at least one observation."))
+    # }
+    
     ## increase length of avail if necessary
     for (i in 1:nAlts){
       if(length(avail[[i]])==1) avail[[i]]=rep(c(avail[[i]]),nObs)
@@ -148,7 +161,7 @@ apollo_dft = function(dft_settings,functionality){
     s1=sum(lengths(attrWeights))
     s2=sum(lengths(attrScalings))
     
-    if(s1>1&s2>1) stop("Please set one of attrWeights or attrScalings to 1")
+    #if(s1>1&s2>1) stop("Please set one of attrWeights or attrScalings to 1")
     if(s1>1) attrnames=names(attrWeights) else attrnames=names(attrScalings)
     
     # Check that the elements of attrValues match altnames

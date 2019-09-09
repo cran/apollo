@@ -13,6 +13,8 @@ apollo_choiceAnalysis(choiceAnalysis_settings, apollo_control, database)
   \item avail: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
   \item choiceVar: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
   \item explanators: data.frame. Variables determining subsamples of the database. Values in each column must describe a group or groups of individuals (e.g. socio-demographics). Most usually a subset of columns from database.
+  \item rows: Boolean vector. Consideration of rows to include, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+  
 }}
 
 \item{apollo_control}{List. Options controlling the running of the code. See \link{apollo_validateInputs}.}
@@ -20,7 +22,9 @@ apollo_choiceAnalysis(choiceAnalysis_settings, apollo_control, database)
 \item{database}{data.frame. Data used by model.}
 }
 \value{
-nothing, but prints the output to screen and writes a csv file to the working directory.
+Silently returns a matrix containg the mean ehen chosen and un chose for each explanator, 
+        as well as the t-test comparing those means (H0: equivalence).
+        The table is also writen to a file called \code{modelName_choiceAnalysis.csv}.
 }
 \description{
 Compares market shares across subsamples in dataset, and writes results to a file.

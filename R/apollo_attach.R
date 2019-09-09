@@ -23,6 +23,9 @@
 #' apollo_detach(apollo_beta, apollo_inputs)
 #' @export
 apollo_attach=function(apollo_beta, apollo_inputs){
+  test <- ((is.vector(apollo_beta) && is.numeric(apollo_beta)) || is.list(apollo_beta)) || !is.null(names(apollo_beta))
+  if(!test) stop("The \"apollo_beta\" argument needs to be a named numeric vector or list")
+  
   apollo_control   = apollo_inputs[["apollo_control"]]
   database         = apollo_inputs[["database"]]
   draws            = apollo_inputs[["draws"]]

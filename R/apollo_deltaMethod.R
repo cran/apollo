@@ -1,6 +1,7 @@
 #' Delta method
 #'
 #' Applies the delta method to calculate the standard errors of transformations of parameters.
+#' If the bootstrap covariance matrix is available, it is used. If not, the robust covariance matrix is used.
 #'
 #' \code{apollo_deltaMethod} supports the following five operations.
 #' \describe{
@@ -34,10 +35,10 @@ apollo_deltaMethod=function(model, deltaMethod_settings){
    if(is.null(deltaMethod_settings[["multPar2"]])) deltaMethod_settings[["multPar2"]]=1
 
    operation = deltaMethod_settings[["operation"]]
-   parName1     = deltaMethod_settings[["parName1"]]
-   parName2     = deltaMethod_settings[["parName2"]]
-   multPar1    = deltaMethod_settings[["multPar1"]]
-   multPar2    = deltaMethod_settings[["multPar2"]]
+   parName1  = deltaMethod_settings[["parName1"]]
+   parName2  = deltaMethod_settings[["parName2"]]
+   multPar1  = deltaMethod_settings[["multPar1"]]
+   multPar2  = deltaMethod_settings[["multPar2"]]
 
   operation <- tolower(operation)
 
@@ -49,7 +50,7 @@ apollo_deltaMethod=function(model, deltaMethod_settings){
 
   est <- model$estimate
   if(!is.null(model$est)) est=model$est
-  robvarcov=model$robvarcov
+  if(!is.null(model$bootvarcov)) robvarcov = model$bootvarcov else robvarcov=model$robvarcov
   est[parName1]=multPar1*est[parName1]
   robvarcov[parName1,]=multPar1*robvarcov[parName1,]
   robvarcov[,parName1]=multPar1*robvarcov[,parName1]

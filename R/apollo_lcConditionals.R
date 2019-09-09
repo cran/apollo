@@ -20,6 +20,8 @@ apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
   database       = apollo_inputs[["database"]]
   apollo_lcPars  = apollo_inputs[["apollo_lcPars"]]
   class_prob     = "pi_values" # name of lcpars component with allocation probabilities
+  apollo_randCoeff  = apollo_inputs[["apollo_randCoeff"]]
+  apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
   
   ### Validation
   if(apollo_control$mixing) stop("apollo_lcConditionals can only be used for latent class models without continuous random heterogeneity")

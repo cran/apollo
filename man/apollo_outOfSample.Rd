@@ -8,7 +8,7 @@ apollo_outOfSample(apollo_beta, apollo_fixed, apollo_probabilities,
   apollo_inputs, estimate_settings = list(estimationRoutine = "bfgs",
   maxIterations = 200, writeIter = FALSE, hessianRoutine = "numDeriv",
   printLevel = 3L, silent = TRUE), outOfSample_settings = list(nRep = 10,
-  validationSize = 0.1))
+  validationSize = 0.1, samples = NA))
 }
 \arguments{
 \item{apollo_beta}{Named numeric vector. Names and values for parameters.}
@@ -32,13 +32,20 @@ apollo_outOfSample(apollo_beta, apollo_fixed, apollo_probabilities,
               validation sets are to be extracted from the full database.
               Default is 30.}
   \item{validationSize}{Numeric scalar. Size of the validation sample. Can be a percentage of the sample (0-1) or the number of individuals in the validation sample (>1). Default is 0.1.}
+  \item{samples}{Numeric matrix or data.frame. Optional argument. Must have as many rows as 
+                 observations in the \code{database}, and as many columns as number of  
+                 repetitions wanted. Each column represents a re-sample, and each element  
+                 must be a 0 if the observation should be assigned to the estimation sample, 
+                 or 1 if the observation should be assigned to the prediction sample. If this 
+                 argument is provided, then \code{nRep} and \code{validationSize} are ignored. 
+                 Note that this allows sampling at the observation rather than the individual 
+                 level.}
 }}
 }
 \value{
-A matrix with the log-likelihood in both the estimation and validation samples. If the 
-        model has multiple components, the log-likelihood is reported for each of them.
-        A more complete matrix also containing the estimates is  written to a file 
-        called <model_name>_outOfSample.csv in the current working directory.
+A matrix with the average log-likelihood per observation for both the estimation and validation 
+        samples, for each repetition. Two additional files with further details are written to the
+        working directory.
 }
 \description{
 Randomly generates estimation and validation samples, estimates the model on the first and 
@@ -54,6 +61,16 @@ on the validation sample. Doing this with only one validation sample, however, m
 results, as a particular validation sample need not be representative of the population. One way to 
 minimise this issue is to randomly draw several pairs of estimation and validation samples from the 
 complete dataset, and apply the procedure to each pair.
-The splitting of the database into estimation and validaion samples is done at the individual level, 
-not at the observation level.
+
+The splitting of the database into estimation and validation samples is done at the individual 
+level not at the observation level. If the sampling wants to be done at the individual level 
+(not recommended on panel data), then the optional \code{outOfSample_settings$samples} argument 
+should be provided.
+
+This function writes two different files to the working directory:
+\itemize{
+  \item \code{modelName_outOfSample_params.csv}: Records the estimated parameters, final loglikelihood, and number of observations on each repetition.
+  \item \code{modelName_outOfSample_samples.csv}: Records the sample composition of each repetition.
+}
+The first two files are updated throughout the run of this function, while the last one is only written once the function finishes.
 }

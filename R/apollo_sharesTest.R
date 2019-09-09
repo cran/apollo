@@ -22,25 +22,41 @@
 #'                            }
 #' @return Nothing
 #' @export
-apollo_sharesTest=function(model,apollo_probabilities,apollo_inputs,sharesTest_settings){
+apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTest_settings){
   if(is.null(sharesTest_settings[["alternatives"]])) stop("The sharesTest_settings list needs to include an object called \"alternatives\"!")
   if(is.null(sharesTest_settings[["choiceVar"]])) stop("The sharesTest_settings list needs to include an object called \"choiceVar\"!")
   if(is.null(sharesTest_settings[["subsamples"]])) sharesTest_settings[["subsamples"]]=NA
   if(is.null(sharesTest_settings[["modelComponent"]])) sharesTest_settings$modelComponent="model"
   
-  alternatives=sharesTest_settings[["alternatives"]]
-  choiceVar=sharesTest_settings[["choiceVar"]] 
-  subsamples=sharesTest_settings[["subsamples"]]
-
-  predictedShares = apollo_prediction(model, 
-                                      apollo_probabilities, apollo_inputs, sharesTest_settings$modelComponent)
+  alternatives = sharesTest_settings[["alternatives"]]
+  choiceVar    = sharesTest_settings[["choiceVar"]] 
+  subsamples   = sharesTest_settings[["subsamples"]]
   
-  predictedShares=predictedShares[,-ncol(predictedShares)]
+  predictedShares = apollo_prediction(model, apollo_probabilities, apollo_inputs, 
+                                      sharesTest_settings$modelComponent)
+  
+  #### predictedShares=predictedShares[,-ncol(predictedShares)] ### removed
+  predictedShares=predictedShares[,!colnames(predictedShares)%in%c("ID","Choice situation","chosen")]#### NEW
+  
+  ### If there are any NA in predicted Shares, then it assumes it comes from rows
+  ### and removes them from the analysis
+  if(anyNA(predictedShares)){
+    rows <- !is.na(rowSums(predictedShares))
+    choiceVar <- choiceVar[rows]
+    subsamples <- lapply(subsamples, function(x) x[rows])
+    predictedShares <- predictedShares[rows,]
+    cat("\nWarning: Predicted values contain NA.\n These rows will be ommited from the analysis.")
+  }
+  
+  
+  
   xnames=colnames(predictedShares)
   predictedShares=split(predictedShares, rep(1:ncol(predictedShares), each = nrow(predictedShares)))
   names(predictedShares)=xnames
   
-  categories      = sharesTest_settings[["subsamples"]]
+  
+  
+  categories = subsamples
   
   ### Check that values in 'categories' are either 0/1 or boolean
   isValid <- function(x){
@@ -57,7 +73,7 @@ apollo_sharesTest=function(model,apollo_probabilities,apollo_inputs,sharesTest_s
   
   ### Calculate shares
   trueShares = list()
-  for(i in 1:length(sharesTest_settings[["alternatives"]])) trueShares[[names(sharesTest_settings[["alternatives"]])[i]]] <- (sharesTest_settings[["choiceVar"]]==sharesTest_settings[["alternatives"]][i])
+  for(i in 1:length(alternatives)) trueShares[[names(alternatives)[i]]] <- (choiceVar==alternatives[i])
   
   if(anyNA(categories)){
     categories=list()
@@ -65,9 +81,9 @@ apollo_sharesTest=function(model,apollo_probabilities,apollo_inputs,sharesTest_s
   } else {
     if(!all(names(alternatives) %in% names(predictedShares))) stop("\nPredicted choice probabilities should be provided for all alternatives.")
     if(any(lapply(categories,sum)==0)) stop("\nSome categories are empty!)")
-    if(!any(lapply(categories,sum)==length(trueShares[[1]])) & !any(lapply(categories,length)==1)){
-      categories[["All data"]]=rep(1,length(trueShares[[1]]))
-    }}
+    if(!any(lapply(categories,sum)==length(trueShares[[1]])) & !any(lapply(categories,length)==1)) categories[["All data"]]=rep(1,length(trueShares[[1]]))
+  }
+  
   cat("\nRunning share prediction tests\n")
   cat("\n")
   iterations=length(categories)

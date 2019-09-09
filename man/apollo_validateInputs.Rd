@@ -40,26 +40,28 @@ other arguments of this function.
 It should also include a named character vector called \code{hbDist} identifying 
 the distribution of each parameter to be estimated. Possible values are as follows.
 \itemize{
-  \item "DNE": Parameter kept at its starting value (not estimated).
-  \item "F": Fixed (as in non-random) parameter.
-  \item "N": Normal.
-  \item "LN+": Positive log-normal.
-  \item "LN-": Negative log-normal.
-  \item "CN+": Positive censored normal.
-  \item "CN-": Negative censored normal.
-  \item "JSB": Johnson SB.
+  \item \code{"DNE"}: Parameter kept at its starting value (not estimated).
+  \item \code{"F"}: Fixed (as in non-random) parameter.
+  \item \code{"N"}: Normal.
+  \item \code{"LN+"}: Positive log-normal.
+  \item \code{"LN-"}: Negative log-normal.
+  \item \code{"CN+"}: Positive censored normal.
+  \item \code{"CN-"}: Negative censored normal.
+  \item \code{"JSB"}: Johnson SB.
 }}
 
-\item{apollo_draws}{List of arguments describing the inter and intra individual draws.
+\item{apollo_draws}{List of arguments describing the inter and intra individual draws. Required only if \code{apollo_control$mixing = TRUE}. Unused elements can be ommited.
 \itemize{
-  \item interDrawsType: Character. Type of inter-individual draws ('halton','mlhs','pmc','sobol','sobolOwen','sobolFaureTezuka', 'sobolOwenFaureTezuka' or the name of an object loaded in memory).
-  \item interNDraws: Numeric scalar (>=0). Number of inter-individual draws per individual. Should be set to 0 if not using them.
-  \item interUnifDraws: Character vector. Names of uniform-distributed inter-individual draws.
-  \item interNormDraws: Character vector. Names of normaly distributed inter-individual draws.
-  \item intraDrawsType: Character. Type of intra-individual draws ('halton','mlhs','pmc','sobol','sobolOwen','sobolFaureTezuka', 'sobolOwenFaureTezuka' or the name of an object loaded in memory).
-  \item intraNDraws: Numeric scalar (>=0). Number of intra-individual draws per individual. Should be set to 0 if not using them.
-  \item intraUnifDraws: Character vector. Names of uniform-distributed intra-individual draws.
-  \item intraNormDraws: Character vector. Names of normaly distributed intra-individual draws.
+  \item \code{interDrawsType}: Character. Type of inter-individual draws ('halton','mlhs','pmc','sobol','sobolOwen',
+                               'sobolFaureTezuka', 'sobolOwenFaureTezuka' or the name of an object loaded in memory,
+                               see manual in www.ApolloChoiceModelling.com for details).
+  \item \code{interNDraws}: Numeric scalar (>=0). Number of inter-individual draws per individual. Should be set to 0 if not using them.
+  \item \code{interUnifDraws}: Character vector. Names of uniform-distributed inter-individual draws.
+  \item \code{interNormDraws}: Character vector. Names of normaly distributed inter-individual draws.
+  \item \code{intraDrawsType}: Character. Type of intra-individual draws ('halton','mlhs','pmc','sobol','sobolOwen','sobolFaureTezuka', 'sobolOwenFaureTezuka' or the name of an object loaded in memory).
+  \item \code{intraNDraws}: Numeric scalar (>=0). Number of intra-individual draws per individual. Should be set to 0 if not using them.
+  \item \code{intraUnifDraws}: Character vector. Names of uniform-distributed intra-individual draws.
+  \item \code{intraNormDraws}: Character vector. Names of normaly distributed intra-individual draws.
 }}
 
 \item{apollo_randCoeff}{Function. Used with mixing models. Constructs the random parameters of a mixing model. Receives two arguments:

@@ -30,25 +30,27 @@
 #'                   It should also include a named character vector called \code{hbDist} identifying 
 #'                   the distribution of each parameter to be estimated. Possible values are as follows.
 #'                   \itemize{
-#'                     \item "DNE": Parameter kept at its starting value (not estimated).
-#'                     \item "F": Fixed (as in non-random) parameter.
-#'                     \item "N": Normal.
-#'                     \item "LN+": Positive log-normal.
-#'                     \item "LN-": Negative log-normal.
-#'                     \item "CN+": Positive censored normal.
-#'                     \item "CN-": Negative censored normal.
-#'                     \item "JSB": Johnson SB.
+#'                     \item \code{"DNE"}: Parameter kept at its starting value (not estimated).
+#'                     \item \code{"F"}: Fixed (as in non-random) parameter.
+#'                     \item \code{"N"}: Normal.
+#'                     \item \code{"LN+"}: Positive log-normal.
+#'                     \item \code{"LN-"}: Negative log-normal.
+#'                     \item \code{"CN+"}: Positive censored normal.
+#'                     \item \code{"CN-"}: Negative censored normal.
+#'                     \item \code{"JSB"}: Johnson SB.
 #'                   }
-#' @param apollo_draws List of arguments describing the inter and intra individual draws.
+#' @param apollo_draws List of arguments describing the inter and intra individual draws. Required only if \code{apollo_control$mixing = TRUE}. Unused elements can be ommited.
 #'                  \itemize{
-#'                    \item interDrawsType: Character. Type of inter-individual draws ('halton','mlhs','pmc','sobol','sobolOwen','sobolFaureTezuka', 'sobolOwenFaureTezuka' or the name of an object loaded in memory).
-#'                    \item interNDraws: Numeric scalar (>=0). Number of inter-individual draws per individual. Should be set to 0 if not using them.
-#'                    \item interUnifDraws: Character vector. Names of uniform-distributed inter-individual draws.
-#'                    \item interNormDraws: Character vector. Names of normaly distributed inter-individual draws.
-#'                    \item intraDrawsType: Character. Type of intra-individual draws ('halton','mlhs','pmc','sobol','sobolOwen','sobolFaureTezuka', 'sobolOwenFaureTezuka' or the name of an object loaded in memory).
-#'                    \item intraNDraws: Numeric scalar (>=0). Number of intra-individual draws per individual. Should be set to 0 if not using them.
-#'                    \item intraUnifDraws: Character vector. Names of uniform-distributed intra-individual draws.
-#'                    \item intraNormDraws: Character vector. Names of normaly distributed intra-individual draws.
+#'                    \item \code{interDrawsType}: Character. Type of inter-individual draws ('halton','mlhs','pmc','sobol','sobolOwen',
+#'                                                 'sobolFaureTezuka', 'sobolOwenFaureTezuka' or the name of an object loaded in memory,
+#'                                                 see manual in www.ApolloChoiceModelling.com for details).
+#'                    \item \code{interNDraws}: Numeric scalar (>=0). Number of inter-individual draws per individual. Should be set to 0 if not using them.
+#'                    \item \code{interUnifDraws}: Character vector. Names of uniform-distributed inter-individual draws.
+#'                    \item \code{interNormDraws}: Character vector. Names of normaly distributed inter-individual draws.
+#'                    \item \code{intraDrawsType}: Character. Type of intra-individual draws ('halton','mlhs','pmc','sobol','sobolOwen','sobolFaureTezuka', 'sobolOwenFaureTezuka' or the name of an object loaded in memory).
+#'                    \item \code{intraNDraws}: Numeric scalar (>=0). Number of intra-individual draws per individual. Should be set to 0 if not using them.
+#'                    \item \code{intraUnifDraws}: Character vector. Names of uniform-distributed intra-individual draws.
+#'                    \item \code{intraNormDraws}: Character vector. Names of normaly distributed intra-individual draws.
 #'                  }
 #' @param apollo_randCoeff Function. Used with mixing models. Constructs the random parameters of a mixing model. Receives two arguments:
 #'                      \itemize{
@@ -64,10 +66,10 @@
 #' @return List grouping several required input for model estimation.
 #' @export
 apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
-                                 apollo_control=NA, 
-                                 apollo_HB=NA, apollo_draws=NA,
-                                 apollo_randCoeff=NA, apollo_lcPars=NA,
-                                 silent=FALSE){
+                                  apollo_control=NA, 
+                                  apollo_HB=NA, apollo_draws=NA,
+                                  apollo_randCoeff=NA, apollo_lcPars=NA,
+                                  silent=FALSE){
   
   ### Try to recover mandatory variables from global environment if not provided
   tmp <- c("database", paste0("apollo_", c("beta", "fixed", "control"))) 
@@ -77,13 +79,16 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
     if(length(x)==1 && is.na(x)) stop("No variable called ", i, " found in user workspace (i.e. global environment).") else assign(i, x, envir=environment())
   }; rm(tmp, x, i)
   
-
-  
-
   ### Validate apollo_control, database
   apollo_control <- apollo_validateControl(database, apollo_control, silent=silent)
   database       <- apollo_validateData(database, apollo_control, silent=silent)
-
+  
+  ### Check that workInLogs is only used with panelData
+  if(apollo_control$workInLogs & !apollo_control$panelData){
+    apollo_control$workInLogs <- FALSE
+    warning("workInLogs set to FALSE. workInLogs can only be used with panel data")
+  }
+  
   ### Try to recover apollo_HB if appropiate, and sets the default value for the missing parts
   if(!apollo_control$HB) apollo_HB <- NA else{
     if(length(apollo_HB)==1 && is.na(apollo_HB)) apollo_HB <- tryCatch( get("apollo_HB", envir=globalenv()), error=function(e) NA )
@@ -91,9 +96,13 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
     apollo_HB <- apollo_validateHBControl(apollo_HB, apollo_beta, apollo_fixed, apollo_control)
   }
   if(apollo_control$HB && anyNA(apollo_HB)) stop("Argument 'apollo_HB' must be provided when using Bayesian estimation.")
-
+  
   ### Try to recover apollo_draws and apollo_randCoeff if appropiate, and sets the default value for the missing parts
   if(!apollo_control$mixing){
+    if(!is.function(apollo_randCoeff)) apollo_randCoeff <- tryCatch( get("apollo_randCoeff", envir=globalenv()), error=function(e) NA )
+    if(is.function(apollo_randCoeff)) warning("Function called 'apollo_randCoeff' found in user workspace will be ignored as model not using mixing.")
+    if(length(apollo_draws)==1 && is.na(apollo_draws)) apollo_draws <- tryCatch( get("apollo_draws", envir=globalenv()), error=function(e) NA )
+    if(length(apollo_draws)==1 && !is.na(apollo_draws)) warning("Variable called 'apollo_draws' found in user workspace will be ignored as model not using mixing.")
     apollo_draws <- NA
     draws <- NA
     apollo_randCoeff <- NA
@@ -105,9 +114,9 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
     for(i in names(default)) if(!(i %in% names(apollo_draws))) apollo_draws[[i]] <- default[[i]]
     
     if(!is.function(apollo_randCoeff)) apollo_randCoeff <- tryCatch( get("apollo_randCoeff", envir=globalenv()), error=function(e) NA )
-    if(!is.function(apollo_randCoeff)) stop("No variable called 'apollo_randCoeff' found in user workspace (i.e. global environment).")
+    if(!is.function(apollo_randCoeff)) stop("No function called 'apollo_randCoeff' found in user workspace (i.e. global environment).")
   }
-
+  
   ### Try to recover apollo_lcPars if not provided
   if(length(apollo_lcPars)==1 && is.na(apollo_lcPars)) apollo_lcPars <- tryCatch( get("apollo_lcPars", envir=globalenv()), error=function(e) NA )
   
@@ -116,18 +125,18 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
   
   ### Pack everything into a single list
   apollo_inputs <- list(database=database, apollo_control=apollo_control, 
-                       apollo_HB=apollo_HB, apollo_draws=apollo_draws, apollo_randCoeff=apollo_randCoeff,
-                       apollo_lcPars=apollo_lcPars, draws=NA, apolloLog=apolloLog)
-
+                        apollo_HB=apollo_HB, apollo_draws=apollo_draws, apollo_randCoeff=apollo_randCoeff,
+                        apollo_lcPars=apollo_lcPars, draws=NA, apolloLog=apolloLog)
+  
   ### Make draws
   if(apollo_control$mixing) apollo_inputs$draws <- apollo_makeDraws(apollo_inputs, silent=silent)
-
+  
   ### Check that if mixing, everything necessary was provided
   if(apollo_control$mixing){
     if(anyNA(apollo_inputs$draws)) stop("Argument 'draws' must be provided when estimating mixture models. Use apollo_makeDraws.")
     if(!is.function(apollo_inputs$apollo_randCoeff)) stop("Argument 'apollo_randCoeff' must be provided when estimating mixture models.")
     if(!apollo_inputs$apollo_control$panel & dim(apollo_inputs$draws[[1]])[2]>1) warning('Inter-person draws are used without a panel structure. This is unusual.')
   }
-
+  
   return(apollo_inputs)
 }

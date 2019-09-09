@@ -68,18 +68,18 @@
 #' cnlStructure[3,] = c( 1,  0, 0, 0                    ) # car
 #'
 #' ### CNL settings
-#' cnlSettings <- list(
-#'    alternatives = c(car=1, bus=2, air=3, rail=4),
-#'    avail        = list(car=database$av_car, bus=database$av_bus,
-#'                        air=database$av_air, rail=database$av_rail),
-#'    choiceVar    = database$choice,
-#'    V            = V,
-#'    cnlNests     = list(fastPT=b$lambda_fastPT, groundPT=b$lambda_groundPT, car=1),
-#'    cnlStructure = cnlStructure
+#' cnl_settings <- list(
+#'     alternatives = c(car=1, bus=2, air=3, rail=4),
+#'     avail        = list(car=database$av_car, bus=database$av_bus,
+#'                         air=database$av_air, rail=database$av_rail),
+#'     choiceVar    = database$choice,
+#'     V            = V,
+#'     cnlNests     = list(fastPT=b$lambda_fastPT, groundPT=b$lambda_groundPT, car=1),
+#'     cnlStructure = cnlStructure
 #' )
 #'
 #' ### Compute choice probabilities using CNL model
-#' apollo_cnl(cnlSettings, functionality="estimate")
+#' apollo_cnl(cnl_settings, functionality="estimate")
 #' @export
 apollo_cnl <- function(cnl_settings, functionality){
   if(is.null(cnl_settings[["alternatives"]])) stop("The cnl_settings list needs to include an object called \"alternatives\"!")
@@ -97,7 +97,81 @@ apollo_cnl <- function(cnl_settings, functionality){
   cnlNests     = cnl_settings[["cnlNests"]]
   cnlStructure = cnl_settings[["cnlStructure"]]
   rows         = cnl_settings[["rows"]]
-
+  
+  nAlt <- length(V)
+  nObs <- tryCatch(nrow( get("apollo_inputs", parent.frame(), inherits=FALSE)$database ),
+                   error=function(e){
+                     lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
+                     lenA <- sapply(avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
+                     lenC <- length(choiceVar)
+                     return(max(lenV, lenA, lenC))
+                   })
+  altnames = names(alternatives)
+  altcodes = alternatives
+  nestnames= names(cnlNests)
+  
+  ### Format checks
+  # alternatives
+  test <- is.vector(alternatives) & !is.null(names(alternatives))
+  if(!test) stop("The \"alternatives\" argument needs to be a named vector")
+  # avail
+  test <- is.list(avail) || (length(avail)==1 && avail==1)
+  if(!test) stop("The \"avail\" argument needs to be a list or set to 1")
+  if(is.list(avail)){
+    lenA <- sapply(avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
+    test <- all(lenA==nObs | lenA==1)
+    if(!test) stop("All entries in \"avail\" need to be a scalar or a vector with one entry per observation in the \"database\"")
+  }
+  # choiceVar
+  test <- is.vector(choiceVar) && (length(choiceVar)==nObs || length(choiceVar)==1)
+  if(!test) stop("The \"choiceVar\" argument needs to be a scalar or a vector with one entry per observation in the \"database\"")
+  # V
+  if(!is.list(V)) stop("The \"V\" argument needs to be a list")
+  lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
+  test <- all(lenV==nObs | lenV==1) && !is.null(names(V))
+  if(!test) stop("Each element of \"V\" must be named and needs to be a scalar or a vector with one entry per observation in the \"database\"")  
+  # rows
+  test <- is.vector(rows) && ( (is.logical(rows) && length(rows)==nObs) || (length(rows)==1 && rows=="all") )
+  if(!test) stop("The \"rows\" argument needs to be \"all\" or a vector of boolean statements with one entry per observation in the \"database\"")
+  # functionality
+  test <- functionality %in% c("estimate","prediction","validate","zero_LL","conditionals","output","raw")
+  if(!test) stop("Non-permissable setting for \"functionality\"")
+  # cnlNests
+  test <- is.list(cnlNests) && !is.null(names(cnlNests)) && all(sapply(cnlNests, is.vector)) && all(sapply(cnlNests, is.numeric))
+  if(!test) stop("Argument \"cnlNests\" must be a named list of numeric vectors describing the lambda parameter of each nest.")
+  len  <- sapply(cnlNests, function(x) ifelse(is.array(x), dim(x)[1], length(x)) )
+  test <- all(len==nObs | len==1)
+  if(!test) stop("Each element of \"cnlNests\" must be a scalar or a vector with one entry per observation in the \"database\"")  
+  # cnlStructure
+  test <- is.matrix(cnlStructure) && is.numeric(cnlStructure)
+  if(!test) stop("Argument \"cnlStructure\" must be a numeric matrix.")
+  
+  ### Expand availabilities if =1
+  avail_set <- FALSE
+  if(length(avail)==1 && avail==1){
+    avail <- as.list(setNames(rep(1,nAlt), altnames))
+    avail_set <- TRUE
+  } 
+  
+  ### Filter rows
+  if(length(rows)==1 && rows=="all") rows <- rep(TRUE, length(nObs))
+  if(any(!rows)){
+    avail     <- lapply(avail, function(av) if(length(av)==1) return(av) else return(av[rows]))
+    choiceVar <- choiceVar[rows]
+    V         <- lapply(V, apollo_keepRows, r=rows)
+    cnlNests  <- lapply(cnlNests, function(x) if(length(x)==1) return(x) else return(x[rows]))
+    # update nObs
+    lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
+    lenA <- sapply(avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
+    lenC <- length(choiceVar)
+    nObs <- max(lenV, lenA, lenC)
+    rm(lenV, lenA, lenC)
+  }
+  
+  ### Reorder arguments
+  avail <- avail[altnames]
+  V     <- V[altnames]
+  
   # ############################## #
   #### functionality="validate" ####
   # ############################## #
@@ -106,42 +180,13 @@ apollo_cnl <- function(cnl_settings, functionality){
     # Store useful values
     apollo_control <- tryCatch(get("apollo_control", parent.frame(), inherits=FALSE),
                                error = function(e) list(noValidation=FALSE, noDiagnostics=FALSE))
-
-    nObs  <- length(choiceVar)
-    nAlts <- length(V)
-    nameAltV <- names(V)
-    avail_set <- FALSE
-    altnames <- names(alternatives)
-    altcodes <- alternatives
-    nestnames<- names(cnlNests)
-    if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(choiceVar))
-    choiceVar[!rows]=alternatives[1]
-
-    # check rows statement
-    if(length(rows)!=length(choiceVar)) stop("The argument \"rows\" needs to either be \"all\" or a vector of length equal to the number of the rows in the data!")
     
-    # Check that alternatives are named in altcodes and V
-    if(is.null(altnames) || is.null(altcodes) || is.null(names(V))) stop("Alternatives must be named, both in 'altnernatives' and 'V'.")
-    
-    # Create availability if necessary
-    if(!is.list(avail)){
-      avail_set <- TRUE
-      avail <- vector(mode="list", length=nAlts)
-      avail <- lapply(avail, function(a) 1)
-      names(avail) <- altnames
-      #warning("Full availability of alternatives assumed for the CNL component.")
-    }
-
-    # Reorder V to match altnames order, if necessary
-    if(any(altnames != names(V))) V <- V[altnames]
-    if(any(altnames != names(avail))) avail <- avail[altnames]
-
     if(apollo_control$noValidation==FALSE){
       # Checks that user doesn't attempt to change the root lambda
       if("root" %in% names(cnlNests)) stop("The root should not be included in argument cnlNests.")
 
       # Check there are at least three alternatives
-      if(nAlts<3) stop("CNL requires at least three alternatives")
+      if(nAlt<3) stop("CNL requires at least three alternatives")
 
       # Check that choice vector is not empty
       if(nObs==0) stop("No choices to model")
@@ -165,59 +210,31 @@ apollo_cnl <- function(cnl_settings, functionality){
 
       # check that all availabilities are either 0 or 1
       for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values are not 0 or 1.")
-
+      
+      # Set utility of unavailable alternatives and excluded rows to 0 to avoid numerical issues
+      V <- mapply(function(v,a) apollo_setRows(v, !a | !rows, 0), V, avail, SIMPLIFY=FALSE)
+      if(any(sapply(V, anyNA))) warning("At least one utility contains one or more NA values")
+      
       # checks that are specific to cnlStructure component
       if(nrow(cnlStructure)!=length(nestnames)) stop("Tree structure needs one row per nest!")
-      if(ncol(cnlStructure)!=nAlts) stop("Tree structure needs one column per alternative!")
+      if(ncol(cnlStructure)!=nAlt) stop("Tree structure needs one column per alternative!")
       if(max(colSums(cnlStructure))>1) stop("Allocation parameters for some alternatives sum to value above 1!")
       if(min(colSums(cnlStructure))>1) stop("Allocation parameters for some alternatives sum to value below 1!")
-
-      # confirm all checks are passed, print output and return TRUE
-      #cat("\nAll checks passed for CNL model component\n")
-
     }
 
     if(apollo_control$noDiagnostics==FALSE){
-
-      #if(avail_set==TRUE) warning("Availability not provided to 'apollo_cnl' (or some elements are NA). Full availability assumed.")
-
-      # turn scalar availabilities into vectors
+      ### turn scalar availabilities into vectors
       for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs)
-
-      # Construct summary table of availabilities and market share
-      availprint = colSums(rows*matrix(unlist(avail), ncol = length(avail))) 
-      choicematrix = matrix(0,nrow=4,ncol=length(altnames))
-      choicematrix[1,] = availprint
-      j=1
-      while(j<= length(altnames)){
-        choicematrix[2,j]=sum(choiceVar==altcodes[j] & rows) 
-        j=j+1
-      }
-      choicematrix[3,] = choicematrix[2,]/sum(rows)*100 
-      choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 
+      
+      ### Construct summary table of availabilities and market share
+      choicematrix = matrix(0, nrow=4, ncol=length(altnames), 
+                            dimnames=list(c("Times available", "Times chosen", "Percentage chosen overall",
+                                            "Percentage chosen when available"), altnames))
+      choicematrix[1,] = unlist(lapply(avail, sum))
+      for(j in 1:length(altnames)) choicematrix[2,j] = sum(choiceVar==altcodes[j]) # number of times each alt is chosen
+      choicematrix[3,] = choicematrix[2,]/nObs*100 # market share
+      choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 # market share controlled by availability
       choicematrix[4,!is.finite(choicematrix[4,])] <- 0
-      rownames(choicematrix) = c("Times available","Times chosen","Percentage chosen overall","Percentage chosen when available")
-      colnames(choicematrix) = altnames
-      #cat('Overview of choices for CNL model component:\n')
-      #print(round(choicematrix,2))
-      #cat("\n")
-      #if(any(choicematrix[4,]==0)) cat("Warning: some alternatives are never chosen in your data!\n")
-      #if(any(choicematrix[4,]==1)) cat("Warning: some alternatives are always chosen when available!\n")
-      #
-      ## Print structure of the CNL model only if lambda is common for all sample.
-      #if(all(sapply(cnlNests, function(x) length(x)==1))){
-      #  out_tree = cbind(cnlStructure, unlist(cnlNests))
-      #  out_tree = apply(out_tree, MARGIN=2, function(x){
-      #    if(all(x %in% 0:1)) round(x,0) else round(x,4)
-      #    return(x)
-      #  } )
-      #  rownames(out_tree)=nestnames
-      #  colnames(out_tree)=c(altnames,"lambda")
-      #  
-      #  cat('Initial structure for CNL model component:\n')
-      #  print(out_tree)
-      #  cat("\n")
-      #}
       
       content <- list(round(choicematrix,2),
                       ifelse(any(choicematrix[4,]==0), "Warning: some alternatives are never chosen in your data!", ""),
@@ -248,31 +265,10 @@ apollo_cnl <- function(cnl_settings, functionality){
   # ############################## #
 
   if(functionality=="zero_LL"){
-    # Store useful values
-    nObs  <- length(choiceVar)
-    nAlts <- length(V)
-    avail_set <- FALSE
-    altnames <- names(alternatives)
-    altcodes <- alternatives
-    nestnames<- names(cnlNests)
-    if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(choiceVar))
-    choiceVar[!rows]=alternatives[1]
-
-    # Create availability if necessary
-    if(!is.list(avail)){
-      avail_set <- TRUE
-      avail <- vector(mode="list", length=nAlts)
-      avail <- lapply(avail, function(a) 1)
-      names(avail) <- altnames
-    }
-
-    ### Reorder V and avail to match altnames order, if necessary
-    if(any(altnames != names(V))) V <- V[altnames]
-    if(any(altnames != names(avail))) avail <- avail[altnames]
     for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs) # turn scalar availabilities into vectors
     nAvAlt <- rowSums(matrix(unlist(avail), ncol = length(avail))) # number of available alts in each observation
     P = 1/nAvAlt # likelihood at zero
-    P[!rows] = 1
+    if(any(!rows)) P <- apollo_insertRows(P, rows, 1)
     return(P)
   }
 
@@ -282,33 +278,24 @@ apollo_cnl <- function(cnl_settings, functionality){
 
   if(functionality %in% c("estimate","prediction","conditionals","raw")){
 
-    # Store useful values
-    if(functionality=="raw" && length(choiceVar)==1 && is.na(choiceVar)) choiceVar = alternatives[1]
-    nObs  <- length(choiceVar)
-    nAlts <- length(V)
-    avail_set <- FALSE
-    altnames <- names(alternatives)
-    altcodes <- alternatives
-    nestnames<- names(cnlNests)
-    if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(choiceVar))
-    choiceVar[!rows]=alternatives[1]
-
-    # Create availability if necessary
-    if(!is.list(avail)){
-      avail_set <- TRUE
-      avail <- vector(mode="list", length=nAlts)
-      avail <- lapply(avail, function(a) 1)
-      names(avail) <- altnames
+    # Fix choiceVar if "raw" and choiceVar==NA
+    choiceNA = FALSE
+    if(length(choiceVar)==1 && is.na(choiceVar)){
+      choiceVar = alternatives[1]
+      choiceNA = TRUE
     }
-
-    ### Reorder V and avail to match altnames order, if necessary
-    if(any(altnames != names(V))) V <- V[altnames]
-    if(any(altnames != names(avail))) avail <- avail[altnames]
-
-
+    
+    # Set utility of unavailable alternatives and excluded rows to 0 to avoid numerical issues
+    V <- mapply(function(v,a) apollo_setRows(v, !a | !rows, 0), V, avail, SIMPLIFY=FALSE)
+    
     # extract chosen utility
-    chosenV <- Reduce('+', lapply(as.list(1:nAlts),
+    chosenV <- Reduce('+', lapply(as.list(1:nAlt),
                                   FUN=function(i) (choiceVar==altcodes[i])*V[[altnames[i]]])
+    )
+    
+    chosenAvail <- Reduce('+',
+                          lapply(as.list(1:nAlt),
+                                 FUN=function(i) (choiceVar==altcodes[i])*avail[[altnames[i]]])
     )
 
     # substract chosen utility from all others for numerical stability
@@ -325,15 +312,13 @@ apollo_cnl <- function(cnl_settings, functionality){
     eV <- mapply('*', eV, avail, SIMPLIFY = FALSE)
 
     # work out denominator for within nest probs
-
     denom_within=list()
     t=1
     nests=nrow(cnlStructure)
-
     while(t<=nests){
       denom_within[[t]]=0
       j=1
-      while(j<=nAlts){
+      while(j<=nAlt){
         denom_within[[t]]=denom_within[[t]]+(cnlStructure[t,j]*eV[[altnames[j]]])^(1/cnlNests[[t]])
         j=j+1
       }
@@ -341,11 +326,9 @@ apollo_cnl <- function(cnl_settings, functionality){
     }
 
     # work out within-nest probs
-
     Pwithin=list()
-
     j=1
-    while(j<=nAlts){
+    while(j<=nAlt){
       Pwithin[[j]]=list()
       t=1
       while(t<=nests){
@@ -356,7 +339,6 @@ apollo_cnl <- function(cnl_settings, functionality){
     }
 
     # work out nest probs
-
     Pnest=list()
     denom_nest=0
     t=1
@@ -369,10 +351,9 @@ apollo_cnl <- function(cnl_settings, functionality){
       t=t+1}
 
     # work individual probs
-
     Palts=list()
     j=1
-    while(j<=nAlts){
+    while(j<=nAlt){
       Palts[[j]]=0
       t=1
       while(t<=nests){
@@ -380,30 +361,24 @@ apollo_cnl <- function(cnl_settings, functionality){
         t=t+1}
       j=j+1
     }
-
     names(Palts)=names(V)
+    
 
     if(functionality=="prediction"|(functionality=="raw")){
       P=Palts
       # add an additional column with chosen
-      chosenP <- (choiceVar==altcodes[1])*Palts[[altnames[1]]]
-      for(i in 2:nAlts) chosenP <- chosenP + (choiceVar==altcodes[i])*Palts[[altnames[i]]]
-      if(functionality=="prediction") P[["chosen"]]=chosenP
-      P <- lapply(P, function(p) {
-        # change likelihood of excluded columns for 1
-        if(is.vector(p)) p[!rows]  <- ifelse(functionality=="prediction",NA,1)
-        if(is.matrix(p)) p[!rows,] <- ifelse(functionality=="prediction",NA,1)
-        if(is.array(p) & length(dim(p))==3) p[!rows,,] <- ifelse(functionality=="prediction",NA,1)
-        return(p)
-      })
+      if(!choiceNA){
+        chosenP <- (choiceVar==altcodes[1])*Palts[[altnames[1]]]
+        for(i in 2:nAlt) chosenP <- chosenP + (choiceVar==altcodes[i])*Palts[[altnames[i]]]
+        if(functionality=="prediction") P[["chosen"]]=chosenP
+      }
+      if(any(!rows)) P <- lapply(P, apollo_insertRows, r=rows, val=NA) # insert excluded rows with value NA
     } else {
       # keep only probability for chosen alternative
       chosenP <- (choiceVar==altcodes[1])*Palts[[altnames[1]]]
-      for(i in 2:nAlts) chosenP <- chosenP + (choiceVar==altcodes[i])*Palts[[altnames[i]]]
+      for(i in 2:nAlt) chosenP <- chosenP + (choiceVar==altcodes[i])*Palts[[altnames[i]]]
       P=chosenP
-      if(is.vector(P)) P[!rows]  <- 1
-      if(is.matrix(P)) P[!rows,] <- 1
-      if(is.array(P) && length(dim(P))==3) P[!rows,,] <- 1
+      if(any(!rows)) P <- apollo_insertRows(P, rows, 1) # insert excluded rows with value 1
     }
 
     return(P)
@@ -417,86 +392,20 @@ apollo_cnl <- function(cnl_settings, functionality){
 
     P = apollo_cnl(cnl_settings, functionality="estimate")
     
-    # Store useful values
-    nObs  <- length(choiceVar)
-    nAlts <- length(V)
-    avail_set <- FALSE
-    altnames <- names(alternatives)
-    altcodes <- alternatives
-    nestnames<- names(cnlNests)
-    if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(choiceVar))
-    choiceVar[!rows]=alternatives[1]
+    ### turn scalar availabilities into vectors
+    for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs)
     
-    # Create availability if needed
-    if(!is.list(avail)){
-      avail_set <- TRUE
-      avail <- setNames(as.list(rep(1,nAlts)), names(alternatives))
-    }
-    
-    ### Reorder V and avail to match altnames order, if necessary
-    if(any(altnames != names(V))) V <- V[altnames]
-    if(any(altnames != names(avail))) avail <- avail[altnames]
-
-
-    if(avail_set) availprint = rep(length(choiceVar),length(altnames)) else{
-      availprint=colSums(rows*matrix(unlist(avail), ncol = length(avail)))
-    }
-
-    choicematrix=matrix(0,nrow=4,ncol=length(altnames))
-
-    choicematrix[1,]=availprint
-    j=1
-    while(j<= length(altnames)){
-      choicematrix[2,j]=sum(choiceVar==altcodes[j] & rows)
-      j=j+1
-    }
-
-    choicematrix[3,] = choicematrix[2,]/sum(rows)*100
-    choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100
+    ### Construct summary table of availabilities and market share
+    choicematrix = matrix(0, nrow=4, ncol=length(altnames), 
+                          dimnames=list(c("Times available", "Times chosen", "Percentage chosen overall",
+                                          "Percentage chosen when available"), altnames))
+    choicematrix[1,] = unlist(lapply(avail, sum))
+    for(j in 1:length(altnames)) choicematrix[2,j] = sum(choiceVar==altcodes[j]) # number of times each alt is chosen
+    choicematrix[3,] = choicematrix[2,]/nObs*100 # market share
+    choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 # market share controlled by availability
     choicematrix[4,!is.finite(choicematrix[4,])] <- 0
-    rownames(choicematrix) = c("Times available","Times chosen","Percentage chosen overall","Percentage chosen when available")
-    colnames(choicematrix) = altnames
     
-    # Print structure of the CNL model only if lambda is common for all sample.
-    #if(all(sapply(cnlNests, function(x) length(x)==1))){
-    #  out_tree = cbind(cnlStructure, unlist(cnlNests))
-    #  out_tree = apply(out_tree, MARGIN=2, function(x){
-    #    if(all(x %in% 0:1)) round(x,0) else round(x,4)
-    #    return(x)
-    #  } )
-    #  rownames(out_tree)=nestnames
-    #  colnames(out_tree)=c(altnames,"lambda")
-    #  
-    #  # write diagnostics to a file named "modelName_tempOutput.txt" in a temporary directory.
-    #  apollo_control <- tryCatch( get("apollo_inputs", parent.frame(), inherits=FALSE )$apollo_control,
-    #                              error=function(e){
-    #                                cat("apollo_cnl could not retrieve apollo_control. No diagnostics in output.\n")
-    #                                return(NA)
-    #                              } )
-    #  if(!(length(apollo_control)==1 && is.na(apollo_control))){
-    #    fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
-    #    fileName <- file.path(tempdir(),fileName)
-    #    fileConn <- tryCatch( file(fileName, open="at"),
-    #                          error=function(e){
-    #                            cat('apollo_cnl could not write diagnostics to temporary file. No diagnostics in output.\n')
-    #                            return(NA)
-    #                          })
-    #    if(!anyNA(fileConn)){
-    #      sink(fileConn)
-    #      on.exit({if(sink.number()>0) sink(); close(fileConn)})
-    #      if(apollo_control$noDiagnostics==FALSE){
-    #        cat('Overview of choices for CNL model component:\n')
-    #        print(round(choicematrix,0))
-    #        cat("\n")
-    #      }
-    #      cat("Final structure for CNL model component:\n")
-    #      print(out_tree)
-    #      cat("\n")
-    #      if(sum(choicematrix[4,]==0)>0) cat("Warning: some alternatives are never chosen in your data!\n")
-    #    }
-    #  }
-    #}
-    
+    ### Write to Apollo Log
     content <- list(round(choicematrix,2))
     if(any(choicematrix[4,]==0)) content[[length(content)+1]] <- "Warning: some alternatives are never chosen in your data!"
     if(any(choicematrix[4,]==1)) content[[length(content)+1]] <- "Warning: some alternatives are always chosen when available!"

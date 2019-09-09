@@ -17,6 +17,7 @@
 apollo_combineResults = function(combineResults_settings=NULL){
    if(is.null(combineResults_settings[["modelNames"]])){
      cat("The combineResults_settings does not include an object called \"modelNames\" so all files will be used!\n")
+     combineResults_settings=list()
      combineResults_settings[["modelNames"]]=list.files(pattern="*estimates.csv")
      j=1
      while(j<=length(combineResults_settings[["modelNames"]])){

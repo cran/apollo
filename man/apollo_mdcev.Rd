@@ -11,16 +11,17 @@ apollo_mdcev(mdcev_settings, functionality)
 \itemize{
   \item V: Named list. Utilities of the alternatives. Names of elements must match those in argument 'alternatives'.
   \item alternatives: Character vector. Names of alternatives, elements must match the names in list 'V'.
-  \item alpha: Named list. Alpha parameters for each alternative, including for the outside good. As many elements as alternatives.
-  \item gamma: Named list. Gamma parameters for each alternative, including for the outside good. As many elements as alternatives.
+  \item alpha: Named list. Alpha parameters for each alternative, including for any outside good. As many elements as alternatives.
+  \item gamma: Named list. Gamma parameters for each alternative, excluding any outside good. As many elements as inside good alternatives.
   \item sigma: Numeric scalar. Scale parameter of the model extreme value type I error.
   \item cost: Named list of numeric vectors. Price of each alternative. One element per alternative, each one as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
   \item avail: Named list. Availabilities of alternatives, one element per alternative. Names of elements must match those in argument 'alternatives'. Value for each element can be 1 (scalar if always available) or a vector with values 0 or 1 for each observation. If all alternatives are always available, then user can just omit this argument.
   \item continuousChoice: Named list of numeric vectors. Amount of consumption of each alternative. One element per alternative, as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
   \item budget: Numeric vector. Budget for each observation.
   \item minConsumption: Named list of scalars or numeric vectors. Minimum consumption of the alternatives, if consumed. As many elements as alternatives. Names must match those in \code{alternatives}.
+  \item outside: Character. Optional name of the outside good.
   \item rows: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
-}}
+  #'                       }}
 
 \item{functionality}{Character. Can take different values depending on desired output.
 \itemize{

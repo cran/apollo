@@ -23,28 +23,33 @@
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param estimate_settings List. Options controlling the estimation process.
 #'                                 \itemize{
-#'                                   \item estimationRoutine: Character. Estimation method. Can take values "bfgs", "bhhh", or "nr".
-#'                                                            Used only if \code{apollo_control$HB} is FALSE. Default is "bfgs".
-#'                                   \item maxIterations: Numeric. Maximum number of iterations of the estimation routine before stopping.
-#'                                                        Used only if \code{apollo_control$HB} is FALSE. Default is 200.
-#'                                   \item writeIter: Boolean. Writes value of the parameters in each iteration to a csv file. 
-#'                                                    Works only if \code{estimation_routine="bfgs"}. Default is TRUE.
-#'                                   \item hessianRoutine: Character. Name of routine used to calculate the Hessian of the loglikelihood 
-#'                                                         function after estimation. Valid values are \code{"numDeriv"} (default) and 
-#'                                                         \code{"maxLik"} to use the routines in those packages, and \code{"none"} to avoid 
-#'                                                         estimating the Hessian (and the covariance matrix). Only used if \code{apollo_control$HB=FALSE}.
-#'                                   \item printLevel: Higher values render more verbous outputs. Can take values 0, 1, 2 or 3. 
-#'                                                     Ignored if apollo_control$HB is TRUE. Default is 3.
-#'                                   \item constraints: Constraints on parameters to estimate. Should ignore fixed parameters. 
-#'                                                      See argument \code{constraints} in \link[maxLik]{maxBFGS} for more details.
-#'                                   \item scaling: Named vector. Names of elements should match those in \code{apollo_beta}. Optional scaling for parameters. 
-#'                                                  If provided, for each parameter \code{i}, \code{(apollo_beta[i]/scaling[i])} is optimised, but 
-#'                                                  \code{scaling[i]*(apollo_beta[i]/scaling[i])} is used during estimation. For example, if parameter
-#'                                                  b3=10, while b1 and b2 are close to 1, then setting \code{scaling = c(b3=10)} can help estimation, 
-#'                                                  specially the calculation of the Hessian. Reports will still be based on the non-scaled parameters.
-#'                                  \item numDeriv_settings: List. Additional arguments to the Richardson method used by numDeriv to calculate the Hessian. 
-#'                                                           See argument \code{method.args} in \link[numDeriv]{grad} for more details.
-#'                                  \item silent: Boolean. If TRUE, no information is printed to the console during estimation. Default is FALSE.
+#'                                   \item \strong{estimationRoutine}: Character. Estimation method. Can take values "bfgs", "bhhh", or "nr".
+#'                                                                     Used only if \code{apollo_control$HB} is FALSE. Default is "bfgs".
+#'                                   \item \strong{maxIterations}: Numeric. Maximum number of iterations of the estimation routine before stopping.
+#'                                                                 Used only if \code{apollo_control$HB} is FALSE. Default is 200.
+#'                                   \item \strong{writeIter}: Boolean. Writes value of the parameters in each iteration to a csv file. 
+#'                                                             Works only if \code{estimation_routine="bfgs"}. Default is TRUE.
+#'                                   \item \strong{hessianRoutine}: Character. Name of routine used to calculate the Hessian of the loglikelihood 
+#'                                                                  function after estimation. Valid values are \code{"numDeriv"} (default) and 
+#'                                                                  \code{"maxLik"} to use the routines in those packages, and \code{"none"} to avoid 
+#'                                                                  estimating the Hessian (and the covariance matrix). Only used if \code{apollo_control$HB=FALSE}.
+#'                                   \item \strong{printLevel}: Higher values render more verbous outputs. Can take values 0, 1, 2 or 3. 
+#'                                                              Ignored if apollo_control$HB is TRUE. Default is 3.
+#'                                   \item \strong{constraints}: Constraints on parameters to estimate. Should ignore fixed parameters. 
+#'                                                               See argument \code{constraints} in \link[maxLik]{maxBFGS} for more details.
+#'                                   \item \strong{scaling}: Named vector. Names of elements should match those in \code{apollo_beta}. Optional scaling for parameters. 
+#'                                                           If provided, for each parameter \code{i}, \code{(apollo_beta[i]/scaling[i])} is optimised, but 
+#'                                                           \code{scaling[i]*(apollo_beta[i]/scaling[i])} is used during estimation. For example, if parameter
+#'                                                           b3=10, while b1 and b2 are close to 1, then setting \code{scaling = c(b3=10)} can help estimation, 
+#'                                                           specially the calculation of the Hessian. Reports will still be based on the non-scaled parameters.
+#'                                  \item \strong{numDeriv_settings}: List. Additional arguments to the Richardson method used by numDeriv to calculate the Hessian. 
+#'                                                                    See argument \code{method.args} in \link[numDeriv]{grad} for more details.
+#'                                  \item \strong{bootstrapSE}: Numeric. Number of bootstrap samples to calculate standard errors. Default is 0, meaning
+#'                                                              no bootstrap s.e. will be calculated. Number must zero or a positive integer. Only used
+#'                                                              if \code{apollo_control$HB} is \code{FALSE}.
+#'                                  \item \strong{bootstrapSeed}: Numeric scalar (integer). Random number generator seed to generate the bootstrap samples.
+#'                                                                Only used if \code{bootstrapSE>0}. Default is 24.
+#'                                  \item \strong{silent}: Boolean. If TRUE, no information is printed to the console during estimation. Default is FALSE.
 #'                                 }
 #' @return model object
 #' @export
@@ -60,7 +65,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   ### Set missing settings to default values
   default <- list(estimationRoutine="bfgs", maxIterations=200, writeIter=TRUE, 
                   hessianRoutine="numDeriv", printLevel=3L, constraints=NULL, 
-                  numDeriv_settings=list(), scaling=NA, silent=FALSE)
+                  numDeriv_settings=list(), scaling=NA, bootstrapSE=0, bootstrapSeed=24, silent=FALSE)
   if(length(estimate_settings)==1 && is.na(estimate_settings)) estimate_settings <- default
   tmp <- names(default)[!(names(default) %in% names(estimate_settings))] # options missing in estimate_settings
   for(i in tmp) estimate_settings[[i]] <- default[[i]]
@@ -82,24 +87,31 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   numDeriv_settings = estimate_settings[["numDeriv_settings"]]
   constraints       = estimate_settings[["constraints"]]
   scaling           = estimate_settings[["scaling"]]
+  bootstrapSE       = estimate_settings[["bootstrapSE"]]
+  bootstrapSeed     = estimate_settings[["bootstrapSeed"]]
   
   # ################################## #
   #### initial processing & testing ####
   # ################################## #
   
   ### Validation of input
+  apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
   if( !(estimationRoutine %in% c("bfgs","bhhh", "nr")) ) stop("Invalid estimationRoutine. Use 'bfgs', 'bhhh' or 'nr'.")
   if( !(hessianRoutine %in% c("numDeriv", "maxLik", "none")) ) stop("Invalid hessianRoutine. Use 'numDeriv', 'maxLik' or 'none'.")
-  if(length(apollo_beta)==0 || anyNA(apollo_beta) || !is.numeric(apollo_beta)) stop("'apollo_beta' is not a numeric vector.")
+  if(!is.numeric(apollo_beta) | !is.vector(apollo_beta) | is.null(names(apollo_beta))) stop("The \"apollo_beta\" argument needs to be a named vector")
   if(length(apollo_fixed)>0 && !is.character(apollo_fixed)) stop("'apollo_fixed' is not an empty vector nor a vector of names.")
   if(!all(apollo_fixed %in% names(apollo_beta))) stop("Some parameters included in 'apollo_fixed' are not included in 'apollo_beta'.")
+  if(!is.numeric(bootstrapSE) || length(bootstrapSE)!=1 || bootstrapSE<0) stop("'bootstrapSE' is not zero or a positive integer.")
+  bootstrapSE <- as.integer(bootstrapSE)
+  if(!is.numeric(bootstrapSeed) || length(bootstrapSeed)!=1 || bootstrapSeed<=0) stop("'bootstrapSeed' is not a positive integer.")
+  bootstrapSeed <- as.integer(bootstrapSeed)
   ### create temporary copy of starting values for use later
   temp_start=apollo_beta
   if(length(scaling)>0 && !is.na(scaling)){
     if(any(!(names(scaling) %in% names(apollo_beta)))) stop("Some parameters included in 'scaling' are not included in 'apollo_beta'")
     if(any((names(scaling) %in% apollo_fixed))) stop("Parameters in 'apollo_fixed' should not be included in 'scaling'")
     if(any(!(scaling>0))) stop("All terms in in 'scaling' should be strictly positive!")
-    txt <- "During estimation, parameters will be scaled using the values in estimate_settings$scaling"
+    txt <- "During estimation, parameters will be scaled using the\n values in estimate_settings$scaling"
     if(!silent) cat(txt,"\n", sep="") else warning(txt)
     apollo_inputs$scaling = scaling
     r <- names(apollo_beta) %in% names(apollo_inputs$scaling)
@@ -176,7 +188,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   if(!apollo_control$HB){
     ### Validation for classical estimation
     apollo_probabilities(apollo_beta, apollo_inputs, functionality="validate")
-    if(!silent & !apollo_control$noDiagnostics ) cat(apollo_printLog(apollo_inputs$apolloLog))
+    if(!silent & !apollo_control$noDiagnostics) cat("\n", apollo_printLog(apollo_inputs$apolloLog), sep="")
     testLL = apollo_probabilities(apollo_beta, apollo_inputs, functionality="estimate")
     if(anyNA(testLL)){
       # Maybe here we could return the value of the likelihood and print and error wuth cat, instead of simply stopping
@@ -370,8 +382,10 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
       model$scaling <- scaling
     }
     
-    model$random_coeff_summary=cbind(colMeans(Ndraws),apply(Ndraws,2,sd))
-    colnames(model$random_coeff_summary)=c("Mean","SD")
+    if(any(!is.null(apollo_HB$gVarNamesNormal)) && length(apollo_HB$gVarNamesNormal)>0){
+      model$random_coeff_summary=cbind(colMeans(Ndraws),apply(Ndraws,2,sd))
+      colnames(model$random_coeff_summary)=c("Mean","SD")
+    }
     
     ### produce model$estimate
     
@@ -410,15 +424,18 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   #### classical estimation         ####
   # ################################## #
   
-  ### Create cluster (if needed) and
+  ### Create cluster (if needed)
   if(apollo_control$nCores==1) cl <- NA else {
     cl <- apollo_makeCluster(apollo_probabilities, apollo_inputs, silent=silent)
     apollo_control$nCores <- length(cl)
     apollo_inputs$apollo_control$nCores <- length(cl)
   }
   on.exit(if(exists('cl') & apollo_control$nCores>1) parallel::stopCluster(cl))
-  apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, apollo_probabilities,
-                                       apollo_inputs, estimate_settings, cl=cl)
+  
+  ### Create loglike function
+  apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, 
+                                       apollo_probabilities, apollo_inputs, 
+                                       estimate_settings, cl=cl)
   
   ### Split parameters between variable and fixed
   beta_var_val <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
@@ -450,6 +467,9 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   if(exists("model")& !silent){
     cat("\nEstimated values:\n")
     tmp <- c(model$estimate, apollo_beta[apollo_fixed])[names(apollo_beta)]
+    if(!is.null(apollo_inputs$scaling)) for(i in names(apollo_inputs$scaling)){
+      tmp[i] <- apollo_inputs$scaling[i]*tmp[i]
+    }
     print(as.matrix(round(tmp,4)))
     rm(tmp)
     cat("\n")
@@ -460,7 +480,6 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     txt <- "ERROR: Estimation failed. No covariance matrix to compute."
     if(!silent) cat(txt,"\n", sep="") else warning(txt)
     if(exists("model")){
-      print(as.matrix(model$estimate, ncol=1))
       if(length(scaling)>0 && !is.na(scaling)) model$scaling <- scaling
       return(model)
     } else stop("Sorry, no estimated model to return.\n")
@@ -482,7 +501,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
         step <- ceiling(I/20)
         
         function(theta){
-          if(i==0 & !silent) cat('0%')
+          if(i==0 & !silent) cat(' 0%')
           tmp <- apollo_logLike(theta, countIter=FALSE, writeIter=FALSE, sumLL=TRUE)
           i <<- i+1
           if(i%%step==0 & !silent){
@@ -498,13 +517,13 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                     error = function(e) return(NA))
       # Check if estimation was succesful
       if(length(H)==1 && anyNA(H)){
-        if(!silent) cat("ERROR: Hessian calculation using numDeriv failed.\n")
+        if(!silent) cat(" ERROR: Hessian calculation using numDeriv failed.\n")
         hessianRoutine <- "maxLik"
       } else {
         success_nd <- TRUE
         nNA_nd <- sum(is.na(H))
-        if(nNA_nd>0 & !silent) cat("Some (",nNA_nd,") NA values found in numDeriv Hessian.\n", sep="")
-        if(success_nd && nNA_nd==0 && !silent) cat("Hessian calculated with numDeriv will be used.\n")
+        if(nNA_nd>0 & !silent) cat(" Some (",nNA_nd,") NA values found in numDeriv Hessian.\n", sep="")
+        if(success_nd && nNA_nd==0 && !silent) cat(" Hessian calculated with numDeriv will be used.\n")
       }
     }
     
@@ -518,13 +537,13 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                                         finalHessian=TRUE, iterlim=2, countIter=FALSE, writeIter=FALSE, sumLL=FALSE),
                          error=function(e) return(NA))
       # Check the hessian was correctly estimated with maxLik
-      if(length(model2)==1 && anyNA(model2)){ if(!silent) cat("ERROR: Hessian calculation using maxLik failed.\n") } else {
+      if(length(model2)==1 && anyNA(model2)){ if(!silent) cat(" ERROR: Hessian calculation using maxLik failed.\n") } else {
         success_ml <- TRUE
         nNA_ml <- sum(is.na(model2$hessian))
-        if(nNA_ml>0 & !silent) cat("Some (",nNA_ml,") NA values found in maxLik Hessian.\n", sep="")
+        if(nNA_ml>0 & !silent) cat(" Some (",nNA_ml,") NA values found in maxLik Hessian.\n", sep="")
         if(hessianRoutine=="maxLik" | nNA_ml<nNA_nd){
           H <- model2$hessian
-          if(!silent) cat("Hessian calculated with maxLik will be used.\n")
+          if(!silent) cat(" Hessian calculated with maxLik will be used.\n")
         }
       }
     }
@@ -538,31 +557,44 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   ### Copy Hessian to model, and checks if s.e. cannot be calculated
   model$hessian <- H
   if(is.null(model$hessian) & hessianRoutine!="none"){
-    if(!silent) cat("ERROR: Hessian could not be calculated. Postprocessing aborted.\n")
-    #return(model)
+    if(!silent) cat(" ERROR: Hessian could not be calculated.\n Postprocessing aborted.\n")
   }
   if(!is.matrix(try(solve(model$hessian),silent=T))){
-    if(!silent) cat('ERROR: Singular Hessian, cannot calculate s.e.\n')
+    if(!silent) cat(' ERROR: Singular Hessian, cannot calculate s.e.\n')
     tryCatch({
       colnames(model$hessian) <- names(beta_var_val)
       rownames(model$hessian) <- names(beta_var_val)
       utils::write.csv(model$hessian, paste(apollo_control$modelName, "hessian.csv", sep="_"))
-      if(!silent) cat("Hessian written to", paste(apollo_control$modelName, "hessian.csv", sep="_"), "\n")
-    }, error=function(e) if(!silent) cat("Could not write hessian to a file.\n"))
-    #return(model)
+      if(!silent) cat(" Hessian written to", paste(apollo_control$modelName, "hessian.csv", sep="_"), "\n")
+    }, error=function(e) if(!silent) cat(" Could not write hessian to a file.\n"))
   }
   
   ### Calculate s.e.
   dummyVCM           <- matrix(NA, nrow=length(model$estimate), ncol=length(model$estimate))
   rownames(dummyVCM) <- names(model$estimate)
   colnames(dummyVCM) <- names(model$estimate)
-  model$varcov    <- tryCatch(stats::vcov(model), error=function(e) return(dummyVCM))
-  model$robvarcov <- tryCatch(sandwich::sandwich(model), error=function(e) return(dummyVCM))
-  model$se        <- sqrt(diag(model$varcov))
-  model$robse     <- sqrt(diag(model$robvarcov))
+  model$varcov     <- tryCatch(stats::vcov(model), error=function(e) return(dummyVCM))
+  model$robvarcov  <- tryCatch(sandwich::sandwich(model), error=function(e) return(dummyVCM))
+  model$se         <- sqrt(diag(model$varcov))
+  model$robse      <- sqrt(diag(model$robvarcov))
   model$corrmat    <- tryCatch(model$varcov/(model$se%*%t(model$se)), error=function(e) return(dummyVCM))
   model$robcorrmat <- tryCatch(model$robvarcov/(model$robse%*%t(model$robse)) , error=function(e) return(dummyVCM))
   
+  ### Calculate bootstrap s.e.
+  if(bootstrapSE>0){
+    if(!silent) cat("Starting bootstrap calculation of standard errors.")
+    tmp <- list(estimationRoutine=estimationRoutine, maxIterations=maxIterations,
+                writeIter=FALSE, hessianRoutine="none", printLevel=printLevel,
+                silent=silent)
+    model$bootvarcov <- apollo_bootstrap(apollo_beta, apollo_fixed,
+                                         apollo_probabilities, apollo_inputs,
+                                         estimate_settings=tmp,
+                                         bootstrap_settings=list(nRep=bootstrapSE,
+                                                                  seed=bootstrapSeed))
+    model$bootse <- sqrt(diag(model$bootvarcov))
+    model$bootse[apollo_fixed] <- NA
+    model$bootcorrmat <- tryCatch(model$bootvarcov/(model$bootse%*%t(model$bootse)), error=function(e) return(dummyVCM))
+  }
   
   #### Calculate gradient
   #if(!silent) cat("Calculating gradient norm... ")
@@ -624,11 +656,12 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     if(!silent) cat("Not applicable to all components.\n")
   }
   
-  if(!silent) cat(apollo_printLog(apollo_inputs$apolloLog))
+  if(!silent) cat("\n", apollo_printLog(apollo_inputs$apolloLog), sep="")
   
   ### use pre-scaling values as starting values in output
   ### OLD VERSION model$apollo_beta <- c(beta_var_val, beta_fix_val)[names(apollo_beta)]
-  model$apollo_beta=temp_start
+  model$bootstrapSE <- bootstrapSE
+  model$apollo_beta <- temp_start
   if(workInLogs) model$LLStart <- sum(testLL) else model$LLStart <- sum(log(testLL))
   model$startTime   <- starttime
   model$nIter       <- ifelse(estimationRoutine=="bfgs", apollo_logLike(NA, getNIter=TRUE), model$iterations)

@@ -12,7 +12,7 @@
 #'                               \item printDiagnostics: Boolean. TRUE for printing summary of choices in database and other diagnostics. TRUE by default.
 #'                               \item printCovar: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
 #'                               \item printCorr: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
-#'                               \item printOutliers: Boolean. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default.
+#'                               \item printOutliers: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
 #'                               \item printChange: Boolean. TRUE for printing difference between starting values and estimates. FALSE by default.
 #'                             }
 #' @return A matrix of coefficients, s.d. and t-tests (invisible)
@@ -196,13 +196,25 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
                round(2*(1-stats::pnorm(abs(model$estimate/model$robse))),3),
                round((model$estimate-1)/model$robse,2),
                round(2*(1-stats::pnorm(abs((model$estimate-1)/model$robse))),3))
-  colnames(output) <- c('Estimate','Std.err.','t.ratio(0)','p-val(0)','t.ratio(1)','p-val(1)','Rob.std.err.','Rob.t.ratio(0)','Rob.p-val(0)','Rob.t.ratio(1)','Rob.p-val(1)')
+  colnames(output) <- c('Estimate',
+                        'Std.err.', 't.ratio(0)', 'p-val(0)','t.ratio(1)','p-val(1)', 
+                        'Rob.std.err.','Rob.t.ratio(0)','Rob.p-val(0)','Rob.t.ratio(1)','Rob.p-val(1)')
   rownames(output) <- names(model$estimate)
+  # If there is a bootstrap covariance matrix
+  if(!is.null(model$bootvarcov)){
+    tmp <- model$bootse
+    tmp <- cbind('Bootstrap.std.err.'   = round(tmp,4),
+                 'Bootstrap.t.ratio(0)' = round(model$estimate/tmp,2),
+                 'Bootstrap.p-val(0)'   = round(2*(1-stats::pnorm(abs(model$estimate/tmp))),3),
+                 'Bootstrap.t.ratio(1)' = round((model$estimate-1)/tmp,2),
+                 'Bootstrap.p-val(1)'   = round(2*(1-stats::pnorm(abs((model$estimate-1)/tmp))),3))
+    output <- cbind(output, tmp)
+  }
   
-  dropcolumns=NULL
+  dropcolumns = NULL
   if(printClassical==FALSE) dropcolumns = c(dropcolumns,2,3,4,5,6)
-  if(printT1==FALSE) dropcolumns = c(dropcolumns,5,6,10,11)
-  if(printPVal==FALSE) dropcolumns = c(dropcolumns,4,6,9,11)
+  if(printT1==FALSE) dropcolumns = c(dropcolumns,5,6,10,11,15,16)
+  if(printPVal==FALSE) dropcolumns = c(dropcolumns,4,6,9,11,14,16)
   dropcolumns = unique(dropcolumns)
   if(length(dropcolumns)>0) output = output[,-dropcolumns, drop=FALSE]
   
@@ -237,6 +249,11 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
                      tmpS,sep=':')
   cat("Time taken (hh:mm:ss)            : ",timeTaken,"\n")
   cat("Iterations                       : ",model$nIter,"\n")
+  if(model$bootstrapSE>0){
+    nRep <- tryCatch(nrow(utils::read.csv(paste0(model$apollo_control$modelName, "_bootstrap_params.csv"))),
+                     error=function(e) model$bootstrapSE)
+    cat("Number of bootstrap repetitions  : ",nRep,"\n")
+  } 
   cat("\n")
   
   if(!printClassical & anyNA(model$se[!(names(model$estimate) %in% model$apollo_fixed)]) ){
@@ -281,6 +298,11 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     cat("\n")
     cat("Robust covariance matrix:\n")
     print(round(model$robvarcov,6))
+    if(model$bootstrapSE>0){
+      cat("\n")
+      cat("Bootstrap covariance matrix:\n")
+      print(round(model$bootvarcov,6))
+    }
   }
   
   if(printCorr){
@@ -292,15 +314,21 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     cat("\n")
     cat("Robust correlation matrix:\n")
     print(round(model$robcorrmat,6))
+    if(model$bootstrapSE>0){
+      cat("\n")
+      cat("Bootstrap correlation matrix:\n")
+      print(round(model$bootcorrmat,6))
+    }
   }
   
-  if(printOutliers){
+  if(printOutliers>0){
     outliers <- data.frame(ID=names(model$avgCP), avgChoiceProb=model$avgCP)
     colnames(outliers) <- c("ID","Avg prob per choice")
     outliers <- outliers[order(outliers[,2]),]
-    
-    cat("\n20 worst outliers in terms of lowest average per choice prediction:\n")
-    print(outliers[(1:20),], row.names=FALSE)
+    if(printOutliers==TRUE) printOutliers=20
+    printOutliers=floor(min(printOutliers,nrow(outliers)))
+    cat("\n",printOutliers,"worst outliers in terms of lowest average per choice prediction:\n")
+    print(outliers[(1:printOutliers),], row.names=FALSE)
   }
   
   if(printChange){

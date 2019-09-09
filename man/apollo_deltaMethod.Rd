@@ -23,6 +23,7 @@ Value, s.e. and t-ratio resulting from the operation.
 }
 \description{
 Applies the delta method to calculate the standard errors of transformations of parameters.
+If the bootstrap covariance matrix is available, it is used. If not, the robust covariance matrix is used.
 }
 \details{
 \code{apollo_deltaMethod} supports the following five operations.

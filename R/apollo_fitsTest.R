@@ -22,17 +22,19 @@ apollo_fitsTest=function(model,apollo_probabilities,apollo_inputs,fitsTest_setti
   
   if(is.null(fitsTest_settings[["modelComponent"]])) fitsTest_settings$modelComponent="model"
   if(is.null(fitsTest_settings[["subsamples"]])) fitsTest_settings[["subsamples"]]=NULL
-
-   fits       = apollo_prediction(model, 
-                                  apollo_probabilities, apollo_inputs,fitsTest_settings$modelComponent)
-   
-   fits=fits[,ncol(fits)]
-
+  
+  fits = apollo_prediction(model, apollo_probabilities, apollo_inputs, fitsTest_settings$modelComponent)
+  
+  ### fits=fits[,ncol(fits)] ### REMOVED
+  #fits=fits[,!colnames(fits)%in%c("ID","Choice situation","chosen")]#### NEW
+  if(!"chosen"%in%colnames(fits)) stop("No 'chosen' column in prediction.")
+  fits = as.vector(fits[, "chosen"])#### NEW
+  
   if(is.null(fitsTest_settings[["subsamples"]])){
     iterations=0
   } else {
     categories = fitsTest_settings[["subsamples"]]
-    iterations=length(categories)
+    iterations = length(categories)
   }
   
   output=matrix(0,nrow=6,ncol=(iterations+1))
@@ -45,13 +47,22 @@ apollo_fitsTest=function(model,apollo_probabilities,apollo_inputs,fitsTest_setti
   
   j=1
   while(j<=iterations){
-    temp1=as.data.frame(cbind(fits,categories[[j]]))
-    output[1,j+1]=min(temp1[temp1$V2==1,1])
-    output[2,j+1]=mean(temp1[temp1$V2==1,1])
-    output[3,j+1]=stats::median(temp1[temp1$V2==1,1])
-    output[4,j+1]=max(temp1[temp1$V2==1,1])
-    output[5,j+1]=stats::sd(temp1[temp1$V2==1,1])
-    output[6,j+1]=mean(temp1[temp1$V2==1,1])-mean(temp1[temp1$V2!=1,1])
+    #temp1=as.data.frame(cbind(fits,categories[[j]]))
+    #output[1,j+1]=min(temp1[temp1$V2==1,1])
+    #output[2,j+1]=mean(temp1[temp1$V2==1,1])
+    #output[3,j+1]=stats::median(temp1[temp1$V2==1,1])
+    #output[4,j+1]=max(temp1[temp1$V2==1,1])
+    #output[5,j+1]=stats::sd(temp1[temp1$V2==1,1])
+    #output[6,j+1]=mean(temp1[temp1$V2==1,1])-mean(temp1[temp1$V2!=1,1])
+    
+    tmp = fits[categories[[j]]]
+    output[1,j+1]=min(tmp)
+    output[2,j+1]=mean(tmp)
+    output[3,j+1]=stats::median(tmp)
+    output[4,j+1]=max(tmp)
+    output[5,j+1]=stats::sd(tmp)
+    output[6,j+1]=mean(tmp-mean(fits[!categories[[j]]]))
+    
     j=j+1
   }
   if(iterations>0){

@@ -72,7 +72,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   if(nCandidates<2) stop("Argument 'nCandidates' should be at least 2.")
   if(maxStages<1) stop("Argument 'maxStages' should be at least 1.")
   if(anyNA(c(apolloBetaMin,apolloBetaMax)) & !smartStart) stop("Invalid 'apolloBetaMin' and/or 'apolloBetaMax' parameters.")
-  cat("Testing probability function (apollo_probabilities)")
+  cat("Testing probability function (apollo_probabilities).\n")
   apollo_control$noDiagnostics <- TRUE
   apollo_probabilities(apollo_beta, apollo_inputs, functionality="validate")
 

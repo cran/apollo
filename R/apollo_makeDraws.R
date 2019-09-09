@@ -66,8 +66,17 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   # Validate input
   if(!testEUsr & !all(testEGen) & !testAUsr & !all(testAGen)){
     if(!testEGen[1] | !testAGen[1]) stop("Type of draws must be 'halton', 'mlhs', 'pmc', 'sobol','sobolOwen','sobolFaureTezuka' or 'sobolOwenFaureTezuka' to generate draws, or the name of a variable containing user generated draws.")
-    if(!testEGen[2] | !testAGen[2]) stop("Number of draws must be larger than 0.")
+    if(!testEGen[2] | !testAGen[2]) stop("Number of draws must be a positive integer.")
     if(!testEGen[5] | !testAGen[5]) stop("No names for the draws were specified.")
+  }
+  
+  test <- c("interDrawsType", "interNDraws", "interUnifDraws", "interNormDraws", 
+            "intraDrawsType", "intraNDraws", "intraUnifDraws", "intraNormDraws")
+  test <- names(d) %in% test
+  if(any(!test)){
+    txt <- paste0("Some elements in apollo_draws (", paste0(names(d)[!test], collapse=", "),
+                  ") are not recognised as valid settings.")
+    warning(txt)
   }
 
 

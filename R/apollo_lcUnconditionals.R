@@ -27,7 +27,8 @@ apollo_lcUnconditionals <- function(model, apollo_probabilities, apollo_inputs){
   apollo_randCoeff = apollo_inputs[["apollo_randCoeff"]]
   apollo_lcPars    = apollo_inputs[["apollo_lcPars"]]
   apollo_draws     = apollo_inputs[["apollo_draws"]]
-
+  apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
+  
   toAttach  <- c(as.list(apollo_beta), apollo_inputs$database)
   if(apollo_control$mixing){
     toAttach  <- c(as.list(apollo_beta), apollo_inputs$database, draws)

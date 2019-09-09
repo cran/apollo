@@ -28,7 +28,10 @@ apollo_conditionals=function(model, apollo_probabilities, apollo_inputs){
   draws            = apollo_inputs[["draws"]]
   apollo_randCoeff = apollo_inputs[["apollo_randCoeff"]]
   apollo_draws     = apollo_inputs[["apollo_draws"]]
-
+  apollo_lcPars     = apollo_inputs[["apollo_lcPars"]]
+  apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
+  
+  
   if(!apollo_control$mixing) stop("Conditionals can only be estimated for mixture models!")
   if(anyNA(draws)) stop("Random draws have not been specified despite setting mixing=TRUE")
   

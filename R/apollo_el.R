@@ -79,7 +79,7 @@ apollo_el <- function(el_settings, functionality){
     if(length(scales)!=stages) stop("The object \"scales\" needs to either be the same length as the number of stages, i.e. one less than the number of alternatives!")
     
     # Check that alternatives are named in altcodes and V
-    if(is.null(altnames) || is.null(altcodes) || is.null(names(V))) stop("Alternatives must be named, both in 'altnernatives' and 'V'.")
+    if(is.null(altnames) || is.null(altcodes) || is.null(names(V))) stop("Alternatives must be named, both in 'alternatives' and 'V'.")
     
     # Create availability if necessary
     if(!is.list(avail)){
@@ -140,6 +140,10 @@ apollo_el <- function(el_settings, functionality){
         for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values are not 0 or 1.")
         s=s+1
       }
+      
+      # Set utility of unavailable alternatives and excluded rows to 0 to avoid numerical issues
+      V <- mapply(function(v,a) apollo_setRows(v, !a | !rows, 0), V, avail, SIMPLIFY=FALSE)
+      if(any(sapply(V, anyNA))) warning("At least one utility contains one or more NA values")
       
       #cat("\nAll checks passed for exploded logit model component\n")
       
@@ -266,25 +270,25 @@ apollo_el <- function(el_settings, functionality){
       s=s+1
     }
     
-    mnlSettings=list(
-      alternatives = alternatives,
-      avail        = avail_new[[1]],
-      choiceVar    = choiceVars[[1]],
-      V            = lapply(V,"*",scales[[1]]),
-      rows         = rows
-    )
+    mnl_settings=list(
+       alternatives = alternatives,
+       avail        = avail_new[[1]],
+       choiceVar    = choiceVars[[1]],
+       V            = lapply(V,"*",scales[[1]]),
+       rows         = rows
+     )
     
     # Calculate MNL for each stage
-    P = apollo_mnl(mnlSettings, functionality) # 1st stage
+    P = apollo_mnl(mnl_settings, functionality) # 1st stage
     s=2
     while(s<=stages){
       # Update settings
-      mnlSettings$avail     = avail_new[[s]]
-      mnlSettings$choiceVar = choiceVars[[s]]
-      mnlSettings$V         = lapply(V,"*",scales[[s]])
-      mnlSettings$rows      = mnlSettings$rows & (Reduce("+", avail_new[[s]])>0)
+      mnl_settings$avail     = avail_new[[s]]
+      mnl_settings$choiceVar = choiceVars[[s]]
+      mnl_settings$V         = lapply(V,"*",scales[[s]])
+      mnl_settings$rows      = mnl_settings$rows & (Reduce("+", avail_new[[s]])>0)
       # Calculate probabilities
-      P=P*apollo_mnl(mnlSettings, functionality)
+      P=P*apollo_mnl(mnl_settings, functionality)
       s=s+1
     }
     

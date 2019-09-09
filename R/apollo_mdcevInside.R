@@ -116,7 +116,10 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
         k=k+1
       }
       
-      # turn scalar availabilities into vectors
+     # check that full budget is consumed in each row, nothing more, nothing less
+      if(sum(abs(budget_check-budget)>10^-10)) stop("Expenditure for some observations is either less or more than budget!")
+ 
+     # turn scalar availabilities into vectors
       for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs)
       
       # check that all availabilities are either 0 or 1
@@ -136,6 +139,10 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
         }
         if(consumption_below_min_flag) stop("\nSome consumptions are below the lower limits listed in \"minConsumption\"!")
       }
+      
+      # Set utility of unavailable alternatives and excluded rows to 0 to avoid numerical issues
+      V <- mapply(function(v,a) apollo_setRows(v, !a | !rows, 0), V, avail, SIMPLIFY=FALSE)
+      if(any(sapply(V, anyNA))) warning("At least one utility contains one or more NA values")
       
       # confirm all checks are passed, print output and return TRUE
       #cat("\nAll checks passed for MDCEV model component\n")
@@ -235,6 +242,10 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
     if(any(alternatives != names(cost))) cost <- cost[alternatives]
     if(!anyNA(minConsumption)) if(any(alternatives != names(minConsumption))) minConsumption <- minConsumption[alternatives]
     
+    # Set utility of unavailable alternatives and excluded rows to 0 to avoid numerical issues
+    V <- mapply(function(v,a) apollo_setRows(v, !a | !rows, 0), V, avail, SIMPLIFY=FALSE)
+    #if(any(sapply(V, anyNA))) stop("At least one utility contains one or more NA values")
+    
     # Compute V
     j=1      
     while(j<=length(V)){
@@ -303,6 +314,13 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
     if(is.vector(P)) P[!rows]   <- 1
     if(is.matrix(P)) P[!rows,]  <- 1
     if(is.array(P) && length(dim(P))==3) P[!rows,,] <- 1
+    
+    # make the chosen unavailable alternatives have a likelihood of zero
+    choseUnavail <- mapply(function(m,a) m & !a, discrete_choice, avail, SIMPLIFY=TRUE)
+    choseUnavail <- rowSums(choseUnavail)>0
+    if(is.vector(P)) P[choseUnavail]   <- 0
+    if(is.matrix(P)) P[choseUnavail,]  <- 0
+    if(is.array(P) && length(dim(P))==3) P[choseUnavail,,] <- 0
     
     return(P)
   }

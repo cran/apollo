@@ -12,7 +12,7 @@
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @return List of object, one per random coefficient.
-#'         With inter-individual draws only, this will be a matrix, with one row per observation, and one column per draw.
+#'         With inter-individual draws only, this will be a matrix, with one row per individual, and one column per draw.
 #'         With intra-individual draws, this will be a three-dimensional array, with one row per observation, inter-individual draws in the second dimension, and intra-individual draws in the third dimension.
 #' @export
 apollo_unconditionals <- function(model, apollo_probabilities, apollo_inputs){
@@ -29,6 +29,8 @@ apollo_unconditionals <- function(model, apollo_probabilities, apollo_inputs){
   draws            = apollo_inputs[["draws"]]
   apollo_randCoeff = apollo_inputs[["apollo_randCoeff"]]
   apollo_draws     = apollo_inputs[["apollo_draws"]]
+  apollo_lcPars     = apollo_inputs[["apollo_lcPars"]]
+  apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
   
   ### Validate input
   if(!apollo_control$mixing) stop("Sample level random parameters can only be produced for mixture models!")

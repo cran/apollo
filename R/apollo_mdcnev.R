@@ -15,6 +15,7 @@
 #'                         \item continuousChoice: Named list of numeric vectors. Amount of consumption of each alternative. One element per alternative, as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
 #'                         \item budget: Numeric vector. Budget for each observation.
 #'                         \item minConsumption: Named list of scalars or numeric vectors. Minimum consumption of the alternatives, if consumed. As many elements as alternatives. Names must match those in \code{alternatives}.
+#'                         \item outside: Character. Alternative name for the outside good. Default is "outside"
 #'                         \item rows: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
 #'                       }
 #' @param functionality Character. Can take different values depending on desired output.
@@ -53,10 +54,11 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
   if(is.null(mdcnev_settings[["budget"]])) stop("The mdcnev_settings list needs to include an object called \"budget\"!")
   if(is.null(mdcnev_settings[["minConsumption"]])) mdcnev_settings[["minConsumption"]]=NA
   if(is.null(mdcnev_settings[["rows"]])) mdcnev_settings[["rows"]]="all"
-
+  if(is.null(mdcnev_settings[["outside"]])) mdcnev_settings[["outside"]]=NA ### new
+  
   alternatives      = mdcnev_settings[["alternatives"]]
   avail             = mdcnev_settings[["avail"]]
-  continuousChoice = mdcnev_settings[["continuousChoice"]]
+  continuousChoice  = mdcnev_settings[["continuousChoice"]]
   V                 = mdcnev_settings[["V"]]
   alpha             = mdcnev_settings[["alpha"]]
   gamma             = mdcnev_settings[["gamma"]]
@@ -65,25 +67,49 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
   mdcnevStructure   = mdcnev_settings[["mdcnevStructure"]]
   cost              = mdcnev_settings[["cost"]]
   budget            = mdcnev_settings[["budget"]]
-  minConsumption   = mdcnev_settings[["minConsumption"]]
+  minConsumption    = mdcnev_settings[["minConsumption"]]
   rows              = mdcnev_settings[["rows"]]
-
-  # Make sure order is the same
-  tmp <- names(alternatives)
-  if(any(names(avail            ) != tmp)) avail             <- avail[tmp]
-  if(any(names(continuousChoice) != tmp)) continuousChoice <- continuousChoice[tmp]
-  if(any(names(V                ) != tmp)) V                 <- V[tmp]
-  if(any(names(alpha            ) != tmp)) alpha             <- alpha[tmp]
-  if(any(names(gamma            ) != tmp)) gamma             <- gamma[tmp]
-  if(any(names(cost             ) != tmp)) cost              <- cost[tmp]
-  if(any(names(minConsumption  ) != tmp)) minConsumption   <- minConsumption[tmp]
-  rm(tmp)
+  outsideName       = mdcnev_settings[["outside"]]   ### new
+  if(anyNA(outsideName) && "outside" %in% alternatives) outsideName = "outside"  
+  if(anyNA(outsideName)) stop("No outside good provided for MDCNEV model!")      
+  if(is.null(gamma[[outsideName]])) gamma[[outsideName]]=1
+  # Reorder 'alternatives'
+  # original location of outside good
+  outside_loc=which(alternatives==outsideName)
+  alternatives=c(outsideName,alternatives[-outside_loc])
+  
+  # Reorder V and avail to match 'alternatives' order, if necessary
+  if(any(alternatives != names(V))) V <- V[alternatives]
+  if(any(alternatives != names(avail))) avail <- avail[alternatives]
+  if(any(alternatives != names(alpha))) alpha <- alpha[alternatives]
+  if(any(alternatives != names(gamma))) gamma <- gamma[alternatives]
+  if(any(alternatives != names(continuousChoice))) continuousChoice <- continuousChoice[alternatives]
+  if(any(alternatives != names(cost))) cost <- cost[alternatives]
+  if(!anyNA(minConsumption)) if(any(alternatives != names(minConsumption))) minConsumption <- minConsumption[alternatives]
+  mdcnevStructure=cbind(mdcnevStructure[,outside_loc],mdcnevStructure[,-outside_loc])
+  
+  # Rename first element
+  alternatives[1] <- "outside"
+  names(V    ) = alternatives
+  names(avail) = alternatives
+  names(alpha) = alternatives
+  names(gamma) = alternatives
+  names(cost ) = alternatives
+  names(continuousChoice) = alternatives
+  if(!anyNA(minConsumption)) names(minConsumption) = alternatives
+  colnames(mdcnevStructure) = alternatives
+  
 
   # ############################## #
   #### functionality="validate" ####
   # ############################## #
 
   if(functionality=="validate"){
+
+    if(!is.null(gamma[["outside"]])){
+      cat("\nWarning: You provided a gamma for the outside good, which will be ignored in the model\n")
+      gamma[["outside"]]=NULL
+    }
 
     # Store useful values
     nObs  <- length(continuousChoice[[1]])
@@ -129,10 +155,12 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
       # Check that first product is outside good
       if(alternatives[1]!="outside") stop("First product must be called \"outside\"!")
 
+      namesinside=names(V)[names(V)!="outside"]
+      
       # Check labels
       if(!all(alternatives %in% names(V))) stop("Labels in \"alternatives\" do not match those in \"V\"!")
       if(!all(alternatives %in% names(alpha))) stop("Labels in \"alternatives\" do not match those in \"alpha\"!")
-      if(!all(alternatives %in% names(gamma))) stop("Labels in \"alternatives\" do not match those in \"gamma\"!")
+      if(!all(namesinside %in% names(gamma))) stop("Labels in \"alternatives\" do not match those in \"gamma\"!")
       if(!all(alternatives %in% names(continuousChoice))) stop("Labels in \"alternatives\" do not match those in \"continuousChoice\"!")
       if(!all(alternatives %in% names(cost))) stop("Labels in \"alternatives\" do not match those in \"cost\"!")
       if(!all(alternatives %in% names(avail))) stop("Labels in \"alternatives\" do not match those in \"avail\"!")
@@ -185,6 +213,10 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
         }
         if(consumption_below_min_flag) stop("\nSome consumptions are below the lower limits listed in \"minConsumption\"!")
       }
+      
+      # Set utility of unavailable alternatives and excluded rows to 0 to avoid numerical issues
+      V <- mapply(function(v,a) apollo_setRows(v, !a | !rows, 0), V, avail, SIMPLIFY=FALSE)
+      if(any(sapply(V, anyNA))) warning("At least one utility contains one or more NA values")
 
       # checks that are specific to cnlStructure component
       if(nrow(mdcnevStructure)!=length(mdcnevNests)) stop("Tree structure needs one row per nest!")
@@ -209,17 +241,9 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
       }
       choicematrix <- apply(choicematrix, MARGIN=2, function(x) {x[!is.finite(x)] <- 0; return(x)})
       rownames(choicematrix) = c("Times available","Observations in which chosen","Average consumption when available","Average consumption when chosen")
-      colnames(choicematrix) = names(V)
-      colnames(mdcnevStructure) <- names(V)
+      colnames(choicematrix) = c(outsideName, names(V)[2:length(V)])
+      colnames(mdcnevStructure) <- c(outsideName, names(V)[2:length(V)])
       rownames(mdcnevStructure) <- names(mdcnevNests)
-
-      #cat('Overview of choices for MDCNEV model component:\n')
-      #print(round(choicematrix,2))
-      #cat("\n")
-      #cat('Structure for MDCNEV model component:\n')
-      #print(mdcnevStructure)
-      #if(any(choicematrix[2,]==0)) cat("Warning: some alternatives are never chosen in your data!\n")
-      #if(any(choicematrix[2,]==1)) cat("Warning: some alternatives are always chosen when available!\n")
       
       content <- list(round(choicematrix,2))
       if(any(choicematrix[4,]==0)) content[[length(content) + 1]] <- "Warning: some alternatives are never chosen in your data!"
@@ -234,7 +258,8 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
     }
     return(TRUE)
   }
-
+  #if(!is.null(gamma[["outside"]])) gamma[["outside"]]=NULL
+  
   # ############################## #
   #### functionality="zero_LL" ####
   # ############################## #
@@ -273,16 +298,10 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
       avail <- setNames(as.list(rep(1,nAlts)), alternatives)
     }
 
-    # Make sure order is the same
-    tmp <- names(alternatives)
-    if(any(names(avail           ) != tmp)) avail            <- avail[tmp]
-    if(any(names(continuousChoice) != tmp)) continuousChoice <- continuousChoice[tmp]
-    if(any(names(V               ) != tmp)) V                <- V[tmp]
-    if(any(names(alpha           ) != tmp)) alpha            <- alpha[tmp]
-    if(any(names(gamma           ) != tmp)) gamma            <- gamma[tmp]
-    if(any(names(cost            ) != tmp)) cost             <- cost[tmp]
-    if(any(names(minConsumption  ) != tmp)) minConsumption   <- minConsumption[tmp]
-    rm(tmp)
+    
+    # Set utility of unavailable alternatives and excluded rows to 0 to avoid numerical issues
+    V <- mapply(function(v,a) apollo_setRows(v, !a | !rows, 0), V, avail, SIMPLIFY=FALSE)
+    #if(any(sapply(V, anyNA))) stop("At least one utility contains one or more NA values")
 
     term4base=function(t, ars, qrs){
       sumx=1
@@ -380,9 +399,8 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
       return(out)
     }
 
-
-
-
+    
+    
     discrete_choice=list()
     for(k in 1:nAlts) discrete_choice[[alternatives[k]]] = (continuousChoice[[k]]>0)*1
 
@@ -391,23 +409,22 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
       alts   <- which(as.vector(omega[s,])>0)
       q[[s]] <- Reduce("+", discrete_choice[alts])
     }
-
+    
     mdcnevNestsAlt = list() # called theta in old code
     for(k in 1:nAlts) mdcnevNestsAlt[[k]] <- mdcnevNests[[which(as.vector(omega[,k])>0)]]
-
+    
     # Compute V
     V[[1]] = (alpha[[1]]-1)*log(continuousChoice[[1]])
-    j=2
-    while(j<=length(V)){
+    for(j in 2:length(V)){
       if(!anyNA(minConsumption)){
         tmp <- continuousChoice[[j]] - (continuousChoice[[j]] >= minConsumption[[j]])*minConsumption[[j]]
         V[[j]] = V[[j]] + avail[[j]]*((alpha[[j]]-1)*log((tmp/gamma[[j]]) + 1) - log(cost[[j]]))
       } else {
         V[[j]] = V[[j]] + avail[[j]]*((alpha[[j]]-1)*log((continuousChoice[[j]]/gamma[[j]]) + 1) - log(cost[[j]]+(1-avail[[j]])))
       }
-      j=j+1
     }
-
+    
+    
     #PART 1: Jacobian determinant
     fi = mapply(function(a, mc, g) (1-a)/(mc+g), alpha[-1], continuousChoice[-1], gamma[-1], SIMPLIFY=FALSE)
     term1_1 = mapply(function(f,d) f^d, fi, discrete_choice[-1], SIMPLIFY=FALSE)
@@ -444,6 +461,8 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
     #TERM4
     r_current_combo=vector("double", nNests)
 
+    
+    
     #NOW WE LOOK AT THE SUMS OUTSIDE THE CURLY BRACKETS
 
     term345_total=vector("list", nObs)
@@ -507,6 +526,13 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
     if(pMat) P[!rows,]  <- 1
     if(pCub) P[!rows,,] <- 1
 
+    # make the chosen unavailable alternatives have a likelihood of zero
+    choseUnavail <- mapply(function(m,a) m & !a, discrete_choice, avail, SIMPLIFY=TRUE)
+    choseUnavail <- rowSums(choseUnavail)>0
+    if(is.vector(P)) P[choseUnavail]   <- 0
+    if(is.matrix(P)) P[choseUnavail,]  <- 0
+    if(is.array(P) && length(dim(P))==3) P[choseUnavail,,] <- 0
+    
     return( P )
   }
 
@@ -555,39 +581,8 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
     }
     choicematrix <- apply(choicematrix, MARGIN=2, function(x) {x[!is.finite(x)] <- 0; return(x)})
     rownames(choicematrix) = c("Times available","Observations in which chosen","Average consumption when available","Average consumption when chosen")
-    colnames(choicematrix) = names(V)
-
-    ## write diagnostics to a file named "modelName_tempOutput.txt" in a temporary directory.
-    #apollo_control <- tryCatch( get("apollo_inputs", parent.frame(), inherits=TRUE )$apollo_control,
-    #                            error=function(e){
-    #                              cat("apollo_mdcev could not retrieve apollo_control. No diagnostics in output.\n")
-    #                              return(NA)
-    #                            } )
-    #if(!(length(apollo_control)==1 && is.na(apollo_control))){
-    #  fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
-    #  fileName <- file.path(tempdir(),fileName)
-    #  fileConn <- tryCatch( file(fileName, open="at"),
-    #                        error=function(e){
-    #                          cat('apollo_mdcev could not write diagnostics to temporary file. No diagnostics in output.\n')
-    #                          return(NA)
-    #                        })
-    #  if(!anyNA(fileConn)){
-    #    sink(fileConn)
-    #    on.exit({if(sink.number()>0) sink(); close(fileConn)})
-    #    if(apollo_control$noDiagnostics==FALSE){
-    #      cat('\nOverview of choices for MDCNEV model component:\n')
-    #      print(round(choicematrix,2))
-    #      cat('\n')
-    #      cat('Structure for MDCNEV model component:\n')
-    #      colnames(mdcnevStructure) <- names(V)
-    #      rownames(mdcnevStructure) <- names(mdcnevNests)
-    #      print(mdcnevStructure)
-    #    }
-    #    if(sum(choicematrix[2,]==0)>0) cat("Warning: some alternatives are never chosen in your data!\n")
-    #  }
-    #}
-    
-    colnames(mdcnevStructure) <- names(V)
+    colnames(choicematrix) = c(outsideName, names(V)[2:length(V)])
+    colnames(mdcnevStructure) <- c(outsideName, names(V)[2:length(V)])
     rownames(mdcnevStructure) <- names(mdcnevNests)
     content <- list(round(choicematrix,2))
     if(any(choicematrix[4,]==0)) content[[length(content) + 1]] <- "Warning: some alternatives are never chosen in your data!"
@@ -788,11 +783,12 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
       predictions_discrete        = (consumption>0)
       predictions_discrete_mean   = apply(predictions_discrete,c(1,2),mean)
       predictions_discrete_sd     = apply(predictions_discrete,c(1,2),stats::sd)
-
-      colnames(predictions_continuous_mean) = paste(alternatives,"continuous (mean)")
-      colnames(predictions_continuous_sd)   = paste(alternatives,"continuous (sd)")
-      colnames(predictions_discrete_mean)   = paste(alternatives,"discrete (mean)")
-      colnames(predictions_discrete_sd)     = paste(alternatives,"discrete (sd)")
+      
+      tmp <- c(outsideName, alternatives[2:length(alternatives)])
+      colnames(predictions_continuous_mean) = paste(tmp,"continuous (mean)")
+      colnames(predictions_continuous_sd)   = paste(tmp,"continuous (sd)")
+      colnames(predictions_discrete_mean)   = paste(tmp,"discrete (mean)")
+      colnames(predictions_discrete_sd)     = paste(tmp,"discrete (sd)")
 
       answer <- cbind(predictions_continuous_mean,predictions_continuous_sd,predictions_discrete_mean,predictions_discrete_sd)
       answer[!rows, ] <- NA

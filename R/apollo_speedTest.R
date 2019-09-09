@@ -46,6 +46,8 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
   nDrawsTry        = speedTest_settings[["nDrawsTry"]]
   nCoresTry        = speedTest_settings[["nCoresTry"]]
   nRep             = speedTest_settings[["nRep"]]
+  apollo_lcPars    = apollo_inputs[["apollo_lcPars"]]
+  apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
   
   if(apollo_control$mixing){
     if(anyNA(apollo_draws)) stop("Argument 'apollo_draws' must be provided when estimating mixture models.")

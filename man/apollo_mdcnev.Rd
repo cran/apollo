@@ -20,6 +20,7 @@ apollo_mdcnev(mdcnev_settings, functionality)
   \item continuousChoice: Named list of numeric vectors. Amount of consumption of each alternative. One element per alternative, as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
   \item budget: Numeric vector. Budget for each observation.
   \item minConsumption: Named list of scalars or numeric vectors. Minimum consumption of the alternatives, if consumed. As many elements as alternatives. Names must match those in \code{alternatives}.
+  \item outside: Character. Alternative name for the outside good. Default is "outside"
   \item rows: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
 }}
 

@@ -17,7 +17,7 @@ apollo_saveOutput(model, saveOutput_settings = NA)
    \item printDiagnostics: Boolean. TRUE for printing summary of choices in database and other diagnostics. TRUE by default.
    \item printCovar: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
    \item printCorr: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
-   \item printOutliers: Boolean. TRUE for printing 20 individuals with worst average fit across observations. TRUE by default.
+   \item printOutliers: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
    \item printChange: Boolean. TRUE for printing difference between starting values and estimates. TRUE by default.
    \item saveEst: Boolean. TRUE for saving estimated parameters and standard errors to a CSV file. TRUE by default.
    \item saveCov: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.

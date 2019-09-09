@@ -18,7 +18,7 @@ apollo_validateData=function(database, apollo_control, silent){
   
   if(apollo_control$HB==TRUE){
     if(("ID" %in% names(database))&(apollo_control$indivID!="ID")) warning("Column ID will be used during HB estimation as ID variable.") 
-    if(!("ID" %in% names(database))) stop("You need a column called 'ID' in the database to use HB.")
+    if(!("ID" %in% names(database))) database$ID = database[,apollo_control$indivID]
   }
   
   ### Create scenario id (obs index that resets for each indiv)

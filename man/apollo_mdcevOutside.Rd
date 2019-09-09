@@ -6,7 +6,7 @@
 \usage{
 apollo_mdcevOutside(V, alternatives, alpha, gamma, sigma, cost, avail,
   continuousChoice, budget, functionality, minConsumption = NA,
-  rows = "all")
+  outsideName = "outside", rows = "all")
 }
 \arguments{
 \item{V}{Named list. Utilities of the alternatives. Names of elements must match those in argument 'alternatives'.}
@@ -15,7 +15,7 @@ apollo_mdcevOutside(V, alternatives, alpha, gamma, sigma, cost, avail,
 
 \item{alpha}{Named list. Alpha parameters for each alternative, including for the outside good. As many elements as alternatives.}
 
-\item{gamma}{Named list. Gamma parameters for each alternative, including for the outside good. As many elements as alternatives.}
+\item{gamma}{Named list. Gamma parameters for each alternative, excluding the outside good. As many elements as inside good alternatives.}
 
 \item{sigma}{Numeric scalar. Scale parameter of the model extreme value type I error.}
 
@@ -39,6 +39,8 @@ apollo_mdcevOutside(V, alternatives, alpha, gamma, sigma, cost, avail,
 }}
 
 \item{minConsumption}{Named list of scalars or numeric vectors. Minimum consumption of the alternatives, if consumed. As many elements as alternatives. Names must match those in \code{alternatives}.}
+
+\item{outsideName}{Character. Alternative name for the outside good. The first good is assumed to be the outside one. Default is "outside"}
 
 \item{rows}{Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.}
 }

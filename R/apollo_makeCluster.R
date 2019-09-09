@@ -16,12 +16,12 @@
 apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE){
   
   ### Split data and draws
-  LL <- apollo_splitDataDraws(apollo_inputs, silent)
+  LL     <- apollo_splitDataDraws(apollo_inputs, silent)
   nCores <- length(LL)
-  for(i in 1:nCores) LL[[i]]$apollo_control$nCores <- nCores
   
   ### Create cluster
-  if(!silent) cat('Creating workers and loading libraries...')
+  if(!silent) cat('\nPreparing workers')
+  if(!silent) cat('\n Loading libraries...')
   cl <- parallel::makeCluster(nCores)
   
   ### Load libraries in the cluster (same as in workspace)
@@ -53,11 +53,11 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
       gcClusters <- Reduce('+',lapply(gcClusters, function(x) sum(x[,2])))
       mbRAM <- mbRAM + gcClusters
     }
-    cat(' Done. ',mbRAM,'MB of RAM in use.\n',sep='')
+    cat(' Done. ',mbRAM,'MB of RAM in use.',sep='')
   }
   
   ### Copy apollo_inputs (with corresponding database and draws piece) to each workers
-  if(!silent) cat("Copying data to workers...")
+  if(!silent) cat("\n Copying data...")
   #parallel::parLapply(cl, LL, fun=function(ll) assign("apollo_inputs", ll, envir=globalenv()) )
   parallel::parLapply(cl, LL, fun=function(ll){
     tmp <- globalenv()
@@ -75,7 +75,7 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
     mbRAMmax <- mbRAM1+mbRAM2
     rm(LL)
     mbRAMcurrent <- sum(gc()[,2]) + mbRAM2
-    cat(' Done. ', mbRAMcurrent, 'MB of RAM in use (max was ',mbRAMmax,'MB)\n', sep='')
+    cat(' Done. ', mbRAMcurrent, 'MB of RAM in use (max was ',mbRAMmax,'MB)', sep='')
   }
   
   # The following two lines do the same thing, i.e. enumerate 

@@ -49,6 +49,8 @@ apollo_firstRow=function(P, apollo_inputs){
       if(isCub) P[[j]] = P[[j]][(apollo_sequence==1),,,drop=FALSE]
       j=j+1
     }
+    ### If P is a data.frame (besides being a list)
+    if(is.data.frame(P)) P <- P[1:sum(apollo_sequence==1),]
   }else{ ### If P is not a list
     isSca <- length(P)==1
     isVec <- is.vector(P) && !isSca
