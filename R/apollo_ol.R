@@ -16,7 +16,7 @@
 #'                     \item{outcomeOrdered}{Numeric vector. Dependant variable. The coding of this variable is assumed to be from 1 to the maximum number of different levels. For example, if the ordered response has three possible values: "never", "sometimes" and "always", then it is assumed that outcomeOrdered contains "1" for "never", "2" for "sometimes", and 3 for "always". If another coding is used, then it should be specified using the \code{coding} argument.}
 #'                     \item{V}{Numeric vector. A single explanatory variable (usually a latent variable). Must have the same number of rows as outcomeOrdered.}
 #'                     \item{tau}{Numeric vector. Thresholds. As many as number of different levels in the dependent variable - 1. Extreme thresholds are fixed at -inf and +inf. No mixing allowed in thresholds.}
-#'                     \item{coding}{Numeric or character vector. Optional argument. Defines the order of the levels in \code{outcomeOrdered}. The first value is associated with the lowest level of \code{V}, and the last one with the highest value. If not provided, is assumed to be \code{1:(length(tau) + 1)}.}
+#'                     \item{coding}{Numeric or character vector. Optional argument. Defines the order of the levels in \code{outcomeOrdered}. The first value is associated with the lowest level of \code{outcomeOrdered}, and the last one with the highest value. If not provided, is assumed to be \code{1:(length(tau) + 1)}.}
 #'                     \item{rows}{Boolean vector. TRUE if a row must be considered in the calculations, FALSE if it must be excluded. It must have length equal to the length of argument \code{outcomeOrdered}. Default value is \code{"all"}, meaning all rows are considered in the calculation.}
 #'                   }
 #' @param functionality Character. Can take different values depending on desired output.
@@ -75,8 +75,8 @@ apollo_ol  <- function(ol_settings, functionality){
   test <- functionality %in% c("estimate","prediction","validate","zero_LL","conditionals","output","raw")
   if(!test) stop("Non-permissable setting for \"functionality\"")
   # coding
-  test <- is.null(coding) || (is.vector(coding) && !is.null(names(coding)))
-  if(!test) stop("Argument 'rows', if provided, must be \"all\" or a vector of boolean statements of length nObs.")
+  test <- is.null(coding) || (is.vector(coding))
+  if(!test) stop("Argument 'coding', if provided, must be a vector.")
   
   ### Get number of observations
   nObs <- tryCatch(nrow( get("apollo_inputs", parent.frame(), inherits=TRUE)$database ),
@@ -116,7 +116,7 @@ apollo_ol  <- function(ol_settings, functionality){
       values_present=unique(outcomeOrdered)
       if(is.null(coding)){
         coding <- 1:(length(tau)+1)  
-        cat("\nNo coding provided for ordered logit, so assuming\n outcomeOrdered goes from 1 to",max(coding))
+        cat("\nNo coding provided for ordered logit, so assuming\n outcomeOrdered goes from 1 to",max(coding),"\n")
       }
       if(!(all(values_present %in% coding ))) stop("Some levels specified in outcomeOrdered do not exist in coding!")
       if(!(all(coding %in% values_present ))) stop("Some levels specified in coding do not exist in outcomeOrdered!")

@@ -102,9 +102,9 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     if(!apollo_control$HB) cat("Estimated parameters             :  ", nFreeParams,"\n", sep="")
     cat("\n\n")
     
-    cat("Chain convergence report\n\n")
+    cat("Chain convergence report (Geweke test)\n\n")
     if(!is.null(model$F)){
-      cat("Fixed (non random) parameters\n")
+      cat("Fixed (non random) parameters (t-test value for Geweke test)\n")
       #tmp <- coda::geweke.diag(model$F[,2:(ncol(model$F))], frac1=0.1, frac2=0.5)[[1]]
       #names(tmp) <- model$params.fixed
       #print( round(tmp, 4) )
@@ -112,14 +112,14 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       cat("\n")
     }
     if(!is.null(model$A)){
-      cat("Random parameters\n")
+      cat("Random parameters (t-test value for Geweke test)\n")
       #tmp <- coda::geweke.diag(model$A[,2:(ncol(model$A))], frac1=0.1, frac2=0.5)[[1]]
       #print( round(tmp, 4) )
       print( round(model$A_convergence, 4) )
       cat("\n")
     }
     if(!is.null(model$D)){
-      cat("Covariances of random parameters\n")
+      cat("Covariances of random parameters (t-test value for Geweke test)\n")
       # This assumes the matrix is square
       #tmp <- c()
       #for(i in 1:dim(model$D)[1]) for(j in 1:i){
@@ -166,6 +166,19 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
       print(round(model$random_coeff_summary,4))
       cat("\n")
+      
+      if(length(apollo_HB$gVarNamesNormal)>1){
+        cat("Covariance matrix of random coeffients (after distributional transforms)","\n")
+        if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
+        print(round(model$random_coeff_covar,4))
+        cat("\n")
+
+        cat("Correlation matrix of random coeffients (after distributional transforms)","\n")
+        if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
+        print(round(model$random_coeff_corr,4))
+        cat("\n")
+      }
+      
 
       cat("Results for posterior means for random coefficients","\n")
       if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
@@ -177,6 +190,8 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       ans[["random_cov_sd"]] <- model$chain_random_cov_sd
       ans[["random_coeff_summary"]]     <- model$random_coeff_summary
       ans[["posterior"]]     <- model$posterior_mean
+      ans[["random_coeff_covar"]]     <- model$random_coeff_covar
+      ans[["random_coeff_corr"]]     <- model$random_coeff_corr
     }    
     return(invisible(ans))
   }

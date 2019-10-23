@@ -18,7 +18,7 @@ apollo_validateInputs(apollo_beta = NA, apollo_fixed = NA,
 
 \item{apollo_control}{List. Options controlling the running of the code.
 \itemize{
-  \item modelName: Character. Name of the model. Used when saving the output to files.
+  \item modelName: Character. Name of the model. Used when saving the output to files. Avoid characters not allowed in file names, such as \code{\\}, \code{*}, \code{:}, etc.
   \item modelDescr: Character. Description of the model. Used in output files.
   \item indivID: Character. Name of column in the database with each decision maker's ID.
   \item mixing: Boolean. TRUE for models that include random parameters.

@@ -180,7 +180,7 @@ apollo_combineResults = function(combineResults_settings=NULL){
     } else otheroutputs[k,j] = NA
     
     k=k+1
-    inputvar = grep("LL\\(final\\)", lines) 
+    inputvar = grep("LL\\(final", lines) 
     if(length(inputvar)!=0){
       inputvar = lines[inputvar]
       position=gregexpr(pattern=":",inputvar)[[1]][1]

@@ -38,7 +38,14 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
   
   if(is.null(P[["model"]])) stop('Element called model is missing in list P!')
   
-  if(HB) return(P[["model"]])
+  if(HB){
+    test = ifelse(is.na(P[["model"]]), TRUE, P[["model"]] < 9.88131291682493e-324)
+    if(any(test)){
+      apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) new.env(parent=emptyenv()))
+      if(exists("HBcensor",envir=apolloLog)) apolloLog$HBcensor = apolloLog$HBcensor + 1 else apolloLog$HBcensor = 1
+    }
+    return(P[["model"]])
+  } 
   
   # ############################### #
   #### ignored for HB estimation ####

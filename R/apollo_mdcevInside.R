@@ -468,7 +468,7 @@ apollo_mdcevInside <- function(V, alternatives, alpha, gamma, sigma, cost, avail
       # create uniform draws for value draws
       # this needs to change still if we also have random alpha, gamma or V
       
-      Ndraws=apollo_mlhs(ND*nObs,length(alternatives),1)
+      Ndraws=apollo_mlhs(ND,length(alternatives),nObs)
       draws_base=cbind(x=rep(seq(1,ND),nObs),Ndraws)
           
       k=1

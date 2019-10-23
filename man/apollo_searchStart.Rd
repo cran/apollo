@@ -22,16 +22,16 @@ apollo_searchStart(apollo_beta, apollo_fixed, apollo_probabilities,
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
 \item{searchStart_settings}{List containing options for the search of starting values. The following are valid options.
-\describe{
-  \item{nCandidates}{Numeric scalar. Number of candidate sets of parameters to be used at the start. Should be an integer bigger than 1. Default is 100.}
-  \item{smartStart}{Boolean. If TRUE, candidates are randomly generated with more chances in the directions the Hessian indicates improvement of the LL function. Default is FALSE.}
-  \item{apolloBetaMin}{Vector. Minimum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta - 0.1}.}
-  \item{apolloBetaMax}{Vector. Maximum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta + 0.1}.}
-  \item{maxStages}{Numeric scalar. Maximum number of search stages. The algorithm will stop when there is only one candidate left, or if it reaches this number of stages. Default is 5.}
-  \item{dTest}{Numeric scalar. Tolerance for test 1. A candidate is discarded if its distance in parameter space to a better one is smaller than \code{dTest}. Default is 1.}
-  \item{gTest}{Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is 10^(-3).}
-  \item{llTest}{Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is 3.}
-  \item{bfgsIter}{Numeric scalar. Number od BFGS iterations to perform at each stage to each remaining candidate. Default is 20.}
+\itemize{
+  \item \strong{nCandidates}: Numeric scalar. Number of candidate sets of parameters to be used at the start. Should be an integer bigger than 1. Default is 100.
+  \item \strong{smartStart}: Boolean. If TRUE, candidates are randomly generated with more chances in the directions the Hessian indicates improvement of the LL function. Default is FALSE.
+  \item \strong{apolloBetaMin}: Vector. Minimum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta - 0.1}.
+  \item \strong{apolloBetaMax}: Vector. Maximum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta + 0.1}.
+  \item \strong{maxStages}: Numeric scalar. Maximum number of search stages. The algorithm will stop when there is only one candidate left, or if it reaches this number of stages. Default is 5.
+  \item \strong{dTest}: Numeric scalar. Tolerance for test 1. A candidate is discarded if its distance in parameter space to a better one is smaller than \code{dTest}. Default is 1.
+  \item \strong{gTest}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is \code{10^(-3)}.
+  \item \strong{llTest}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is 3.
+  \item \strong{bfgsIter}: Numeric scalar. Number od BFGS iterations to perform at each stage to each remaining candidate. Default is 20.
 }}
 }
 \value{
@@ -45,7 +45,7 @@ This function implements a simplified version of the algorithm proposed by Bierl
 lies in it implementing only two out of three tests on the candidates described by the authors. The implemented algorithm has the
 following steps.
 \enumerate{
-  \item Randomly draw nCandidates candidates from an interval given by the user.
+  \item Randomly draw \code{nCandidates} candidates from an interval given by the user.
   \item Label all candidates with a valid log-likelihood (LL) as active.
   \item Apply \code{bfgsIter} iterations of the BFGS algorithm to each active candidate.
   \item Apply the following tests to each active candidate:
@@ -57,4 +57,5 @@ following steps.
   \item Mark any candidates for which at least one test results in yes as inactive.
   \item Go back to step 3, unless only one candidate is active, or the maximum number of iterations (\code{maxStages}) has been reached.
 }
+This function will write a CSV file to the working directory summarising progress. This file is called \code{modelName}_searchStart.csv .
 }

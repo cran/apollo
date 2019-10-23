@@ -6,17 +6,19 @@
 #'
 #' @param database data.frame. Data used by model.
 #' @param apollo_control List. Options controlling the running of the code.
-#'                    \describe{
-#'                      \item{modelName}{Character. Name of the model. Used when saving the output to files.}
-#'                      \item{modelDescr}{Character. Description of the model. Used in output files.}
-#'                      \item{indivID}{Character. Name of column in the database with each decision maker's ID.}
-#'                      \item{mixing}{Boolean. TRUE for models that include random parameters.}
-#'                      \item{nCores}{Numeric>0. Number of cores to use in calculations of the model likelihood.}
-#'                      \item{seed}{Numeric. Seed for random number generation.}
-#'                      \item{HB}{Boolean. TRUE if using RSGHB for Bayesian estimation of model.}
-#'                      \item{noValidation}{Boolean. TRUE if user does not wish model input to be validated before estimation - FALSE by default.}
-#'                      \item{noDiagnostics}{Boolean. TRUE if user does not wish model diagnostics to be printed - FALSE by default.}
-#'                      \item{weights}{Character. Name of column in database containing weights for estimation.}
+#'                    \itemize{
+#'                      \item \code{modelName}: Character. Name of the model. Used when saving the output to files.
+#'                      \item \code{modelDescr}: Character. Description of the model. Used in output files.
+#'                      \item \code{indivID}: Character. Name of column in the database with each decision maker's ID.
+#'                      \item \code{mixing}: Boolean. TRUE for models that include random parameters.
+#'                      \item \code{nCores}: Numeric>0. Number of cores to use in calculations of the model likelihood.
+#'                      \item \code{seed}: Numeric. Seed for random number generation.
+#'                      \item \code{HB}: Boolean. TRUE if using RSGHB for Bayesian estimation of model.
+#'                      \item \code{noValidation}: Boolean. TRUE if user does not wish model input to be validated before estimation - FALSE by default.
+#'                      \item \code{noDiagnostics}: Boolean. TRUE if user does not wish model diagnostics to be printed - FALSE by default.
+#'                      \item \code{weights}: Character. Name of column in database containing weights for estimation.
+#'                      \item \code{workInLogs}: Boolean. TRUE for increased numeric precision in models with panel data - FALSE by default.
+#'                      \item \code{panelData}: Boolean. TRUE if there are multiple obsrvations (i.e. rows) for each decision maker - Automatically set based on \code{indivID} by default.
 #'                    }
 #' @param silent Boolean. If TRUE, no messages are printed to screen.
 #' @return Validated version of apollo_control, with additional element called panelData set to TRUE for repeated choice data.
@@ -102,6 +104,12 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   }
   
   if((apollo_control$noValidation==TRUE)&!silent) warning("With setting noValidation=TRUE, your model code will not be validated prior to estimation. This may of course be deliberate for large models or models with many components.")
+  
+  allVars <- c("modelName", "modelDescr", "indivID", "mixing", "nCores", "seed", "HB", "noValidation", "noDiagnostics", "weights", "workInLogs", "panelData")
+  unknownVars <- names(apollo_control)[!( names(apollo_control) %in% allVars )]
+  if(length(unknownVars)>0){
+    warning(" Variable(s) {", paste(unknownVars, collapse=", "), "}\n where not recognised in apollo_control and will be ignored.\n Check ?apollo_control for a list of valid control variables.")
+  }
   
   if(!silent) cat("All checks on apollo_control completed.\n")
   return(apollo_control)

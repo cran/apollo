@@ -129,6 +129,16 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
       cat("Summary of posteriors for random parameters:",paste(model$apollo_control$modelName, "_param_posterior"   ,".csv", sep=""),"\n")}
       if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
       cat("\n")
+#
+      if(!is.null(tmp$random_coeff_covar)){utils::write.csv(tmp$random_coeff_covar, paste(model$apollo_control$modelName, "_random_coeff_covar",".csv", sep=""))
+      cat("\n")
+      cat("Covariance matrix of random coeffients (after distributional transforms):",paste(model$apollo_control$modelName, "_random_coeff_covar"   ,".csv", sep=""),"\n")}
+      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
+      if(!is.null(tmp$random_coeff_corr)){utils::write.csv(tmp$random_coeff_corr    , paste(model$apollo_control$modelName, "_random_coeff_corr"    ,".csv", sep=""))
+      cat("\n")
+      cat("Correlation matrix of random coeffients (after distributional transforms):",paste(model$apollo_control$modelName, "_random_coeff_corr"   ,".csv", sep=""),"\n")}
+      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
+      cat("\n")
      }
     if(saveModelObject){
       tryCatch( {

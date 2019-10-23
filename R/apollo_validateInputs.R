@@ -9,7 +9,7 @@
 #' @param database data.frame. Data used by model.
 #' @param apollo_control List. Options controlling the running of the code.
 #'                       \itemize{
-#'                         \item modelName: Character. Name of the model. Used when saving the output to files.
+#'                         \item modelName: Character. Name of the model. Used when saving the output to files. Avoid characters not allowed in file names, such as \code{\\}, \code{*}, \code{:}, etc.
 #'                         \item modelDescr: Character. Description of the model. Used in output files.
 #'                         \item indivID: Character. Name of column in the database with each decision maker's ID.
 #'                         \item mixing: Boolean. TRUE for models that include random parameters.
@@ -79,6 +79,13 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
     if(length(x)==1 && is.na(x)) stop("No variable called ", i, " found in user workspace (i.e. global environment).") else assign(i, x, envir=environment())
   }; rm(tmp, x, i)
   
+  ### Validate apollo_beta & apollo_fixed
+  if(!is.numeric(apollo_beta) | !is.vector(apollo_beta) | is.null(names(apollo_beta))) stop("The \"apollo_beta\" argument needs to be a named vector")
+  if(length(apollo_fixed)>0 && !is.character(apollo_fixed)) stop("'apollo_fixed' is not an empty vector nor a vector of names.")
+  if(length(unique(names(apollo_beta)))<length(apollo_beta)) stop("The \"apollo_beta\" argument contains duplicate elements")
+  if(length(unique(apollo_fixed))<length(apollo_fixed)) stop("The \"apollo_fixed\" argument contains duplicate elements")
+  if(!all(apollo_fixed %in% names(apollo_beta))) stop("Some parameters included in 'apollo_fixed' are not included in 'apollo_beta'.")
+  
   ### Validate apollo_control, database
   apollo_control <- apollo_validateControl(database, apollo_control, silent=silent)
   database       <- apollo_validateData(database, apollo_control, silent=silent)
@@ -108,13 +115,13 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
     apollo_randCoeff <- NA
   } else{
     if(length(apollo_draws)==1 && is.na(apollo_draws)) apollo_draws <- tryCatch( get("apollo_draws", envir=globalenv()), error=function(e) NA )
-    if(length(apollo_draws)==1 && is.na(apollo_draws)) stop("No variable called 'apollo_draws' found in user workspace (i.e. global environment).")
+    if(length(apollo_draws)==1 && is.na(apollo_draws)) stop("Mixing set to TRUE in 'apollo_control', but no variable called 'apollo_draws' found in user workspace (i.e. global environment).")
     default <- list(interDrawsType="halton", interNDraws=0, interUnifDraws=c(), interNormDraws=c(), 
                     intraDrawsType='halton', intraNDraws=0, intraUnifDraws=c(), intraNormDraws=c())
     for(i in names(default)) if(!(i %in% names(apollo_draws))) apollo_draws[[i]] <- default[[i]]
     
     if(!is.function(apollo_randCoeff)) apollo_randCoeff <- tryCatch( get("apollo_randCoeff", envir=globalenv()), error=function(e) NA )
-    if(!is.function(apollo_randCoeff)) stop("No function called 'apollo_randCoeff' found in user workspace (i.e. global environment).")
+    if(!is.function(apollo_randCoeff)) stop("Mixing set to TRUE in 'apollo_control', but no function called 'apollo_randCoeff' found in user workspace (i.e. global environment).")
   }
   
   ### Try to recover apollo_lcPars if not provided

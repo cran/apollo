@@ -26,6 +26,17 @@ apollo_printLog <- function(apolloLog){
     apolloLog$content <- c()
   }
   
+  #if(exists("HBcensor", envir=apolloLog)){
+  #  apollo_HB <- tryCatch(get("apollo_inputs", parent.frame(), inherits=FALSE)$apollo_HB,
+  #                        error = function(e) list(gNCREP=-1, gNEREP=-1))
+  #  txt <- paste0(" Please note that RSGHB has avoided numerical issues by left\n",
+  #                " censoring the probabilities. This has the side effect of zero or\n",
+  #                " negative probabilities not leading to failures!\n",
+  #                " In your model, this happened in ", apolloLog$HBcensor, " out of ", 
+  #                apollo_HB$gNCREP + apollo_HB$gNEREP, " iterations.", collapse="")
+  #  apollo_addLog(title="WARNING: RSGHB has censored the probabilities", content=txt, apolloLog)
+  #}
+  
   ### Convert to text
   n <- min(length(apolloLog$title), length(apolloLog$content))
   if(n>0){
@@ -34,6 +45,6 @@ apollo_printLog <- function(apolloLog){
                                 apolloLog$title[i], "\n", 
                                 apolloLog$content[i], "\n",
                                 ifelse(i<n, "\n", ""))
-    return(tmp)
-  } else return("Apollo log is empty\n")
+  } else tmp <- "Apollo log is empty\n"
+  return(tmp)
 }

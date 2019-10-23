@@ -12,7 +12,7 @@ apollo_ol(ol_settings, functionality)
   \item{outcomeOrdered}{Numeric vector. Dependant variable. The coding of this variable is assumed to be from 1 to the maximum number of different levels. For example, if the ordered response has three possible values: "never", "sometimes" and "always", then it is assumed that outcomeOrdered contains "1" for "never", "2" for "sometimes", and 3 for "always". If another coding is used, then it should be specified using the \code{coding} argument.}
   \item{V}{Numeric vector. A single explanatory variable (usually a latent variable). Must have the same number of rows as outcomeOrdered.}
   \item{tau}{Numeric vector. Thresholds. As many as number of different levels in the dependent variable - 1. Extreme thresholds are fixed at -inf and +inf. No mixing allowed in thresholds.}
-  \item{coding}{Numeric or character vector. Optional argument. Defines the order of the levels in \code{outcomeOrdered}. The first value is associated with the lowest level of \code{V}, and the last one with the highest value. If not provided, is assumed to be \code{1:(length(tau) + 1)}.}
+  \item{coding}{Numeric or character vector. Optional argument. Defines the order of the levels in \code{outcomeOrdered}. The first value is associated with the lowest level of \code{outcomeOrdered}, and the last one with the highest value. If not provided, is assumed to be \code{1:(length(tau) + 1)}.}
   \item{rows}{Boolean vector. TRUE if a row must be considered in the calculations, FALSE if it must be excluded. It must have length equal to the length of argument \code{outcomeOrdered}. Default value is \code{"all"}, meaning all rows are considered in the calculation.}
 }}
 

@@ -53,7 +53,10 @@ apollo_addLog <- function(title="", content="", apolloLog){
   }
   
   ### Check that new input is different to previous ones
-  if((title %in% apolloLog$title) && (content %in% apolloLog$content)) return(FALSE)
+  if(title %in% apolloLog$title){
+    if(content %in% apolloLog$content) return(FALSE)
+  }
+  
   
   ### Add new entry to apolloLog
   apolloLog$title <- c(apolloLog$title, title)
