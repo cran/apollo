@@ -4,8 +4,14 @@
 \alias{apollo_makeLogLike}
 \title{Creates log-likelihood function.}
 \usage{
-apollo_makeLogLike(apollo_beta, apollo_fixed, apollo_probabilities,
-  apollo_inputs, apollo_estSet, cl = NA)
+apollo_makeLogLike(
+  apollo_beta,
+  apollo_fixed,
+  apollo_probabilities,
+  apollo_inputs,
+  apollo_estSet,
+  cl = NA
+)
 }
 \arguments{
 \item{apollo_beta}{Named numeric vector. Names and values for parameters.}

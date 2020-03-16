@@ -9,11 +9,9 @@ test_that("MNL works", {
     indivID    = "ID"
   )
 
-  data(apollo_modeChoiceData)
+  data("apollo_modeChoiceData", package="apollo")
   database = apollo_modeChoiceData
-  rm(apollo_modeChoiceData)
   database = subset(database,database$RP==1)
-  database$mean_income = mean(database$income)
 
   apollo_beta=c(asc_car   = 0,
                 asc_bus   = 0,
@@ -45,10 +43,10 @@ test_that("MNL works", {
     on.exit(apollo_detach(apollo_beta, apollo_inputs))
     P = list()
     V = list()
-    V[['car']]  = asc_car  + b_tt_car  * time_car                        + b_cost * cost_car
-    V[['bus']]  = asc_bus  + b_tt_bus  * time_bus  + b_access * access_bus  + b_cost * cost_bus
-    V[['air']]  = asc_air  + b_tt_air  * time_air  + b_access * access_air  + b_cost * cost_air
-    V[['rail']] = asc_rail + b_tt_rail * time_rail + b_access * access_rail + b_cost * cost_rail
+    V[['car']]  = asc_car  + b_tt_car *time_car                         + b_cost*cost_car
+    V[['bus']]  = asc_bus  + b_tt_bus *time_bus  + b_access*access_bus  + b_cost*cost_bus
+    V[['air']]  = asc_air  + b_tt_air *time_air  + b_access*access_air  + b_cost*cost_air
+    V[['rail']] = asc_rail + b_tt_rail*time_rail + b_access*access_rail + b_cost*cost_rail
     mnl_settings = list(
       alternatives  = c(car=1, bus=2, air=3, rail=4),
       avail         = list(car=av_car, bus=av_bus, air=av_air, rail=av_rail),

@@ -12,19 +12,33 @@
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param silent Boolean. If TRUE, it reports progress to the console. Default is FALSE.
+#' @param cleanMemory Boolean. If TRUE, it saves apollo_inputs to disc, and removes database and draws from 
+#'                    the apollo_inputs in .GlobalEnv and the parent environment.
 #' @return Cluster (i.e. an object of class cluster from package parallel)
-apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE){
+apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE, cleanMemory=FALSE){
   
   ### Split data and draws
-  LL     <- apollo_splitDataDraws(apollo_inputs, silent)
-  nCores <- length(LL)
+  inputPieceFile <- apollo_splitDataDraws(apollo_inputs, silent)
+  nCores         <- length(inputPieceFile)
   
   ### Create cluster
   if(!silent) cat('\nPreparing workers')
-  if(!silent) cat('\n Loading libraries...')
   cl <- parallel::makeCluster(nCores)
   
+  ### Delete draws and database from memory in main thread
+  if(cleanMemory){
+    if(!silent) cat('\n Cleaning memory in main thread...')
+    saveRDS(apollo_inputs, file=paste0(tempdir(), "\\", apollo_inputs$apollo_control$modelName,"_inputs"))
+    apollo_inputs$draws <- NULL
+    apollo_inputs$database <- NULL
+    assign("apollo_inputs", apollo_inputs, envir=parent.frame())
+    tmp <- .GlobalEnv
+    if(exists("apollo_inputs", envir=tmp)) assign("apollo_inputs", apollo_inputs, envir=tmp)
+    if(!silent) cat(' Done. ',sum(gc()[,2]),'MB of RAM in use.',sep='')
+  }
+  
   ### Load libraries in the cluster (same as in workspace)
+  if(!silent) cat('\n Loading libraries...')
   excludePackages<- c('parallel')
   loadedPackages <- search()
   loadedPackages <- loadedPackages[grepl("^(package:)", loadedPackages)]
@@ -37,15 +51,11 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
       for(i in 1:length(lib)) library(lib[i],character.only=TRUE)
     }, lib=loadedPackages, path=.libPaths())
   }
-  
   ### Copy functions in the workspace to the workers
   # apollo_probabilities is copied separately to ensure it keeps its name
   funcs <- as.vector(utils::lsf.str(envir=.GlobalEnv))
   parallel::clusterExport(cl, funcs, envir=.GlobalEnv)
   parallel::clusterExport(cl, "apollo_probabilities", envir=environment())
-  
-  
-  ### Report memory usage
   if(!silent){
     mbRAM <- sum(gc()[,2])
     if(nCores>1){
@@ -56,13 +66,19 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
     cat(' Done. ',mbRAM,'MB of RAM in use.',sep='')
   }
   
-  ### Copy apollo_inputs (with corresponding database and draws piece) to each workers
-  if(!silent) cat("\n Copying data...")
-  #parallel::parLapply(cl, LL, fun=function(ll) assign("apollo_inputs", ll, envir=globalenv()) )
-  parallel::parLapply(cl, LL, fun=function(ll){
+  ### Load apollo_input pieces in each worker
+  if(!silent) cat("\n Loading data...")
+  parallel::parLapply(cl, inputPieceFile, fun=function(fileName){
     tmp <- globalenv()
-    assign("apollo_inputs", ll, envir=tmp)
-  }  )
+    txt <- " This is necessary for multi-core processing to work."
+    if(!file.exists(fileName)) stop(paste0("A piece of data is missing from disk.",txt))
+    apollo_inputs_piece <- tryCatch(readRDS(fileName),
+                                    warning = function(w) FALSE,
+                                    error   = function(e) FALSE)
+    if(is.logical(apollo_inputs_piece) && !apollo_inputs_piece) stop(paste0("A piece of data could not be loaded from disk.",txt))
+    assign("apollo_inputs", apollo_inputs_piece, envir=tmp)
+  })
+  unlink(inputPieceFile) # delete tmp files
   
   ### Report memory usage
   if(!silent){
@@ -72,15 +88,12 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
       mbRAM2 <- parallel::clusterCall(cl, gc)
       mbRAM2 <- Reduce('+',lapply(mbRAM2, function(x) sum(x[,2])))
     }
-    mbRAMmax <- mbRAM1+mbRAM2
-    rm(LL)
-    mbRAMcurrent <- sum(gc()[,2]) + mbRAM2
-    cat(' Done. ', mbRAMcurrent, 'MB of RAM in use (max was ',mbRAMmax,'MB)', sep='')
+    cat(' Done. ', mbRAM1+mbRAM2, 'MB of RAM in use\n', sep='')
   }
   
-  # The following two lines do the same thing, i.e. enumerate 
+  # The following two lines enumerate 
   # elements in the workspace of each worker.
-  #parallel::clusterEvalQ(cl, ls())
+  #print(parallel::clusterEvalQ(cl, ls(apollo_inputs$draws)))
   #parallel::clusterCall(cl, ls, envir=.GlobalEnv)
   return(cl)
 }

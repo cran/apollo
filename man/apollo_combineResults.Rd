@@ -16,6 +16,7 @@ apollo_combineResults(combineResults_settings = NULL)
   \item estimateDigits: Numeric scalar. Number of decimal places to print for estimates. Default is 4.
   \item tDigits: Numeric scalar. Number of decimal places to print for t-ratios values. Default is 2.
   \item pDigits: Numeric scalar. Number of decimal places to print for p-values. Default is 2.
+  \item sortByDate: Boolean. If TRUE, models are ordered by date.
 }}
 }
 \value{

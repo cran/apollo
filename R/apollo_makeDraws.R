@@ -76,7 +76,7 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   if(any(!test)){
     txt <- paste0("Some elements in apollo_draws (", paste0(names(d)[!test], collapse=", "),
                   ") are not recognised as valid settings.")
-    warning(txt)
+    stop(txt)
   }
 
 
@@ -260,7 +260,7 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   #### Returning draws              ####
   # ################################## #
 
-  if(!panelData & dimInter>0) warning('Inter-person draws are being used without a panel structure.')
+  if(!panelData & dimInter>0) cat("Inter-person draws are being used without a panel structure.\n")
 
   return(drawsList)
 }

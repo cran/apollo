@@ -30,15 +30,15 @@
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param searchStart_settings List containing options for the search of starting values. The following are valid options.
 #'                                   \itemize{
-#'                                     \item \strong{nCandidates}: Numeric scalar. Number of candidate sets of parameters to be used at the start. Should be an integer bigger than 1. Default is 100.
-#'                                     \item \strong{smartStart}: Boolean. If TRUE, candidates are randomly generated with more chances in the directions the Hessian indicates improvement of the LL function. Default is FALSE.
-#'                                     \item \strong{apolloBetaMin}: Vector. Minimum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta - 0.1}.
-#'                                     \item \strong{apolloBetaMax}: Vector. Maximum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta + 0.1}.
-#'                                     \item \strong{maxStages}: Numeric scalar. Maximum number of search stages. The algorithm will stop when there is only one candidate left, or if it reaches this number of stages. Default is 5.
-#'                                     \item \strong{dTest}: Numeric scalar. Tolerance for test 1. A candidate is discarded if its distance in parameter space to a better one is smaller than \code{dTest}. Default is 1.
-#'                                     \item \strong{gTest}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is \code{10^(-3)}.
-#'                                     \item \strong{llTest}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is 3.
-#'                                     \item \strong{bfgsIter}: Numeric scalar. Number od BFGS iterations to perform at each stage to each remaining candidate. Default is 20.
+#'                                     \item \code{nCandidates}: Numeric scalar. Number of candidate sets of parameters to be used at the start. Should be an integer bigger than 1. Default is 100.
+#'                                     \item \code{smartStart}: Boolean. If TRUE, candidates are randomly generated with more chances in the directions the Hessian indicates improvement of the LL function. Default is FALSE.
+#'                                     \item \code{apolloBetaMin}: Vector. Minimum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta - 0.1}.
+#'                                     \item \code{apolloBetaMax}: Vector. Maximum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta + 0.1}.
+#'                                     \item \code{maxStages}: Numeric scalar. Maximum number of search stages. The algorithm will stop when there is only one candidate left, or if it reaches this number of stages. Default is 5.
+#'                                     \item \code{dTest}: Numeric scalar. Tolerance for test 1. A candidate is discarded if its distance in parameter space to a better one is smaller than \code{dTest}. Default is 1.
+#'                                     \item \code{gTest}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is \code{10^(-3)}.
+#'                                     \item \code{llTest}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is 3.
+#'                                     \item \code{bfgsIter}: Numeric scalar. Number od BFGS iterations to perform at each stage to each remaining candidate. Default is 20.
 #'                                   }
 #' @return named vector of model parameters. These are the best values found.
 #' @export
@@ -94,8 +94,9 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
 
   ### Create candidates.
   ### Only non-fixed parameters are considered.
-  ### Candidates are stored in a list of matrices called 'candidates'
-  ### Each element of the list is a matrix where each row is a candidate
+  ### Candidates AT THE START OF EACH ITERATION are stored in a list of 
+  ### matrices called 'candidates'. Each element of the list is a 
+  ### matrix where each row is a candidate
   set.seed(2)
   candidates <- list()
   cat("Creating initial set of",nCandidates,"candidate values.\n")
@@ -125,7 +126,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     candidates[[1]] <- t(candidates[[1]])
   }
 
-  ### Calculate LL of all candidates
+  ### Calculate LL of all candidates AT THE START OF THE ITERATION
   LL <- rep(0, nCandidates)
   cat("Calculating LL of candidates 0%")
   for(j in 1:nCandidates){
@@ -154,34 +155,42 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   ### MAIN LOOP
   active    <- rep(TRUE, nCandidates)
   converged <- rep(FALSE, nCandidates)
-  i <- 2
-  while(sum(active)>1 & i<maxStages+1){
+  s <- 1
+  while(sum(active)>1 & s<=maxStages){
     activeRows <- which(active)
 
-    cat("\n\nStage ", i-1, ", ", length(activeRows), " active candidates.", sep="")
+    cat("\n\nStage ", s, ", ", length(activeRows), " active candidates.", sep="")
     cat("\n Estimating", bfgsIter, "BFGS iteration(s) for each active candidate.")
     cat("\n Candidate......LLstart.....LLfinish.....GradientNorm...Converged")
 
     # Apply BFGS for each active candidate
-    LL              <- cbind(LL, NA)
-    candidates[[i]] <- matrix(NA, nrow=nCandidates, ncol=K)
-    gradientNorm    <- rep(NA, nCandidates)
+    LL               <- cbind(LL, NA)
+    colnames(LL)     <- paste0("LL", 1:ncol(LL))
+    candidates[[s+1]]<- matrix(NA, nrow=nCandidates, ncol=K)
+    gradientNorm     <- rep(NA, nCandidates)
     for(j in activeRows){
-      LLstart <- as.character(round(LL[j,i-1],0))
+      LLstart <- as.character(round(LL[j,s],0))
       cat("\n ",rep(" ",9-nchar(as.character(j))), j,
           " ", rep(" ",12-nchar(LLstart)),LLstart, sep="")
-
-      candidateParam <- as.vector(candidates[[i-1]][j,])
-      names(candidateParam) <- names(beta_var_val)
-      model <- maxLik::maxLik(apollo_logLike, start=candidateParam,
-                              method="bfgs", print.level=0,
-                              finalHessian=FALSE, iterlim=bfgsIter)
-      candidates[[i]][j,] <- model$estimate
-      LL[j,i]             <- model$maximum
-      gradientNorm[j]     <- sqrt(sum(model$gradient^2))
-      converged[j]        <- ifelse(model$code==0, TRUE, FALSE)
-
-      LLfinish <- as.character(round(LL[j,i],0))
+      
+      if(!converged[j]){ # If it hasn't converged yet
+        candidateParam <- as.vector(candidates[[s]][j,])
+        names(candidateParam) <- names(beta_var_val)
+        model <- maxLik::maxLik(apollo_logLike, start=candidateParam,
+                                method="bfgs", print.level=0,
+                                finalHessian=FALSE, iterlim=bfgsIter)
+        candidates[[s+1]][j,] <- model$estimate
+        LL[j,s+1]             <- model$maximum
+        gradientNorm[j]       <- sqrt(sum(model$gradient^2))
+        converged[j]          <- ifelse(model$code==0, TRUE, FALSE)
+      } else {# if it has converged already
+        candidates[[s+1]][j,] <- candidates[[s]][j,]
+        LL[j,s+1]             <- LL[j,s]
+        gradientNorm[j]       <- 0 # approximation
+        converged[j]          <- TRUE
+      }
+      
+      LLfinish <- as.character(round(LL[j,s+1],0))
       gradFin  <- as.character(round(gradientNorm[j],3))
       cat(" ", rep(" ",12-nchar(LLfinish)), LLfinish,
           " ", rep(" ",16-nchar(gradFin)), gradFin,
@@ -191,61 +200,53 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
 
     # Update active list
     for(j in activeRows){
-      candParam    <- as.vector(candidates[[i]][j,])
-      candLL       <- LL[j,i]
-      betterLLRows <- activeRows[LL[activeRows,i]>=candLL & activeRows!=j]
+      candParam    <- as.vector(candidates[[s+1]][j,])
+      candLL       <- LL[j,s+1]
+      betterLLRows <- activeRows[LL[activeRows,s+1]>=candLL & activeRows!=j]
 
-      # Test 0: It hasn't converged
-      if(converged[j]) active[j] <- FALSE
+      # Test 0: Converged to a worst solution
+      if(converged[j] & length(betterLLRows)>0) active[j] <- FALSE
 
-      # Apply tests only if it is not the best LL of the stage
+      # Apply tests only if it hasn't converged and is not the best LL of the stage
       if(length(betterLLRows)>0 & !converged[j]){
         # Test 1: Distance in parameter space to a better one
-        betterParams <- candidates[[i]][betterLLRows,]
+        betterParams <- candidates[[s+1]][betterLLRows,]
         if(length(betterLLRows)==1) betterParams <- matrix(betterParams, nrow=1)
         distParam <- apply(betterParams, MARGIN=1, function(x) sqrt(sum((x-candParam)^2)) )
         failedT1Rows <- betterLLRows[ distParam<dTest ]
 
         # Test 2: small gradient norm and close to another
-        distLL <- abs(as.vector(LL[betterLLRows,i] - candLL))
+        distLL <- abs(as.vector(LL[betterLLRows,s+1] - candLL))
         failedT2Rows <- betterLLRows[ gradientNorm[betterLLRows]<gTest & distLL>=llTest ]
 
         if(length(failedT1Rows)>0 | length(failedT2Rows)>0){
           active[j] <- FALSE
           cat("\n Candidate", j, "dropped.")
-          if(length(failedT1Rows)>0) cat("\n  Failed test 1 against", failedT1Rows)
-          if(length(failedT2Rows)>0) cat("\n  Failed test 2 against", failedT2Rows)
+          if(length(failedT1Rows)>0) cat("\n  Failed test 1: Too close to", failedT1Rows, "in parameter space.")
+          if(length(failedT2Rows)>0) cat("\n  Failes test 2: Converging to a worse solution than", failedT2Rows)
         }
+        
+        rm(betterParams, distParam, failedT1Rows, failedT2Rows)
       }
+      rm(candParam, candLL, betterLLRows)
     }
-    rm(candParam, candLL, betterLLRows, betterParams, distParam, failedT1Rows, failedT2Rows)
+    
 
     # Print best candidate to screen
-    bestCandRow <- which.max(LL[,i])
-    bestCandParam <- as.vector(candidates[[i]][j,])
+    bestCandRow <- which.max(LL[,s+1])
+    bestCandParam <- as.vector(candidates[[s+1]][bestCandRow,])
     names(bestCandParam) <- names(beta_var_val)
     bestCandParam <- c(bestCandParam, apollo_beta[apollo_fixed])
     bestCandParam <- bestCandParam[names(apollo_beta)]
-    cat("\n Best candidate so far (LL=", round(LL[bestCandRow,i],1), ")\n", sep="")
+    cat("\n Best candidate so far (LL=", round(LL[bestCandRow,s+1],1), ")\n", sep="")
     print(as.matrix(round(bestCandParam,4)))
 
-    # Update candidates file
-    if(!file.exists(fileName)){
-      tmp <- cbind(candidates[[1]], logLike=LL[,1], stage=1)
-      tmp[activeRows, ] <- cbind(candidates[[i]][activeRows,], logLike=LL[activeRows,i], stage=i)
-      tryCatch(utils::write.csv(tmp, fileName, row.names=FALSE), error=cat("\n Stage update could not be written to file", fileName))
-    } else{
-      carryOn <- FALSE
-      tryCatch({tmp <- utils::read.csv(fileName); carryOn <- TRUE}, error=function(e) cat("\n File", fileName, "could not be accessed."))
-      if(carryOn){
-        tmp[activeRows,] <- cbind(candidates[[i]][activeRows,], logLike=LL[activeRows,i], stage=i)
-        tryCatch(utils::write.csv(tmp, fileName, row.names=FALSE), error=function(e) cat("\n Stage update could not be written to file."))
-      }
-    }
-
+    # Write current state to file
+    tryCatch(utils::write.csv(cbind(candidates[[1]], LL), fileName, row.names=FALSE), 
+             error=function(e) cat("\n Stage update",s,"could not be written to file", fileName))
 
     # Next iteration
-    i <- i+1
+    s <- s+1
   }
 
   invisible(return(bestCandParam))

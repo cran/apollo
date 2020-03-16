@@ -4,7 +4,12 @@
 \alias{apollo_makeCluster}
 \title{Creates cluster for estimation.}
 \usage{
-apollo_makeCluster(apollo_probabilities, apollo_inputs, silent = FALSE)
+apollo_makeCluster(
+  apollo_probabilities,
+  apollo_inputs,
+  silent = FALSE,
+  cleanMemory = FALSE
+)
 }
 \arguments{
 \item{apollo_probabilities}{Function. Returns probabilities of the model to be estimated. Must receive three arguments:
@@ -17,6 +22,9 @@ apollo_makeCluster(apollo_probabilities, apollo_inputs, silent = FALSE)
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
 \item{silent}{Boolean. If TRUE, it reports progress to the console. Default is FALSE.}
+
+\item{cleanMemory}{Boolean. If TRUE, it saves apollo_inputs to disc, and removes database and draws from 
+the apollo_inputs in .GlobalEnv and the parent environment.}
 }
 \value{
 Cluster (i.e. an object of class cluster from package parallel)

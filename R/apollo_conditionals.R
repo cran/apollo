@@ -32,13 +32,18 @@ apollo_conditionals=function(model, apollo_probabilities, apollo_inputs){
   apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
   
   
+  if(is.function(apollo_inputs$apollo_lcPars)) stop("The function \'apollo_conditionals\' is not applicables for models containing latent class components!")
+  
+  if(is.null(apollo_control$HB)) apollo_control$HB=FALSE
+  if(apollo_control$HB) stop("The function \'apollo_conditionals\' is not applicables for models estimated using HB!") 
+  
   if(!apollo_control$mixing) stop("Conditionals can only be estimated for mixture models!")
   if(anyNA(draws)) stop("Random draws have not been specified despite setting mixing=TRUE")
   
   if(apollo_draws$interNDraws==0) stop("This function is only for models that incorporate inter-individual draws!")
   if(apollo_draws$intraNDraws>0) cat("Your model contains intra-individual draws which will be averaged over for conditionals!\n")
   
-  cat("For information:\n This function is meant for use only with continuous mixture models, i.e. no latent class!.\n")
+  
   
   cat("Calculating conditionals...")
   toAttach  <- c(as.list(apollo_beta), apollo_inputs$database, apollo_inputs$draws)

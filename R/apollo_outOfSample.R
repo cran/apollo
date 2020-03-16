@@ -24,6 +24,11 @@
 #'   \item \code{modelName_outOfSample_samples.csv}: Records the sample composition of each repetition.
 #' }
 #' The first two files are updated throughout the run of this function, while the last one is only written once the function finishes.
+#' 
+#' When run, this function will look for the two files above in the working directory. If they are found, 
+#' the function will attempt to pick up re-sampling from where those files left off. This is useful in 
+#' cases where the original bootstrapping was interrupted, or when additional re-sampling wants to be performed.
+#' 
 #' @param apollo_beta Named numeric vector. Names and values for parameters.
 #' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
 #' @param apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:
@@ -54,6 +59,7 @@
 #'         working directory.
 #' @export
 #' @importFrom maxLik maxLik
+#' @importFrom utils read.csv
 apollo_outOfSample <- function(apollo_beta, apollo_fixed,
                                apollo_probabilities, apollo_inputs,
                                estimate_settings=list(estimationRoutine="bfgs",
@@ -124,17 +130,19 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   if(anyNA(samples)){
     if(validationSize < 1) validationSize <- round(outOfSample_settings$validationSize*nIndivs)
     if(!(1<=validationSize & validationSize<nIndivs)) stop("validationSize must be between 1 and (nIndivs-1).")
-    cat("\n Number of individuals for estimation : ", nIndivs - validationSize, sep="")
-    cat("\n Number of individuals for forecasting: ", validationSize, sep="")
+    cat("\n Number of individuals")
+    cat("\n   for estimation   : ", nIndivs - validationSize, sep="")
+    cat("\n   for forecasting  : ", validationSize, sep="")
+    cat("\n   in sample (total): ", nIndivs, sep="")
   } else {
     nRep <- ncol(samples)
     nPre <- colSums(samples)
     if(all(nPre==nPre[1])) nPre <- nPre[1]
-    cat("\n Number of observations for estimation : ", ifelse(length(nPre)==1, nrow(samples) - nPre, "Changes by sample") , sep="")
-    cat("\n Number of observations for forecasting: ", ifelse(length(nPre)==1, nPre, "Changes by sample"), sep="")
+    cat("\n Number of observations")
+    cat("\n   for estimation : ", ifelse(length(nPre)==1, nrow(samples) - nPre, "Changes by sample") , sep="")
+    cat("\n   for forecasting: ", ifelse(length(nPre)==1, nPre, "Changes by sample"), sep="")
+    cat("\n Number of individuals in sample: ", nIndivs, sep="")
   }
-  cat("\n Total number of individuals in sample: ", nIndivs, sep="")
-  
   
   # Get number of LL components in model
   cat("\n Preparing loop.")
@@ -150,13 +158,55 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   }
   rm(llComponents)
   
+  # Check if there are previous results. If so, load them
+  fileNameParams <- paste(apollo_control$modelName, "outOfSample_params.csv", sep="_")
+  fileNameSample <- paste(apollo_control$modelName, "outOfSample_samples.csv", sep="_")
+  nRun <- 0
+  if(file.exists(fileNameParams) & file.exists(fileNameSample)){
+    cat("\n Old output files found, they will be recycled.")
+    # Read params
+    tmp1 <- read.csv(fileNameParams) # cbind(paramStack, llInSampleStack, llOutOfSampleStack, inSampleObs, outOfSampleObs)
+    tmp1 <- as.matrix(tmp1)
+    # Read samples
+    tmp2 <- read.csv(fileNameSample)
+    tmp2 <- as.matrix(tmp2)
+    # Update start point
+    nRun <- ncol(tmp2)
+    cat("\n   ", nRun, " repetitions recovered from files.", sep="")
+    # Check that result files match
+    test <- nRun==sum(tmp1[,ncol(tmp1)]>0) & nrow(tmp2)==nrow(database)
+    if(test){
+      # Check if all repetitions are not done
+      if(nRun>=nRep){
+        cat("\n   All requested repetitions were completed in old files.\n   No new repetitions will be performed.\n")
+        output_matrix=cbind(tmp1[,"inSample_model"]/tmp1[,"inSampleObs"],
+                            tmp1[,"outOfSample_model"]/tmp1[,"outOfSampleObs"])
+        colnames(output_matrix)=c("LL per obs in estimation sample","LL per obs in validation sample")
+        return(output_matrix)
+      }
+      # Copy previous results to memory
+      r                      <- 1:nrow(tmp1)
+      cols                   <- c(1, ncol(paramStack))
+      paramStack[r,]         <- tmp1[, cols[1]:cols[2], drop=FALSE]
+      cols                   <- cols + c(ncol(paramStack), ncol(llInSampleStack))
+      llInSampleStack[r,]    <- tmp1[, cols[1]:cols[2], drop=FALSE]
+      cols                   <- cols + c(ncol(llInSampleStack), ncol(llOutOfSampleStack))
+      llOutOfSampleStack[r,] <- tmp1[, cols[1]:cols[2], drop=FALSE]
+      nObsStack[r]           <- tmp1[, cols[2] + 1]
+      samples[,1:ncol(tmp2)] <- tmp2
+    } else { 
+      nRun <- 0
+      cat("\n   Old result files do not match, so they will be ignored.")
+    }
+  }
+  
   # OUT OF SAMPLE LOOP
   cat("\n Estimated parameters and loglikelihoods of each sample will be")
-  cat("\n   written to: ", paste0(apollo_control$modelName, "_outOfSample_params.csv"), sep="")
-  cat("\n The matrix defining the observations used in each repetition will")
-  cat("\n   be written to: ", paste0(apollo_control$modelName, "_outOfSample_samples.csv"), sep="")
+  cat("\n   written to: ", fileNameParams, sep="")
+  cat("\n The matrix defining the observations used in each repetition")
+  cat("\n   will be written to: ", fileNameSample, sep="")
   cat("\n")
-  for(i in 1:nRep){
+  for(i in (nRun + 1):nRep){
     
     # Filter database and create draws
     #for(j in 1:i) obsForecast <- database[,apollo_control$indivID] %in% sample(indivs, size=validationSize)
@@ -175,6 +225,9 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
     # Create logLike function
     apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, apollo_probabilities,
                                          apollo_inputs, estimate_settings, cl) # used to be apollo_inputs2
+    
+    # Make sure to detach things on exit
+    on.exit( apollo_detach() )
     
     # Estimate
     cat("\nEstimation cycle ", i, sep="")
@@ -216,9 +269,8 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
       
       # Save results from bootstrap iteration
       utils::write.csv(cbind(paramStack, llInSampleStack, llOutOfSampleStack,inSampleObs=nObsStack,outOfSampleObs=nrow(database)-nObsStack), 
-                       paste(apollo_control$modelName, "outOfSample_params.csv", sep="_"), row.names=FALSE)
-      utils::write.csv(samples[,1:i], 
-                       paste(apollo_control$modelName, "outOfSample_samples.csv", sep="_"), row.names=FALSE)
+                       fileNameParams, row.names=FALSE)
+      utils::write.csv(samples[,1:i], fileNameSample, row.names=FALSE)
       cat("Estimation results written to file.\n")
     } else {
       # Report error but continue with next iteration

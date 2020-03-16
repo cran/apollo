@@ -6,14 +6,14 @@
 #' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}.
 #' @param modelOutput_settings List of options. It can include the following.
 #'                             \itemize{
-#'                               \item printClassical: Boolean. TRUE for printing classical standard errors. TRUE by default.
-#'                               \item printPVal: Boolean. TRUE for printing p-values. FALSE by default.
-#'                               \item printT1: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
-#'                               \item printDiagnostics: Boolean. TRUE for printing summary of choices in database and other diagnostics. TRUE by default.
-#'                               \item printCovar: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
-#'                               \item printCorr: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
-#'                               \item printOutliers: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
-#'                               \item printChange: Boolean. TRUE for printing difference between starting values and estimates. FALSE by default.
+#'                               \item \code{printClassical}: Boolean. TRUE for printing classical standard errors. TRUE by default.
+#'                               \item \code{printPVal}: Boolean. TRUE for printing p-values. FALSE by default.
+#'                               \item \code{printT1}: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
+#'                               \item \code{printDiagnostics}: Boolean. TRUE for printing summary of choices in database and other diagnostics. TRUE by default.
+#'                               \item \code{printCovar}: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
+#'                               \item \code{printCorr}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
+#'                               \item \code{printOutliers}: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
+#'                               \item \code{printChange}: Boolean. TRUE for printing difference between starting values and estimates. FALSE by default.
 #'                             }
 #' @return A matrix of coefficients, s.d. and t-tests (invisible)
 #' @export
@@ -96,7 +96,8 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     cat("Burn-in iterations               : ",model$gNCREP,"\n", sep="")
     cat("Post burn-in iterations          : ",model$gNEREP,"\n", sep="")
     cat("LL(start)                        : ",model$LLStart,"\n", sep="")
-    if(!anyNA(model$LL0)) cat("LL(0)                            : ",model$LL0,"\n",sep="")
+    #if(!anyNA(model$LL0)) cat("LL(0)                            : ",model$LL0,"\n",sep="")
+    cat("LL(0)                            : ",model$LL0[1],"\n", sep="")
     cat("Average post. LL post burn-in    : ",mean(colSums(log(model$cmcLLout))),"\n",sep="")
     cat("Average post. RLH post burn-in   : ",round(mean(colMeans((model$cmcRLHout))),4),"\n",sep="")
     if(!apollo_control$HB) cat("Estimated parameters             :  ", nFreeParams,"\n", sep="")
@@ -132,7 +133,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       print( round(model$D_convergence, 4) )
     }
     cat("\n\n")
-
+    
     cat("Summary of parameter chains\n\n")
     ans <- list()
     
@@ -172,19 +173,19 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
         if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
         print(round(model$random_coeff_covar,4))
         cat("\n")
-
+        
         cat("Correlation matrix of random coeffients (after distributional transforms)","\n")
         if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
         print(round(model$random_coeff_corr,4))
         cat("\n")
       }
       
-
+      
       cat("Results for posterior means for random coefficients","\n")
       if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
       print(round(model$posterior_mean,4))
       cat("\n")
-
+      
       ans[["random_mean"]]   <- model$chain_random_mean
       ans[["random_cov_mean"]] <- model$chain_random_cov_mean
       ans[["random_cov_sd"]] <- model$chain_random_cov_sd
@@ -234,26 +235,40 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   if(length(dropcolumns)>0) output = output[,-dropcolumns, drop=FALSE]
   
   cat("LL(start)                        : ",model$LLStart,"\n", sep="")
-  if(!anyNA(model$LL0)) cat("LL(0)                            : ",model$LL0,"\n",sep="")
+  #if(!anyNA(model$LL0)) cat("LL(0)                            : ",model$LL0,"\n",sep="")
+  if(length(model$LLout)==1) cat("LL(0)                            : ",ifelse(!anyNA(model$LL0[1]),model$LL0[1],"Not applicable"),"\n", sep="")
+  if(length(model$LLout)>1)  cat("LL(0, whole model)               : ",ifelse(!anyNA(model$LL0[1]),model$LL0[1],"Not applicable"),"\n", sep="")
   if(length(model$LLout)==1) cat("LL(final)                        : ",model$maximum,"\n",sep="")
-  if(length(model$LLout)>1) cat("LL(final, whole model)           : ",model$maximum,"\n",sep="")
+  if(length(model$LLout)>1)  cat("LL(final, whole model)           : ",model$maximum,"\n",sep="")
+  ###if(length(model$LLout)==1 && !anyNA(model$LL0[1])){
+  ###if(!anyNA(model$LL0[1])){
+    test <- exists("modelTypeList", envir=model$apolloLog)
+    test <- test && all(tolower(unlist(model$apolloLog$modelTypeList)) %in% c("mnl", "nl", "cnl", "el", "dft", "lc"))
+    test <- test && !anyNA(model$LL0[1])
+    if(test){
+      cat("Rho-square (0)                   : ",round(1-(model$maximum/model$LL0[1]),4),"\n")
+      cat("Adj.Rho-square (0)               : ",round(1-((model$maximum-nFreeParams)/model$LL0[1]),4),"\n")
+    } 
+    if(!test){
+      cat("Rho-square (0)                   : Not applicable\n")
+      cat("Adj.Rho-square (0)               : Not applicable\n")
+    }
+  #}
+  cat("AIC                              : ",round(-2*model$maximum + 2*nFreeParams,2),"\n")
+  cat("BIC                              : ",round(-2*model$maximum + nFreeParams*log(model$nObs),2),"\n")
   if(length(model$LLout)>1){
     j=2
     nameList <- names(model$LLout)
     while(j<=length(model$LLout)){
-      spaces <- 33-(6+nchar(nameList[j]))
-      if(spaces>0) spaces <- paste(rep(" ",spaces),sep='') else spaces <- ""
-      cat("  LL(",nameList[j],")",spaces,": ",model$LLout[j],"\n",sep="")
+      spaces  <- 31-(6+nchar(nameList[j]))
+      spaces1 <- 27-(6+nchar(nameList[j]))
+      if(spaces>0)  spaces  <- paste(rep(" ",spaces),sep='')  else spaces  <- ""
+      if(spaces1>0) spaces1 <- paste(rep(" ",spaces1),sep='') else spaces1 <- ""
+      cat("  LL(0,",nameList[j],")",spaces,": ",ifelse(is.finite(model$LL0[j]),model$LL0[j],"Not applicable"),"\n",sep="")
+      cat("  LL(final,",nameList[j],")",spaces1,": ",model$LLout[j],"\n",sep="")
       j=j+1
     }
   }
-  if(!anyNA(model$LL0)){
-    cat("Rho-square (0)                   : ",round(1-(model$maximum/model$LL0),4),"\n")
-    cat("Adj.Rho-square (0)               : ",round(1-((model$maximum-nFreeParams)/model$LL0),4),"\n")}
-  
-  
-  cat("AIC                              : ",round(-2*model$maximum + 2*nFreeParams,2),"\n")
-  cat("BIC                              : ",round(-2*model$maximum + nFreeParams*log(model$nObs),2),"\n")
   cat("Estimated parameters             :  ", nFreeParams,"\n", sep="")
   #cat("Norm of the gradient at optimum  : ",round( sqrt(sum(model$gradient^2)),2), "\n\n")
   tmpH <- floor(model$timeTaken/60^2)
@@ -268,11 +283,15 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     nRep <- tryCatch(nrow(utils::read.csv(paste0(model$apollo_control$modelName, "_bootstrap_params.csv"))),
                      error=function(e) model$bootstrapSE)
     cat("Number of bootstrap repetitions  : ",nRep,"\n")
-  } 
+  }
+  if(!is.null(model$eigen)){
+    cat("Min abs eigenvalue of hessian    : ",abs(model$eigen),"\n") 
+  }
+  if(!is.null(model$eigenpos) && model$eigenpos) cat("Some eigenvalues of hessian are positive, indicating potential problems!\n") 
   cat("\n")
   
   if(!printClassical & anyNA(model$se[!(names(model$estimate) %in% model$apollo_fixed)]) ){
-    cat("\nWARNING: Some parameters classical standard errors could not be calculated.")
+    cat("\nWARNING: Classical standard errors could not be calculated for some parameters .")
     cat("\n         This could point to an identification or estimation problem.")
   }
   
@@ -281,42 +300,35 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   if(nrow(output)>options("max.print")) options(max.print=nrow(output)+100)
   print(output)
   cat('\n')
-  #if(length(model$apollo_fixed)>0) cat("The following parameters were fixed (they have no std.err.):\n",
-  #                                          paste(model$apollo_fixed, collapse=", ", sep=""),
-  #                                          "\n", sep="")
   
-  #if(printDiagnostics==TRUE){
-  # The things printed in the temporary outfile are always printed out.
-  # noDiagnostics controls what is printed in that file.
-    ##cat("\n")
-    ##
-    ##fileName <- paste(model$apollo_control$modelName, "_tempOutput.txt", sep="")
-    ##fileName <- file.path(tempdir(),fileName)
-    ##if(file.exists(fileName)){
-    ##  fileConn <- tryCatch(file(fileName, open="rt"), error=function(e) NA)
-    ##  if(!is.na(fileConn)){
-    ##    txt <- readLines(fileConn)
-    ##    for(l in txt) cat(l ,"\n")
-    ##    close(fileConn)
-    ##  } else cat('Could not read additional output from temp file.\n')
-    ##}
-  #}
   cat(apollo_printLog(model$apolloLog))
   cat("\n")
+  
+  ### Fill shorter param names with spaces
+  longNames <- names( model$estimate )
+  if(length(model$apollo_fixed)>0) longNames <- longNames[-which(longNames %in% model$apollo_fixed)]
+  maxLen    <- max(nchar(longNames))
+  for(i in 1:length(longNames)) longNames[i] <- paste0(paste0(rep(" ", maxLen-nchar(longNames[i])), collapse=""), longNames[i])
   
   if(printCovar){
     if(printClassical==TRUE){
       cat("\n")
       cat("Classical covariance matrix:\n")
-      print(round(model$varcov,6))
+      tmp <- round(model$varcov,4)
+      colnames(tmp) <- longNames
+      print(tmp)
     }
     cat("\n")
     cat("Robust covariance matrix:\n")
-    print(round(model$robvarcov,6))
+    tmp <- round(model$robvarcov,4)
+    colnames(tmp) <- longNames
+    print(tmp)
     if(model$bootstrapSE>0){
       cat("\n")
       cat("Bootstrap covariance matrix:\n")
-      print(round(model$bootvarcov,6))
+      tmp <- round(model$bootvarcov,4)
+      colnames(tmp) <- longNames
+      print(tmp)
     }
   }
   
@@ -324,21 +336,28 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     if(printClassical==TRUE){
       cat("\n")
       cat("Classical correlation matrix:\n")
-      print(round(model$corrmat,6))
+      tmp <- round(model$corrmat,4)
+      colnames(tmp) <- longNames
+      print(tmp)
     }
     cat("\n")
     cat("Robust correlation matrix:\n")
-    print(round(model$robcorrmat,6))
+    tmp <- round(model$robcorrmat,4)
+    colnames(tmp) <- longNames
+    print(tmp)
     if(model$bootstrapSE>0){
       cat("\n")
       cat("Bootstrap correlation matrix:\n")
-      print(round(model$bootcorrmat,6))
+      tmp <- round(model$bootcorrmat,4)
+      colnames(tmp) <- longNames
+      print(tmp)
     }
   }
   
   if(printOutliers>0){
     outliers <- data.frame(ID=names(model$avgCP), avgChoiceProb=model$avgCP)
     colnames(outliers) <- c("ID","Avg prob per choice")
+    if(!model$apollo_control$panelData) colnames(outliers) <- c("row", "Avg prob per choice")
     outliers <- outliers[order(outliers[,2]),]
     if(printOutliers==TRUE) printOutliers=20
     printOutliers=floor(min(printOutliers,nrow(outliers)))

@@ -13,17 +13,26 @@ apollo_combineModels(P, apollo_inputs, functionality)
 
 \item{functionality}{Character. Can take different values depending on desired output.
 \itemize{
-  \item"estimate": For model estimation, returns likelihood of model.
-  \item"prediction": For model predictions, returns probabilities of all alternatives.
-  \item"validate": Validates input.
-  \item"zero_LL": Return probabilities with all parameters at zero.
-  \item"conditionals": For conditionals, returns likelihood of model.
-  \item"output": Checks that the model is well defined.
-  \item"raw": For debugging, returns probabilities of all alternatives.
+  \item \code{"estimate"}: For model estimation, returns likelihood of model.
+  \item \code{"prediction"}: For model predictions, returns probabilities of all alternatives.
+  \item \code{"validate"}: Validates input.
+  \item \code{"zero_LL"}: Return probabilities with all parameters at zero.
+  \item \code{"conditionals"}: For conditionals, returns likelihood of model.
+  \item \code{"output"}: Checks that the model is well defined.
+  \item \code{"raw"}: For debugging, returns probabilities of all alternatives.
 }}
 }
 \value{
-Argument \code{P} with an extra element called "model", which is the product of all the other elements.
+Argument \code{P} with an extra element called "model", which is the product of all the other elements. Shape depends on argument \code{functionality}.
+        \itemize{
+          \item \strong{\code{"estimate"}}: Returns argument \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
+          \item \strong{\code{"prediction"}}: Returns argument \code{P} without any change.
+          \item \strong{\code{"validate"}}: Same as \code{"estimate"}.
+          \item \strong{\code{"zero_LL"}}: Same as \code{"estimate"}.
+          \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}.
+          \item \strong{\code{"output"}}: Same as \code{"estimate"}.
+          \item \strong{\code{"raw"}}: Returns argument \code{P} without any change.
+        }
 }
 \description{
 Combines model components to create probability for overall model.

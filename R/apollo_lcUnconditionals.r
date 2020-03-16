@@ -14,8 +14,10 @@
 #' @return List of object, one per random component and one for the class allocation probabilities.
 #' @export
 apollo_lcUnconditionals <- function(model, apollo_probabilities, apollo_inputs){
-  apollo_beta=model$estimate
-  apollo_fixed=model$apollo_fixed
+  if(!is.function(apollo_inputs$apollo_lcPars)) stop("This function is for latent class models. For other models use \"apollo_unconditionals\".")
+  
+  apollo_beta  = model$estimate
+  apollo_fixed = model$apollo_fixed
 
   cat("Updating inputs...")
   apollo_inputs <- apollo_validateInputs(silent=TRUE)
@@ -29,6 +31,10 @@ apollo_lcUnconditionals <- function(model, apollo_probabilities, apollo_inputs){
   apollo_draws     = apollo_inputs[["apollo_draws"]]
   apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
   
+  if(is.null(apollo_control$HB)) apollo_control$HB=FALSE
+  if(apollo_control$HB) stop("The function \'apollo_lcUnconditionals\' is not applicables for models estimated using HB!") 
+  
+  # Calculate randCoeff if neccesary
   toAttach  <- c(as.list(apollo_beta), apollo_inputs$database)
   if(apollo_control$mixing){
     toAttach  <- c(as.list(apollo_beta), apollo_inputs$database, draws)
@@ -38,11 +44,31 @@ apollo_lcUnconditionals <- function(model, apollo_probabilities, apollo_inputs){
     } )
     if(apollo_draws$intraNDraws>0) cat("Your model contains intra-individual draws, so the output will contain draws across individuals and across choices.\n")
     if(apollo_draws$intraNDraws==0) cat("Your model contains only inter-individual draws, so the output will contain draws across individuals only.\n")
+    toAttach <- c(toAttach, randcoeff)
   }
+  
+  # Calculate lcPars
   unconditionals = with(toAttach, {
     environment(apollo_lcPars) <- environment()
     apollo_lcPars(apollo_beta, apollo_inputs)
   } )
+  
+  # If there are no intraDraws, keep only first row of each individual
+  nObs <- nrow(database)
+  if(!is.na(apollo_draws) && apollo_draws$intraNDraws==0) for(i in 1:length(unconditionals)){
+    if(is.list(unconditionals[[i]])){
+      for(j in 1:length(unconditionals[[i]])){
+        x <- unconditionals[[i]][[j]]
+        if(is.array(x)) nRows <- dim(x)[1] else nRows <- length(x)
+        if(nRows==nObs) unconditionals[[i]][[j]] <- apollo_firstRow(x, apollo_inputs)
+      }
+    } else {
+      x <- unconditionals[[i]]
+      if(is.array(x)) nRows <- dim(x)[1] else nRows <- length(x)
+      if(nRows==nObs) unconditionals[[i]] <- apollo_firstRow(x, apollo_inputs)
+    }
+  }
+  
   cat("Unconditional distributions computed\n")
   return(unconditionals)
 }

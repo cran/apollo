@@ -7,13 +7,13 @@
 #' @param functionality Character. Description of the desired output from \code{apollo_probabilities}. Can take the values: "estimate", "prediction", "validate", "zero_LL", "conditionals", "output", "raw".
 #' @return Likelihood averaged over intra-individual draws (shape depends on argument \code{functionality}).
 #'         \itemize{
-#'           \item"estimate": Returns the likelihood of the model averaged across intra-individual draws.
-#'           \item"prediction": Returns the likelihood of all alternatives and all model components across intra-individual draws.
-#'           \item"validate": Returns P without changes.
-#'           \item"zero_LL": Returns P without changes.
-#'           \item"conditionals": Returns P without changes.
-#'           \item"output": Returns the same than "estimate", but also prints a summary of estimation data.
-#'           \item"raw": Returns P without changes.
+#'           \item \strong{\code{"estimate"}}: Returns the likelihood of the model averaged across intra-individual draws. Drops all components but \code{"model"}.
+#'           \item \strong{\code{"prediction"}}: Returns the likelihood of all alternatives and all model components averaged across intra-individual draws.
+#'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}.
+#'           \item \strong{\code{"zero_LL"}}: Returns \code{P} without changes.
+#'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}.
+#'           \item \strong{\code{"output"}}: Returns the likelihood of all model components averaged across intra-individual draws.
+#'           \item \strong{\code{"raw"}}: Returns \code{P} without changes.
 #'         }
 #' @export
 apollo_avgIntraDraws <- function(P, apollo_inputs, functionality){
@@ -23,7 +23,12 @@ apollo_avgIntraDraws <- function(P, apollo_inputs, functionality){
   #### ignored for HB estimation ####
   # ############################### #
   
-  if(apollo_control$HB==TRUE) return(P)
+  if(apollo_control$HB==TRUE) stop('Function apollo_avgIntraDraws should not be used when apollo_control$HB==TRUE!')
+  
+  # ########################################## #
+  #### functionality="gradient"             ####
+  # ########################################## #
+  if(functionality=="gradient") stop("Analytical gradient only implemented for models without mixing.")
   
   # ############################### #
   #### pre-checks                ####
@@ -36,16 +41,16 @@ apollo_avgIntraDraws <- function(P, apollo_inputs, functionality){
   if(inputIsList && functionality!="prediction" && is.null(P[["model"]])) stop('Element called "model" is missing in list P!')
   
   # ########################################## #
-  #### functionality="zero_LL/raw/validate" ####
+  #### functionality="zero_LL/raw"          ####
   # ########################################## #
   
-  if(functionality %in% c("zero_LL","raw","validate")) return(P)
+  if(functionality %in% c("zero_LL","raw")) return(P)
   
-  # ########################################## #
-  #### functionality="estimate/conditionals" ####
-  # ########################################## #
+  # #################################################### #
+  #### functionality="estimate/conditionals/validate" ####
+  # #################################################### #
   
-  if(functionality=="estimate" | functionality=="conditionals"){
+  if(functionality %in% c("estimate", "conditionals", "validate")){
     if(!is.list(P)){
       if(is.array(P)){
         if(length(dim(P))==3){

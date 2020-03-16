@@ -11,9 +11,8 @@ test_that("mmnl works", {
     mixing    = TRUE, # TRUE for models that include random parameters
     nCores    = 2
   )
-  data(apollo_modeChoiceData)
+  data("apollo_modeChoiceData", package="apollo")
   database = apollo_modeChoiceData
-  rm(apollo_modeChoiceData)
   database = subset(database,database$SP==1 & database$ID<=100)
 
   apollo_beta=c(asc_car  = 0.0000,

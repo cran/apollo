@@ -9,36 +9,37 @@ apollo_nl(nl_settings, functionality)
 \arguments{
 \item{nl_settings}{List of inputs of the NL model. It shoud contain the following.
 \itemize{
-   \item alternatives: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
-   \item avail: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
-   \item choiceVar: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
-   \item V: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
-   \item nlNests: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named with the nest name. The lambda at the root is fixed to 1 if excluded (recommended).
-   \item nlStructure: Named list of character vectors. As many elements as nests, it must include the "root". Each element contains the names of the nests or alternatives that belong to it. Element names must match those in \code{nlNests}.
-   \item rows: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+   \item \code{alternatives}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
+   \item \code{avail}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
+   \item \code{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
+   \item \code{V}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
+   \item \code{nlNests}: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named with the nest name. The lambda at the root is fixed to 1 if excluded (recommended).
+   \item \code{nlStructure}: Named list of character vectors. As many elements as nests, it must include the "root". Each element contains the names of the nests or alternatives that belong to it. Element names must match those in \code{nlNests}.
+   \item \code{rows}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+   \item \code{componentName}: Character. Name given to model component.
 }}
 
 \item{functionality}{Character. Can take different values depending on desired output.
 \itemize{
-  \item "estimate": Used for model estimation.
-  \item "prediction": Used for model predictions.
-  \item "validate": Used for validating input.
-  \item "zero_LL": Used for calculating null likelihood.
-  \item "conditionals": Used for calculating conditionals.
-  \item "output": Used for preparing output after model estimation.
-  \item "raw": Used for debugging.
+  \item \code{"estimate"}: Used for model estimation.
+  \item \code{"prediction"}: Used for model predictions.
+  \item \code{"validate"}: Used for validating input.
+  \item \code{"zero_LL"}: Used for calculating null likelihood.
+  \item \code{"conditionals"}: Used for calculating conditionals.
+  \item \code{"output"}: Used for preparing output after model estimation.
+  \item \code{"raw"}: Used for debugging.
 }}
 }
 \value{
 The returned object depends on the value of argument \code{functionality} as follows.
         \itemize{
-          \item "estimate": vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
-          \item "prediction": List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
-          \item "validate": Boolean. Returns TRUE if all tests are passed.
-          \item "zero_LL": vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
-          \item "conditionals": Same as "prediction".
-          \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
-          \item "raw": Same as "prediction".
+          \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
+          \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the probability of the chosen alternative.
+          \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
+          \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
+          \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
+          \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
+          \item \strong{\code{"raw"}}: Same as \code{"prediction"}
         }
 }
 \description{

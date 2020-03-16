@@ -4,8 +4,7 @@
 \alias{apollo_validateHBControl}
 \title{Validates the apollo_HB list of parameters}
 \usage{
-apollo_validateHBControl(apollo_HB, apollo_beta, apollo_fixed,
-  apollo_control)
+apollo_validateHBControl(apollo_HB, apollo_beta, apollo_fixed, apollo_control)
 }
 \arguments{
 \item{apollo_HB}{List. Contains options for bayesian estimation. See \link[RSGHB]{doHB} for details.

@@ -7,13 +7,13 @@
 #' @param functionality Character. Description of the desired output from \code{apollo_probabilities}. Can take the values: "estimate", "prediction", "validate", "zero_LL", "conditionals", "output", "raw".
 #' @return Likelihood averaged over inter-individual draws (shape depends on argument \code{functionality}).
 #'         \itemize{
-#'           \item"estimate": Returns the likelihood of the model averaged across inter-individual draws.
-#'           \item"prediction": Returns the likelihood of all alternatives and all model components across inter-individual draws.
-#'           \item"validate": Returns P without changes.
-#'           \item"zero_LL": Returns P without changes.
-#'           \item"conditionals": Returns P without changes.
-#'           \item"output": Returns the same as "estimate", but also prints a summary of the estimation data.
-#'           \item"raw": Returns P without changes.
+#'           \item \strong{\code{"estimate"}}: Returns the likelihood of the model averaged across inter-individual draws. Drops all components but \code{"model"}.
+#'           \item \strong{\code{"prediction"}}: Returns the likelihood of all alternatives and all model components averaged across inter-individual draws.
+#'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}.
+#'           \item \strong{\code{"zero_LL"}}: Returns \code{P} without changes.
+#'           \item \strong{\code{"conditionals"}}: Returns \code{P} without averaging draws. Drops all components but \code{"model"}.
+#'           \item \strong{\code{"output"}}: Returns the likelihood of all model components averaged across inter-individual draws.
+#'           \item \strong{\code{"raw"}}: Returns \code{P} without changes.
 #'         }
 #' @export
 apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
@@ -24,8 +24,13 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   #### ignored for HB estimation ####
   # ############################### #
 
-  if(apollo_control$HB==TRUE) return(P)
-
+  if(apollo_control$HB==TRUE) stop('Function apollo_avgInterDraws should not be used when apollo_control$HB==TRUE!')
+  
+  # ########################################## #
+  #### functionality="gradient"             ####
+  # ########################################## #
+  if(functionality=="gradient") stop("Analytical gradient only implemented for models without mixing.")
+  
   # ############################### #
   #### pre-checks                ####
   # ############################### #
@@ -40,7 +45,7 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
     } else {
       if(is.array(P)) pRows <- dim(P)[1] else pRows <- length(P)
     }
-    if(nIndiv!=pRows & !(functionality %in% c("zero_LL", "raw", "validate", "prediction"))) stop("Observations from the same individual must be aggregated (e.g. multiplied) before averaging over inter-individual draws.")
+    if(nIndiv!=pRows & !(functionality %in% c("zero_LL", "raw", "prediction"))) stop("Observations from the same individual must be aggregated (e.g. multiplied) before averaging over inter-individual draws.")
   }
 
   inputIsList <- is.list(P)
@@ -48,16 +53,16 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   if(inputIsList && functionality!="prediction" && functionality!="raw" && is.null(P[["model"]])) stop('Element called "model" is missing in list P!')
 
   # ########################################## #
-  #### functionality="zero_LL/raw/validate" ####
+  #### functionality="zero_LL/raw"          ####
   # ########################################## #
 
-  if(functionality %in% c("zero_LL","raw","validate")) return(P)
+  if(functionality %in% c("zero_LL","raw")) return(P)
 
   # ########################################## #
-  #### functionality="estimate" ####
+  #### functionality="estimate/validate"    ####
   # ########################################## #
 
-  if(functionality=="estimate"){
+  if(functionality %in% c("estimate", "validate")){
     if(inputIsList) P <- P[["model"]]
     if(is.vector(P) && !workInLogs ) stop('No Inter-individuals draws to average over!')
     if(is.array(P) && length(dim(P))==3) stop('Intra-individual draws still present to average over!')

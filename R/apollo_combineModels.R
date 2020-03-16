@@ -10,15 +10,24 @@
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param functionality Character. Can take different values depending on desired output.
 #'                      \itemize{
-#'                        \item"estimate": For model estimation, returns likelihood of model.
-#'                        \item"prediction": For model predictions, returns probabilities of all alternatives.
-#'                        \item"validate": Validates input.
-#'                        \item"zero_LL": Return probabilities with all parameters at zero.
-#'                        \item"conditionals": For conditionals, returns likelihood of model.
-#'                        \item"output": Checks that the model is well defined.
-#'                        \item"raw": For debugging, returns probabilities of all alternatives.
+#'                        \item \code{"estimate"}: For model estimation, returns likelihood of model.
+#'                        \item \code{"prediction"}: For model predictions, returns probabilities of all alternatives.
+#'                        \item \code{"validate"}: Validates input.
+#'                        \item \code{"zero_LL"}: Return probabilities with all parameters at zero.
+#'                        \item \code{"conditionals"}: For conditionals, returns likelihood of model.
+#'                        \item \code{"output"}: Checks that the model is well defined.
+#'                        \item \code{"raw"}: For debugging, returns probabilities of all alternatives.
 #'                      }
-#' @return Argument \code{P} with an extra element called "model", which is the product of all the other elements.
+#' @return Argument \code{P} with an extra element called "model", which is the product of all the other elements. Shape depends on argument \code{functionality}.
+#'         \itemize{
+#'           \item \strong{\code{"estimate"}}: Returns argument \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
+#'           \item \strong{\code{"prediction"}}: Returns argument \code{P} without any change.
+#'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}.
+#'           \item \strong{\code{"zero_LL"}}: Same as \code{"estimate"}.
+#'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}.
+#'           \item \strong{\code{"output"}}: Same as \code{"estimate"}.
+#'           \item \strong{\code{"raw"}}: Returns argument \code{P} without any change.
+#'         }
 #' @export
 apollo_combineModels=function(P, apollo_inputs, functionality){
   
@@ -26,9 +35,37 @@ apollo_combineModels=function(P, apollo_inputs, functionality){
   #### pre-checks                ####
   # ############################### #
   
-  if(!is.null(P[["model"]])) warning("\nA component called \"model\" already exists in P before calling apollo_combineModels!")
+  if(!is.null(P[["model"]])) stop("\nA component called \"model\" already exists in P before calling apollo_combineModels!")
   
-  if(length(P)==1) warning("\nNo need to call apollo_combineModels for models with only one component!")
+  if(length(P)==1) stop("\nNo need to call apollo_combineModels for models with only one component!")
+  
+  # ########################################## #
+  #### functionality="gradient"             ####
+  # ########################################## #
+  if(functionality=="gradient"){
+    if(length(P)==1) return(P[[1]]) else {
+      ### If multiple components, implement product rule
+      g <- function(b, db){
+        #like   <- get("apollo_probabilities", envir=parent.frame())
+        #inputs <- get("apollo_inputs", envir=parent.frame(), inherits=TRUE)
+        #LL <- tryCatch(get("LL", envir=parent.frame(), inherits=FALSE),
+        #               error=function(e) like(b, inputs, functionality="raw")) # this is probably wrong for mixing
+        #dLL <- lapply(P, function(p) p(b, db))
+        #LL  <- LL[names(dLL)] # remove "model" and make sure both LL and dLL are in the same order
+        #LL  <- lapply(LL, log)
+        #dLL <- mapply("/", dLL, LL, SIMPLIFY=FALSE)
+        #LL  <- Reduce("+", LL)
+        #dLL <- Reduce("+", dLL)
+        #return(LL*dLL)
+        dLL <- Reduce("+", lapply(P, function(p) p(b, db)) )
+        return(dLL)
+      }
+      environment(g) <- new.env(parent=baseenv())
+      assign("P", P, envir=environment(g))
+      return(g)
+    }
+  }
+  
   
   # ########################################## #
   #### functionality="prediction"           ####

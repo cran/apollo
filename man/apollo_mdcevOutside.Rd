@@ -4,9 +4,22 @@
 \alias{apollo_mdcevOutside}
 \title{Calculates MDCEV likelihoods with an outside good.}
 \usage{
-apollo_mdcevOutside(V, alternatives, alpha, gamma, sigma, cost, avail,
-  continuousChoice, budget, functionality, minConsumption = NA,
-  outsideName = "outside", rows = "all")
+apollo_mdcevOutside(
+  V,
+  alternatives,
+  alpha,
+  gamma,
+  sigma,
+  cost,
+  avail,
+  continuousChoice,
+  budget,
+  functionality,
+  minConsumption = NA,
+  outsideName = "outside",
+  rows = "all",
+  componentName = "MDCEV"
+)
 }
 \arguments{
 \item{V}{Named list. Utilities of the alternatives. Names of elements must match those in argument 'alternatives'.}
@@ -43,6 +56,8 @@ apollo_mdcevOutside(V, alternatives, alpha, gamma, sigma, cost, avail,
 \item{outsideName}{Character. Alternative name for the outside good. The first good is assumed to be the outside one. Default is "outside"}
 
 \item{rows}{Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.}
+
+\item{componentName}{Character. Name given to model component.}
 }
 \value{
 The returned object depends on the value of argument \code{functionality} as follows.

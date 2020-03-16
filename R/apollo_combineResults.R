@@ -11,13 +11,14 @@
 #'                                  \item estimateDigits: Numeric scalar. Number of decimal places to print for estimates. Default is 4.
 #'                                  \item tDigits: Numeric scalar. Number of decimal places to print for t-ratios values. Default is 2.
 #'                                  \item pDigits: Numeric scalar. Number of decimal places to print for p-values. Default is 2.
+#'                                  \item sortByDate: Boolean. If TRUE, models are ordered by date.
 #'                                }
 #' @return Nothing, but writes a file called 'model_comparison|_[date].csv' in the working directory.
 #' @export
 apollo_combineResults = function(combineResults_settings=NULL){
+   if(is.null(combineResults_settings)) combineResults_settings=list()
    if(is.null(combineResults_settings[["modelNames"]])){
      cat("The combineResults_settings does not include an object called \"modelNames\" so all files will be used!\n")
-     combineResults_settings=list()
      combineResults_settings[["modelNames"]]=list.files(pattern="*estimates.csv")
      j=1
      while(j<=length(combineResults_settings[["modelNames"]])){
@@ -40,13 +41,25 @@ apollo_combineResults = function(combineResults_settings=NULL){
    estimateDigits=combineResults_settings[["estimateDigits"]]
    tDigits=combineResults_settings[["tDigits"]]
    pDigits=combineResults_settings[["pDigits"]]
-### END NEW LINES
+
+   if(is.null(combineResults_settings[["sortByDate"]])) combineResults_settings[["sortByDate"]]=TRUE
+   
+   if(combineResults_settings[["sortByDate"]]){
+     details = file.info(paste(modelNames,"_estimates.csv",sep=""))
+     rownames(details)=modelNames
+     details = details[with(details, order(as.POSIXct(mtime))), ]
+     modelNames = rownames(details)
+   }
 
   outputfile_check=paste(modelNames,"_output.txt",sep="")
   estimatefile_check=paste(modelNames,"_estimates.csv",sep="")
   files=list.files()
-  if(!(all(outputfile_check%in%files))) stop("Model output files missing for some models!")
-  if(!(all(estimatefile_check%in%files))) stop("Model estimate files missing for some models!")     
+  if(!(all(outputfile_check%in%files))) {
+    cat("\nCould not find: ",outputfile_check[!outputfile_check%in%files],"\n")
+    stop("Model output files missing for some models!")}
+  if(!(all(estimatefile_check%in%files))){
+    cat("\nCould not find: ",estimatefile_check[!estimatefile_check%in%files],"\n")
+    stop("Model estimate files missing for some models!")}     
 
   estimateDigits = max(1,estimateDigits)
   tDigits        = max(1,tDigits)
@@ -61,22 +74,28 @@ apollo_combineResults = function(combineResults_settings=NULL){
   
   j=1
   while(j<=length(modelNames)){
-    inputs=utils::read.csv(paste(modelNames[[j]],"_estimates.csv",sep=""))
+    filename=paste(modelNames[[j]],"_estimates.csv",sep="")
+    if(!file.exists(filename)) stop("File ",filename," not found!") 
+    inputs = tryCatch(utils::read.csv(filename), 
+                                 warning=function(w) x=FALSE,
+                                 error=function(e) x=FALSE)
     
+    if(is.logical(inputs) && inputs==FALSE) stop("Could not open file ",filename) 
+
     if(printClassical==TRUE){
       if(!("t.ratio.0." %in% colnames(inputs))){
-        warning("Classical t.ratios not available in ",paste(modelNames[[j]],"_estimates.csv",sep=""))
+        cat("\nClassical t.ratios not available in ",paste(modelNames[[j]],"_estimates.csv",sep=""))
         inputs[,"t.ratio.0."]=NA
       }}
     if(printT1==TRUE){
       if(!("Rob.t.ratio.1." %in% colnames(inputs))){
-        warning("t.ratios against 1 not available in ",paste(modelNames[[j]],"_estimates.csv",sep=""))
+        cat("\nt.ratios against 1 not available in ",paste(modelNames[[j]],"_estimates.csv",sep=""))
         inputs[,"Rob.t.ratio.1."]=NA
         if(printClassical==TRUE) inputs[,"t.ratio.1."]=NA
       }}
     if(printPVal==TRUE){
       if(!("Rob.p.val.0." %in% colnames(inputs))){
-        warning("p-values not available in ",paste(modelNames[[j]],"_estimates.csv",sep=""))
+        cat("\np-values not available in ",paste(modelNames[[j]],"_estimates.csv",sep=""))
         inputs[,"Rob.p.val.0."]=NA
         if(printT1==TRUE) inputs[,"Rob.p.val.1."]=NA
         if(printClassical==TRUE){
@@ -146,8 +165,14 @@ apollo_combineResults = function(combineResults_settings=NULL){
   j=1
   while(j<=length(modelNames)){
     
-    lines <- readLines(paste(modelNames[[j]],"_output.txt",sep="")) 
+    filename=paste(modelNames[[j]],"_output.txt",sep="")
+    if(!file.exists(filename)) stop("File ",filename," not found!") 
+    lines = tryCatch(readLines(filename), 
+                      warning=function(w) x=FALSE,
+                      error=function(e) x=FALSE)
     
+    if(is.logical(lines) && lines==FALSE) stop("Could not open file ",filename) 
+
     inputvar = grep("Model name", lines) 
     if(length(inputvar)!=0){
       inputvar = lines[inputvar]

@@ -7,6 +7,7 @@
 #' \link{apollo_attach} was called and the beginning. This can be achieved 
 #' by adding the line \code{on.exit(apollo_detach(apollo_beta, apollo_inputs))} 
 #' right after calling \link{apollo_attach}.
+#' This function can also be called without any arguments, i.e. \code{apollo_detach()}.
 #' @param apollo_beta Named numeric vector. Names and values for parameters.
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @return Nothing.
@@ -20,16 +21,9 @@
 #' V = b1*x1 + b2*x2
 #' apollo_detach(apollo_beta, apollo_inputs)
 #' @export
-apollo_detach=function(apollo_beta, apollo_inputs){
-  apollo_control=apollo_inputs[["apollo_control"]]
-  
-  if(apollo_control$mixing){
-    detach(randcoeff)
-    detach(draws)
-  }
-  detach("as.list(apollo_beta)")
-  detach(database)
-  if("lcpars" %in% search()){
-    detach("lcpars")
-  }
+apollo_detach=function(apollo_beta=NA, apollo_inputs=NA){
+  ### Detach things if necessary
+  tmp <- c("database", "as.list(apollo_beta)", "randcoeff", "draws", "lcpars")
+  tmp <- tmp[tmp %in% search()]
+  if(length(tmp)>0) for(i in tmp) detach(i, character.only=TRUE)
 }

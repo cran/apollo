@@ -4,41 +4,42 @@
 #' 
 #' @param dft_settings List of settings for the DFT model. It should contain the following elements.
 #'                      \itemize{
-#'                        \item alternatives: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
-#'                        \item avail: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
-#'                        \item choiceVar: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
-#'                        \item attrValues: A named list with as many elements as alternatives. Each element is itself a named list of vectors of the alternative attributes for each observation (usually a column from the database). All alternatives must have the same attributes (can be set to zero if not relevant).
-#'                        \item altStart: A named list with as many elements as alternatives. Each elment can be a scalar or vector containing the starting preference value for the alternative.  
-#'                        \item attrWeights: A named list with as many elements as attributes, or fewer. Each element is the weight of the attribute, and can be a scalar, a vector with as many elements as observations, or a matrix/array if random. They should add up to one for each observation and draw (if present), and will be re-scaled if they do not. \code{attrWeights} and \code{attrScalings} are incompatible, and they should not be both defined for an attribute. Default is 1 for all attributes.
-#'                        \item attrScalings: A named list with as many elements as attributes, or fewer. Each element is a factor that scale the attribute, and can be a scalar, a vector or a matrix/array. They do not need to add up to one for each observation. \code{attrWeights} and \code{attrScalings} are incompatible, and they should not be both defined for an attribute. Default is 1 for all attributes.
-#'                        \item procPars: A list containing the four DFT 'process parameters'
+#'                        \item \strong{alternatives}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
+#'                        \item \strong{avail}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
+#'                        \item \strong{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
+#'                        \item \strong{attrValues}: A named list with as many elements as alternatives. Each element is itself a named list of vectors of the alternative attributes for each observation (usually a column from the database). All alternatives must have the same attributes (can be set to zero if not relevant).
+#'                        \item \strong{altStart}: A named list with as many elements as alternatives. Each elment can be a scalar or vector containing the starting preference value for the alternative.  
+#'                        \item \strong{attrWeights}: A named list with as many elements as attributes, or fewer. Each element is the weight of the attribute, and can be a scalar, a vector with as many elements as observations, or a matrix/array if random. They should add up to one for each observation and draw (if present), and will be re-scaled if they do not. \code{attrWeights} and \code{attrScalings} are incompatible, and they should not be both defined for an attribute. Default is 1 for all attributes.
+#'                        \item \strong{attrScalings}: A named list with as many elements as attributes, or fewer. Each element is a factor that scale the attribute, and can be a scalar, a vector or a matrix/array. They do not need to add up to one for each observation. \code{attrWeights} and \code{attrScalings} are incompatible, and they should not be both defined for an attribute. Default is 1 for all attributes.
+#'                        \item \strong{procPars}: A list containing the four DFT 'process parameters'
 #'                          \itemize{
-#'                            \item error_sd: Numeric scalar or vector. The standard deviation of the the error term in each timestep.
-#'                            \item timesteps: Numeric scalar or vector. Number of timesteps to consider. Should be an integer bigger than 0.
-#'                            \item phi1: Numeric scalar or vector. Sensitivity.
-#'                            \item phi2: Numeric scalar or vector. Process parameter.
+#'                            \item \strong{error_sd}: Numeric scalar or vector. The standard deviation of the the error term in each timestep.
+#'                            \item \strong{timesteps}: Numeric scalar or vector. Number of timesteps to consider. Should be an integer bigger than 0.
+#'                            \item \strong{phi1}: Numeric scalar or vector. Sensitivity.
+#'                            \item \strong{phi2}: Numeric scalar or vector. Process parameter.
 #'                          }
-#'                       \item rows: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+#'                       \item \strong{rows}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+#'                       \item \strong{componentName}: Character. Name given to model component.
 #'                      }
 #' @param functionality Character. Can take different values depending on desired output.
 #'                      \itemize{
-#'                        \item "estimate": Used for model estimation.
-#'                        \item "prediction": Used for model predictions.
-#'                        \item "validate": Used for validating input.
-#'                        \item "zero_LL": Used for calculating null likelihood.
-#'                        \item "conditionals": Used for calculating conditionals.
-#'                        \item "output": Used for preparing output after model estimation.
-#'                        \item "raw": Used for debugging.
+#'                        \item \code{"estimate"}: Used for model estimation.
+#'                        \item \code{"prediction"}: Used for model predictions.
+#'                        \item \code{"validate"}: Used for validating input.
+#'                        \item \code{"zero_LL"}: Used for calculating null likelihood.
+#'                        \item \code{"conditionals"}: Used for calculating conditionals.
+#'                        \item \code{"output"}: Used for preparing output after model estimation.
+#'                        \item \code{"raw"}: Used for debugging.
 #'                      }
 #' @return The returned object depends on the value of argument \code{functionality} as follows.
 #'         \itemize{
-#'           \item "estimate": vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
-#'           \item "prediction": List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
-#'           \item "validate": Boolean. Returns TRUE if all tests are passed.
-#'           \item "zero_LL": vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
-#'           \item "conditionals": Same as "prediction".
-#'           \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
-#'           \item "raw": Same as "prediction".
+#'           \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
+#'           \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
+#'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
+#'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
+#'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'         }
 #' @section References:
 #' Hancock, T.; Hess, S. and Choudhury, C. (2018) Decision field theory: Improvements to current methodology and comparisons with standard choice modelling techniques. Transportation Research 107B, 18 - 40.
@@ -50,20 +51,22 @@
 #' @import Rcpp
 #' @useDynLib apollo, .registration=TRUE
 apollo_dft = function(dft_settings,functionality){
+  if(is.null(dft_settings[["componentName"]])       ) dft_settings[["componentName"]]="DFT"
+  componentName= dft_settings[["componentName"]]
   
   if(!exists("DFTprob")) {
     Rcpp::sourceCpp("apolloDFT.cpp")
     cat("Loading DFT c++ code, this may take a while")
   }
   
-  if(is.null(dft_settings[["alternatives"]])) stop("The \"dft_settings\" list needs to include an object called \"alternatives\"!")
-  if(is.null(dft_settings[["avail"]])) stop("The \"dft_settings\" list needs to include an object called \"avail\"!")
-  if(is.null(dft_settings[["choiceVar"]])) stop("The \"dft_settings\" list needs to include an object called \"choiceVar\"!")
-  if(is.null(dft_settings[["attrValues"]])) stop("The \"dft_settings\" list needs to include an object called \"attrValues\"!")
-  if(is.null(dft_settings[["altStart"]])) stop("The \"dft_settings\" list needs to include an object called \"altStart\"!")
-  if(is.null(dft_settings[["attrWeights"]])) stop("The \"dft_settings\" list needs to include an object called \"attrWeights\"!")
-  if(is.null(dft_settings[["attrScalings"]])) stop("The \"dft_settings\" list needs to include an object called \"attrScalings\"!")
-  if(is.null(dft_settings[["procPars"]])) stop("The \"dft_settings\" list needs to include an object called \"procPars\"!")
+  if(is.null(dft_settings[["alternatives"]])) stop("The \"dft_settings\" list for model component \"",componentName,"\"needs to include an object called \"alternatives\"!")
+  if(is.null(dft_settings[["avail"]])) stop("The \"dft_settings\" list for model component \"",componentName,"\"needs to include an object called \"avail\"!")
+  if(is.null(dft_settings[["choiceVar"]])) stop("The \"dft_settings\" list for model component \"",componentName,"\"needs to include an object called \"choiceVar\"!")
+  if(is.null(dft_settings[["attrValues"]])) stop("The \"dft_settings\" list for model component \"",componentName,"\"needs to include an object called \"attrValues\"!")
+  if(is.null(dft_settings[["altStart"]])) stop("The \"dft_settings\" list for model component \"",componentName,"\"needs to include an object called \"altStart\"!")
+  if(is.null(dft_settings[["attrWeights"]])) stop("The \"dft_settings\" list for model component \"",componentName,"\"needs to include an object called \"attrWeights\"!")
+  if(is.null(dft_settings[["attrScalings"]])) stop("The \"dft_settings\" list for model component \"",componentName,"\"needs to include an object called \"attrScalings\"!")
+  if(is.null(dft_settings[["procPars"]])) stop("The \"dft_settings\" list for model component \"",componentName,"\"needs to include an object called \"procPars\"!")
   if(is.null(dft_settings[["rows"]])) dft_settings[["rows"]]="all"
   
   ###### get values from DFT settings
@@ -105,10 +108,10 @@ apollo_dft = function(dft_settings,functionality){
     
     #############################################################
     ## check that all four process parameter values are provided
-    if(is.null(procPars[["error_sd"]])) stop("The \"procPars\" list needs to include an object called \"error_sd\"!")
-    if(is.null(procPars[["timesteps"]])) stop("The \"procPars\" list needs to include an object called \"timesteps\"!")
-    if(is.null(procPars[["phi1"]])) stop("The \"procPars\" list needs to include an object called \"phi1\"!")
-    if(is.null(procPars[["phi2"]])) stop("The \"procPars\" list needs to include an object called \"phi2\"!")
+    if(is.null(procPars[["error_sd"]])) stop("The \"procPars\" list for model component \"",componentName,"\"needs to include an object called \"error_sd\"!")
+    if(is.null(procPars[["timesteps"]])) stop("The \"procPars\" list for model component \"",componentName,"\"needs to include an object called \"timesteps\"!")
+    if(is.null(procPars[["phi1"]])) stop("The \"procPars\" list for model component \"",componentName,"\"needs to include an object called \"phi1\"!")
+    if(is.null(procPars[["phi2"]])) stop("The \"procPars\" list for model component \"",componentName,"\"needs to include an object called \"phi2\"!")
     
     # Store useful values
     apollo_control <- tryCatch(get("apollo_inputs", parent.frame(), inherits=FALSE)$apollo_control,
@@ -126,7 +129,7 @@ apollo_dft = function(dft_settings,functionality){
     warn3 <- FALSE
     
     # check rows statement
-    if(length(rows)!=length(choiceVar)) stop("The argument \"rows\" needs to either be \"all\" or a vector of length equal to the number of rows in the data!")
+    if(length(rows)!=length(choiceVar)) stop("The argument \"rows\" for model component \"",componentName,"\"needs to either be \"all\" or a vector of length equal to the number of rows in the data!")
     
     # Create availability if necessary
     if(!is.list(avail)){
@@ -165,7 +168,7 @@ apollo_dft = function(dft_settings,functionality){
     if(s1>1) attrnames=names(attrWeights) else attrnames=names(attrScalings)
     
     # Check that the elements of attrValues match altnames
-    if(any(!names(attrValues)%in%altnames)) stop("The \"attrValues\" attribute names do not match those given in \"alternatives\"!") 
+    if(any(!names(attrValues)%in%altnames)) stop("The \"attrValues\" attribute names for model component \"",componentName,"\" do not match those given in \"alternatives\"!") 
     
     # Give warning message if any of the elements in attrValues are not in attrnames
     for (i in 1:nAlts) if(any(!names(attrValues[[i]])%in%attrnames)) warn1 <- TRUE 
@@ -210,29 +213,24 @@ apollo_dft = function(dft_settings,functionality){
     ### check which bits stay above, and which go into the section below
     if(apollo_control$noValidation==FALSE){
       # Check that there are at least two alternatives
-      if(nAlts<2) stop("DFT requires at least two alternatives")
+      if(nAlts<2) stop("Model component \"",componentName,"\"  requires at least two alternatives")
       
       # Check that choice vector is not empty
-      if(nObs==0) stop("No choices to model")
+      if(length(choiceVar)==0) stop("Choice vector is empty for model component \"",componentName,"\"")
+      if(nObs==0) stop("No data for model component \"",componentName,"\"")
       
       # Check that labels in choice match those in the utilities and availabilities
       choiceLabs <- unique(choiceVar)
-      if(!all(altnames %in% names(avail))) stop("Alternative labels in \"altnames\" do not match those in \"avail\".")
+      if(!all(altnames %in% names(avail))) stop("The names of the alternatives for model component \"",componentName,"\" do not match those in \"avail\".")
       
       # Check that there are no values in the choice column for undefined alternatives
-      if(!all(choiceLabs %in% altcodes)) stop("Value in choice column that is not included in altcodes.")
+      if(!all(choiceLabs %in% altcodes)) stop("The data contains values for \"choiceVar\" for model component \"",componentName,"\" that are not included in \"alternatives\".")
       
       # check that nothing unavailable is chosen
-      chosenunavail=0
-      j=1
-      while(j <= length(altnames)){
-        if(sum((choiceVar==altcodes[j])*(avail[[j]]==0)*rows)) chosenunavail=1
-        j=j+1
-      }
-      if(chosenunavail==1) stop("Some alternative(s) chosen despite being listed as unavailable\n")
+      for(j in 1:nAlts) if(any(choiceVar==altcodes[j] & avail[[j]]==0)) stop("The data contains cases where alternative ",altnames[j]," is chosen for model component \"",componentName,"\" despite being listed as unavailable\n")
       
       # check that all availabilities are either 0 or 1
-      for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values are not 0 or 1.")
+      for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values for model component \"",componentName,"\" are not 0 or 1.")
       
       ###### further checks for dims of objects?
       
@@ -278,15 +276,14 @@ apollo_dft = function(dft_settings,functionality){
       if(warn3) content[[length(content)+1]] <- paste0("Notice: A list was not supplied for \"altStart\".\n",
                                                        paste0(rep(" ",8), collapse=""),"Starting values for all alternatives will be set to zero.")
       apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-      apollo_addLog("Overview of choices for DFT model component:", content, apolloLog)
+      apollo_addLog(title   = paste0("Overview of choices  for model component \"",componentName,"\":"), 
+                    content = content, apolloLog)
     }
     
-    
-    
-    
-    
-    
-    return(invisible(TRUE))
+    testL = apollo_dft(dft_settings, functionality="estimate")
+    if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"",componentName,"\"")
+    if(any(testL==0)) cat("\nSome observations have zero probability at starting value for model component \"",componentName,"\"")
+    return(invisible(testL))
     
   }
   
@@ -486,7 +483,7 @@ apollo_dft = function(dft_settings,functionality){
         }
         dim(attrScalingsM)<-c(nObs,nAttrs*nAlts)
       } else {
-        if (attrScalings!=1) warning("If you are not using attrScalings, please set it to 1")
+        if (attrScalings!=1) stop("If you are not using attrScalings for model component \"",componentName,"\", please set it to 1")
         attrScalingsM<-array(1,c(nObs,nAttrs*nAlts))
       }
       
@@ -603,7 +600,7 @@ apollo_dft = function(dft_settings,functionality){
         attrScalingsM<-array(attrScalingsM,c(nObs*Dim2Length,nAttrs*nAlts))
       } else {
         attrScalingsM<-array(1,c(nObs*Dim2Length,nAttrs))
-        if (attrScalings!=1) warning("If you are not using attrScalings, please set it to 1")
+        if (attrScalings!=1) stop("If you are not using attrScalings for model component \"",componentName,"\", please set it to 1")
       }
       
       ### process parameters:
@@ -856,7 +853,7 @@ apollo_dft = function(dft_settings,functionality){
         attrScalingsM<-array(attrScalingsM,c(nObs*Dim2Length*Dim3Length,nAttrs*nAlts))
       } else {
         attrScalingsM<-array(1,c(nObs*Dim2Length,nAttrs))
-        if (attrScalings!=1) warning("If you are not using attrScalings, please set it to 1")
+        if (attrScalings!=1) stop("If you are not using attrScalings for model component \"",componentName,"\", please set it to 1")
       }
       
       ### process parameters:
@@ -1101,7 +1098,11 @@ apollo_dft = function(dft_settings,functionality){
       if(warn3) content[[length(content)+1]] <- paste0("Notice: A list was not supplied for \"altStart\".\n",
                                                        paste0(rep(" ",8), collapse=""),"Starting values for all alternatives will be set to zero.")
       apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-      apollo_addLog("Overview of choices for DFT model component:", content, apolloLog)
+      apollo_addLog(title   = paste0("Overview of choices  for model component \"",componentName,"\":"), 
+                    content = content, apolloLog)
+      
+      apollo_reportModelTypeLog(modelType="DFT", apolloLog)
+      
     }
     
     return(P)

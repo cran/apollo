@@ -4,8 +4,13 @@
 \alias{apollo_speedTest}
 \title{Measures evaluation time of a model}
 \usage{
-apollo_speedTest(apollo_beta, apollo_fixed, apollo_probabilities,
-  apollo_inputs, speedTest_settings = NA)
+apollo_speedTest(
+  apollo_beta,
+  apollo_fixed,
+  apollo_probabilities,
+  apollo_inputs,
+  speedTest_settings = NA
+)
 }
 \arguments{
 \item{apollo_beta}{Named numeric vector. Names and values for parameters.}
@@ -14,18 +19,18 @@ apollo_speedTest(apollo_beta, apollo_fixed, apollo_probabilities,
 
 \item{apollo_probabilities}{Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 \itemize{
-  \item apollo_beta: Named numeric vector. Names and values of model parameters.
-  \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-  \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
+  \item \code{apollo_beta}: Named numeric vector. Names and values of model parameters.
+  \item \code{apollo_inputs}: List containing options of the model. See \link{apollo_validateInputs}.
+  \item \code{functionality}: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
 \item{speedTest_settings}{List containing options for the speed test. The following are valid options.
 \itemize{
-  \item nDrawsTry: Numeric vector. Number of inter and intra-person draws to try. Default value is c(50, 100, 200).
-  \item nCoresTry: Numeric vector. Number of threads to try. Default is from 1 to the detected number of cores.
-  \item nRep: Numeric scalar. Number of times the likelihood is evaluated for each combination of threads and draws. Default is 10.
+  \item \code{nDrawsTry}: Numeric vector. Number of inter and intra-person draws to try. Default value is c(50, 100, 200).
+  \item \code{nCoresTry}: Numeric vector. Number of threads to try. Default is from 1 to the detected number of cores.
+  \item \code{nRep}: Numeric scalar. Number of times the likelihood is evaluated for each combination of threads and draws. Default is 10.
 }}
 }
 \value{

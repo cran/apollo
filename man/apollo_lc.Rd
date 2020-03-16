@@ -9,8 +9,9 @@ apollo_lc(lc_settings, apollo_inputs, functionality)
 \arguments{
 \item{lc_settings}{List of arguments used by \code{apollo_lc}. It must include the following.
 \itemize{
-  \item inClassProb: List of probabilities. Conditional likelihood for each class. One element per class, in the same order as \code{classProb}.
-  \item classProb: List of probabilities. Allocation probability for each class. One element per class, in the same order as \code{inClassProb}.
+  \item \strong{inClassProb}: List of probabilities. Conditional likelihood for each class. One element per class, in the same order as \code{classProb}.
+  \item \strong{classProb}: List of probabilities. Allocation probability for each class. One element per class, in the same order as \code{inClassProb}.
+  \item \strong{componentName}: Character. Name given to model component.
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
@@ -29,13 +30,13 @@ apollo_lc(lc_settings, apollo_inputs, functionality)
 \value{
 The returned object depends on the value of argument \code{functionality} as follows.
         \itemize{
-          \item "estimate": vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
-          \item "prediction": List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
-          \item "validate": Boolean. Returns TRUE if all tests are passed.
-          \item "zero_LL": vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
-          \item "conditionals": Same as "prediction".
-          \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
-          \item "raw": Same as "prediction".
+          \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
+          \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all models components, for each class.
+          \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but also runs a set of tests on the given arguments.
+          \item \strong{\code{"zero_LL"}}: Same as \code{"estimate"}
+          \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
+          \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
+          \item \strong{\code{"raw"}}: Same as \code{"prediction"}
         }
 }
 \description{

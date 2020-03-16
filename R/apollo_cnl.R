@@ -13,13 +13,14 @@
 #' this constraint is satisfied is recommended (e.g. logistic transformation).
 #' @param cnl_settings List of inputs of the CNL model. It should contain the following.
 #'                     \itemize{
-#'                       \item alternatives: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
-#'                       \item avail: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
-#'                       \item choiceVar: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
-#'                       \item V: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
-#'                       \item cnlNests: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named according to nests. The lambda at the root is fixed to 1, and therefore does not need to be defined.
-#'                       \item cnlStructure: Numeric matrix. One row per nest and one column per alternative. Each element of the matrix is the alpha parameter of that (nest, alternative) pair.
-#'                       \item rows: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+#'                       \item \strong{alternatives}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
+#'                       \item \strong{avail}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
+#'                       \item \strong{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
+#'                       \item \strong{V}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
+#'                       \item \strong{cnlNests}: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named according to nests. The lambda at the root is fixed to 1, and therefore does not need to be defined.
+#'                       \item \strong{cnlStructure}: Numeric matrix. One row per nest and one column per alternative. Each element of the matrix is the alpha parameter of that (nest, alternative) pair.
+#'                       \item \strong{rows}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+#'                       \item \strong{componentName}: Character. Name given to model component.
 #'                     }
 #' @param functionality Character. Can take different values depending on desired output.
 #'                      \itemize{
@@ -33,13 +34,13 @@
 #'                      }
 #' @return The returned object depends on the value of argument \code{functionality} as follows.
 #'         \itemize{
-#'           \item "estimate": vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
-#'           \item "prediction": List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
-#'           \item "validate": Boolean. Returns TRUE if all tests are passed.
-#'           \item "zero_LL": vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
-#'           \item "conditionals": Same as "prediction".
-#'           \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
-#'           \item "raw": Same as "prediction".
+#'           \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
+#'           \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
+#'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
+#'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
+#'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'         }
 #' @importFrom stats setNames
 #' @examples
@@ -82,14 +83,17 @@
 #' apollo_cnl(cnl_settings, functionality="estimate")
 #' @export
 apollo_cnl <- function(cnl_settings, functionality){
-  if(is.null(cnl_settings[["alternatives"]])) stop("The cnl_settings list needs to include an object called \"alternatives\"!")
-  if(is.null(cnl_settings[["avail"]])) stop("The cnl_settings list needs to include an object called \"avail\"!")
-  if(is.null(cnl_settings[["choiceVar"]])) stop("The cnl_settings list needs to include an object called \"choiceVar\"!")
-  if(is.null(cnl_settings[["V"]])) stop("The cnl_settings list needs to include an object called \"V\"!")
-  if(is.null(cnl_settings[["cnlNests"]])) stop("The cnl_settings list needs to include an object called \"cnlNests\"!")
-  if(is.null(cnl_settings[["cnlStructure"]])) stop("The cnl_settings list needs to include an object called \"cnlStructure\"!")
+  if(is.null(cnl_settings[["componentName"]])       ) cnl_settings[["componentName"]]="CNL"
+  componentName = cnl_settings[["componentName"]]
+  
+  if(is.null(cnl_settings[["alternatives"]])) stop("The cnl_settings list for model component \"",componentName,"\" needs to include an object called \"alternatives\"!")
+  if(is.null(cnl_settings[["avail"]])) stop("The cnl_settings list for model component \"",componentName,"\" needs to include an object called \"avail\"!")
+  if(is.null(cnl_settings[["choiceVar"]])) stop("The cnl_settings list for model component \"",componentName,"\" needs to include an object called \"choiceVar\"!")
+  if(is.null(cnl_settings[["V"]])) stop("The cnl_settings list for model component \"",componentName,"\" needs to include an object called \"V\"!")
+  if(is.null(cnl_settings[["cnlNests"]])) stop("The cnl_settings list for model component \"",componentName,"\" needs to include an object called \"cnlNests\"!")
+  if(is.null(cnl_settings[["cnlStructure"]])) stop("The cnl_settings list for model component \"",componentName,"\" needs to include an object called \"cnlStructure\"!")
   if(is.null(cnl_settings[["rows"]])) cnl_settings[["rows"]]="all"
-
+  
   alternatives = cnl_settings[["alternatives"]]
   avail        = cnl_settings[["avail"]]
   choiceVar    = cnl_settings[["choiceVar"]]
@@ -113,38 +117,38 @@ apollo_cnl <- function(cnl_settings, functionality){
   ### Format checks
   # alternatives
   test <- is.vector(alternatives) & !is.null(names(alternatives))
-  if(!test) stop("The \"alternatives\" argument needs to be a named vector")
+  if(!test) stop("The \"alternatives\" argument for model component \"",componentName,"\" needs to be a named vector")
   # avail
   test <- is.list(avail) || (length(avail)==1 && avail==1)
-  if(!test) stop("The \"avail\" argument needs to be a list or set to 1")
+  if(!test) stop("The \"avail\" argument for model component \"",componentName,"\" needs to be a list or set to 1")
   if(is.list(avail)){
     lenA <- sapply(avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
     test <- all(lenA==nObs | lenA==1)
-    if(!test) stop("All entries in \"avail\" need to be a scalar or a vector with one entry per observation in the \"database\"")
+    if(!test) stop("All entries in \"avail\" for model component \"",componentName,"\" need to be a scalar or a vector with one entry per observation in the \"database\"")
   }
   # choiceVar
   test <- is.vector(choiceVar) && (length(choiceVar)==nObs || length(choiceVar)==1)
-  if(!test) stop("The \"choiceVar\" argument needs to be a scalar or a vector with one entry per observation in the \"database\"")
+  if(!test) stop("The \"choiceVar\" argument for model component \"",componentName,"\" needs to be a scalar or a vector with one entry per observation in the \"database\"")
   # V
-  if(!is.list(V)) stop("The \"V\" argument needs to be a list")
+  if(!is.list(V)) stop("The \"V\" argument for model component \"",componentName,"\" needs to be a list")
   lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-  test <- all(lenV==nObs | lenV==1) && !is.null(names(V))
-  if(!test) stop("Each element of \"V\" must be named and needs to be a scalar or a vector with one entry per observation in the \"database\"")  
+  test <- all(lenV==nObs | lenV==1)
+  if(!test) stop("Each element of \"V\" for model component \"",componentName,"\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")  
   # rows
   test <- is.vector(rows) && ( (is.logical(rows) && length(rows)==nObs) || (length(rows)==1 && rows=="all") )
-  if(!test) stop("The \"rows\" argument needs to be \"all\" or a vector of boolean statements with one entry per observation in the \"database\"")
+  if(!test) stop("The \"rows\" argument for model component \"",componentName,"\" needs to be \"all\" or a vector of boolean statements with one entry per observation in the \"database\"")
   # functionality
   test <- functionality %in% c("estimate","prediction","validate","zero_LL","conditionals","output","raw")
-  if(!test) stop("Non-permissable setting for \"functionality\"")
+  if(!test) stop("Non-permissable setting for \"functionality\" for model component \"",componentName,"\"")
   # cnlNests
   test <- is.list(cnlNests) && !is.null(names(cnlNests)) && all(sapply(cnlNests, is.vector)) && all(sapply(cnlNests, is.numeric))
-  if(!test) stop("Argument \"cnlNests\" must be a named list of numeric vectors describing the lambda parameter of each nest.")
+  if(!test) stop("Argument \"cnlNests\" for model component \"",componentName,"\" must be a named list of numeric vectors describing the lambda parameter of each nest.")
   len  <- sapply(cnlNests, function(x) ifelse(is.array(x), dim(x)[1], length(x)) )
   test <- all(len==nObs | len==1)
-  if(!test) stop("Each element of \"cnlNests\" must be a scalar or a vector with one entry per observation in the \"database\"")  
+  if(!test) stop("Each element of \"cnlNests\" for model component \"",componentName,"\" must be a scalar or a vector with one entry per observation in the \"database\"")  
   # cnlStructure
   test <- is.matrix(cnlStructure) && is.numeric(cnlStructure)
-  if(!test) stop("Argument \"cnlStructure\" must be a numeric matrix.")
+  if(!test) stop("Argument \"cnlStructure\" for model component \"",componentName,"\" must be a numeric matrix.")
   
   ### Expand availabilities if =1
   avail_set <- FALSE
@@ -183,43 +187,38 @@ apollo_cnl <- function(cnl_settings, functionality){
     
     if(apollo_control$noValidation==FALSE){
       # Checks that user doesn't attempt to change the root lambda
-      if("root" %in% names(cnlNests)) stop("The root should not be included in argument cnlNests.")
+      if("root" %in% names(cnlNests)) stop("The root should not be included in argument cnlNests for model component \"",componentName,"\".")
 
       # Check there are at least three alternatives
-      if(nAlt<3) stop("CNL requires at least three alternatives")
+      if(nAlt<3) stop("Model component \"",componentName,"\"  requires at least three alternatives")
 
       # Check that choice vector is not empty
-      if(nObs==0) stop("No choices to model")
-
-      # Check that labels in choice match those in the utilities and availabilities
-      choiceLabs <- unique(choiceVar)
-      if(!all(altnames %in% names(V))) stop("Alternative labels in \"altnames\" do not match those in \"V\".")
-      if(!all(altnames %in% names(avail))) stop("Alternative labels in \"altnames\" do not match those in \"avail\".")
-
-      # Check that there are no values in the choice column for undefined alternatives
-      if(!all(choiceLabs %in% altcodes)) stop("Value in choice column that is not included in altcodes.")
-
-      # check that nothing unavailable is chosen
-      chosenunavail=0
-      j=1
-      while(j <= length(altnames)){
-        if(sum((choiceVar==altcodes[j])*(avail[[j]]==0)*rows)) chosenunavail=1
-        j=j+1
-      }
-      if(chosenunavail==1) stop("Some alternative(s) chosen despite being listed as unavailable\n")
-
-      # check that all availabilities are either 0 or 1
-      for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values are not 0 or 1.")
+      if(length(choiceVar)==0) stop("Choice vector is empty for model component \"",componentName,"\"")
+      if(nObs==0) stop("No data for model component \"",componentName,"\"")
       
-      # Set utility of unavailable alternatives and excluded rows to 0 to avoid numerical issues
-      V <- mapply(function(v,a) apollo_setRows(v, !a | !rows, 0), V, avail, SIMPLIFY=FALSE)
-      if(any(sapply(V, anyNA))) warning("At least one utility contains one or more NA values")
+      choiceLabs <- unique(choiceVar)
+      if(!all(altnames %in% names(V))) stop("The names of the alternatives for model component \"",componentName,"\" do not match those in \"V\".")
+      if(!all(altnames %in% names(avail))) stop("The names of the alternatives for model component \"",componentName,"\" do not match those in \"avail\".")
+      
+      # Check that there are no values in the choice column for undefined alternatives
+      if(!all(choiceLabs %in% altcodes)) stop("The data contains values for \"choiceVar\" for model component \"",componentName,"\" that are not included in \"alternatives\".")
+      
+      # check that nothing unavailable is chosen
+      for(j in 1:nAlt) if(any(choiceVar==altcodes[j] & avail[[j]]==0)) stop("The data contains cases where alternative ",altnames[j]," is chosen for model component \"",componentName,"\" despite being listed as unavailable\n")
+      
+      # check that all availabilities are either 0 or 1
+      for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values for model component \"",componentName,"\" are not 0 or 1.")
+      
+      # Check that no available alternative has utility = NA
+      # Requires setting non available alternatives utility to 0 first
+      V <- mapply(function(v,a) apollo_setRows(v, !a, 0), V, avail, SIMPLIFY=FALSE)
+      if(any(sapply(V, anyNA))) cat("\nAt least one utility for model component \"",componentName,"\" contains one or more NA values at parameter starting values")
       
       # checks that are specific to cnlStructure component
-      if(nrow(cnlStructure)!=length(nestnames)) stop("Tree structure needs one row per nest!")
-      if(ncol(cnlStructure)!=nAlt) stop("Tree structure needs one column per alternative!")
-      if(max(colSums(cnlStructure))>1) stop("Allocation parameters for some alternatives sum to value above 1!")
-      if(min(colSums(cnlStructure))>1) stop("Allocation parameters for some alternatives sum to value below 1!")
+      if(nrow(cnlStructure)!=length(nestnames)) stop("Tree structure for model component \"",componentName,"\" needs one row per nest!")
+      if(ncol(cnlStructure)!=nAlt) stop("Tree structure for model component \"",componentName,"\" needs one column per alternative!")
+      if(max(colSums(cnlStructure))>1) stop("Allocation parameters for some alternatives sum to value above 1 for model component \"",componentName,"\"!")
+      if(min(colSums(cnlStructure))>1) stop("Allocation parameters for some alternatives sum to value below 1 for model component \"",componentName,"\"!")
     }
 
     if(apollo_control$noDiagnostics==FALSE){
@@ -253,11 +252,14 @@ apollo_cnl <- function(cnl_settings, functionality){
         content[[length(content) + 1]] <- out_tree
       }
       apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-      apollo_addLog("Overview of choices for CNL model component:", content, apolloLog)
+      apollo_addLog(paste0("Overview of choices for model component \"",componentName,"\""), content, apolloLog)
       
     }
 
-    return(invisible(TRUE))
+    testL=apollo_cnl(cnl_settings, functionality="estimate")
+    if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"",componentName,"\"")
+    if(any(testL==0)) cat("\nSome observations have zero probability at starting value for model component \"",componentName,"\"")
+    return(invisible(testL))
   }
 
   # ############################## #
@@ -423,8 +425,14 @@ apollo_cnl <- function(cnl_settings, functionality){
       content[[length(content) + 1]] <- out_tree
     }
     apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-    apollo_addLog("Overview of choices for CNL model component:", content, apolloLog)
+    apollo_addLog(title   = paste0("Overview of choices for model component \"",componentName,"\""), 
+                  content = content, apolloLog)
     
+    apollo_addLog(title   = paste0("Final structure for CNL model component \"",componentName,"\":"), 
+                  content = out_tree, apolloLog, 
+                  book    = 2)
+    
+    apollo_reportModelTypeLog(modelType="CNL", apolloLog)
     
     return(P)
   }

@@ -2,15 +2,17 @@
 #'
 #' Estimates a model using the likelihood function defined by \code{apollo_probabilities}.
 #'
-#' This is the main function of the Apollo package. The estimation process begins by checking the definition of
-#' \code{apollo_probabilities} by estimating it at the starting values. Then it runs the function with argument \code{functionality="validate"}.
-#' If the user requested more than one core for estimation (i.e. \code{apollo_control$nCores>1}), and no bayesian estimation is used
-#' (i.e. \code{apollo_control$HB=FALSE}), then a cluster is created. Using a cluster at least doubles the requires RAM, as the database
-#' must be copied into the cluster.
+#' This is the main function of the Apollo package. The estimation process begins by running a number of checks on the 
+#' \code{apollo_probabilities} function provided by the user.
 #' If all checks are passed, estimation begins. There is no limit to estimation time other than reaching the maximum number of
 #' iterations. If bayesian estimation is used, estimation will finish once the predefined number of iterations are completed.
-#' This functions does not save results into a file nor prints them into the console, so if users want to see and store estimation the results,
-#' they must make sure to call function \code{apollo_modelOutput} and/or \code{apollo_saveOutput} afterwards.
+#' By default, this functions writes the estimated parameter values in each iteration to a file in the working directory. Writing 
+#' can be turned off by setting \code{estimate_settings$writeIter} to \code{FALSE}, of by using any estimation algorithm
+#' other than BFGS.
+#' By default, \strong{final results are not written into a file nor printed into the console}, so users must make sure 
+#' to call function \code{apollo_modelOutput} and/or \code{apollo_saveOutput} afterwards.
+#' Users are strongly encouraged to visit www.apolloChoiceModelling.com to download examples on how to use the Apollo package.
+#' The webpage also provides a detailed manual for the package, as well as a user-group to get further help.
 #'
 #' @param apollo_beta Named numeric vector. Names and values for parameters.
 #' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
@@ -55,13 +57,14 @@
 #' @export
 #' @importFrom numDeriv hessian grad
 #' @importFrom sandwich sandwich
-#' @importFrom RSGHB doHB
 #' @importFrom maxLik maxLik
 #' @importFrom mvtnorm rmvnorm
-#' @importFrom stats sd cor cov
-#' 
+#' @importFrom stats sd cor cov runif
 apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, estimate_settings=NA){
   
+  ### Detach things if necessary
+  apollo_detach()
+    
   ### Set missing settings to default values
   default <- list(estimationRoutine="bfgs", maxIterations=200, writeIter=TRUE, 
                   hessianRoutine="numDeriv", printLevel=3L, constraints=NULL, 
@@ -71,9 +74,9 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   for(i in tmp) estimate_settings[[i]] <- default[[i]]
   
   ### Extract variables from pollo_input
-  database          = apollo_inputs[["database"]]
+  #database          = apollo_inputs[["database"]]
   apollo_control    = apollo_inputs[["apollo_control"]]
-  draws             = apollo_inputs[["draws"]]
+  #draws             = apollo_inputs[["draws"]]
   apollo_randCoeff  = apollo_inputs[["apollo_randCoeff"]]
   apollo_lcPars     = apollo_inputs[["apollo_lcPars"]]
   apollo_HB         = apollo_inputs[["apollo_HB"]]
@@ -95,434 +98,193 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   # ################################## #
   
   ### Validation of input
-  apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
+  apollo_checkArguments(apollo_probabilities, apollo_randCoeff, apollo_lcPars)
   if( !(estimationRoutine %in% c("bfgs","bhhh", "nr")) ) stop("Invalid estimationRoutine. Use 'bfgs', 'bhhh' or 'nr'.")
   if( !(hessianRoutine %in% c("numDeriv", "maxLik", "none")) ) stop("Invalid hessianRoutine. Use 'numDeriv', 'maxLik' or 'none'.")
+  
+  # Check apollo_beta and apollo_fixed
   if(!is.numeric(apollo_beta) | !is.vector(apollo_beta) | is.null(names(apollo_beta))) stop("The \"apollo_beta\" argument needs to be a named vector")
   if(length(apollo_fixed)>0 && !is.character(apollo_fixed)) stop("'apollo_fixed' is not an empty vector nor a vector of names.")
   if(length(unique(names(apollo_beta)))<length(apollo_beta)) stop("The \"apollo_beta\" argument contains duplicate elements")
   if(length(unique(apollo_fixed))<length(apollo_fixed)) stop("The \"apollo_fixed\" argument contains duplicate elements")
   if(!all(apollo_fixed %in% names(apollo_beta))) stop("Some parameters included in 'apollo_fixed' are not included in 'apollo_beta'.")
+  
+  # Check bootstrap settings
   if(!is.numeric(bootstrapSE) || length(bootstrapSE)!=1 || bootstrapSE<0) stop("'bootstrapSE' is not zero or a positive integer.")
-  bootstrapSE <- as.integer(bootstrapSE)
+  bootstrapSE <- as.integer(bootstrapSE); estimate_settings$bootstrapSE <- bootstrapSE
   if(!is.numeric(bootstrapSeed) || length(bootstrapSeed)!=1 || bootstrapSeed<=0) stop("'bootstrapSeed' is not a positive integer.")
-  bootstrapSeed <- as.integer(bootstrapSeed)
-  ### create temporary copy of starting values for use later
-  temp_start=apollo_beta
-  if(length(scaling)>0 && !is.na(scaling)){
-    if(any(!(names(scaling) %in% names(apollo_beta)))) stop("Some parameters included in 'scaling' are not included in 'apollo_beta'")
-    if(any((names(scaling) %in% apollo_fixed))) stop("Parameters in 'apollo_fixed' should not be included in 'scaling'")
-    if(any(!(scaling>0))) stop("All terms in in 'scaling' should be strictly positive!")
-    txt <- "During estimation, parameters will be scaled using the\n values in estimate_settings$scaling"
-    if(!silent) cat(txt,"\n", sep="") else warning(txt)
-    apollo_inputs$scaling = scaling
-    r <- names(apollo_beta) %in% names(apollo_inputs$scaling)
-    r <- names(apollo_beta)[r]
-    if(!apollo_control$HB){
-      # classical version
-      apollo_beta[r] <- 1/apollo_inputs$scaling[r]*apollo_beta[r]
-    }else{
-      # bayesian version
-      if(!is.null(apollo_HB$gVarNamesFixed)){
-        r <- ( names(apollo_beta) %in% names(apollo_inputs$scaling) ) & ( names(apollo_beta) %in% apollo_HB$gVarNamesFixed )
-        r <- names(apollo_beta)[r]
-        apollo_HB$FC[r] <- 1/apollo_inputs$scaling[r]*apollo_HB$FC[r]
-      }
-      if(!is.null(apollo_HB$gVarNamesNormal)){
-        r <- ( names(apollo_beta) %in% names(apollo_inputs$scaling) ) & ( names(apollo_beta) %in% apollo_HB$gVarNamesNormal )
-        r <- names(apollo_beta)[r]
-        dists_normal=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==1])
-        dists_lnp=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==2])
-        dists_lnn=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==3])
-        dists_cnp=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==4])
-        dists_cnn=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==5])
-        dists_sb=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==6])
-        if(length(dists_normal)>0) apollo_HB$svN[dists_normal] <- 1/apollo_inputs$scaling[dists_normal]*apollo_HB$svN[dists_normal]
-        if(length(dists_lnp)>0) apollo_HB$svN[dists_lnp] <- -log(apollo_inputs$scaling[dists_lnp])+apollo_HB$svN[dists_lnp]
-        if(length(dists_lnn)>0) apollo_HB$svN[dists_lnn] <- -log(apollo_inputs$scaling[dists_lnn])+apollo_HB$svN[dists_lnn]
-        if(length(dists_cnp)>0) apollo_HB$svN[dists_cnp] <- 1/apollo_inputs$scaling[dists_cnp]*apollo_HB$svN[dists_cnp]
-        if(length(dists_cnn)>0) apollo_HB$svN[dists_cnn] <- 1/apollo_inputs$scaling[dists_cnn]*apollo_HB$svN[dists_cnn]
-        if(length(dists_sb)>0){
-          names(apollo_HB$gMINCOEF)=names(apollo_HB$svN)
-          names(apollo_HB$gMAXCOEF)=names(apollo_HB$svN)
-          apollo_HB$gMINCOEF[dists_sb] <- 1/apollo_inputs$scaling[dists_sb]*apollo_HB$gMINCOEF[dists_sb]
-          apollo_HB$gMAXCOEF[dists_sb] <- 1/apollo_inputs$scaling[dists_sb]*apollo_HB$gMAXCOEF[dists_sb]
-        }
-      }
-    }
-  }
+  bootstrapSeed <- as.integer(bootstrapSeed); estimate_settings$bootstrapSeed <- bootstrapSeed
+  
+  # Check printLevel
   if(!is.integer(printLevel)) printLevel <- as.integer(round(printLevel,0))
-  if(printLevel<0L) printLevel <- 0L
-  if(3L<printLevel) printLevel <- 3L
+  if(printLevel<0L){ printLevel <- 0L; estimate_settings$printLevel <- 0L }
+  if(3L<printLevel){ printLevel <- 3L; estimate_settings$printLevel <- 3L }
+  
+  # Check maxIterations
   if(maxIterations<0) stop("Need positive number of iterations!")
-  maxIterations=round(maxIterations,0)
+  maxIterations     = round(maxIterations,0)
+  estimate_settings$maxIterations = maxIterations
+  
+  # Check constraints
   if(!is.null(constraints) && apollo_control$HB) stop("Constraints cannot be used with Bayesian estimation.")
   if(!is.null(constraints) && estimationRoutine!="bfgs"){
     estimationRoutine="bfgs"
-    warning("Estimation routine changed to 'BFGS'. Only 'BFGS' supports constrained optimization.")
+    apollo_inputs$estimationRoutine = estimationRoutine
+    if(!silent) cat("WARNING: Estimation routine changed to 'BFGS'.\n         Only 'BFGS' supports constrained optimization.\n")
   }
+  
+  # Check writeIter
   if(estimationRoutine!="bfgs" & writeIter==TRUE){
     writeIter = FALSE
-    estimate_settings[["writeIter"]] = FALSE
-    apollo_inputs$apollo_estimate$writeIter <- FALSE
+    estimate_settings$writeIter = writeIter
     txt <- "witeIter set to FALSE. Writing parameters values at each iteration is only available for BFGS estimation method."
     if(!silent) cat(txt, "\n", sep="") else warning(txt)
     rm(txt)
+  }
+  
+  # create temporary copy of starting values for use later
+  temp_start=apollo_beta
+  
+  # Checks for scaling
+  if(length(scaling)>0 && !is.na(scaling)){
+    if(any(!(names(scaling) %in% names(apollo_beta)))) stop("Some parameters included in 'scaling' are not included in 'apollo_beta'")
+    #scaling <- scaling[!(names(scaling) %in% apollo_fixed)] # remove fixed parameters from scaling
+    if(any((names(scaling) %in% apollo_fixed))) stop("Parameters in 'apollo_fixed' should not be included in 'scaling'")
+    if(any(scaling<0)){
+      scaling <- abs(scaling)
+      txt <- "WARNING: Some values in 'scaling' were negative,\n         they were replaced by their absolute value.\n"
+      if(!silent) cat(txt) else warning("Some negative values in 'scaling' were replaced by their absotulte value")
+    }
+    if(any(!(scaling>0))) stop("All terms in in 'scaling' should be strictly positive!")
+    txt <- "During estimation, parameters will be scaled\n using the values in estimate_settings$scaling"
+    if(!silent) cat(txt,"\n", sep="") else warning(txt)
+    # Copy scaling into apollo_inputs
+    apollo_inputs$scaling = scaling
+  }
+  
+  ### Call apollo_estimateHB
+  if(apollo_control$HB){
+    model <- apollo_estimateHB(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, estimate_settings)
+    return(model)
+  }
+  
+  # Scale starting parameters
+  if(length(scaling)>0 && !is.na(scaling)){
+    r <- names(apollo_beta) %in% names(apollo_inputs$scaling)
+    r <- names(apollo_beta)[r]
+    apollo_beta[r] <- 1/apollo_inputs$scaling[r]*apollo_beta[r]
   }
   
   ### Start clock & apolloLog
   starttime <- Sys.time()
   apollo_inputs$apolloLog <- new.env(parent=emptyenv())
   
-  ### Validate and test probability
-  if(!silent & !apollo_control$noValidation) cat("Testing probability function (apollo_probabilities)\n")
-  if(!apollo_control$HB){
-    ### Validation for classical estimation
+  ### Create useful variables
+  nObs  <- nrow(apollo_inputs$database)
+  indiv <- unique(apollo_inputs$database[,apollo_inputs$apollo_control$indivID])
+  nObsPerIndiv <- table(apollo_inputs$database[,apollo_inputs$apollo_control$indivID])
+  nObsPerIndiv <- setNames(as.vector(nObsPerIndiv), names(nObsPerIndiv))
+  nObsPerIndiv <- nObsPerIndiv[nObsPerIndiv>0]
+  
+  ### Calculate analytical gradient if required
+  if(!is.null(apollo_control$analyticGrad) && apollo_control$analyticGrad){
+    g    <- apollo_probabilities(apollo_beta, apollo_inputs, functionality="gradient")
+    grad <- function(b, countIter, writeIter, sumLL, getNIter){
+      b <- c(b, temp_start[apollo_fixed])
+      b <- b[names(temp_start)]
+      db <- get("apollo_inputs", envir=parent.frame(), inherits=TRUE)$database # maybe from .GlobalEnv to make it work with multicore?
+      return( g(b, db) )
+    }
+  } else grad = NULL
+  
+  # ####################################### #
+  #### Validation of likelihood function ####
+  # ####################################### #
+  
+  if(!apollo_control$noValidation && !apollo_control$HB){
+    if(!silent) cat("Validating inputs of likelihood function (apollo_probabilities)\n")
     apollo_probabilities(apollo_beta, apollo_inputs, functionality="validate")
     if(!silent & !apollo_control$noDiagnostics) cat("\n", apollo_printLog(apollo_inputs$apolloLog), sep="")
-    testLL = apollo_probabilities(apollo_beta, apollo_inputs, functionality="estimate")
-    if(!workInLogs) testLL=log(testLL)
-    # Maybe here we could return the value of the likelihood and print and error wuth cat, instead of simply stopping
-    if(anyNA(testLL)) stop('Log-likelihood calculation fails at starting values!')
-  } else {
-    ### Validation using HB estimation
-    apollo_test_beta=apollo_beta
-    if(!is.null(apollo_HB$gVarNamesFixed)){
-      r <- ( names(apollo_beta) %in% apollo_HB$gVarNamesFixed )
-      r <- names(apollo_beta)[r]
-      apollo_test_beta[r] <- apollo_HB$FC[r]
-    }
-    if(!is.null(apollo_HB$gVarNamesNormal)){
-      r <- ( names(apollo_beta) %in% apollo_HB$gVarNamesNormal )
-      r <- names(apollo_beta)[r]
-      dists_normal=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==1])
-      dists_lnp=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==2])
-      dists_lnn=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==3])
-      dists_cnp=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==4])
-      dists_cnn=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==5])
-      dists_sb=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==6])
-      if(length(dists_normal)>0) apollo_test_beta[dists_normal] <- apollo_HB$svN[dists_normal]
-      if(length(dists_lnp)>0) apollo_test_beta[dists_lnp] <- exp(apollo_HB$svN[dists_lnp])
-      if(length(dists_lnn)>0) apollo_test_beta[dists_lnn] <- -exp(apollo_HB$svN[dists_lnn])
-      if(length(dists_cnp)>0) apollo_test_beta[dists_cnp] <- apollo_HB$svN[dists_cnp]*(apollo_HB$svN[dists_cnp]>0)
-      if(length(dists_cnn)>0) apollo_test_beta[dists_cnn] <- apollo_HB$svN[dists_cnn]*(apollo_HB$svN[dists_cnn]<0)
-      if(length(dists_sb)>0){
-        names(apollo_HB$gMINCOEF)=names(apollo_HB$svN)
-        names(apollo_HB$gMAXCOEF)=names(apollo_HB$svN)
-        apollo_test_beta[dists_sb] <- apollo_HB$gMINCOEF[dists_sb]+(apollo_HB$gMAXCOEF[dists_sb]-apollo_HB$gMINCOEF[dists_sb])/(1+exp(-apollo_HB$svN[dists_sb]))
-      }
-    }
-    apollo_probabilities(apollo_test_beta, apollo_inputs, functionality="validate")
-    if(!silent & !apollo_control$noDiagnostics ) cat(apollo_printLog(apollo_inputs$apolloLog))
-    testLL = apollo_probabilities(apollo_test_beta, apollo_inputs, functionality="estimate")
-    if(!workInLogs) testLL=log(testLL)
-    # Maybe here we could return the value of the likelihood and print and error with cat, instead of simply stopping
-    if(anyNA(testLL)) stop('Log-likelihood calculation fails at starting values!')
   }
   
-  ### Test for unused parameters
-  #if(!silent & !apollo_control$noValidation) cat("Testing probability function (apollo_probabilities)\n")
+  ### Check there are no references to database inside apollo_probabilities
+  if(is.function(apollo_probabilities)){
+    tmp <- as.character(body(apollo_probabilities))
+    tmp <- gsub("apollo_inputs$database", " ", tmp, fixed=TRUE)
+    tmp <- grep("database", tmp, fixed=TRUE)
+    if(length(tmp)>0) stop("The database object is 'attached' and elements should thus be called directly in apollo_probabilities without the 'database$' prefix.")
+  }
+  
+  ### Create multi-core version of likelihood (if needed)
   if(!apollo_control$HB){
-    apollo_beta_base=apollo_beta+0.001
-    base_LL=apollo_probabilities(apollo_beta_base, apollo_inputs, functionality="estimate")
-    if(workInLogs) base_LL=sum(base_LL) else base_LL=sum(log(base_LL))
-    freeparams=apollo_beta_base[!names(apollo_beta_base)%in%apollo_fixed]
-    for(p in names(freeparams)){
-      apollo_beta_test1=apollo_beta_base
-      apollo_beta_test2=apollo_beta_base
-      apollo_beta_test1[p]=apollo_beta_test1[p]-0.001
-      apollo_beta_test2[p]=apollo_beta_test2[p]+0.001
-      test1_LL=apollo_probabilities(apollo_beta_test1, apollo_inputs, functionality="estimate")
-      test2_LL=apollo_probabilities(apollo_beta_test2, apollo_inputs, functionality="estimate")
-      if(workInLogs){
-        test1_LL=sum(test1_LL)
-        test2_LL=sum(test2_LL)
-      } else{
-        test1_LL=sum(log(test1_LL))
-        test2_LL=sum(log(test2_LL))
-      }
+    if(apollo_control$nCores==1) cl <- NA else {
+      # Creates cluster and also deletes database and draws from apollo_inputs in here and in .GlobalEnv
+      cl <- apollo_makeCluster(apollo_probabilities, apollo_inputs, silent=silent, cleanMemory=TRUE)
+      apollo_control$nCores <- length(cl)
+      apollo_inputs$apollo_control$nCores <- length(cl)
+    }
+    on.exit(if(exists('cl') & apollo_control$nCores>1) parallel::stopCluster(cl))
+    apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, 
+                                         apollo_probabilities, apollo_inputs, 
+                                         estimate_settings, cl=cl)
+  }
+  
+  # Get starting LL
+  beta0 <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
+  testLL = apollo_logLike(beta0)
+  
+  if(!apollo_control$noValidation){
+    if(!silent) cat("\nTesting likelihood function ")
+    # Check there are no invalid values
+    if(any(!is.finite(testLL))){
+      cat("\nLog-likelihood calculation fails at starting values!\n")
+      cat("Affected individuals:\n")
+      LLtemp <- data.frame(ID=indiv, LL=testLL)
+      LLtemp = subset(LLtemp,!is.finite(LLtemp[,2]))
+      colnames(LLtemp) <- c("ID","LL")
+      print(LLtemp, row.names=FALSE)
+      stop('Not proceeding with estimation!')
+    } else {if(!silent) cat(".")}
+    ### Test for unused parameters
+    beta1   = beta0 + 0.001*runif(length(beta0))
+    base_LL = apollo_logLike(beta1)
+    #if(!workInLogs) base_LL = log(base_LL)
+    if(any(!is.finite(base_LL))){
+      cat("\nDuring testing, Apollo added disturbances smaller than 0.001 to all starting values\n")
+      cat("This led to a log-likelihood calculation failure!\n")
+      cat("Affected individuals:\n")
+      LLtemp <- data.frame(ID=indiv, LL=base_LL)
+      LLtemp = subset(LLtemp,!is.finite(LLtemp[,2]))
+      colnames(LLtemp) <- c("ID","LL")
+      print(LLtemp, row.names=FALSE)
+      stop('Not proceeding with estimation!')
+    } else {if(!silent) cat(".")}
+    base_LL = sum(base_LL)
+    for(p in names(beta0)){
+      beta1p <- beta1 - (names(beta1)==p)*0.001
+      beta1m <- beta1 + (names(beta1)==p)*0.001
+      test1_LL = apollo_logLike(beta1p)
+      test2_LL = apollo_logLike(beta1m)
+      #if(!workInLogs){test1_LL <- log(test1_LL); test2_LL <- log(test2_LL)}
+      test1_LL = sum(test1_LL)
+      test2_LL = sum(test2_LL)
       if(is.na(test1_LL)) test1_LL <- base_LL + 1 # Avoids errors if test1_LL is NA
       if(is.na(test2_LL)) test2_LL <- base_LL + 2 # Avoids errors if test2_LL is NA
       if(base_LL==test1_LL & base_LL==test2_LL) stop("Parameter ",p," does not influence the log-likelihood of your model!")
+      if(!silent) cat(".")
     }
-  } else {
-    ### Validation using HB estimation
-    apollo_test_beta=apollo_beta
-    if(!is.null(apollo_HB$gVarNamesFixed)){
-      r <- ( names(apollo_beta) %in% apollo_HB$gVarNamesFixed )
-      r <- names(apollo_beta)[r]
-      apollo_test_beta[r] <- apollo_HB$FC[r]
-    }
-    if(!is.null(apollo_HB$gVarNamesNormal)){
-      r <- ( names(apollo_beta) %in% apollo_HB$gVarNamesNormal )
-      r <- names(apollo_beta)[r]
-      dists_normal=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==1])
-      dists_lnp=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==2])
-      dists_lnn=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==3])
-      dists_cnp=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==4])
-      dists_cnn=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==5])
-      dists_sb=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==6])
-      if(length(dists_normal)>0) apollo_test_beta[dists_normal] <- apollo_HB$svN[dists_normal]
-      if(length(dists_lnp)>0) apollo_test_beta[dists_lnp] <- exp(apollo_HB$svN[dists_lnp])
-      if(length(dists_lnn)>0) apollo_test_beta[dists_lnn] <- -exp(apollo_HB$svN[dists_lnn])
-      if(length(dists_cnp)>0) apollo_test_beta[dists_cnp] <- apollo_HB$svN[dists_cnp]*(apollo_HB$svN[dists_cnp]>0)
-      if(length(dists_cnn)>0) apollo_test_beta[dists_cnn] <- apollo_HB$svN[dists_cnn]*(apollo_HB$svN[dists_cnn]<0)
-      if(length(dists_sb)>0){
-        names(apollo_HB$gMINCOEF)=names(apollo_HB$svN)
-        names(apollo_HB$gMAXCOEF)=names(apollo_HB$svN)
-        apollo_test_beta[dists_sb] <- apollo_HB$gMINCOEF[dists_sb]+(apollo_HB$gMAXCOEF[dists_sb]-apollo_HB$gMINCOEF[dists_sb])/(1+exp(-apollo_HB$svN[dists_sb]))
-      }
-    }
-    apollo_beta_base=apollo_test_beta+0.001
-    base_LL=apollo_probabilities(apollo_beta_base, apollo_inputs, functionality="estimate")
-    if(workInLogs) base_LL=sum(base_LL) else base_LL=sum(log(base_LL))
-    freeparams=apollo_beta_base[!names(apollo_beta_base)%in%apollo_fixed]
-    for(p in names(freeparams)){
-      apollo_beta_test1=apollo_beta_base
-      apollo_beta_test2=apollo_beta_base
-      apollo_beta_test1[p]=apollo_beta_test1[p]-0.001
-      apollo_beta_test2[p]=apollo_beta_test2[p]+0.001
-      test1_LL=apollo_probabilities(apollo_beta_test1, apollo_inputs, functionality="estimate")
-      test2_LL=apollo_probabilities(apollo_beta_test2, apollo_inputs, functionality="estimate")
-      if(workInLogs){
-        test1_LL=sum(test1_LL)
-        test2_LL=sum(test2_LL)
-      } else{
-        test1_LL=sum(log(test1_LL))
-        test2_LL=sum(log(test2_LL))
-      }
-      if(is.na(test1_LL)) test1_LL <- base_LL + 1 # Avoids errors if test1_LL is NA
-      if(is.na(test2_LL)) test2_LL <- base_LL + 2 # Avoids errors if test2_LL is NA
-      if(base_LL==test1_LL & base_LL==test2_LL) stop("Parameter ",p," does not influence the log-likelihood of your model!")    }
-  }  
-  
-  # ################################## #
-  #### HB estimation                ####
-  # ################################## #
-  
-  if(apollo_control$HB){
-    
-    ### Check that apollo_fixed hasn't changed since calling apollo_validateInputs
-    tmp <- tryCatch( get("apollo_fixed", envir=globalenv()), error=function(e) 1 )
-    if( length(tmp)>0 && any(tmp %in% c(apollo_HB$gVarNamesFixed, apollo_HB$gVarNamesFixed)) ) stop("apollo_fixed seems to have changed since calling apollo_inputs.")
-    
-    ### Function masking apollo_probabilities and compatible with RSGHB
-    gFix <- apollo_HB$gVarNamesFixed
-    gNor <- apollo_HB$gVarNamesNormal
-    apollo_HB_likelihood=function(fc,b){
-      if(is.null(gFix)) fc1 <- NULL else fc1 <- stats::setNames(as.list(fc)     , gFix)
-      if(is.null(gNor)) b1  <- NULL else b1  <- stats::setNames(as.data.frame(b), gNor)
-      if(length(apollo_fixed)==0) fp <- NULL else fp  <-  stats::setNames( as.list(apollo_beta[apollo_fixed]), apollo_fixed )
-      P <- apollo_probabilities(apollo_beta=c(fc1,b1,fp), apollo_inputs, functionality="estimate")
-      return(P)
-    }
-    
-    model <- RSGHB::doHB(apollo_HB_likelihood, database, apollo_HB)
-    
-    
-    
-    model$apollo_HB   <- apollo_HB
-    ### use pre-scaling values as starting values in output 
-    model$apollo_beta <- apollo_test_beta
-    model$LLStart <- sum(testLL)
-    ### model$LL0         <- sum(log(apollo_probabilities(apollo_beta, apollo_inputs, functionality="zero_LL")))
-    if(workInLogs) model$LL0 <- sum((apollo_probabilities(apollo_beta, apollo_inputs, functionality="zero_LL"))) else model$LL0 <- sum(log(apollo_probabilities(apollo_beta, apollo_inputs, functionality="zero_LL")))
-    
-    model$startTime   <- starttime
-    model$apollo_control <- apollo_control
-    model$nObs        <- nrow(database)
-    model$nIndivs     <- length(unique(database[,apollo_control$indivID]))
-    endtime           <- Sys.time()
-    model$timeTaken   <- as.numeric(difftime(endtime,starttime,units='secs'))
-    model$apollo_fixed <- apollo_fixed
-    model$estimationRoutine <- "Hierarchical Bayes"
-    
-    if(!is.null(model$F)){
-      tmp <- coda::geweke.diag(model$F[,2:(ncol(model$F))], frac1=0.1, frac2=0.5)[[1]]
-      names(tmp) <- model$params.fixed
-      model$F_convergence=tmp
-    }
-    if(!is.null(model$A)){
-      tmp <- coda::geweke.diag(model$A[,2:(ncol(model$A))], frac1=0.1, frac2=0.5)[[1]]
-      model$A_convergence=tmp
-    }
-    if(!is.null(model$D)){
-      # This assumes the matrix is square
-      tmp <- c()
-      for(i in 1:dim(model$D)[1]) for(j in 1:i){
-        if(i==1 & j==1) Dmatrix <- as.matrix(model$D[i,j,]) else Dmatrix <- cbind(Dmatrix, as.vector(model$D[i,j,]))
-        tmp <- c(tmp, paste(colnames(model$A)[i+1],colnames(model$A)[j+1], sep="_"))
-      }
-      colnames(Dmatrix) <- tmp
-      tmp <- coda::geweke.diag(Dmatrix, frac1=0.1, frac2=0.5)[[1]]
-      model$D_convergence=tmp
-    }
-    
-    if(length(apollo_HB$gVarNamesFixed)>0 | length(model$apollo_fixed)>0){
-      if(length(apollo_HB$gVarNamesFixed)>0){
-        non_random=matrix(0,nrow=length(apollo_HB$gVarNamesFixed),2)
-        non_random[,1]=colMeans(model$F)[2:ncol(model$F)]
-        non_random[,2]=apply(model$F,FUN=stats::sd,2)[2:ncol(model$F)]
-        rownames(non_random)=apollo_HB$gVarNamesFixed}
-      if(length(model$apollo_fixed)>0){
-        if(length(apollo_HB$gVarNamesFixed)>0){
-          non_random=rbind(non_random,cbind(matrix(model$apollo_beta[model$apollo_fixed]),NA))
-          rownames(non_random)[(length(apollo_HB$gVarNamesFixed)+1):nrow(non_random)]=model$apollo_fixed
-        } else{
-          non_random=cbind(matrix(model$apollo_beta[model$apollo_fixed]),NA)
-          rownames(non_random)=model$apollo_fixed
-        }
-      }
-      colnames(non_random)=c("Mean","SD")
-      originalOrder <- names(model$apollo_beta)[names(model$apollo_beta) %in% rownames(non_random)]
-      model$chain_non_random=non_random[originalOrder,,drop=FALSE]
-    }
-    
-    apollo_HB$gVarNamesFixed <- model$params.fixed
-    apollo_HB$gVarNamesNormal <- model$params.vary
-    if(any(!is.null(apollo_HB$gVarNamesNormal)) && length(apollo_HB$gVarNamesNormal)>0){
-      random_mean     = matrix(0,nrow=length(apollo_HB$gVarNamesNormal),2)
-      random_mean[,1] = colMeans(model$A)[2:ncol(model$A)]
-      random_mean[,2] = apply(model$A,FUN=stats::sd,2)[2:ncol(model$A)]
-      rownames(random_mean)=apollo_HB$gVarNamesNormal
-      colnames(random_mean)=c("Mean","SD")
-      model$chain_random_mean=random_mean
-      
-      random_cov_mean           = apply(model$D,FUN=mean,c(1,2))
-      random_cov_sd             = apply(model$D,FUN=stats::sd,c(1,2))
-      rownames(random_cov_mean) = apollo_HB$gVarNamesNormal
-      colnames(random_cov_mean) = apollo_HB$gVarNamesNormal
-      model$chain_random_cov_mean=random_cov_mean
-      
-      rownames(random_cov_sd) = apollo_HB$gVarNamesNormal
-      colnames(random_cov_sd) = apollo_HB$gVarNamesNormal
-      model$chain_random_cov_sd=random_cov_sd
-      
-      posterior=matrix(0,nrow=length(apollo_HB$gVarNamesNormal),2)
-      posterior[,1]=colMeans(model$C)[3:ncol(model$C)]
-      posterior[,2]=apply(model$C,FUN=stats::sd,2)[3:ncol(model$C)]
-      rownames(posterior)=apollo_HB$gVarNamesNormal
-      model$posterior_mean=posterior
-      
-      ### create matrix of draws from distributions
-      
-      draws=10000
-      covMat=random_cov_mean
-      meanA=random_mean[,1]
-      pars = length(meanA)
-      covMat=as.matrix(covMat)
-      Ndraws=mvtnorm::rmvnorm(draws,meanA,covMat,method="chol")
-      i=1
-      while(i<(pars+1)){
-        if(apollo_HB$gDIST[i]==6){
-          Ndraws[,i]=apollo_HB$gMINCOEF+(apollo_HB$gMAXCOEF[i]-apollo_HB$gMINCOEF[i])*1/(1+exp(-Ndraws[,i]))
-        }
-        if(apollo_HB$gDIST[i]==5){
-          Ndraws[,i]=(Ndraws[,i]<0)*Ndraws[,i]
-        }
-        if(apollo_HB$gDIST[i]==4){
-          Ndraws[,i]=(Ndraws[,i]>0)*Ndraws[,i]
-        }
-        if(apollo_HB$gDIST[i]==3){
-          Ndraws[,i]=-exp(Ndraws[,i])
-        }
-        if(apollo_HB$gDIST[i]==2){
-          Ndraws[,i]=exp(Ndraws[,i])
-        }
-        i=i+1
-      }
-      
-    }
-    
-    if(length(scaling)>0 && !is.na(scaling)){
-      s=1
-      while(s<=length(scaling)){
-        ss=names(scaling)[s]
-        if(ss%in%colnames(model$C)) model$C[,ss]=scaling[s]*model$C[,ss]
-        if(ss%in%colnames(model$Csd)) model$Csd[,ss]=scaling[s]*model$Csd[,ss]
-        if(ss%in%colnames(model$F)) model$F[,ss]=scaling[s]*model$F[,ss]
-        if(any(!is.null(apollo_HB$gVarNamesNormal)) && length(apollo_HB$gVarNamesNormal)>0){if(ss%in%colnames(Ndraws)) Ndraws[,ss]=scaling[s]*Ndraws[,ss]}
-        if(ss%in%rownames(model$chain_non_random)) model$chain_non_random[ss,]=scaling[s]*model$chain_non_random[ss,]
-        if(ss%in%rownames(model$posterior_mean)) model$posterior_mean[ss,]=scaling[s]*model$posterior_mean[ss,]
-        s=s+1
-      }
-      model$scaling <- scaling
-    }
-    
-    if(any(!is.null(apollo_HB$gVarNamesNormal)) && length(apollo_HB$gVarNamesNormal)>0){
-      model$random_coeff_summary=cbind(colMeans(Ndraws),apply(Ndraws,2,sd))
-      colnames(model$random_coeff_summary)=c("Mean","SD")
-      if(length(apollo_HB$gVarNamesNormal)>1){
-        model$random_coeff_covar=cov(Ndraws)
-        model$random_coeff_corr=cor(Ndraws)
-      }
-    }
-    
-    ### produce model$estimate
-    
-    panelData <- apollo_control$panelData
-    indivID   <- database[,apollo_control$indivID]
-    nObs <- length(indivID)
-    if(!panelData) indivID <- 1:nObs
-    nIndiv <- length(unique(indivID))
-    obsPerIndiv <- as.vector(table(indivID))
-    
-    if(is.null(model$chain_non_random)){
-      fc1 <- NULL
-    }else{
-      fc1 <- stats::setNames(as.list(model$chain_non_random[,1]),names(model$chain_non_random[,1]))
-    }
-    
-    if(is.null(model$C)){
-      b1 <- NULL
-    }else{
-      M=model$C[,-c(1,2),drop=FALSE]
-      M1 <- matrix(0, nrow=nObs, ncol=ncol(M))
-      r1 <- 1
-      for(i in 1:nIndiv){
-        r2 <- r1 + obsPerIndiv[i] - 1
-        M1[r1:r2,] <- matrix(as.vector(M[i,]), nrow=r2-r1+1, ncol=ncol(M), byrow=TRUE)
-        r1 <- r2 + 1
-      }
-      b1  <- stats::setNames(as.data.frame(M1), colnames(M))
-    } 
-    model$estimate=c(fc1,b1)
-    
-    # Report number of times the probs have been censored
-    if(exists("HBcensor", envir=apollo_inputs$apolloLog)){
-      txt <- paste0(" Please note that in at least some iterations RSGHB has\n",
-                    " avoided numerical issues by left censoring the\n",
-                    " probabilities. This has the side effect of zero or\n",
-                    " negative probabilities not leading to failures!", collapse="")
-      apollo_addLog(title="WARNING: RSGHB has censored the probabilities", content=txt, apollo_inputs$apolloLog)
-    }
-    if(!silent) cat("\n", apollo_printLog(apollo_inputs$apolloLog), sep="")
-    model$apolloLog <- apollo_inputs$apolloLog
-    
-    return(model)
+    if(!silent) cat("Done.\n")
+    rm(beta1, beta1p, beta1m, base_LL, test1_LL, test2_LL)
   }
+  rm(beta0)
   
   # ################################## #
   #### classical estimation         ####
   # ################################## #
   
-  ### Create cluster (if needed)
-  if(apollo_control$nCores==1) cl <- NA else {
-    cl <- apollo_makeCluster(apollo_probabilities, apollo_inputs, silent=silent)
-    apollo_control$nCores <- length(cl)
-    apollo_inputs$apollo_control$nCores <- length(cl)
-  }
-  on.exit(if(exists('cl') & apollo_control$nCores>1) parallel::stopCluster(cl))
-  
-  ### Create loglike function
-  apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, 
-                                       apollo_probabilities, apollo_inputs, 
-                                       estimate_settings, cl=cl)
-  
   ### Split parameters between variable and fixed
   beta_var_val <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
   beta_fix_val <- apollo_beta[apollo_fixed]
-  
   
   ### Main (classical) estimation
   if(exists("lastFuncParam")){
@@ -531,7 +293,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     rm(tmp)
   }
   if(!silent) cat("\n\nStarting main estimation\n") else printLevel=0
-  model <- maxLik::maxLik(apollo_logLike, start=beta_var_val,
+  model <- maxLik::maxLik(apollo_logLike, grad=grad, start=beta_var_val,
                           method=estimationRoutine, finalHessian=FALSE,
                           control=list(printLevel=printLevel, iterlim=maxIterations),
                           constraints=constraints,
@@ -547,7 +309,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   
   # Print estimated parameters
   if(exists("model")& !silent){
-    cat("\nEstimated values:\n")
+    cat("\nEstimated parameters:\n")
     tmp <- c(model$estimate, apollo_beta[apollo_fixed])[names(apollo_beta)]
     if(!is.null(apollo_inputs$scaling)) for(i in names(apollo_inputs$scaling)){
       tmp[i] <- apollo_inputs$scaling[i]*tmp[i]
@@ -579,7 +341,6 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
       sumLogLike <- function(k, silent){
         i <- 0
         I <- 2+8*( k*(k+1)/2 )
-        #if(!is.null(numDeriv_settings) && !is.null(numDeriv_settings$d)) I <- 2+(2*numDeriv_settings$d)*( k*(k+1)/2 )
         step <- ceiling(I/20)
         
         function(theta){
@@ -650,17 +411,58 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
       if(!silent) cat(" Hessian written to", paste(apollo_control$modelName, "hessian.csv", sep="_"), "\n")
     }, error=function(e) if(!silent) cat(" Could not write hessian to a file.\n"))
   }
+  eigValue <- tryCatch(eigen(H)$values, error=function(e) return(NA))
+  if(!anyNA(eigValue)){
+    eigValue <- eigValue[which.min(abs(eigValue))]
+    model$eigenpos=any(eigValue>0)
+    if(model$eigenpos) cat(" Warning: Some eigenvalues of hessian are positive,\n          indicating potential problems!\n") 
+    model$eigen=round(eigValue, 6)
+    cat(" Min abs eigenvalue of hessian    : ",abs(model$eigen),"\n") 
+  }
+  
   
   ### Calculate s.e.
   dummyVCM           <- matrix(NA, nrow=length(model$estimate), ncol=length(model$estimate))
   rownames(dummyVCM) <- names(model$estimate)
   colnames(dummyVCM) <- names(model$estimate)
   model$varcov     <- tryCatch(stats::vcov(model), error=function(e) return(dummyVCM))
+  if(is.null(model$varcov)) model$varcov <- dummyVCM
   model$robvarcov  <- tryCatch(sandwich::sandwich(model), error=function(e) return(dummyVCM))
   model$se         <- sqrt(diag(model$varcov))
   model$robse      <- sqrt(diag(model$robvarcov))
   model$corrmat    <- tryCatch(model$varcov/(model$se%*%t(model$se)), error=function(e) return(dummyVCM))
   model$robcorrmat <- tryCatch(model$robvarcov/(model$robse%*%t(model$robse)) , error=function(e) return(dummyVCM))
+  
+  ### Calculate probabilities to identify outliers
+  P <- exp(apollo_logLike(model$estimate))
+  if(apollo_control$panelData){
+    model$avgCP <- setNames(P^(1/nObsPerIndiv), names(nObsPerIndiv))
+  } else model$avgCP <- setNames(P, 1:length(P))
+  
+  #### Calculate gradient
+  #if(!silent) cat("Calculating gradient norm... ")
+  #model$grad <- tryCatch(numDeriv::grad(apollo_logLike, model$estimate, countIter=FALSE, writeIter=FALSE, sumLL=TRUE),
+  #                       error=function(e) return(NA))
+  #if(!silent) if(length(model$grad)==1 && is.na(model$grad)) cat("ERROR\n") else cat(round( sqrt(sum(model$grad^2)) ,4), "\n", sep="")
+  
+  ### Stores number of iterations
+  model$nIter <- ifelse(estimationRoutine=="bfgs", apollo_logLike(NA, getNIter=TRUE), model$iterations)
+  
+  ### Delete apollo_logLike and close cluster to free resources
+  rm(apollo_logLike)
+  if(exists('cl') & apollo_control$nCores>1) parallel::stopCluster(cl)
+  rm(cl)
+  
+  ### Restore apollo_inputs including database and draws
+  if(apollo_control$nCores>1){
+    if(!silent) cat('Restoring data in main thread...')
+    fileName <- paste0(tempdir(), "\\", apollo_inputs$apollo_control$modelName,"_inputs")
+    apollo_inputs <- readRDS(file=fileName)
+    tmp <- .GlobalEnv
+    if(exists("apollo_inputs", envir=tmp)) assign("apollo_inputs", apollo_inputs, envir=tmp)
+    unlink(fileName); rm(fileName)
+    if(!silent) cat(' Done. ',sum(gc()[,2]),'MB of RAM in use\n',sep='')
+  }
   
   ### Calculate bootstrap s.e.
   if(bootstrapSE>0){
@@ -678,30 +480,18 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     model$bootcorrmat <- tryCatch(model$bootvarcov/(model$bootse%*%t(model$bootse)), error=function(e) return(dummyVCM))
   }
   
-  #### Calculate gradient
-  #if(!silent) cat("Calculating gradient norm... ")
-  #model$grad <- tryCatch(numDeriv::grad(apollo_logLike, model$estimate, countIter=FALSE, writeIter=FALSE, sumLL=TRUE),
-  #                       error=function(e) return(NA))
-  #if(!silent) if(length(model$grad)==1 && is.na(model$grad)) cat("ERROR\n") else cat(round( sqrt(sum(model$grad^2)) ,4), "\n", sep="")
-  
-  
-  ### Calculate probabilities to identify outliers
-  P <- exp(apollo_logLike(model$estimate))
-  if(apollo_control$panelData){
-    nObsPerIndiv <- as.vector(table(database[,apollo_control$indivID]))
-  } else nObsPerIndiv <- 1
-  model$avgCP <- P^(1/nObsPerIndiv)
-  names(model$avgCP) <- unique(database[,apollo_control$indivID])
-  
-  
   ### Calculate Zero LL
   if(!silent) cat("Calculating LL(0)... ")
   model$LL0 <- tryCatch(apollo_probabilities(apollo_beta, apollo_inputs, functionality="zero_LL"),
                         error=function(e) return(NA))
-  if(!anyNA(model$LL0)){
+  if(is.list(model$LL0)) model$LL0=model$LL0[c("model",names(model$LL0)[names(model$LL0)!="model"])]
+  if(is.list(model$LL0)){
+    if(!workInLogs) model$LL0=sapply(model$LL0,function(x) sum(log(x)))
+    if(workInLogs) model$LL0=sapply(model$LL0,sum)
+  } else {
     model$LL0 <- ifelse( workInLogs, sum(model$LL0), sum(log(model$LL0)) )
-    if(!silent) cat(round(model$LL0,2), "\n", sep="")
-  } else if(!silent) cat("No LL0 for some components.\n")
+  }
+  if(!silent) cat("Done.\n")
   
   
   ### Restore fixed parameters to model$estimate and harmonise with model$se, model$robse
@@ -716,50 +506,50 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   
   ### Get LL at optimum for each component (functionality="output" is used inside apollo_llCalc)
   apollo_inputs$apolloLog <- new.env(parent=emptyenv()) # Log is emptied
-  if(!silent) cat("Calculating LL of each model component...")
-  Pout <- tryCatch(apollo_probabilities(model$estimate, apollo_inputs, functionality="output"),
+  if(!silent) cat("Calculating LL of each model component... ")
+  LLout <- tryCatch(apollo_probabilities(model$estimate, apollo_inputs, functionality="output"),
                    error=function(e) return(NA))
-  if(!anyNA(Pout) && is.list(Pout)){
-    # Give name to unnamed components
-    origNames <- names(Pout)
-    newNames  <- paste0("component_", 1:length(Pout))
-    if(!is.null(origNames)) newNames <- ifelse(origNames!="", origNames, newNames)
-    names(Pout) <- newNames
+  
+  if(!anyNA(LLout) && is.list(LLout)){
+    # Give name to unnamed components (already done in apollo_prepareProb)
+    #origNames <- names(Pout)
+    #newNames  <- paste0("component_", 1:length(Pout))
+    #if(!is.null(origNames)) newNames <- ifelse(origNames!="", origNames, newNames)
+    #names(Pout) <- newNames
     # Get log of likelihood with "model" first
-    tmp <- c("model", newNames[newNames!="model"])
-    if(!workInLogs) LLout <- lapply(Pout[tmp], log) else LLout <- Pout[tmp]
+    #tmp <- c("model", newNames[newNames!="model"])
+    LLout <- LLout[c("model",names(LLout)[names(LLout)!="model"])]
+    if(!workInLogs) LLout <- lapply(LLout, log)
     LLout <-lapply(LLout,sum)
     if(!silent) cat("Done.\n")
     model$Pout  <- LLout
-    model$LLout <- unlist(lapply(model$Pout, sum))
+    #model$LLout <- unlist(lapply(model$Pout, sum))
+    model$LLout <- unlist(LLout)
   } else{
-    model$Pout  <- Pout
+    model$Pout  <- LLout
     model$LLout <- list(NA)
     if(!silent) cat("Not applicable to all components.\n")
   }
   
-  if(!silent) cat("\n", apollo_printLog(apollo_inputs$apolloLog), sep="")
+  if(!silent) cat("\n", apollo_printLog(apollo_inputs$apolloLog, book=2), sep="")
   
   ### use pre-scaling values as starting values in output
-  ### OLD VERSION model$apollo_beta <- c(beta_var_val, beta_fix_val)[names(apollo_beta)]
-  model$bootstrapSE <- bootstrapSE
-  model$apollo_beta <- temp_start
-  model$LLStart     <- sum(testLL)
-  model$startTime   <- starttime
-  model$nIter       <- ifelse(estimationRoutine=="bfgs", apollo_logLike(NA, getNIter=TRUE), model$iterations)
-  model$apollo_control <- apollo_control
-  model$nObs        <- nrow(database)
-  model$nIndivs     <- length(unique(database[,apollo_control$indivID]))
-  model$apollo_draws <- apollo_inputs$apollo_draws
-  model$apollo_randCoeff<-apollo_randCoeff
-  model$apollo_lcPars   <- apollo_lcPars
-  endtime           <- Sys.time()
-  model$timeTaken   <- as.numeric(difftime(endtime,starttime,units='secs'))
-  model$apollo_fixed <- apollo_fixed
+  model$bootstrapSE       <- bootstrapSE
+  model$apollo_beta       <- temp_start
+  model$LLStart           <- sum(testLL)
+  model$startTime         <- starttime
+  model$apollo_control    <- apollo_control
+  model$nObs              <- nObs
+  model$nIndivs           <- length(indiv)
+  model$apollo_draws      <- apollo_inputs$apollo_draws
+  model$apollo_randCoeff  <- apollo_randCoeff
+  model$apollo_lcPars     <- apollo_lcPars
+  model$apollo_fixed      <- apollo_fixed
   model$estimationRoutine <- estimationRoutine
-  model$apolloLog <- apollo_inputs$apolloLog
+  model$apolloLog         <- apollo_inputs$apolloLog
   
   ### Apply scaling to estimates and covariance matrix
+  if(length(scaling)>0 && !is.na(scaling)) model$scaling <- scaling
   if(!is.null(apollo_inputs$scaling)) for(i in names(apollo_inputs$scaling)){
     s <- apollo_inputs$scaling[i]
     model$estimate[i] <- s*model$estimate[i]
@@ -773,8 +563,9 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     model$robse[i] <- s*model$robse[i]
   }
   
+  ### Stop clock
+  endtime                 <- Sys.time()
+  model$timeTaken         <- as.numeric(difftime(endtime,starttime,units='secs'))
   
-  
-  if(length(scaling)>0 && !is.na(scaling)) model$scaling <- scaling
   return(model)
 }

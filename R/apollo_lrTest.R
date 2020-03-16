@@ -9,7 +9,14 @@
 #' @return LL ratio test statistic (invisibly)
 #' @export
 apollo_lrTest=function(baseModel,generalModel){
-lines <- readLines(paste(baseModel,"_output.txt",sep="")) 
+filename=paste(paste(baseModel,"_output.txt",sep=""))
+if(!file.exists(filename)) stop("File ",filename," not found!") 
+lines = tryCatch(readLines(filename), 
+                  warning=function(w) x=FALSE,
+                  error=function(e) x=FALSE)
+
+if(is.logical(lines) && lines==FALSE) stop("Could not open file ",filename) 
+
 id <- grep("LL\\(final", lines) 
 fit=lines[id]
 nchar(fit)
@@ -22,7 +29,14 @@ position=gregexpr(pattern=":",npar)[[1]][1]
 dfbase=as.double(substr(npar,position+1,nchar(npar)))
 
 if(is.character(generalModel)){
-  lines <- readLines(paste(generalModel,"_output.txt",sep="")) 
+  filename=paste(paste(generalModel,"_output.txt",sep=""))
+  if(!file.exists(filename)) stop("File ",filename," not found!") 
+  lines = tryCatch(readLines(filename), 
+                   warning=function(w) x=FALSE,
+                   error=function(e) x=FALSE)
+
+  if(is.logical(lines) && lines==FALSE) stop("Could not open file ",filename) 
+  
   id <- grep("LL\\(final", lines) 
   fit=lines[id]
   nchar(fit)

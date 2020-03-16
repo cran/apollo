@@ -4,8 +4,7 @@
 \alias{apollo_llCalc}
 \title{Calculates log-likelihood of all model components}
 \usage{
-apollo_llCalc(apollo_beta, apollo_probabilities, apollo_inputs,
-  silent = FALSE)
+apollo_llCalc(apollo_beta, apollo_probabilities, apollo_inputs, silent = FALSE)
 }
 \arguments{
 \item{apollo_beta}{Named numeric vector. Names and values for parameters.}

@@ -1,27 +1,29 @@
 #' Prepares input for \code{apollo_estimate}
 #'
-#' Searches the user work space for all necessary input to run \code{apollo_estimate}, and packs it in a single list.
+#' Searches the user work space (.GlobalEnv) for all necessary input to run \code{apollo_estimate}, and packs it in a single list.
 #'
 #' All arguments to this function are optional. If the function is called without arguments, then it it will look in
 #' the user workspace (i.e. the global environment) for variables with the same name as its ommited arguments.
+#' We strongly recommend users to visit www.ApolloChoiceModelling.com for examples on how to use Apollo.
+#' In the website, users will also find a detailed manual and a user-group for help and further reference.
 #' @param apollo_beta Named numeric vector. Names and values for parameters.
 #' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
 #' @param database data.frame. Data used by model.
 #' @param apollo_control List. Options controlling the running of the code.
 #'                       \itemize{
-#'                         \item modelName: Character. Name of the model. Used when saving the output to files. Avoid characters not allowed in file names, such as \code{\\}, \code{*}, \code{:}, etc.
-#'                         \item modelDescr: Character. Description of the model. Used in output files.
-#'                         \item indivID: Character. Name of column in the database with each decision maker's ID.
-#'                         \item mixing: Boolean. TRUE for models that include random parameters.
-#'                         \item nCores: Numeric>0. Number of threads (processors) to use in estimation of the model.
-#'                         \item workInLogs: Boolean. TRUE for higher numeric stability at the expense of computational time.
-#'                                           Useful for panel models only. Default is FALSE.
-#'                         \item seed: Numeric. Seed for random number generation.
-#'                         \item HB: Boolean. TRUE if using RSGHB for Bayesian estimation of model.
-#'                         \item noValidation: Boolean. TRUE if user does not wish model input to be validated before estimation - FALSE by default.
-#'                         \item noDiagnostics: Boolean. TRUE if user does not wish model diagnostics to be printed - FALSE by default.
-#'                         \item panelData: Boolean. TRUE if using panelData data (created automatically by \code{apollo_validateControl}).
-#'                         \item weights: Character. Name of column in database containing weights for estimation.
+#'                         \item \code{modelName}: Character. Name of the model. Used when saving the output to files. Avoid characters not allowed in file names, such as \code{\\}, \code{*}, \code{:}, etc.
+#'                         \item \code{modelDescr}: Character. Description of the model. Used in output files.
+#'                         \item \code{indivID}: Character. Name of column in the database with each decision maker's ID.
+#'                         \item \code{mixing}: Boolean. TRUE for models that include random parameters.
+#'                         \item \code{nCores}: Numeric>0. Number of threads (processors) to use in estimation of the model.
+#'                         \item \code{workInLogs}: Boolean. TRUE for higher numeric stability at the expense of computational time.
+#'                                                  Useful for panel models only. Default is FALSE.
+#'                         \item \code{seed}: Numeric. Seed for random number generation.
+#'                         \item \code{HB}: Boolean. TRUE if using RSGHB for Bayesian estimation of model.
+#'                         \item \code{noValidation}: Boolean. TRUE if user does not wish model input to be validated before estimation - FALSE by default.
+#'                         \item \code{noDiagnostics}: Boolean. TRUE if user does not wish model diagnostics to be printed - FALSE by default.
+#'                         \item \code{panelData}: Boolean. TRUE if using panelData data (created automatically by \code{apollo_validateControl}).
+#'                         \item \code{weights}: Character. Name of column in database containing weights for estimation.
 #'                       }
 #' @param apollo_HB List. Contains options for bayesian estimation. See \code{?RSGHB::doHB} for details.
 #'                   Parameters \code{modelname}, \code{gVarNamesFixed}, \code{gVarNamesNormal},
@@ -54,13 +56,13 @@
 #'                  }
 #' @param apollo_randCoeff Function. Used with mixing models. Constructs the random parameters of a mixing model. Receives two arguments:
 #'                      \itemize{
-#'                        \item apollo_beta: Named numeric vector. Names and values of model parameters. 
-#'                        \item apollo_inputs: The output of this function (\code{apollo_validateInputs}).
+#'                        \item \code{apollo_beta}: Named numeric vector. Names and values of model parameters. 
+#'                        \item \code{apollo_inputs}: The output of this function (\code{apollo_validateInputs}).
 #'                      }
 #' @param apollo_lcPars Function. Used with latent class models. Constructs a list of parameters for each latent class. Receives two arguments:
 #'                      \itemize{
-#'                        \item apollo_beta: Named numeric vector. Names and values of model parameters. 
-#'                        \item apollo_inputs: The output of this function (\code{apollo_validateInputs}).
+#'                        \item \code{apollo_beta}: Named numeric vector. Names and values of model parameters. 
+#'                        \item \code{apollo_inputs}: The output of this function (\code{apollo_validateInputs}).
 #'                      }
 #' @param silent Boolean. TRUE to keep the function from printing to the console. Default is FALSE.
 #' @return List grouping several required input for model estimation.
@@ -93,7 +95,7 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
   ### Check that workInLogs is only used with panelData
   if(apollo_control$workInLogs & !apollo_control$panelData){
     apollo_control$workInLogs <- FALSE
-    warning("workInLogs set to FALSE. workInLogs can only be used with panel data")
+    cat("\nworkInLogs set to FALSE. workInLogs can only be used with panel data")
   }
   
   ### Try to recover apollo_HB if appropiate, and sets the default value for the missing parts
@@ -107,9 +109,9 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
   ### Try to recover apollo_draws and apollo_randCoeff if appropiate, and sets the default value for the missing parts
   if(!apollo_control$mixing){
     if(!is.function(apollo_randCoeff)) apollo_randCoeff <- tryCatch( get("apollo_randCoeff", envir=globalenv()), error=function(e) NA )
-    if(is.function(apollo_randCoeff)) warning("Function called 'apollo_randCoeff' found in user workspace will be ignored as model not using mixing.")
+    if(is.function(apollo_randCoeff)) cat("\nFunction called 'apollo_randCoeff' found in user workspace will be ignored as model not using mixing.")
     if(length(apollo_draws)==1 && is.na(apollo_draws)) apollo_draws <- tryCatch( get("apollo_draws", envir=globalenv()), error=function(e) NA )
-    if(length(apollo_draws)==1 && !is.na(apollo_draws)) warning("Variable called 'apollo_draws' found in user workspace will be ignored as model not using mixing.")
+    if(length(apollo_draws)==1 && !is.na(apollo_draws)) cat("\nVariable called 'apollo_draws' found in user workspace will be ignored as model not using mixing.")
     apollo_draws <- NA
     draws <- NA
     apollo_randCoeff <- NA
@@ -142,7 +144,19 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
   if(apollo_control$mixing){
     if(anyNA(apollo_inputs$draws)) stop("Argument 'draws' must be provided when estimating mixture models. Use apollo_makeDraws.")
     if(!is.function(apollo_inputs$apollo_randCoeff)) stop("Argument 'apollo_randCoeff' must be provided when estimating mixture models.")
-    if(!apollo_inputs$apollo_control$panel & dim(apollo_inputs$draws[[1]])[2]>1) warning('Inter-person draws are used without a panel structure. This is unusual.')
+    if(!apollo_inputs$apollo_control$panel & dim(apollo_inputs$draws[[1]])[2]>1) cat("\nInter-person draws are used without a panel structure. This is unusual.")
+  }
+  
+  ### Pre-calculate exponentials if required
+  if(apollo_control$fastExp){
+    apollo_inputs$exp_min   = ifelse(!is.null(apollo_control$exp_min), apollo_control$exp_min, -10)
+    apollo_inputs$exp_max   = ifelse(!is.null(apollo_control$exp_max), apollo_control$exp_max,  10)
+    apollo_inputs$exp_steps = ifelse(!is.null(apollo_control$exp_steps), apollo_control$exp_steps,  10^6)
+    apollo_inputs$exp_delta = (apollo_inputs$exp_max - apollo_inputs$exp_min)/(apollo_inputs$exp_steps - 1)
+    x=seq(apollo_inputs$exp_min, apollo_inputs$exp_max, length=apollo_inputs$exp_steps)
+    apollo_inputs$expVecY =exp(x)
+    apollo_inputs$expVecM = (c(apollo_inputs$expVec[-1], exp(x[length(x)] + apollo_inputs$exp_delta))- apollo_inputs$expVec)/apollo_inputs$exp_delta
+    apollo_inputs$expVecX = x
   }
   
   return(apollo_inputs)

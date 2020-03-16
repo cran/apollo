@@ -4,7 +4,7 @@
 \alias{apollo_addLog}
 \title{Writes an entry to \code{apolloLog}}
 \usage{
-apollo_addLog(title = "", content = "", apolloLog)
+apollo_addLog(title = "", content = "", apolloLog, book = 1)
 }
 \arguments{
 \item{title}{Character. Title of the log entry.}
@@ -14,6 +14,8 @@ Each element will be converted to character using \code{print},
 and concatenated with a line feed in between.}
 
 \item{apolloLog}{Environment. It contains the character vectors of titles and content.}
+
+\item{book}{Positive scalar integer. Book number inside the log (default is 1).}
 }
 \value{
 TRUE if writing was succesful, FALSE if not.

@@ -4,27 +4,31 @@
 \alias{apollo_sharesTest}
 \title{Compares predicted and observed shares}
 \usage{
-apollo_sharesTest(model, apollo_probabilities, apollo_inputs,
-  sharesTest_settings)
+apollo_sharesTest(
+  model,
+  apollo_probabilities,
+  apollo_inputs,
+  sharesTest_settings
+)
 }
 \arguments{
 \item{model}{Model object. Estimated model object as returned by function \link{apollo_estimate}.}
 
 \item{apollo_probabilities}{Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 \itemize{
-  \item apollo_beta: Named numeric vector. Names and values of model parameters.
-  \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-  \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
+  \item \code{apollo_beta}: Named numeric vector. Names and values of model parameters.
+  \item \code{apollo_inputs}: List containing options of the model. See \link{apollo_validateInputs}.
+  \item \code{functionality}: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
 \item{sharesTest_settings}{List of arguments. It must include the following.
 \itemize{
-  \item alternatives: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
-  \item choiceVar: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
-  \item subsamples: Named list of boolean vectors. Each element of the list defines whether a given observation belongs to a given subsample (e.g. by sociodemographics).
-  \item modelComponent: Name of model component. Set to model by default.
+  \item \code{alternatives}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
+  \item \code{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
+  \item \code{subsamples}: Named list of boolean vectors. Each element of the list defines whether a given observation belongs to a given subsample (e.g. by sociodemographics).
+  \item \code{modelComponent}: Name of model component. Set to model by default.
 }}
 }
 \value{

@@ -1,17 +1,17 @@
-#' Calculates the probability of an ordered logit model
+#' Calculates the probability of an ordered probit model
 #'
-#' Calculates the probabilities of an ordered logit model and can also perform other operations based on the value of the \code{functionality} argument.
+#' Calculates the probabilities of an ordered probit model and can also perform other operations based on the value of the \code{functionality} argument.
 #'
-#' This function estimates an ordered logit model of the type:
-#' y* = V + epsilon
-#' outcomeOrdered =  1 if   -Inf < y* < tau[1]
-#'      2 if tau[1] < y* < tau[2]
-#'      ...
-#'      maxLvl if tau[length(tau)] < y* < +Inf
-#' Where epsilon is distributed standard logistic, and the values 1, 2, ..., maxLvl can be
-#' replaces by coding[1], coding[2], ..., coding[maxLvl].
+#' This function estimates an ordered probit model of the type:
+#' \deqn{ y^{*} = V + \epsilon \\
+#' y = 1 if -\infty < y^{*} < \tau_1,
+#'     2 if \tau_1 < y^{*} < \tau_2,
+#'     ...,
+#'     max(y) if \tau_{max(y)-1} < y^{*} < \infty}
+#' Where \eqn{\epsilon} is distributed standard logistic, and the values 1, 2, ..., \eqn{max(y)} can be
+#' replaced by \code{coding[1], coding[2], ..., coding[maxLvl]}.
 #' The behaviour of the function changes depending on the value of the \code{functionality} argument.
-#' @param ol_settings List of settings for the OL model. It should include the following.
+#' @param op_settings List of settings for the OP model. It should include the following.
 #'                   \itemize{
 #'                     \item \code{outcomeOrdered} Numeric vector. Dependant variable. The coding of this variable is assumed to be from 1 to the maximum number of different levels. For example, if the ordered response has three possible values: "never", "sometimes" and "always", then it is assumed that outcomeOrdered contains "1" for "never", "2" for "sometimes", and 3 for "always". If another coding is used, then it should be specified using the \code{coding} argument.
 #'                     \item \code{V} Numeric vector. A single explanatory variable (usually a latent variable). Must have the same number of rows as outcomeOrdered.
@@ -22,13 +22,13 @@
 #'                   }
 #' @param functionality Character. Can take different values depending on desired output.
 #'                      \itemize{
-#'                        \item \code{"estimate"} Used for model estimation.
-#'                        \item \code{"prediction"} Used for model predictions.
-#'                        \item \code{"validate"} Used for validating input.
-#'                        \item \code{"zero_LL"} Used for calculating null likelihood.
-#'                        \item \code{"conditionals"} Used for calculating conditionals.
-#'                        \item \code{"output"} Used for preparing output after model estimation.
-#'                        \item \code{"raw"} Used for debugging.
+#'                        \item \strong{"estimate"} Used for model estimation.
+#'                        \item \strong{"prediction"} Used for model predictions.
+#'                        \item \strong{"validate"} Used for validating input.
+#'                        \item \strong{"zero_LL"} Used for calculating null likelihood.n Not implemented for ordered probit.
+#'                        \item \strong{"conditionals"} Used for calculating conditionals.
+#'                        \item \strong{"output"} Used for preparing output after model estimation.
+#'                        \item \strong{"raw"} Used for debugging.
 #'                      }
 #' @return The returned object depends on the value of argument \code{functionality} as follows.
 #'         \itemize{
@@ -40,22 +40,23 @@
 #'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'         }
+#' @importFrom stats pnorm
 #' @export
-apollo_ol  <- function(ol_settings, functionality){
-  if(is.null(ol_settings[["componentName"]])) ol_settings[["componentName"]]="OL"
-  componentName=ol_settings[["componentName"]]
+apollo_op  <- function(op_settings, functionality){
+  if(is.null(op_settings[["componentName"]])) op_settings[["componentName"]]="OP"
+  componentName = op_settings[["componentName"]]
   
-  if(is.null(ol_settings[["outcomeOrdered"]])) stop("The ol_settings list for model component \"",componentName,"\" needs to include an object called \"outcomeOrdered\"!")
-  if(is.null(ol_settings[["V"]])             ) stop("The ol_settings list for model component \"",componentName,"\" needs to include an object called \"V\"!")
-  if(is.null(ol_settings[["tau"]])           ) stop("The ol_settings list for model component \"",componentName,"\" needs to include an object called \"tau\"!")
-  if(is.null(ol_settings[["coding"]])        ) ol_settings[["coding"]] = NULL
-  if(is.null(ol_settings[["rows"]])          ) ol_settings[["rows"]]   = "all"
+  if(is.null(op_settings[["outcomeOrdered"]])) stop("The op_settings list for model component \"",componentName,"\" needs to include an object called \"outcomeOrdered\"!")
+  if(is.null(op_settings[["V"]])             ) stop("The op_settings list for model component \"",componentName,"\" needs to include an object called \"V\"!")
+  if(is.null(op_settings[["tau"]])           ) stop("The op_settings list for model component \"",componentName,"\" needs to include an object called \"tau\"!")
+  if(is.null(op_settings[["coding"]])        ) op_settings[["coding"]] = NULL
+  if(is.null(op_settings[["rows"]])          ) op_settings[["rows"]]   = "all"
 
-  outcomeOrdered=ol_settings[["outcomeOrdered"]]
-  V      = ol_settings[["V"]]
-  tau    = ol_settings[["tau"]]
-  coding = ol_settings[["coding"]]
-  rows   = ol_settings[["rows"]]
+  outcomeOrdered = op_settings[["outcomeOrdered"]]
+  V      = op_settings[["V"]]
+  tau    = op_settings[["tau"]]
+  coding = op_settings[["coding"]]
+  rows   = op_settings[["rows"]]
   nObs <- tryCatch(nrow( get("apollo_inputs", parent.frame(), inherits=FALSE)$database ),
                    error=function(e){
                      lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
@@ -90,14 +91,6 @@ apollo_ol  <- function(ol_settings, functionality){
                      return(max(lenV, lenC))
                    })
   
-  ### Validate input
-  #if(!is.vector(outcomeOrdered)) stop("Argument 'outcomeOrdered' must be a vector of length nObs.")
-  #if(!is.numeric(V) || !(is.array(V) | is.vector(V))) stop("Argument 'V' must be a numeric vector or array.")
-  #if(!is.null(coding) && (!is.vector(coding) | is.null(names(coding)))) stop("Argument 'coding', if provided, must be a named vector.")
-  ### CORRECTED NEXT LINE
-  ### if(rows!="all" & ( length(rows)!=nObs | !is.logical(rows) )) stop("Argument 'rows', if provided, must be \"all\" or a vector of boolean statements of length nObs.")
-  #if(!( length(rows)==1 && (rows=="all")) & ( length(rows)!=nObs | !is.logical(rows) )) stop("Argument 'rows', if provided, must be \"all\" or a vector of boolean statements of length nObs.")
-  
   ### Filter rows
   if(length(rows)==1 && rows=="all") rows <- rep(TRUE, length(nObs))
   if(any(!rows)){
@@ -116,11 +109,11 @@ apollo_ol  <- function(ol_settings, functionality){
                             error = function(e) list(noValidation=FALSE, noDiagnostics=FALSE))
     
     if(!apollo_control$noValidation){
-      if(!is.vector(tau)) stop("Thresholds for ordered logit for model component \"",componentName,"\" need to be a vector (no random components allowed)!")
-      values_present=unique(outcomeOrdered)
+      if(!is.vector(tau)) stop("Thresholds for ordered probit model component \"",componentName,"\" need to be a vector (no random components allowed)!")
+      values_present = unique(outcomeOrdered)
       if(is.null(coding)){
         coding <- 1:(length(tau)+1)  
-        cat("\nNo coding provided for ordered logit for model component \"",componentName,"\",\n so assuming outcomeOrdered goes from 1 to",max(coding),"\n")
+        cat("\nNo coding provided for ordered probit model component \"",componentName,"\", \n assuming outcomeOrdered goes from 1 to",max(coding),"\n", sep="")
       }
       if(!(all(values_present %in% coding ))) stop("Some levels in 'outcomeOrdered' do not exist in 'coding' for model component \"",componentName,"\" !")
       if(!(all(coding %in% values_present ))) stop("Some levels in 'coding' do not exist in 'outcomeOrdered' for model component \"",componentName,"\"!")
@@ -136,7 +129,7 @@ apollo_ol  <- function(ol_settings, functionality){
                     content = round(choicematrix,2), apolloLog)
     }
 
-    testL = apollo_ol(ol_settings, functionality="estimate")
+    testL = apollo_op(op_settings, functionality="estimate")
     if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"",componentName,"\"")
     if(any(testL==0)) cat("\nSome observations have zero probability at starting value for model component \"",componentName,"\"")
     return(invisible(testL))
@@ -164,7 +157,7 @@ apollo_ol  <- function(ol_settings, functionality){
 
     tau <- c(-Inf,tau,Inf)
 
-    p <- 1/(1 + exp(V-tau[outcomeOrdered2+1])) - 1/(1 + exp(V-tau[outcomeOrdered2]))
+    p <- pnorm(tau[outcomeOrdered2+1] - V) - pnorm(tau[outcomeOrdered2] - V)
 
     if(any(!rows)) p <- apollo_insertRows(p, rows, 1) # insert excluded rows with value 1
     
@@ -180,7 +173,7 @@ apollo_ol  <- function(ol_settings, functionality){
     tau <- c(-Inf,tau,Inf)
     
     p = list()
-    for(j in 1:(length(tau)-1)) p[[j]] = 1/(1 + exp(V-tau[j+1])) - 1/(1 + exp(V-tau[j]))
+    for(j in 1:(length(tau)-1)) p[[j]] = pnorm(tau[j+1]-V) - pnorm(tau[j]-V)
     
     if(is.null(coding)) coding <- 1:(length(tau)-1)
     names(p) <- coding
@@ -190,7 +183,7 @@ apollo_ol  <- function(ol_settings, functionality){
     
     # Add chosen alternative (unless outcomeOrdered is NA)
     if(!(length(outcomeOrdered)==1 && is.na(outcomeOrdered))){
-      p[["chosen"]] <- apollo_ol(ol_settings, functionality="estimate")
+      p[["chosen"]] <- apollo_op(op_settings, functionality="estimate")
     }
 
     return(p)
@@ -201,7 +194,7 @@ apollo_ol  <- function(ol_settings, functionality){
   # ############################# #
   if(functionality=="output"){
 
-    p <- apollo_ol(ol_settings, functionality="estimate")
+    p <- apollo_op(op_settings, functionality="estimate")
     
     choicematrix <- t(as.matrix(table(outcomeOrdered)))
     choicematrix <- rbind(choicematrix, choicematrix[1,]/nObs*100)
@@ -210,7 +203,7 @@ apollo_ol  <- function(ol_settings, functionality){
     apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
     apollo_addLog(title   = paste0("Overview of choices for model component \"",componentName,"\""), 
                   content = round(choicematrix,2), apolloLog)
-    apollo_reportModelTypeLog(modelType="OL", apolloLog)
+    apollo_reportModelTypeLog(modelType="OP", apolloLog)
     
     return(p)
   }

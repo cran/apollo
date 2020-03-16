@@ -10,11 +10,12 @@
 #' centered around its mean beforehand).
 #' @param normalDensity_settings List of arguments to the functions. It must contain the following.
 #'                               \itemize{
-#'                                 \item outcomeNormal: Numeric vector. Dependant variable.
-#'                                 \item xNormal: Numeric vector. Single explanatory variable.
-#'                                 \item mu: Numeric scalar. Intercept of the linear model.
-#'                                 \item sigma: Numeric scalar. Variance of error component of linear model to be estimated.
-#'                       \item rows: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+#'                                 \item \code{outcomeNormal}: Numeric vector. Dependant variable.
+#'                                 \item \code{xNormal}: Numeric vector. Single explanatory variable.
+#'                                 \item \code{mu}: Numeric scalar. Intercept of the linear model.
+#'                                 \item \code{sigma}: Numeric scalar. Variance of error component of linear model to be estimated.
+#'                                 \item \code{rows}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+#'                                 \item \code{componentName}: Character. Name given to model component.
 #'                               }
 #' @param functionality Character. Can take different values depending on desired output.
 #'                      \itemize{
@@ -28,15 +29,14 @@
 #'                      }
 #' @return The returned object depends on the value of argument \code{functionality} as follows.
 #'         \itemize{
-#'           \item "estimate": vector/matrix/array. Returns the probabilities for the chosen value for each observation.
-#'           \item "prediction": Not applicable.
-#'           \item "validate": Boolean. Returns TRUE if all tests are passed.
-#'           \item "zero_LL": Not applicable.
-#'           \item "conditionals": Same as "estimate".
-#'           \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
-#'           \item "raw": Same as "estimate".
+#'           \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the likelihood for each observation.
+#'           \item \strong{\code{"prediction"}}: Not implemented. Returns NA.
+#'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
+#'           \item \strong{\code{"zero_LL"}}: Not implemented. Returns NA.
+#'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
+#'           \item \strong{\code{"raw"}}: Same as \code{"estimate"}
 #'         }
-
 #' @examples
 #' ### Load data
 #' xNormal <- runif(100)
@@ -57,10 +57,13 @@
 #' apollo_normalDensity(normalDensity_settings, functionality="estimate")
 #' @export
 apollo_normalDensity <- function(normalDensity_settings, functionality){
-  if(is.null(normalDensity_settings[["outcomeNormal"]])) stop("The normalDensity_settings list needs to include an object called \"outcomeNormal\"!")
-  if(is.null(normalDensity_settings[["xNormal"]])) stop("The normalDensity_settings list needs to include an object called \"xNormal\"!")
-  if(is.null(normalDensity_settings[["mu"]])) stop("The normalDensity_settings list needs to include an object called \"mu\"!")
-  if(is.null(normalDensity_settings[["sigma"]])) stop("The normalDensity_settings list needs to include an object called \"sigma\"!")
+  if(is.null(normalDensity_settings[["componentName"]])) normalDensity_settings[["componentName"]]="NormD"
+  componentName = normalDensity_settings[["componentName"]]
+  
+  if(is.null(normalDensity_settings[["outcomeNormal"]])) stop("The normalDensity_settings list for model component \"",componentName,"\" needs to include an object called \"outcomeNormal\"!")
+  if(is.null(normalDensity_settings[["xNormal"]])) stop("The normalDensity_settings list for model component \"",componentName,"\" needs to include an object called \"xNormal\"!")
+  if(is.null(normalDensity_settings[["mu"]])) stop("The normalDensity_settings list for model component \"",componentName,"\" needs to include an object called \"mu\"!")
+  if(is.null(normalDensity_settings[["sigma"]])) stop("The normalDensity_settings list for model component \"",componentName,"\" needs to include an object called \"sigma\"!")
   if(is.null(normalDensity_settings[["rows"]])) normalDensity_settings[["rows"]]="all"
 
   outcomeNormal = normalDensity_settings[["outcomeNormal"]]
@@ -90,16 +93,20 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
     if(apollo_control$noValidation==FALSE){
       if(is.vector(xNormal)) xlength=length(xNormal)
       if(is.array(xNormal)) xlength=dim(xNormal)[1]
-      if(!is.vector(outcomeNormal)) stop("Dependent variable for Normal density model needs to be one-dimensional!")
-      if(xlength!=1 && xlength!=length(outcomeNormal)) stop("Incompatible dimensions for dependent and explanatory variables for Normal density model!")
-      if(length(mu)!=1) stop("Need to use a scalar for mean parameter for Normal density model!")
-      if(length(sigma)!=1) stop("Need to use a scalar for standard deviation parameter for Normal density model!")
+      if(!is.vector(outcomeNormal)) stop("Dependent variable for model component \"",componentName,"\" needs to be one-dimensional!")
+      if(xlength!=1 && xlength!=length(outcomeNormal)) stop("Incompatible dimensions for dependent and explanatory variables for model component \"",componentName,"\"!")
+      if(length(mu)!=1) stop("Need to use a scalar for mean parameter for model component \"",componentName,"\"!")
+      if(length(sigma)!=1) stop("Need to use a scalar for standard deviation parameter for model component \"",componentName,"\"!")
     }
     if(apollo_control$noDiagnostics==FALSE){
       apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-      apollo_addLog("Summary statistics for dependent variable for Normal\n density model component:", summary(outcomeNormal), apolloLog)
+      apollo_addLog(title   = paste0("Summary statistics for dependent variable for model component \"",componentName,"\":"), 
+                    content = summary(outcomeNormal), apolloLog)
     }
-    return(invisible(TRUE))
+    testL=apollo_normalDensity(normalDensity_settings, functionality="estimate")
+    if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"",componentName,"\"")
+    if(any(testL==0)) cat("\nSome observations have zero probability at starting value for model component \"",componentName,"\"")
+    return(invisible(testL))
   }
 
   # ############################## #
@@ -134,8 +141,9 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
 
   if(functionality=="output"){
     apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-    apollo_addLog("Summary statistics for dependent variable for Normal\n density model component:", summary(outcomeNormal), apolloLog)
-    
+    apollo_addLog(title   = paste0("Summary statistics for dependent variable for model component \"",componentName,"\":"), 
+                  content = summary(outcomeNormal), apolloLog)
+    apollo_reportModelTypeLog(modelType="NormD", apolloLog)
     ans <- apollo_normalDensity(normalDensity_settings, functionality="estimate")
 
     return(ans)

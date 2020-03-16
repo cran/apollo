@@ -4,40 +4,44 @@
 #' The function calculates the probability of a ranking as a product of logit models with gradually reducing availability, where scale differences can be allowed for.
 #' @param el_settings List of inputs of the exploded logit model. It shoud contain the following.
 #'                    \itemize{
-#'                     \item alternatives: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
-#'                     \item avail: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
-#'                     \item choiceVars: List of numeric vectors. Contain choices for each position of the ranking. The list must be ordered with the best choice first, second best second, etc. It will usually be a list of columns from the database.
-#'                     \item V: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
-#'                     \item scales: List of vectors. Scale factors of each logit model. Should have one element less than choiceVars. At least one element should be normalized to 1. If omitted, scale=1 for all positions is assumed.
-#'                     \item rows: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+#'                     \item \strong{\code{"alternatives"}}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
+#'                     \item \strong{\code{"avail"}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
+#'                     \item \strong{\code{"choiceVars"}}: List of numeric vectors. Contain choices for each position of the ranking. The list must be ordered with the best choice first, second best second, etc. It will usually be a list of columns from the database.
+#'                     \item \strong{\code{"V"}}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
+#'                     \item \strong{\code{"scales"}}: List of vectors. Scale factors of each logit model. Should have one element less than choiceVars. At least one element should be normalized to 1. If omitted, scale=1 for all positions is assumed.
+#'                     \item \strong{\code{"rows"}}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+#'                     \item \strong{\code{"componentName"}}: Character. Name given to model component.
 #'                    }
 #' @param functionality Character. Can take different values depending on desired output.
 #'                      \itemize{
-#'                        \item "estimate": Used for model estimation.
-#'                        \item "prediction": Used for model predictions.
-#'                        \item "validate": Used for validating input.
-#'                        \item "zero_LL": Used for calculating null likelihood.
-#'                        \item "conditionals": Used for calculating conditionals.
-#'                        \item "output": Used for preparing output after model estimation.
-#'                        \item "raw": Used for debugging.
+#'                        \item \code{"estimate"}: Used for model estimation.
+#'                        \item \code{"prediction"}: Used for model predictions.
+#'                        \item \code{"validate"}: Used for validating input.
+#'                        \item \code{"zero_LL"}: Used for calculating null likelihood.
+#'                        \item \code{"conditionals"}: Used for calculating conditionals.
+#'                        \item \code{"output"}: Used for preparing output after model estimation.
+#'                        \item \code{"raw"}: Used for debugging.
 #'                      }
 #' @return The returned object depends on the value of argument \code{functionality} as follows.
 #'         \itemize{
-#'           \item "estimate": vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
-#'           \item "prediction": Not applicable.
-#'           \item "validate": Boolean. Returns TRUE if all tests are passed.
-#'           \item "zero_LL": vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
-#'           \item "conditionals": Same as "prediction".
-#'           \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
-#'           \item "raw": Same as "prediction".
+#'           \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
+#'           \item \strong{\code{"prediction"}}: Not applicable (\code{NA}).
+#'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
+#'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
+#'           \item \strong{\code{"raw"}}: Same as \code{"estimate"}
 #'         }
 #' @importFrom stats setNames
 #' @export
 apollo_el <- function(el_settings, functionality){
-  if(is.null(el_settings[["alternatives"]])) stop("The el_settings list needs to include an object called \"alternatives\"!")
-  if(is.null(el_settings[["avail"]])) stop("The el_settings list needs to include an object called \"avail\"!")
-  if(is.null(el_settings[["choiceVars"]])) stop("The el_settings list needs to include an object called \"choiceVars\"!")
-  if(is.null(el_settings[["V"]])) stop("The el_settings list needs to include an object called \"V\"!")
+  if(is.null(el_settings[["componentName"]])       ) el_settings[["componentName"]]="EL"
+  componentName= el_settings[["componentName"]]
+  
+  if(is.null(el_settings[["alternatives"]])) stop("The el_settings list for model component \"",componentName,"\" needs to include an object called \"alternatives\"!")
+  if(is.null(el_settings[["avail"]])) stop("The el_settings list for model component \"",componentName,"\" needs to include an object called \"avail\"!")
+  if(is.null(el_settings[["choiceVars"]])) stop("The el_settings list for model component \"",componentName,"\" needs to include an object called \"choiceVars\"!")
+  if(is.null(el_settings[["V"]])) stop("The el_settings list for model component \"",componentName,"\" needs to include an object called \"V\"!")
   if(is.null(el_settings[["scales"]])) {
     el_settings[["scales"]]=vector(mode="list",length=length(el_settings[["alternatives"]])-1)
     el_settings[["scales"]] <- lapply(el_settings[["scales"]], function(a) 1)
@@ -52,7 +56,41 @@ apollo_el <- function(el_settings, functionality){
   rows         = el_settings[["rows"]]
   
   stages=length(choiceVars)
+  nObs <- tryCatch(nrow( get("apollo_inputs", parent.frame(), inherits=FALSE)$database ),
+                   error=function(e){
+                     lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
+                     lenA <- sapply(avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
+                     lenC <- sapply(choiceVars, length)
+                     return(max(lenV, lenA, lenC))
+                   })
   
+  ### Format checks
+  # alternatives
+  test <- is.vector(alternatives) & !is.null(names(alternatives))
+  if(!test) stop("The \"alternatives\" argument for model component \"",componentName,"\" needs to be a named vector")
+  # avail
+  test <- is.list(avail) || (length(avail)==1 && avail==1)
+  if(!test) stop("The \"avail\" argument for model component \"",componentName,"\" needs to be a list or set to 1")
+  if(is.list(avail)){
+    lenA <- sapply(avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
+    test <- all(lenA==nObs | lenA==1)
+    if(!test) stop("All entries in \"avail\" for model component \"",componentName,"\" need to be a scalar or a vector with one entry per observation in the \"database\"")
+  }
+  # choiceVar
+  test <- is.list(choiceVars) && (stages==length(V)-1)
+  if(!test) stop("The \"choiceVars\" argument for model component \"",componentName,"\" needs to be a list, with one vector per stage, each with one entry per observation in the \"database\"")
+  # V
+  if(!is.list(V)) stop("The \"V\" argument for model component \"",componentName,"\" needs to be a list")
+  lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
+  test <- all(lenV==nObs | lenV==1)
+  if(!test) stop("Each element of \"V\" for model component \"",componentName,"\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")  
+  if(length(scales)!=stages) stop("The object \"scales\" for model component \"",componentName,"\" needs to be the same length as the number of stages, i.e. one less than the number of alternatives!")
+  # rows
+  test <- is.vector(rows) && ( (is.logical(rows) && length(rows)==nObs) || (length(rows)==1 && rows=="all") )
+  if(!test) stop("The \"rows\" argument for model component \"",componentName,"\" needs to be \"all\" or a vector of boolean statements with one entry per observation in the \"database\"")
+  # functionality
+  test <- functionality %in% c("estimate","prediction","validate","zero_LL","conditionals","output","raw")
+  if(!test) stop("Non-permissable setting for \"functionality\" for model component \"",componentName,"\"")
   
   # ############################## #
   #### functionality="validate" ####
@@ -75,11 +113,9 @@ apollo_el <- function(el_settings, functionality){
     }
     
     # check rows statement
-    if(length(rows)!=length(choiceVars[[1]])) stop("The argument \"rows\" needs to either be \"all\" or a vector of length equal to the number of the rows in the data!")
-    if(length(scales)!=stages) stop("The object \"scales\" needs to either be the same length as the number of stages, i.e. one less than the number of alternatives!")
     
     # Check that alternatives are named in altcodes and V
-    if(is.null(altnames) || is.null(altcodes) || is.null(names(V))) stop("Alternatives must be named, both in 'alternatives' and 'V'.")
+    if(is.null(altnames) || is.null(altcodes) || is.null(names(V))) stop("Alternatives for model component \"",componentName,"\" must be named, both in 'alternatives' and 'V'.")
     
     # Create availability if necessary
     if(!is.list(avail)){
@@ -95,18 +131,18 @@ apollo_el <- function(el_settings, functionality){
     
     if(apollo_control$noValidation==FALSE){
       # Check that there are at least two alternatives
-      if(nAlts<3) stop("EL requires at least three alternatives")
+      if(nAlts<3) stop("Model component \"",componentName,"\"  requires at least three alternatives")
       
       # Check that choice vector is not empty
-      if(nObs==0) stop("No choices to model")
+      if(nObs==0) stop("No data for model component \"",componentName,"\"")
       
       # Check that labels in choice match those in the utilities and availabilities
       choiceLabs <- unique(choiceVars[[1]])
-      if(!all(altnames %in% names(V))) stop("Alternative labels in \"altnames\" do not match those in \"V\".")
-      if(!all(altnames %in% names(avail))) stop("Alternative labels in \"altnames\" do not match those in \"avail\".")
+      if(!all(altnames %in% names(V))) stop("The names of the alternatives for model component \"",componentName,"\" do not match those in \"V\".")
+      if(!all(altnames %in% names(avail))) stop("The names of the alternatives for model component \"",componentName,"\" do not match those in \"avail\".")
       
       # Check that there are no values in the choice column for undefined alternatives
-      if(!all(choiceLabs %in% altcodes)) stop("Value in choice column that is not included in altcodes.")
+      if(!all(choiceLabs %in% altcodes)) stop("The data contains values for \"choiceVar\" for model component \"",componentName,"\" that are not included in \"alternatives\".")
       
       # create new availabilities list, with one list per stage
       avail_new=list()
@@ -134,18 +170,17 @@ apollo_el <- function(el_settings, functionality){
           if(sum((choiceVar==altcodes[j])*(avail[[j]]==0)*rows)) chosenunavail=1
           j=j+1
         }
-        if(chosenunavail==1) stop("Some alternative(s) chosen despite being listed as unavailable in stage ",s,"\n")
+        if(chosenunavail==1) stop("Some alternative(s) for model component \"",componentName,"\" chosen despite being listed as unavailable in stage ",s,"\n")
         
         # check that all availabilities are either 0 or 1
-        for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values are not 0 or 1.")
+        for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values for model component \"",componentName,"\" are not 0 or 1.")
         s=s+1
       }
       
       # Set utility of unavailable alternatives and excluded rows to 0 to avoid numerical issues
       V <- mapply(function(v,a) apollo_setRows(v, !a | !rows, 0), V, avail, SIMPLIFY=FALSE)
-      if(any(sapply(V, anyNA))) warning("At least one utility contains one or more NA values")
+      if(any(sapply(V, anyNA))) cat("\nAt least one utility for model component \"",componentName,"\" contains one or more NA values")
       
-      #cat("\nAll checks passed for exploded logit model component\n")
       
     }
     
@@ -176,13 +211,13 @@ apollo_el <- function(el_settings, functionality){
         colnames(choicematrix) = altnames
         #cat(paste("Overview of choices for exploded logit model component, stage ",s,":\n",sep=""))
         #print(round(choicematrix,2))
-        content[[length(content) + 1]] <- paste("Overview of choices for exploded logit model component, stage ",s,":\n",sep="")
+        content[[length(content) + 1]] <- paste("Overview of choices for model component \"",componentName,"\", stage ",s,":\n",sep="")
         content[[length(content) + 1]] <- round(choicematrix,2)
         
         # Check if there are shorter rankings
         noAltAvail <- sum(Reduce("+", avail_new[[s]])==0)
         if (noAltAvail>0) cat("There are ", noAltAvail, " observation(s) with no available alternatives in stage ", s, ".\n", sep="")
-        cat("\n")
+        #cat("\n")
         if(any(choicematrix[4,]==0)) content[[length(content) + 1]] <- "Warning: some alternatives are never chosen in your data!"
         if(any(choicematrix[4,]==1)) content[[length(content) + 1]] <- "Warning: some alternatives are always chosen when available!"
         s=s+1
@@ -190,10 +225,14 @@ apollo_el <- function(el_settings, functionality){
       if(avail_set==TRUE) content[[length(content)+1]] <- paste0("Warning: Availability not provided (or some elements are NA).",
                                                                  "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
       apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-      apollo_addLog("Overview of choices for EL model component:", content, apolloLog)
+      apollo_addLog(title   = paste0("Overview of choices  for model component \"",componentName,"\":"), 
+                    content = content, apolloLog)
     }
     
-    return(invisible(TRUE))
+    testL=apollo_el(el_settings, functionality="estimate")
+    if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"",componentName,"\"")
+    if(any(testL==0)) cat("\nSome observations have zero probability at starting value for model component \"",componentName,"\"")
+    return(invisible(testL))
   }
   
   # ############################## #
@@ -333,57 +372,6 @@ apollo_el <- function(el_settings, functionality){
       for(j in 1:nAlts) avail_new[[s]][j] = lapply(avail_new[[s]][j],"*",(choiceVars[[s-1]]!=j))
     }
     
-    # Calculate diagnostics and write them to a temporary file
-    #s=1
-    #while(s<=stages){
-    #  avail     = avail_new[[s]]
-    #  choiceVar = choiceVars[[s]]
-    #  # turn scalar availabilities into vectors
-    #  for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs)
-    #  
-    #  # Construct summary table of availabilities and market share
-    #  availprint   = colSums(rows*matrix(unlist(avail), ncol = length(avail))) # number of times each alt is available
-    #  choicematrix = matrix(0,nrow=4,ncol=nAlts)
-    #  choicematrix[1,] = availprint
-    #  for(j in 1:nAlts) choicematrix[2,j] = sum(choiceVar==alternatives[j] & rows) # number of times each alt is chosen
-    #  choicematrix[3,] = choicematrix[2,]/sum(rows)*100 # market share
-    #  choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 # market share controlled by availability
-    #  choicematrix[4,!is.finite(choicematrix[4,])] <- 0
-    #  rownames(choicematrix) = c("Times available","Times chosen","Percentage chosen overall","Percentage chosen when available")
-    #  colnames(choicematrix) = names(alternatives)
-    #  
-    #  # write diagnostics to a file named "modelName_tempOutput.txt" in a temporary directory.
-    #  apollo_control <- tryCatch( get("apollo_inputs", parent.frame(), inherits=FALSE )$apollo_control,
-    #                              error=function(e){
-    #                                cat("apollo_el could not retrieve apollo_control. No diagnostics in output.\n")
-    #                                return(NA)
-    #                              } )
-    #  if(!(length(apollo_control)==1 && is.na(apollo_control))){
-    #    fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
-    #    fileName <- file.path(tempdir(),fileName)
-    #    fileConn <- tryCatch( file(fileName, open="at"),
-    #                          error=function(e){
-    #                            cat('apollo_el could not write diagnostics to temporary file. No diagnostics in output.\n')
-    #                            return(NA)
-    #                          })
-    #    if(!anyNA(fileConn)){
-    #      sink(fileConn)
-    #      on.exit({if(sink.number()>0) sink(); close(fileConn)})
-    #      if(apollo_control$noDiagnostics==FALSE){
-    #        cat(paste("Overview of choices for exploded logit model component, stage ",s,":\n",sep=""))
-    #        print(round(choicematrix,2))
-    #        # Check if there are shorter rankings
-    #        noAltAvail <- Reduce("+", avail_new[[s]])==0
-    #        cat("There are ", sum(noAltAvail), " observation(s) with no available alternatives in stage ", s, ".\n", sep="")
-    #        cat("\n")}
-    #      if(sum(choicematrix[4,]==0)>0) cat("Warning: some alternatives are never chosen in your data!\n")
-    #      if(any(choicematrix[4,]==1)) cat("Warning: some alternatives are always chosen when available!\n")
-    #    }
-    #  }      
-    #  
-    #  s=s+1
-    #}
-    
     ### Write to apolloLog
     content <- list()
     s=1
@@ -409,13 +397,12 @@ apollo_el <- function(el_settings, functionality){
       colnames(choicematrix) = altnames
       #cat(paste("Overview of choices for exploded logit model component, stage ",s,":\n",sep=""))
       #print(round(choicematrix,2))
-      content[[length(content) + 1]] <- paste("Overview of choices for exploded logit model component, stage ",s,":\n",sep="")
+      content[[length(content) + 1]] <- paste("Overview of choices for model component \"",componentName,"\", stage ",s,":\n",sep="")
       content[[length(content) + 1]] <- round(choicematrix,2)
       
       # Check if there are shorter rankings
       noAltAvail <- sum(Reduce("+", avail_new[[s]])==0)
       if (noAltAvail>0) cat("There are ", noAltAvail, " observation(s) with no available alternatives in stage ", s, ".\n", sep="")
-      cat("\n")
       if(any(choicematrix[4,]==0)) content[[length(content) + 1]] <- "Warning: some alternatives are never chosen in your data!" #cat("Warning: some alternatives are never chosen in your data!\n")
       if(any(choicematrix[4,]==1)) content[[length(content) + 1]] <- "Warning: some alternatives are always chosen when available!" #cat("Warning: some alternatives are always chosen when available!\n")
       s=s+1
@@ -423,7 +410,9 @@ apollo_el <- function(el_settings, functionality){
     if(avail_set==TRUE) content[[length(content)+1]] <- paste0("Warning: Availability not provided (or some elements are NA).",
                                                                "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
     apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-    apollo_addLog("Overview of choices for EL model component:", content, apolloLog)
+    apollo_addLog(title   = paste0("Overview of choices  for model component \"",componentName,"\":"), 
+                  content = content, apolloLog)
+    apollo_reportModelTypeLog(modelType="EL", apolloLog)
     
     return(P)
   }

@@ -11,19 +11,19 @@ apollo_saveOutput(model, saveOutput_settings = NA)
 
 \item{saveOutput_settings}{List of options. Valid options are the following.
 \itemize{
-   \item printClassical: Boolean. TRUE for printing classical standard errors. TRUE by default.
-   \item printPVal: Boolean. TRUE for printing p-values. FALSE by default.
-   \item printT1: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
-   \item printDiagnostics: Boolean. TRUE for printing summary of choices in database and other diagnostics. TRUE by default.
-   \item printCovar: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
-   \item printCorr: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
-   \item printOutliers: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
-   \item printChange: Boolean. TRUE for printing difference between starting values and estimates. TRUE by default.
-   \item saveEst: Boolean. TRUE for saving estimated parameters and standard errors to a CSV file. TRUE by default.
-   \item saveCov: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.
-   \item saveCorr: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.
-   \item saveModelObject: Boolean. TRUE to save the R model object to a file (use \link{apollo_loadModel} to load it to memory). TRUE by default.
-   \item writeF12: Boolean. TRUE for writing results into an F12 file (ALOGIT format). FALSE by default.
+   \item \code{printClassical}: Boolean. TRUE for printing classical standard errors. TRUE by default.
+   \item \code{printPVal}: Boolean. TRUE for printing p-values. FALSE by default.
+   \item \code{printT1}: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
+   \item \code{printDiagnostics}: Boolean. TRUE for printing summary of choices in database and other diagnostics. TRUE by default.
+   \item \code{printCovar}: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
+   \item \code{printCorr}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
+   \item \code{printOutliers}: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
+   \item \code{printChange}: Boolean. TRUE for printing difference between starting values and estimates. TRUE by default.
+   \item \code{saveEst}: Boolean. TRUE for saving estimated parameters and standard errors to a CSV file. TRUE by default.
+   \item \code{saveCov}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.
+   \item \code{saveCorr}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.
+   \item \code{saveModelObject}: Boolean. TRUE to save the R model object to a file (use \link{apollo_loadModel} to load it to memory). TRUE by default.
+   \item \code{writeF12}: Boolean. TRUE for writing results into an F12 file (ALOGIT format). FALSE by default.
 }}
 }
 \value{
@@ -34,13 +34,13 @@ Writes files in the working directory with the estimation results.
 }
 \details{
 Estimation results are printed to different files in the working directory:
-\describe{
-  \item{(modelName)_output.txt}{Text file with the output produced by function \code{apollo_modelOutput}.}
-  \item{(modelName)_estimates.csv}{CSV file with the estimated parameter values, their standars errors, and t-ratios.}
-  \item{(modelName)_covar.csv}{CSV file with the estimated classical covariance matrix. Only when bayesian estimation was not used.}
-  \item{(modelName)_robcovar.csv}{CSV file with the estimated robust covariance matrix. Only when bayesian estimation was not used.}
-  \item{(modelName)_corr.csv}{CSV file with the estimated classical correlation matrix. Only when bayesian estimation was not used.}
-  \item{(modelName)_robcorr.csv}{CSV file with the estimated robust correlation matrix. Only when bayesian estimation was not used.}
-  \item{(modelName).F12}{F12 file with model results. Compatible with ALOGIT.}
+\itemize{
+  \item \code{(modelName)_output.txt} Text file with the output produced by function \code{apollo_modelOutput}.
+  \item \code{(modelName)_estimates.csv} CSV file with the estimated parameter values, their standars errors, and t-ratios.
+  \item \code{(modelName)_covar.csv} CSV file with the estimated classical covariance matrix. Only when bayesian estimation was not used.
+  \item \code{(modelName)_robcovar.csv} CSV file with the estimated robust covariance matrix. Only when bayesian estimation was not used.
+  \item \code{(modelName)_corr.csv} CSV file with the estimated classical correlation matrix. Only when bayesian estimation was not used.
+  \item \code{(modelName)_robcorr.csv} CSV file with the estimated robust correlation matrix. Only when bayesian estimation was not used.
+  \item \code{(modelName).F12} F12 file with model results. Compatible with ALOGIT.
 }
 }

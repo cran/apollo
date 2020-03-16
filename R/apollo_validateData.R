@@ -14,10 +14,15 @@ apollo_validateData=function(database, apollo_control, silent){
   
   if(!(apollo_control$indivID %in% names(database))) stop("Column indicated in indivID in apollo_control not found in database. Use valid column name.")
   
+  # Drop unused levels from factor variables
+  database = droplevels.data.frame(database)
+  
+  # Sort by id
   if(apollo_control$panelData) database <- database[order(database[,apollo_control$indivID]),]
   
+  # Rename indivID to "ID" for HB
   if(apollo_control$HB==TRUE){
-    if(("ID" %in% names(database))&(apollo_control$indivID!="ID")) warning("Column ID will be used during HB estimation as ID variable.") 
+    if(("ID" %in% names(database))&(apollo_control$indivID!="ID")) cat("\nColumn ID will be used during HB estimation as ID variable.") 
     if(!("ID" %in% names(database))) database$ID = database[,apollo_control$indivID]
   }
   
@@ -26,6 +31,7 @@ apollo_validateData=function(database, apollo_control, silent){
   if(!is.numeric(id)) id <- as.numeric(as.factor(id))
   database$apollo_sequence <- sequence(rle(id)$lengths)
   
+  # Check existance of weights
   if(!is.null(apollo_control$weights)){
     if(!(apollo_control$weights %in% names(database))) stop("Column ", apollo_control$weights, " not found in database, despite being defined as weights in 'apollo_control'.")
   }

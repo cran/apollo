@@ -4,11 +4,15 @@
 \alias{apollo_outOfSample}
 \title{Out-of-sample fit (LL)}
 \usage{
-apollo_outOfSample(apollo_beta, apollo_fixed, apollo_probabilities,
-  apollo_inputs, estimate_settings = list(estimationRoutine = "bfgs",
-  maxIterations = 200, writeIter = FALSE, hessianRoutine = "numDeriv",
-  printLevel = 3L, silent = TRUE), outOfSample_settings = list(nRep = 10,
-  validationSize = 0.1, samples = NA))
+apollo_outOfSample(
+  apollo_beta,
+  apollo_fixed,
+  apollo_probabilities,
+  apollo_inputs,
+  estimate_settings = list(estimationRoutine = "bfgs", maxIterations = 200, writeIter =
+    FALSE, hessianRoutine = "numDeriv", printLevel = 3L, silent = TRUE),
+  outOfSample_settings = list(nRep = 10, validationSize = 0.1, samples = NA)
+)
 }
 \arguments{
 \item{apollo_beta}{Named numeric vector. Names and values for parameters.}
@@ -73,4 +77,8 @@ This function writes two different files to the working directory:
   \item \code{modelName_outOfSample_samples.csv}: Records the sample composition of each repetition.
 }
 The first two files are updated throughout the run of this function, while the last one is only written once the function finishes.
+
+When run, this function will look for the two files above in the working directory. If they are found, 
+the function will attempt to pick up re-sampling from where those files left off. This is useful in 
+cases where the original bootstrapping was interrupted, or when additional re-sampling wants to be performed.
 }

@@ -4,7 +4,9 @@
 \name{apollo_timeUseData}
 \alias{apollo_timeUseData}
 \title{Dataset of time use.}
-\format{An object of class \code{data.frame} with 2826 rows and 20 columns.}
+\format{
+An object of class \code{data.frame} with 2826 rows and 20 columns.
+}
 \source{
 \url{http://www.apollochoicemodelling.com/}
 }

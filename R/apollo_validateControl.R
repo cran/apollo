@@ -83,7 +83,11 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
     apollo_control$noDiagnostics <- FALSE
   }  
   
-  if(is.null(apollo_control$panelData)){
+  if(is.null(apollo_control$fastExp)){
+    apollo_control$fastExp <- FALSE
+  }  
+
+    if(is.null(apollo_control$panelData)){
   if(length(unique(database[,apollo_control$indivID]))<nrow(database)){
     apollo_control$panelData  = TRUE
     if(!silent) cat("Several observations per individual detected based on the value of ", apollo_control$indivID, ".\n  Setting panelData set to TRUE.\n", sep="")
@@ -97,18 +101,19 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   if(!is.logical(apollo_control$noValidation )) stop("Setting for noValidation should be TRUE or FALSE")
   if(!is.logical(apollo_control$noDiagnostics)) stop("Setting for noDiagnostics should be TRUE or FALSE")
   if(!is.logical(apollo_control$workInLogs   )) stop("Setting for workInLogs should be TRUE or FALSE")
+  if(!is.logical(apollo_control$fastExp      )) stop("Setting for fastExp should be TRUE or FALSE")
   
   if(!is.null(apollo_control$weights)){
     w <- apollo_control$weights
     if(length(w)!=1 || !is.character(w) || !(w %in% names(database))) stop("'apollo_control$weights' is not the name of a column in 'database'.")
   }
   
-  if((apollo_control$noValidation==TRUE)&!silent) warning("With setting noValidation=TRUE, your model code will not be validated prior to estimation. This may of course be deliberate for large models or models with many components.")
+  if((apollo_control$noValidation==TRUE)&!silent) cat("\nWith setting noValidation=TRUE, your model code will not be validated prior to estimation. This may of course be deliberate for large models or models with many components.")
   
-  allVars <- c("modelName", "modelDescr", "indivID", "mixing", "nCores", "seed", "HB", "noValidation", "noDiagnostics", "weights", "workInLogs", "panelData")
+  allVars <- c("modelName", "modelDescr", "indivID", "mixing", "nCores", "seed", "HB", "noValidation", "noDiagnostics", "weights", "workInLogs", "panelData", "fastExp")
   unknownVars <- names(apollo_control)[!( names(apollo_control) %in% allVars )]
   if(length(unknownVars)>0){
-    warning(" Variable(s) {", paste(unknownVars, collapse=", "), "}\n where not recognised in apollo_control and will be ignored.\n Check ?apollo_control for a list of valid control variables.")
+    cat("\nVariable(s) {", paste(unknownVars, collapse=", "), "}\n where not recognised in apollo_control and will be ignored.\n Check ?apollo_control for a list of valid control variables.")
   }
   
   if(!silent) cat("All checks on apollo_control completed.\n")

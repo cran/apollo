@@ -1,4 +1,3 @@
-#' Calculates multinomial logit probabilities
 #'
 #' Calculates probabilities of a multinomial logit model.
 #'
@@ -13,13 +12,13 @@
 #'                     }
 #' @param functionality Character. Can take different values depending on desired output.
 #'                      \itemize{
-#'                        \item \code{"estimate"}: Used for model estimation.
-#'                        \item \code{"prediction"}: Used for model predictions.
-#'                        \item \code{"validate"}: Used for validating input.
-#'                        \item \code{"zero_LL"}: Used for calculating null likelihood.
-#'                        \item \code{"conditionals"}: Used for calculating conditionals.
-#'                        \item \code{"output"}: Used for preparing output after model estimation.
-#'                        \item \code{"raw"}: Used for debugging.
+#'                        \item "estimate": Used for model estimation.
+#'                        \item "prediction": Used for model predictions.
+#'                        \item "validate": Used for validating input.
+#'                        \item "zero_LL": Used for calculating null likelihood.
+#'                        \item "conditionals": Used for calculating conditionals.
+#'                        \item "output": Used for preparing output after model estimation.
+#'                        \item "raw": Used for debugging.
 #'                      }
 #' @return The returned object depends on the value of argument \code{functionality} as follows.
 #'         \itemize{
@@ -61,15 +60,12 @@
 #'
 #' ### Compute choice probabilities using MNL model
 #' apollo_mnl(mnl_settings, functionality="estimate")
-#' @export
-apollo_mnl <- function(mnl_settings, functionality){
-  if(is.null(mnl_settings[["componentName"]])) mnl_settings[["componentName"]]="MNL"
-  componentName=mnl_settings[["componentName"]]
-  
-  if(is.null(mnl_settings[["alternatives"]])) stop("The mnl_settings list for model component \"",componentName,"\" needs to include an object called \"alternatives\"!")
-  if(is.null(mnl_settings[["avail"]])) stop("The mnl_settings list for model component \"",componentName,"\" needs to include an object called \"avail\"!")
-  if(is.null(mnl_settings[["choiceVar"]])) stop("The mnl_settings list for model component \"",componentName,"\" needs to include an object called \"choiceVar\"!")
-  if(is.null(mnl_settings[["V"]])) stop("The mnl_settings list for model component \"",componentName,"\" needs to include an object called \"V\"!")
+#' @importFrom Deriv Deriv
+apollo_mnl_2 <- function(mnl_settings, functionality){
+  if(is.null(mnl_settings[["alternatives"]])) stop("The mnl_settings list needs to include an object called \"alternatives\"!")
+  if(is.null(mnl_settings[["avail"]])) stop("The mnl_settings list needs to include an object called \"avail\"!")
+  if(is.null(mnl_settings[["choiceVar"]])) stop("The mnl_settings list needs to include an object called \"choiceVar\"!")
+  if(is.null(mnl_settings[["V"]])) stop("The mnl_settings list needs to include an object called \"V\"!")
   if(is.null(mnl_settings[["rows"]])) mnl_settings[["rows"]]="all"
   
   ### Useful values
@@ -81,6 +77,22 @@ apollo_mnl <- function(mnl_settings, functionality){
   altnames     = names(alternatives)
   altcodes     = alternatives
   nAlt         = length(alternatives)
+
+  
+  ### if V is a function, copy function into a new object, and create V as values
+  
+  ### in what follows, next steps only happen if previous is true
+  # 1: test if any elements of V are a function, if not, do nothing
+  test=sapply(V,is.function)
+  if(any(test)){
+    # 2: if any elements are a function, test that all are a function, else fail
+    if(any(!test)) stop("Some elements in V are functions, while others are not!")
+    # 3: if functionality==gradient, create a copy of V in Vfunction
+    if(functionality=="gradient") Vfunction=V
+    # 4: replace each element in the V list by the output of the relevant function
+    V=lapply(V,function(v) v())
+  }
+
   nObs <- tryCatch(nrow( get("apollo_inputs", parent.frame(), inherits=FALSE)$database ),
                    error=function(e){
                      lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
@@ -89,33 +101,32 @@ apollo_mnl <- function(mnl_settings, functionality){
                      return(max(lenV, lenA, lenC))
                    })
   
-  
   ### Format checks
   # alternatives
   test <- is.vector(alternatives) & !is.null(names(alternatives))
-  if(!test) stop("The \"alternatives\" argument for model component \"",componentName,"\" needs to be a named vector")
+  if(!test) stop("The \"alternatives\" argument needs to be a named vector")
   # avail
   test <- is.list(avail) || (length(avail)==1 && avail==1)
-  if(!test) stop("The \"avail\" argument for model component \"",componentName,"\" needs to be a list or set to 1")
+  if(!test) stop("The \"avail\" argument needs to be a list or set to 1")
   if(is.list(avail)){
     lenA <- sapply(avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
     test <- all(lenA==nObs | lenA==1)
-    if(!test) stop("All entries in \"avail\" for model component \"",componentName,"\" need to be a scalar or a vector with one entry per observation in the \"database\"")
+    if(!test) stop("All entries in \"avail\" need to be a scalar or a vector with one entry per observation in the \"database\"")
   }
   # choiceVar
   test <- is.vector(choiceVar) && (length(choiceVar)==nObs || length(choiceVar)==1)
-  if(!test) stop("The \"choiceVar\" argument for model component \"",componentName,"\" needs to be a scalar or a vector with one entry per observation in the \"database\"")
+  if(!test) stop("The \"choiceVar\" argument needs to be a scalar or a vector with one entry per observation in the \"database\"")
   # V
-  if(!is.list(V)) stop("The \"V\" argument for model component \"",componentName,"\" needs to be a list")
+  if(!is.list(V)) stop("The \"V\" argument needs to be a list")
   lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
   test <- all(lenV==nObs | lenV==1)
-  if(!test) stop("Each element of \"V\" for model component \"",componentName,"\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")  
+  if(!test) stop("Each element of \"V\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")  
   # rows
   test <- is.vector(rows) && ( (is.logical(rows) && length(rows)==nObs) || (length(rows)==1 && rows=="all") )
-  if(!test) stop("The \"rows\" argument for model component \"",componentName,"\" needs to be \"all\" or a vector of boolean statements with one entry per observation in the \"database\"")
+  if(!test) stop("The \"rows\" argument needs to be \"all\" or a vector of boolean statements with one entry per observation in the \"database\"")
   # functionality
-  test <- functionality %in% c("estimate","prediction","validate","zero_LL","conditionals","output","raw")
-  if(!test) stop("Non-permissable setting for \"functionality\" for model component \"",componentName,"\"")
+  test <- functionality %in% c("estimate","prediction","gradient","validate","zero_LL","conditionals","output","raw")
+  if(!test) stop("Non-permissable setting for \"functionality\"")
   
   ### Expand availabilities if =1
   avail_set <- FALSE
@@ -155,33 +166,33 @@ apollo_mnl <- function(mnl_settings, functionality){
     #if(length(rows)!=length(choiceVar)) stop("The argument \"rows\" needs to either be \"all\" or a vector of length equal to the number of the rows in the data!")
     
     # Check that alternatives are named in altcodes and V
-    if(is.null(altnames) || is.null(altcodes) || is.null(names(V))) stop("Alternatives for model component \"",componentName,"\" must be named, both in 'alternatives' and 'V'.")
+    if(is.null(altnames) || is.null(altcodes) || is.null(names(V))) stop("Alternatives must be named, both in 'alternatives' and 'V'.")
     
     if(apollo_control$noValidation==FALSE){
       # Check that there are at least two alternatives
-      if(nAlt<2) stop("Model component \"",componentName,"\"  requires at least two alternatives")
+      if(nAlt<2) stop("MNL requires at least two alternatives")
       
       # Check that choice vector is not empty
-      if(length(choiceVar)==0) stop("Choice vector is empty for model component \"",componentName,"\"")
-      if(nObs==0) stop("No data for model component \"",componentName,"\"")
+      if(length(choiceVar)==0) stop("No choices to model")
+      if(nObs==0) stop("No utilities defined")
       
       choiceLabs <- unique(choiceVar)
-      if(!all(altnames %in% names(V))) stop("The names of the alternatives for model component \"",componentName,"\" do not match those in \"V\".")
-      if(!all(altnames %in% names(avail))) stop("The names of the alternatives for model component \"",componentName,"\" do not match those in \"avail\".")
+      if(!all(altnames %in% names(V))) stop("Alternatives' names in \"alternatives\" do not match those in \"V\".")
+      if(!all(altnames %in% names(avail))) stop("Alternatives' names in \"alternatives\" do not match those in \"avail\".")
       
       # Check that there are no values in the choice column for undefined alternatives
-      if(!all(choiceLabs %in% altcodes)) stop("The data contains values for \"choiceVar\" for model component \"",componentName,"\" that are not included in \"alternatives\".")
+      if(!all(choiceLabs %in% altcodes)) stop('A value in "choiceVar" column is not included in "alternatives".')
       
       # check that nothing unavailable is chosen
-      for(j in 1:nAlt) if(any(choiceVar==altcodes[j] & avail[[j]]==0)) stop("The data contains cases where alternative ",altnames[j]," is chosen for model component \"",componentName,"\" despite being listed as unavailable\n")
+      for(j in 1:nAlt) if(any(choiceVar==altcodes[j] & avail[[j]]==0)) stop("Alternative ",altnames[j]," chosen despite being listed as unavailable\n")
       
       # check that all availabilities are either 0 or 1
-      for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values for model component \"",componentName,"\" are not 0 or 1.")
+      for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values are not 0 or 1.")
       
       # Check that no available alternative has utility = NA
       # Requires setting non available alternatives utility to 0 first
       V <- mapply(function(v,a) apollo_setRows(v, !a, 0), V, avail, SIMPLIFY=FALSE)
-      if(any(sapply(V, anyNA))) cat("\nAt least one utility for model component \"",componentName,"\" contains one or more NA values at parameter starting values")
+      if(any(sapply(V, anyNA))) cat("\nAt least one utility contains one or more NA values at parameter starting values")
     }
     
     if(apollo_control$noDiagnostics==FALSE){
@@ -201,17 +212,72 @@ apollo_mnl <- function(mnl_settings, functionality){
       content <- list(round(choicematrix,2),
                       ifelse(any(choicematrix[4,]==0), "Warning: some alternatives are never chosen in your data!", ""),
                       ifelse(any(choicematrix[4,]==1), "Warning: some alternatives are always chosen when available!", ""))
-      if(avail_set==TRUE) content[[length(content)+1]] <- paste0("Warning: Availability not provided (or some elements are NA).",
+      if(avail_set==TRUE) content[[length(content)+1]] <- paste0("Warning: Availability not provided to 'apollo_mnl' (or some elements are NA).",
                                                                  "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
       apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-      apollo_addLog(paste0("Overview of choices for model component \"",componentName,"\""), content, apolloLog)
+      apollo_addLog("Overview of choices for MNL model component:", content, apolloLog)
     }
     
-    testL=apollo_mnl(mnl_settings, functionality="estimate")
-    if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"",componentName,"\"")
-    if(any(testL==0)) cat("\nSome observations have zero probability at starting value for model component \"",componentName,"\"")
-    return(invisible(testL))
+    return(invisible(TRUE))
   }
+  
+  # ############################## #
+  #### functionality="gradient" ####
+  # ############################## #
+
+  if(functionality=="gradient"){
+    apollo_beta = get("apollo_beta" , parent.frame(), inherits=TRUE)
+    apollo_fixed= get("apollo_fixed", parent.frame(), inherits=TRUE)
+    freeparams  = names(apollo_beta[!names(apollo_beta)%in%apollo_fixed])
+    K <- length(freeparams)
+    J <- length(Vfunction)
+    #for(i in 1:J) environment(Vfunction[[i]]) <- baseenv()
+    
+    dV<- lapply(Vfunction, Deriv::Deriv, x=freeparams)
+    dV<- lapply(dV, function(f){
+      nLi <- length(body(f)) # the search could be made recursive
+      if( all( freeparams %in% names(body(f)) ) & as.character(body(f)[[1]])=="c" ){
+        body(f)[[1]] <- substitute(cbind)
+      } else body(f)[[nLi]][[1]] <- substitute(cbind)
+      return(f)
+    })
+    #for(i in 1:J) environment(dV[[i]]) <- baseenv()
+    
+    G = matrix(0, nrow=nObs, ncol=K, dimnames=list(NULL, freeparams))
+    Y = lapply(as.list(alternatives), function(i) choiceVar==i)
+    g <- function(b, db){
+      # Change functions' environment to a new environment with b and db
+      e <- list2env(c(as.list(b), db), hash=TRUE)
+      for(i in 1:length(dV)){
+        environment(Vfunction[[i]]) <- e
+        environment(dV[[i]])        <- e
+      }
+      # Calculate probabilities
+      V <- lapply(Vfunction, function(v) v())
+      chosenV <- Reduce("+", mapply("*", Y, V, SIMPLIFY=FALSE))
+      V <- lapply(X=V, FUN=function(v) exp(v-chosenV)) # avoids numerical issues
+      V <- mapply("*", V, avail, SIMPLIFY=FALSE)
+      P <- lapply(V, "/", Reduce("+", V))
+      # Calculate gradient (won't work with mixing)
+      GA<- mapply(function(y,p) y - p, Y, P, SIMPLIFY=FALSE)
+      dV<- lapply(dV, function(dv) dv())
+      for(k in 1:K){
+        dVk   <- lapply(dV, function(dv) dv[,k])
+        G[,k] <- Reduce("+", mapply(function(ga,dvk) ga*dvk, GA, dVk, SIMPLIFY=FALSE))
+      }
+      return(G)
+    }
+    environment(g) <- new.env(parent=baseenv())
+    assign( "G",  G, envir=environment(g))
+    assign( "Y",  Y, envir=environment(g))
+    assign( "K",  K, envir=environment(g))
+    assign("dV", dV, envir=environment(g))
+    assign("avail", avail, envir=environment(g))
+    assign("Vfunction", Vfunction, envir=environment(g))
+    
+    return(g)
+  }
+  
   
   # ############################## #
   #### functionality="zero_LL" ####
@@ -286,7 +352,7 @@ apollo_mnl <- function(mnl_settings, functionality){
   # ############################## #
   
   if(functionality=="output"){
-    P <- apollo_mnl(mnl_settings, functionality="estimate")
+    P <- apollo_mnl_2(mnl_settings, functionality="estimate")
     
     # turn scalar availabilities into vectors
     for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs)
@@ -302,14 +368,12 @@ apollo_mnl <- function(mnl_settings, functionality){
     choicematrix[4,!is.finite(choicematrix[4,])] <- 0
     
     content <- list(round(choicematrix,2),
-                    ifelse(any(choicematrix[4,]==0), "WARNING: some alternatives are never chosen in your data!", ""),
-                    ifelse(any(choicematrix[4,]==1), "WARNING: some alternatives are always chosen when available!", ""))
-    if(avail_set==TRUE) content[[length(content)+1]] <- paste0("WARNING: Availability not provided to 'apollo_mnl' (or some elements are NA).",
-                                                               "\n         Full availability assumed.")
+                    ifelse(any(choicematrix[4,]==0), "Warning: some alternatives are never chosen in your data!", ""),
+                    ifelse(any(choicematrix[4,]==1), "Warning: some alternatives are always chosen when available!", ""))
+    if(avail_set==TRUE) content[[length(content)+1]] <- paste0("Warning: Availability not provided to 'apollo_mnl' (or some elements are NA).",
+                                                               "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
     apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-    apollo_addLog(paste0("Overview of choices for model component \"",componentName,"\""), content, apolloLog)
-    
-    apollo_reportModelTypeLog(modelType="MNL", apolloLog)
+    apollo_addLog("Overview of choices for MNL model component:", content, apolloLog)
     
     return(P)
   }

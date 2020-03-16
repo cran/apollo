@@ -4,8 +4,7 @@
 \alias{apollo_fitsTest}
 \title{Compares fit of model across categories}
 \usage{
-apollo_fitsTest(model, apollo_probabilities, apollo_inputs,
-  fitsTest_settings)
+apollo_fitsTest(model, apollo_probabilities, apollo_inputs, fitsTest_settings)
 }
 \arguments{
 \item{model}{Model object. Estimated model object as returned by function \link{apollo_estimate}.}
@@ -21,8 +20,8 @@ apollo_fitsTest(model, apollo_probabilities, apollo_inputs,
 
 \item{fitsTest_settings}{List of arguments. It must contain the following elements.
 \itemize{
-     \item subsamples: Named list of boolean vectors. Each element of the list defines whether a given observation belongs to a given subsample (e.g. by sociodemographics).
-     \item modelComponent: Name of model component. Set to model by default.
+     \item \strong{subsamples}: Named list of boolean vectors. Each element of the list defines whether a given observation belongs to a given subsample (e.g. by sociodemographics).
+     \item \strong{modelComponent}: Name of model component. Set to model by default.
 }}
 }
 \value{

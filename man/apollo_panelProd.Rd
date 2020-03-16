@@ -12,14 +12,14 @@ apollo_panelProd(P, apollo_inputs, functionality)
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
 \item{functionality}{Character. Can take different values depending on desired output.
-\describe{
-  \item{"estimate"}{For model estimation, returns probabilities of chosen alternatives.}
-  \item{"prediction"}{For model predictions, returns probabilities of all alternatives.}
-  \item{"validate"}{Validates input.}
-  \item{"zero_LL"}{Return probabilities with all parameters at zero.}
-  \item{"conditionals"}{For conditionals, returns probabilities of chosen alternatives.}
-  \item{"output"}{Checks that the model is well defined.}
-  \item{"raw"}{For debugging, returns probabilities of all alternatives}
+\itemize{
+  \item \code{"estimate"} For model estimation, returns probabilities of chosen alternatives.
+  \item \code{"prediction"} For model predictions, returns probabilities of all alternatives.
+  \item \code{"validate"} Validates input.
+  \item \code{"zero_LL"} Return probabilities with all parameters at zero.
+  \item \code{"conditionals"} For conditionals, returns probabilities of chosen alternatives.
+  \item \code{"output"} Checks that the model is well defined.
+  \item \code{"raw"} For debugging, returns probabilities of all alternatives.
 }}
 }
 \value{

@@ -9,19 +9,20 @@ apollo_mdcnev(mdcnev_settings, functionality)
 \arguments{
 \item{mdcnev_settings}{List of settings for the MDCEV model. It must include the following.
 \itemize{
-  \item V: Named list. Utilities of the alternatives. Names of elements must match those in argument 'alternatives'.
-  \item alternatives: Character vector. Names of alternatives, elements must match the names in list 'V'.
-  \item alpha: Named list. Alpha parameters for each alternative, including for the outside good. As many elements as alternatives.
-  \item gamma: Named list. Gamma parameters for each alternative, including for the outside good. As many elements as alternatives.
-  \item mdcnevNests: Named list. Lambda parameters for each nest. Elements must be named with the nest name. The lambda at the root is fixed to 1, and therefore must be no be defined. The value of the estimated mdcnevNests parameters should be between 0 and 1 to ensure consistency with random utility maximization.
-  \item mdcnevStructure: Numeric matrix. One row per nest and one column per alternative. Each element of the matrix is 1 if an alternative belongs to the corresponding nest.
-  \item cost: Named list of numeric vectors. Price of each alternative. One element per alternative, each one as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
-  \item avail: Named list. Availabilities of alternatives, one element per alternative. Names of elements must match those in argument 'alternatives'. Value for each element can be 1 (scalar if always available) or a vector with values 0 or 1 for each observation. If all alternatives are always available, then user can just omit this argument.
-  \item continuousChoice: Named list of numeric vectors. Amount of consumption of each alternative. One element per alternative, as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
-  \item budget: Numeric vector. Budget for each observation.
-  \item minConsumption: Named list of scalars or numeric vectors. Minimum consumption of the alternatives, if consumed. As many elements as alternatives. Names must match those in \code{alternatives}.
-  \item outside: Character. Alternative name for the outside good. Default is "outside"
-  \item rows: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+  \item \strong{\code{V}}: Named list. Utilities of the alternatives. Names of elements must match those in argument 'alternatives'.
+  \item \strong{\code{alternatives}}: Character vector. Names of alternatives, elements must match the names in list 'V'.
+  \item \strong{\code{alpha}}: Named list. Alpha parameters for each alternative, including for the outside good. As many elements as alternatives.
+  \item \strong{\code{gamma}}: Named list. Gamma parameters for each alternative, including for the outside good. As many elements as alternatives.
+  \item \strong{\code{mdcnevNests}}: Named list. Lambda parameters for each nest. Elements must be named with the nest name. The lambda at the root is fixed to 1, and therefore must be no be defined. The value of the estimated mdcnevNests parameters should be between 0 and 1 to ensure consistency with random utility maximization.
+  \item \strong{\code{mdcnevStructure}}: Numeric matrix. One row per nest and one column per alternative. Each element of the matrix is 1 if an alternative belongs to the corresponding nest.
+  \item \strong{\code{cost}}: Named list of numeric vectors. Price of each alternative. One element per alternative, each one as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
+  \item \strong{\code{avail}}: Named list. Availabilities of alternatives, one element per alternative. Names of elements must match those in argument 'alternatives'. Value for each element can be 1 (scalar if always available) or a vector with values 0 or 1 for each observation. If all alternatives are always available, then user can just omit this argument.
+  \item \strong{\code{continuousChoice}}: Named list of numeric vectors. Amount of consumption of each alternative. One element per alternative, as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
+  \item \strong{\code{budget}}: Numeric vector. Budget for each observation.
+  \item \strong{\code{minConsumption}}: Named list of scalars or numeric vectors. Minimum consumption of the alternatives, if consumed. As many elements as alternatives. Names must match those in \code{alternatives}.
+  \item \strong{\code{outside}}: Character. Alternative name for the outside good. Default is "outside"
+  \item \strong{\code{rows}}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+  \item \strong{\code{componentName}}: Character. Name given to model component.
 }}
 
 \item{functionality}{Character. Can take different values depending on desired output.
@@ -38,13 +39,13 @@ apollo_mdcnev(mdcnev_settings, functionality)
 \value{
 The returned object depends on the value of argument \code{functionality} as follows.
         \itemize{
-          \item "estimate": vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
-          \item "prediction": A matrix with one row per observation, and means and s.d. of predicted consumptions.
-          \item "validate": Boolean. Returns TRUE if all tests are passed.
-          \item "zero_LL": Not applicable.
-          \item "conditionals": Same as "prediction".
-          \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
-          \item "raw": Same as "prediction".
+          \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for the observed consumption for each observation.
+          \item \strong{\code{"prediction"}}: A matrix with one row per observation, and columns indicating means and s.d. of continuous and discrete predicted consumptions.
+          \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
+          \item \strong{\code{"zero_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
+          \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
+          \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
+          \item \strong{\code{"raw"}}: Same as \code{"estimate"}
         }
 }
 \description{

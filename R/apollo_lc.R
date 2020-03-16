@@ -4,8 +4,9 @@
 #' 
 #' @param lc_settings List of arguments used by \code{apollo_lc}. It must include the following.
 #'                  \itemize{
-#'                    \item inClassProb: List of probabilities. Conditional likelihood for each class. One element per class, in the same order as \code{classProb}.
-#'                    \item classProb: List of probabilities. Allocation probability for each class. One element per class, in the same order as \code{inClassProb}.
+#'                    \item \strong{inClassProb}: List of probabilities. Conditional likelihood for each class. One element per class, in the same order as \code{classProb}.
+#'                    \item \strong{classProb}: List of probabilities. Allocation probability for each class. One element per class, in the same order as \code{inClassProb}.
+#'                    \item \strong{componentName}: Character. Name given to model component.
 #'                  }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param functionality Character. Can take different values depending on desired output.
@@ -20,13 +21,13 @@
 #'                      }
 #' @return The returned object depends on the value of argument \code{functionality} as follows.
 #'         \itemize{
-#'           \item "estimate": vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
-#'           \item "prediction": List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
-#'           \item "validate": Boolean. Returns TRUE if all tests are passed.
-#'           \item "zero_LL": vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
-#'           \item "conditionals": Same as "prediction".
-#'           \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
-#'           \item "raw": Same as "prediction".
+#'           \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
+#'           \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all models components, for each class.
+#'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but also runs a set of tests on the given arguments.
+#'           \item \strong{\code{"zero_LL"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
+#'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'         }
 #' @examples
 #' data(apollo_modeChoiceData)
@@ -40,8 +41,11 @@
 #' summary(x)
 #' @export
 apollo_lc <- function(lc_settings, apollo_inputs, functionality){
-  if(is.null(lc_settings[["inClassProb"]])) stop("The lc_settings list needs to include an object called \"inClassProb\"!")
-  if(is.null(lc_settings[["classProb"]])) stop("The lc_settings list needs to include an object called \"classProb\"!")
+  if(is.null(lc_settings[["componentName"]])) lc_settings[["componentName"]]="Latent class"
+  componentName=lc_settings[["componentName"]]
+  
+  if(is.null(lc_settings[["inClassProb"]])) stop("The lc_settings list for model component \"",componentName,"\" needs to include an object called \"inClassProb\"!")
+  if(is.null(lc_settings[["classProb"]])) stop("The lc_settings list for model component \"",componentName,"\" needs to include an object called \"classProb\"!")
   
   inClassProb=lc_settings[["inClassProb"]]
   classProb=lc_settings[["classProb"]]
@@ -55,9 +59,25 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   }
   
   if(functionality=="validate"){
-    if(length(inClassProb)!=length(classProb)) stop("Arguments 'inClassProb' and 'classProb' must have the same length.")
+    if(length(inClassProb)!=length(classProb)) stop("Arguments 'inClassProb' and 'classProb' for model component \"",componentName,"\" must have the same length.")
+    ### NEW LINES SH 28/2
+    c=1
+    while(c<=length(classProb)){
+      #if(sum(inClassProb[[c]])==0) stop("Within class probabilities for model component \"",componentName,"\" are zero for every individual for class ",c)
+      #replaced by
+      if(sum(inClassProb[[c]])==0) stop("Within class probabilities for model component \"",componentName,"\" are zero for every individual for class ",ifelse(is.numeric(names(inClassProb)[c]),c,names(inClassProb)[c]))
+      c=c+1
+    }
+    classprobsum=Reduce("+",classProb)
+    if(any(round(classprobsum,10)!=1)) stop("Class allocation probabilities in 'classProb' for model component \"",componentName,"\" must sum to 1.")    
     class_summary=matrix(0,nrow=length(classProb),ncol=1)
-    rownames(class_summary)=paste0("class_", 1:length(classProb))
+    #rownames(class_summary)=paste0("class_", 1:length(classProb))
+    ## replaced by next few lines
+    if(is.numeric(names(inClassProb)[1])){
+      rownames(class_summary)=paste0("class_", 1:length(classProb))
+    } else {
+      rownames(class_summary)=names(inClassProb)
+    }
     colnames(class_summary)=c("Mean prob.")
     c=1
     while(c<=length(classProb)){
@@ -68,8 +88,11 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
     #cat("\nClass allocation summary for LC before estimation:\n")
     #print(round(class_summary,2))
     apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-    apollo_addLog("Class allocation summary for LC before estimation:", round(class_summary,2), apolloLog)
-    return(TRUE)
+    apollo_addLog(paste0("Class allocation summary for model component \"",componentName,"\" before estimation:"), round(class_summary,2), apolloLog)
+    # NEW LINES SH 8/3/2020
+    testL=apollo_lc(lc_settings, apollo_inputs, functionality="estimate")
+    return(testL)
+    #return(TRUE)
   } 
   
   if(functionality %in% c("estimate", "conditionals", "output", "zero_LL")){
@@ -89,7 +112,7 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
         # If classProb is calculated at the obs level while the inClassProb is at the indiv level
         classProb <- lapply(classProb, rowsum, group=indivID)
         classProb <- lapply(classProb, '/', nObsPerIndiv)
-        warning('Class probability averaged across observations of each individual.')
+        cat("\nClass probability for model component \"",componentName,"\" averaged across observations of each individual.")
       } else {
         # If inClassProb is calculated at the obs level while the classProb is at the indiv level
         classProb <- lapply(classProb, rep, nObsPerIndiv)
@@ -103,7 +126,13 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
     if(functionality=="output"){
       #if(!apollo_control$noDiagnostics){
       class_summary=matrix(0,nrow=length(classProb),ncol=1)
-      rownames(class_summary)=paste0("class_", 1:length(classProb))
+      #rownames(class_summary)=paste0("class_", 1:length(classProb))
+      ## replaced by next few lines
+      if(is.numeric(names(inClassProb)[1])){
+        rownames(class_summary)=paste0("class_", 1:length(classProb))
+      } else {
+        rownames(class_summary)=names(inClassProb)
+      }
       colnames(class_summary)=c("Mean prob.")
       c=1
       while(c<=length(classProb)){
@@ -111,25 +140,10 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
         c=c+1
       }
       
-      ## Write class allocation summary to temp file
-      #on.exit(sink())
-      #fileName <- paste(apollo_control$modelName, "_tempOutput.txt", sep="")
-      #fileName <- file.path(tempdir(),fileName)
-      #fileConn <- tryCatch( file(fileName, open="at"),
-      #                      error=function(e){
-      #                        cat('apollo_lc could not write diagnostics to temporary file. No diagnostics in output.\n')
-      #                        return(NA)
-      #                      })
-      #if(!anyNA(fileConn)){
-      #  sink(fileConn)
-      #  on.exit({if(sink.number()>0) sink(); close(fileConn)})
-      #  cat('Class allocation summary for LC after estimation:\n')
-      #  print(round(class_summary,2))
-      #  cat("\n")
-      #}
-      
       apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-      apollo_addLog("Class allocation summary for LC after estimation:", round(class_summary,2), apolloLog)
+      apollo_addLog(paste0("Class allocation summary for model component \"",componentName,"\"\n after estimation:"), 
+                    round(class_summary,2), apolloLog)
+      apollo_reportModelTypeLog(modelType="LC", apolloLog)
     }
     return( Pout )
   }
@@ -149,7 +163,7 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
       nObsPerIndiv <- as.vector(table(indivID))
       if( nRowsInClassProb < nRowsClassProb ){
         # If classProb is calculated at the obs level while the inClassProb is at the indiv level
-        stop('Class-probability variable has more elements than in-class-probability.')
+        stop("Class-probability variable for model component \"",componentName,"\" has more elements than in-class-probability.")
       } else {
         # If inClassProb is calculated at the obs level while the classProb is at the indiv level
         S=length(classProb)
@@ -187,6 +201,7 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
       Pout[[i]] <- 0*inClassProb[[1]][[1]]
       for(k in 1:nClass) Pout[[i]] <- Pout[[i]] + inClassProb[[k]][[i]]*classProb[[k]]
     }
+    names(Pout)=names(inClassProb[[1]])
     return(Pout)
     
   }

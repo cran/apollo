@@ -4,8 +4,13 @@
 \alias{apollo_searchStart}
 \title{Searches for better starting values.}
 \usage{
-apollo_searchStart(apollo_beta, apollo_fixed, apollo_probabilities,
-  apollo_inputs, searchStart_settings = NA)
+apollo_searchStart(
+  apollo_beta,
+  apollo_fixed,
+  apollo_probabilities,
+  apollo_inputs,
+  searchStart_settings = NA
+)
 }
 \arguments{
 \item{apollo_beta}{Named numeric vector. Names and values for parameters.}
@@ -23,15 +28,15 @@ apollo_searchStart(apollo_beta, apollo_fixed, apollo_probabilities,
 
 \item{searchStart_settings}{List containing options for the search of starting values. The following are valid options.
 \itemize{
-  \item \strong{nCandidates}: Numeric scalar. Number of candidate sets of parameters to be used at the start. Should be an integer bigger than 1. Default is 100.
-  \item \strong{smartStart}: Boolean. If TRUE, candidates are randomly generated with more chances in the directions the Hessian indicates improvement of the LL function. Default is FALSE.
-  \item \strong{apolloBetaMin}: Vector. Minimum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta - 0.1}.
-  \item \strong{apolloBetaMax}: Vector. Maximum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta + 0.1}.
-  \item \strong{maxStages}: Numeric scalar. Maximum number of search stages. The algorithm will stop when there is only one candidate left, or if it reaches this number of stages. Default is 5.
-  \item \strong{dTest}: Numeric scalar. Tolerance for test 1. A candidate is discarded if its distance in parameter space to a better one is smaller than \code{dTest}. Default is 1.
-  \item \strong{gTest}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is \code{10^(-3)}.
-  \item \strong{llTest}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is 3.
-  \item \strong{bfgsIter}: Numeric scalar. Number od BFGS iterations to perform at each stage to each remaining candidate. Default is 20.
+  \item \code{nCandidates}: Numeric scalar. Number of candidate sets of parameters to be used at the start. Should be an integer bigger than 1. Default is 100.
+  \item \code{smartStart}: Boolean. If TRUE, candidates are randomly generated with more chances in the directions the Hessian indicates improvement of the LL function. Default is FALSE.
+  \item \code{apolloBetaMin}: Vector. Minimum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta - 0.1}.
+  \item \code{apolloBetaMax}: Vector. Maximum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta + 0.1}.
+  \item \code{maxStages}: Numeric scalar. Maximum number of search stages. The algorithm will stop when there is only one candidate left, or if it reaches this number of stages. Default is 5.
+  \item \code{dTest}: Numeric scalar. Tolerance for test 1. A candidate is discarded if its distance in parameter space to a better one is smaller than \code{dTest}. Default is 1.
+  \item \code{gTest}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is \code{10^(-3)}.
+  \item \code{llTest}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is 3.
+  \item \code{bfgsIter}: Numeric scalar. Number od BFGS iterations to perform at each stage to each remaining candidate. Default is 20.
 }}
 }
 \value{

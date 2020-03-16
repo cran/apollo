@@ -1,5 +1,0 @@
-"","Mean unchosen female","Mean chosen female","t-test p-val female","Mean unchosen business","Mean chosen business","t-test p-val business","Mean unchosen income","Mean chosen income","t-test p-val income"
-"car",0.51,0.47,0.25,0.4,0.24,0,44397.38,45346.39,0.45
-"bus",0.47,0.48,0.78,0.38,0.1,0,45694.18,39038.17,0
-"air",0.47,0.47,0.97,0.25,0.45,0,42384.98,47068.18,0
-"rail",0.48,0.48,0.98,0.27,0.43,0,44185.3,44815.92,0.59

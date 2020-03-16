@@ -2,7 +2,7 @@
 #'
 #' Samples individuals with replacement from the database, and estimates the model in each sample.
 #'
-#' This function implements a basic block bootstrap. It estimate the model parameters on \code{nRep} number of different samples.
+#' This function implements a basic block bootstrap. It estimates the model parameters on \code{nRep} number of different samples.
 #' Each new sample is constructed by sampling \strong{with replacement} from the original full sample. Each new sample has as many 
 #' individuals as the original sample, though some of them may be repeated. Sampling is done at the \strong{individual} level, 
 #' therefore if different individuals have different number of observations, each re-sample could have different number of observations.
@@ -20,6 +20,10 @@
 #'   \item \code{modelName_bootstrap_vcov.csv}: Variance-covariance matrix of the estimated parameters across re-samples.
 #' }
 #' The first two files are updated throughout the run of this function, while the last one is only written once the function finishes.
+#' 
+#' When run, this function will look for the first two files above in the working directory. If they are found, the function will
+#' attempt to pick up re-sampling from where those files left off. This is useful in cases where the original bootstrapping was 
+#' interrupted, or when additional re-sampling wants to be performed.
 #' 
 #' @param apollo_beta Named numeric vector. Names and values for parameters.
 #' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
@@ -299,5 +303,6 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
   timeTaken <- difftime(endtime, starttime, units='auto')
   if(!silent) cat("\nBootstrap processing time: ", format(timeTaken), "\n",sep="")
   #output_matrix <- cbind(paramStack, llStack, nObs=nObsStack)
+  if(!silent) cat("\nBootstrap covariance matrix produced\n")
   return(Sigma)
 }

@@ -16,13 +16,13 @@ apollo_avgInterDraws(P, apollo_inputs, functionality)
 \value{
 Likelihood averaged over inter-individual draws (shape depends on argument \code{functionality}).
         \itemize{
-          \item"estimate": Returns the likelihood of the model averaged across inter-individual draws.
-          \item"prediction": Returns the likelihood of all alternatives and all model components across inter-individual draws.
-          \item"validate": Returns P without changes.
-          \item"zero_LL": Returns P without changes.
-          \item"conditionals": Returns P without changes.
-          \item"output": Returns the same as "estimate", but also prints a summary of the estimation data.
-          \item"raw": Returns P without changes.
+          \item \strong{\code{"estimate"}}: Returns the likelihood of the model averaged across inter-individual draws. Drops all components but \code{"model"}.
+          \item \strong{\code{"prediction"}}: Returns the likelihood of all alternatives and all model components averaged across inter-individual draws.
+          \item \strong{\code{"validate"}}: Same as \code{"estimate"}.
+          \item \strong{\code{"zero_LL"}}: Returns \code{P} without changes.
+          \item \strong{\code{"conditionals"}}: Returns \code{P} without averaging draws. Drops all components but \code{"model"}.
+          \item \strong{\code{"output"}}: Returns the likelihood of all model components averaged across inter-individual draws.
+          \item \strong{\code{"raw"}}: Returns \code{P} without changes.
         }
 }
 \description{

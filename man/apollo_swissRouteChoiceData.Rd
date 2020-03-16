@@ -4,7 +4,8 @@
 \name{apollo_swissRouteChoiceData}
 \alias{apollo_swissRouteChoiceData}
 \title{Dataset of route choice.}
-\format{A data frame with 3,492 rows and 16 variables:
+\format{
+A data frame with 3,492 rows and 16 variables:
 \describe{
   \item{ID}{Numeric. Identification number of the individual.}
   \item{choice}{Numeric. 1 for alternative 1, and 2 for alternative 2.}
@@ -22,7 +23,8 @@
   \item{shopping}{Numeric. 1 if the purpose of the trip is shopping. 0 otherwise.}
   \item{business}{Numeric. 1 if the purpose of the trip is business. 0 otherwise.}
   \item{leisure}{Numeric. 1 if the purpose of the trip is leisure. 0 otherwise.}
-}}
+}
+}
 \source{
 \url{http://www.apollochoicemodelling.com/}
 }

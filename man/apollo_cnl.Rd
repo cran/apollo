@@ -9,13 +9,14 @@ apollo_cnl(cnl_settings, functionality)
 \arguments{
 \item{cnl_settings}{List of inputs of the CNL model. It should contain the following.
 \itemize{
-  \item alternatives: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
-  \item avail: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
-  \item choiceVar: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
-  \item V: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
-  \item cnlNests: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named according to nests. The lambda at the root is fixed to 1, and therefore does not need to be defined.
-  \item cnlStructure: Numeric matrix. One row per nest and one column per alternative. Each element of the matrix is the alpha parameter of that (nest, alternative) pair.
-  \item rows: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+  \item \strong{alternatives}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
+  \item \strong{avail}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
+  \item \strong{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
+  \item \strong{V}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
+  \item \strong{cnlNests}: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named according to nests. The lambda at the root is fixed to 1, and therefore does not need to be defined.
+  \item \strong{cnlStructure}: Numeric matrix. One row per nest and one column per alternative. Each element of the matrix is the alpha parameter of that (nest, alternative) pair.
+  \item \strong{rows}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+  \item \strong{componentName}: Character. Name given to model component.
 }}
 
 \item{functionality}{Character. Can take different values depending on desired output.
@@ -32,13 +33,13 @@ apollo_cnl(cnl_settings, functionality)
 \value{
 The returned object depends on the value of argument \code{functionality} as follows.
         \itemize{
-          \item "estimate": vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
-          \item "prediction": List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
-          \item "validate": Boolean. Returns TRUE if all tests are passed.
-          \item "zero_LL": vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
-          \item "conditionals": Same as "prediction".
-          \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
-          \item "raw": Same as "prediction".
+          \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
+          \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
+          \item \strong{\code{"validate"}}: Same as \code{"estimate"}
+          \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
+          \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
+          \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
+          \item \strong{\code{"raw"}}: Same as \code{"prediction"}
         }
 }
 \description{

@@ -9,6 +9,9 @@
   apolloVersion <- tryCatch(utils::packageDescription("apollo", fields = "Version"),
                             warning=function(w) return("alpha"),
                             error=function(e) return("alpha"))
-  txt <- paste0("Apollo ", apolloVersion,"\nSee www.ApolloChoiceModelling.com for \n a detailed manual, examples and a help forum.")
+  txt <- paste0("Apollo ", apolloVersion,
+  "\nwww.ApolloChoiceModelling.com",
+  "\nSee url for a detailed manual, examples and a help forum.",
+  "\nSign up to our mailing list for updates on new releases.")
   packageStartupMessage(txt)
 }

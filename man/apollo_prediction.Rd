@@ -4,8 +4,13 @@
 \alias{apollo_prediction}
 \title{Predicts using an estimated model}
 \usage{
-apollo_prediction(model, apollo_probabilities, apollo_inputs,
-  modelComponent = "model")
+apollo_prediction(
+  model,
+  apollo_probabilities,
+  apollo_inputs,
+  prediction_settings = list(),
+  modelComponent = "model"
+)
 }
 \arguments{
 \item{model}{Model object. Estimated model object as returned by function \link{apollo_estimate}.}
@@ -19,10 +24,17 @@ apollo_prediction(model, apollo_probabilities, apollo_inputs,
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
-\item{modelComponent}{Character. Name of component of apollo_probabilities output to calculate predictions for. Default is "model", i.e. the whole model.}
+\item{prediction_settings}{List of settings. It can have the following elements.
+\itemize{
+  \item \code{modelComponent} Character. Name of component of apollo_probabilities output to calculate predictions for. Default is "model", i.e. the whole model.
+  \item \code{silent} Boolean. If TRUE, thsi function won't print any output to screen.
+}}
+
+\item{modelComponent}{\strong{Deprecated}. Same as \code{modelComponent} inside \code{prediction_settings}.}
 }
 \value{
-A vector containing predictions for component \code{modelComponent} of the model described in \code{apollo_probabilities}.
+A list containing predictions for component \code{modelComponent} of the model described in \code{apollo_probabilities}.
+        The particular shape of the prediction will depend on the model component.
 }
 \description{
 Calculates apollo_probabilities with functionality="prediction" and extracts one element from the returned list.

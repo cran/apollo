@@ -3,31 +3,31 @@
 #' Writes files in the working directory with the estimation results.
 #' 
 #' Estimation results are printed to different files in the working directory:
-#' \describe{
-#'   \item{(modelName)_output.txt}{Text file with the output produced by function \code{apollo_modelOutput}.}
-#'   \item{(modelName)_estimates.csv}{CSV file with the estimated parameter values, their standars errors, and t-ratios.}
-#'   \item{(modelName)_covar.csv}{CSV file with the estimated classical covariance matrix. Only when bayesian estimation was not used.}
-#'   \item{(modelName)_robcovar.csv}{CSV file with the estimated robust covariance matrix. Only when bayesian estimation was not used.}
-#'   \item{(modelName)_corr.csv}{CSV file with the estimated classical correlation matrix. Only when bayesian estimation was not used.}
-#'   \item{(modelName)_robcorr.csv}{CSV file with the estimated robust correlation matrix. Only when bayesian estimation was not used.}
-#'   \item{(modelName).F12}{F12 file with model results. Compatible with ALOGIT.}
+#' \itemize{
+#'   \item \code{(modelName)_output.txt} Text file with the output produced by function \code{apollo_modelOutput}.
+#'   \item \code{(modelName)_estimates.csv} CSV file with the estimated parameter values, their standars errors, and t-ratios.
+#'   \item \code{(modelName)_covar.csv} CSV file with the estimated classical covariance matrix. Only when bayesian estimation was not used.
+#'   \item \code{(modelName)_robcovar.csv} CSV file with the estimated robust covariance matrix. Only when bayesian estimation was not used.
+#'   \item \code{(modelName)_corr.csv} CSV file with the estimated classical correlation matrix. Only when bayesian estimation was not used.
+#'   \item \code{(modelName)_robcorr.csv} CSV file with the estimated robust correlation matrix. Only when bayesian estimation was not used.
+#'   \item \code{(modelName).F12} F12 file with model results. Compatible with ALOGIT.
 #' }
 #' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}.
 #' @param saveOutput_settings List of options. Valid options are the following.
 #'                            \itemize{
-#'                               \item printClassical: Boolean. TRUE for printing classical standard errors. TRUE by default.
-#'                               \item printPVal: Boolean. TRUE for printing p-values. FALSE by default.
-#'                               \item printT1: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
-#'                               \item printDiagnostics: Boolean. TRUE for printing summary of choices in database and other diagnostics. TRUE by default.
-#'                               \item printCovar: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
-#'                               \item printCorr: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
-#'                               \item printOutliers: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
-#'                               \item printChange: Boolean. TRUE for printing difference between starting values and estimates. TRUE by default.
-#'                               \item saveEst: Boolean. TRUE for saving estimated parameters and standard errors to a CSV file. TRUE by default.
-#'                               \item saveCov: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.
-#'                               \item saveCorr: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.
-#'                               \item saveModelObject: Boolean. TRUE to save the R model object to a file (use \link{apollo_loadModel} to load it to memory). TRUE by default.
-#'                               \item writeF12: Boolean. TRUE for writing results into an F12 file (ALOGIT format). FALSE by default.
+#'                               \item \code{printClassical}: Boolean. TRUE for printing classical standard errors. TRUE by default.
+#'                               \item \code{printPVal}: Boolean. TRUE for printing p-values. FALSE by default.
+#'                               \item \code{printT1}: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
+#'                               \item \code{printDiagnostics}: Boolean. TRUE for printing summary of choices in database and other diagnostics. TRUE by default.
+#'                               \item \code{printCovar}: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
+#'                               \item \code{printCorr}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
+#'                               \item \code{printOutliers}: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
+#'                               \item \code{printChange}: Boolean. TRUE for printing difference between starting values and estimates. TRUE by default.
+#'                               \item \code{saveEst}: Boolean. TRUE for saving estimated parameters and standard errors to a CSV file. TRUE by default.
+#'                               \item \code{saveCov}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.
+#'                               \item \code{saveCorr}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.
+#'                               \item \code{saveModelObject}: Boolean. TRUE to save the R model object to a file (use \link{apollo_loadModel} to load it to memory). TRUE by default.
+#'                               \item \code{writeF12}: Boolean. TRUE for writing results into an F12 file (ALOGIT format). FALSE by default.
 #'                            }
 #' @return nothing
 #' @export
@@ -70,9 +70,34 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
     scaling_used=FALSE
   }
   
-  sink(paste(model$apollo_control$modelName,"_output.txt",sep=""))
-  tmp <- apollo_modelOutput(model,saveOutput_settings)
-  sink()
+  # Check if files exists, and if they do, rename them as OLD
+  modName <- model$apollo_control$modelName
+  if(file.exists( paste0(modName, "_output.txt") )){
+    # Figure out corresponding OLD verison
+    n <- 1
+    while( file.exists( paste0(modName, "_OLD", n, "_output.txt") ) ) n <- n + 1
+    modNameOld <- paste0(modName, "_OLD", n)
+    # Rename files
+    outFiles <- c("_output.txt", "_estimates.csv", 
+                  "_covar.csv", "_robcovar.csv", "_bootcovar.csv", 
+                  "_corr.csv", "_robcorr.csv", "_bootcorr.csv",
+                  "_model.rds",
+                  "_F.csv", "_A.csv", "_B.csv", "_Bsd.csv", "_C.csv", "_Csd.csv", "_D.csv", 
+                  ".log", "_param_non_random.csv", "_param_random_mean.csv", "_param_random_cov_mean.csv",
+                  "_param_random_cov_sd.csv", "_param_posterior.csv", "_random_coeff_covar.csv", "_random_coeff_corr.csv")
+    for(i in outFiles) if(file.exists(paste0(modName, i))){
+      file.rename(from=paste0(modName, i), to=paste0(modNameOld, i))
+      cat("\nOld result file \"", paste0(modName, i), "\" \n renamed to: \"", paste0(modNameOld, i), "\"", sep="")
+    }
+    cat("\n")
+  }
+  
+  
+  #sink( paste0(modName, "_output.txt") )
+  #tmp <- apollo_modelOutput(model,saveOutput_settings)
+  capture.output(tmp <- apollo_modelOutput(model,saveOutput_settings),
+                 file=paste0(modName, "_output.txt"))
+  #sink()
   
   # ################################## #
   #### HB only components           ####
@@ -174,38 +199,38 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
     }
     
     # Write to file
-    utils::write.csv(output,paste(model$apollo_control$modelName,"_estimates.csv",sep=""))
-    cat("Estimates saved to",paste(model$apollo_control$modelName, "_estimates.csv"   , sep=""),"\n")
+    utils::write.csv(output,paste0(modName,"_estimates.csv"))
+    cat("Estimates saved to",paste0(modName, "_estimates.csv"),"\n")
   }
   if(saveCov){
     if(printClassical==TRUE){
-      utils::write.csv(model$varcov,paste(model$apollo_control$modelName,"_covar.csv",sep=""))
-      cat("Classical covariance matrix saved to",paste(model$apollo_control$modelName, "_covar.csv"   , sep=""),"\n")
+      utils::write.csv(model$varcov,paste0(modName,"_covar.csv"))
+      cat("Classical covariance matrix saved to",paste0(modName, "_covar.csv"),"\n")
       }
-    utils::write.csv(model$robvarcov,paste(model$apollo_control$modelName,"_robcovar.csv",sep=""))
-    cat("Robust covariance matrix saved to",paste(model$apollo_control$modelName, "_robcovar.csv"   , sep=""),"\n")
+    utils::write.csv(model$robvarcov,paste0(modName,"_robcovar.csv"))
+    cat("Robust covariance matrix saved to",paste0(modName, "_robcovar.csv"),"\n")
     if(!is.null(model$bootstrapSE) && model$bootstrapSE>0){
-      utils::write.csv(model$bootvarcov,paste(model$apollo_control$modelName,"_bootcovar.csv",sep=""))
-      cat("Bootstrap covariance matrix saved to",paste(model$apollo_control$modelName, "_bootcovar.csv"   , sep=""),"\n")
+      utils::write.csv(model$bootvarcov,paste0(modName,"_bootcovar.csv"))
+      cat("Bootstrap covariance matrix saved to",paste(modName, "_bootcovar.csv"   , sep=""),"\n")
     }
   }
   if(saveCorr){
     if(printClassical==TRUE){ 
-      utils::write.csv(model$corrmat,paste(model$apollo_control$modelName,"_corr.csv",sep=""))
-      cat("Classical correlation matrix saved to",paste(model$apollo_control$modelName, "_covar.csv"   , sep=""),"\n")
+      utils::write.csv(model$corrmat,paste0(modName,"_corr.csv"))
+      cat("Classical correlation matrix saved to",paste(modName, "_covar.csv"   , sep=""),"\n")
     }
-    utils::write.csv(model$robcorrmat,paste(model$apollo_control$modelName,"_robcorr.csv",sep=""))
-    cat("Robust correlation matrix saved to",paste(model$apollo_control$modelName, "_robcorr.csv"   , sep=""),"\n")
+    utils::write.csv(model$robcorrmat,paste0(modName,"_robcorr.csv"))
+    cat("Robust correlation matrix saved to",paste0(modName, "_robcorr.csv"),"\n")
     if(!is.null(model$bootstrapSE) && model$bootstrapSE>0){
-      utils::write.csv(model$bootcorrmat, paste(model$apollo_control$modelName,"_bootcorr.csv",sep=""))
-      cat("Bootstrap correlation matrix saved to",paste(model$apollo_control$modelName, "_bootcorr.csv"   , sep=""),"\n")
+      utils::write.csv(model$bootcorrmat, paste0(modName,"_bootcorr.csv"))
+      cat("Bootstrap correlation matrix saved to",paste(modName, "_bootcorr.csv"   , sep=""),"\n")
     }
   }
   
   if(saveModelObject){
     tryCatch( {
-      saveRDS(model, file=paste0(model$apollo_control$modelName,"_model.rds"))
-      cat("Model object saved to",paste(model$apollo_control$modelName, ".rds", sep=""),"\n")
+      saveRDS(model, file=paste0(modName,"_model.rds"))
+      cat("Model object saved to",paste0(modName, ".rds"),"\n")
       }, error=function(e) cat("Model object could not be written to file."))
   }
   

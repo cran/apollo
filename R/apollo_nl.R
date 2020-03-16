@@ -12,33 +12,34 @@
 #' recommended.
 #' @param nl_settings List of inputs of the NL model. It shoud contain the following.
 #'                    \itemize{
-#'                       \item alternatives: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
-#'                       \item avail: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
-#'                       \item choiceVar: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
-#'                       \item V: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
-#'                       \item nlNests: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named with the nest name. The lambda at the root is fixed to 1 if excluded (recommended).
-#'                       \item nlStructure: Named list of character vectors. As many elements as nests, it must include the "root". Each element contains the names of the nests or alternatives that belong to it. Element names must match those in \code{nlNests}.
-#'                       \item rows: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+#'                       \item \code{alternatives}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
+#'                       \item \code{avail}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
+#'                       \item \code{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
+#'                       \item \code{V}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
+#'                       \item \code{nlNests}: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named with the nest name. The lambda at the root is fixed to 1 if excluded (recommended).
+#'                       \item \code{nlStructure}: Named list of character vectors. As many elements as nests, it must include the "root". Each element contains the names of the nests or alternatives that belong to it. Element names must match those in \code{nlNests}.
+#'                       \item \code{rows}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+#'                       \item \code{componentName}: Character. Name given to model component.
 #'                    }
 #' @param functionality Character. Can take different values depending on desired output.
 #'                      \itemize{
-#'                        \item "estimate": Used for model estimation.
-#'                        \item "prediction": Used for model predictions.
-#'                        \item "validate": Used for validating input.
-#'                        \item "zero_LL": Used for calculating null likelihood.
-#'                        \item "conditionals": Used for calculating conditionals.
-#'                        \item "output": Used for preparing output after model estimation.
-#'                        \item "raw": Used for debugging.
+#'                        \item \code{"estimate"}: Used for model estimation.
+#'                        \item \code{"prediction"}: Used for model predictions.
+#'                        \item \code{"validate"}: Used for validating input.
+#'                        \item \code{"zero_LL"}: Used for calculating null likelihood.
+#'                        \item \code{"conditionals"}: Used for calculating conditionals.
+#'                        \item \code{"output"}: Used for preparing output after model estimation.
+#'                        \item \code{"raw"}: Used for debugging.
 #'                      }
 #' @return The returned object depends on the value of argument \code{functionality} as follows.
 #'         \itemize{
-#'           \item "estimate": vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
-#'           \item "prediction": List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
-#'           \item "validate": Boolean. Returns TRUE if all tests are passed.
-#'           \item "zero_LL": vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
-#'           \item "conditionals": Same as "prediction".
-#'           \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
-#'           \item "raw": Same as "prediction".
+#'           \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
+#'           \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the probability of the chosen alternative.
+#'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
+#'           \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
+#'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
+#'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'         }
 #' @examples
 #' ### Load data
@@ -73,12 +74,15 @@
 #' apollo_nl(nl_settings, functionality="estimate")
 #' @export
 apollo_nl <- function(nl_settings, functionality){
-  if(is.null(nl_settings[["alternatives"]])) stop("The nl_settings list needs to include an object called \"alternatives\"!")
-  if(is.null(nl_settings[["avail"]])) stop("The nl_settings list needs to include an object called \"avail\"!")
-  if(is.null(nl_settings[["choiceVar"]])) stop("The nl_settings list needs to include an object called \"choiceVar\"!")
-  if(is.null(nl_settings[["V"]])) stop("The nl_settings list needs to include an object called \"V\"!")
-  if(is.null(nl_settings[["nlNests"]])) stop("The nl_settings list needs to include an object called \"nlNests\"!")
-  if(is.null(nl_settings[["nlStructure"]])) stop("The nl_settings list needs to include an object called \"nlStructure\"!")
+  if(is.null(nl_settings[["componentName"]])       ) nl_settings[["componentName"]]="NL"
+  componentName= nl_settings[["componentName"]]
+  
+  if(is.null(nl_settings[["alternatives"]])) stop("The nl_settings list for model component \"",componentName,"\" needs to include an object called \"alternatives\"!")
+  if(is.null(nl_settings[["avail"]])) stop("The nl_settings list for model component \"",componentName,"\" needs to include an object called \"avail\"!")
+  if(is.null(nl_settings[["choiceVar"]])) stop("The nl_settings list for model component \"",componentName,"\" needs to include an object called \"choiceVar\"!")
+  if(is.null(nl_settings[["V"]])) stop("The nl_settings list for model component \"",componentName,"\" needs to include an object called \"V\"!")
+  if(is.null(nl_settings[["nlNests"]])) stop("The nl_settings list for model component \"",componentName,"\" needs to include an object called \"nlNests\"!")
+  if(is.null(nl_settings[["nlStructure"]])) stop("The nl_settings list for model component \"",componentName,"\" needs to include an object called \"nlStructure\"!")
   if(is.null(nl_settings[["rows"]])) nl_settings[["rows"]]="all"
   
   alternatives = nl_settings[["alternatives"]]
@@ -103,32 +107,32 @@ apollo_nl <- function(nl_settings, functionality){
   ### Format checks
   # alternatives
   test <- is.vector(alternatives) & !is.null(names(alternatives))
-  if(!test) stop("The \"alternatives\" argument needs to be a named vector")
+  if(!test) stop("The \"alternatives\" argument for model component \"",componentName,"\" needs to be a named vector")
   # avail
   test <- is.list(avail) || (length(avail)==1 && avail==1)
-  if(!test) stop("The \"avail\" argument needs to be a list or set to 1")
+  if(!test) stop("The \"avail\" argument for model component \"",componentName,"\" needs to be a list or set to 1")
   if(is.list(avail)){
     lenA <- sapply(avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
     test <- all(lenA==nObs | lenA==1)
-    if(!test) stop("All entries in \"avail\" need to be a scalar or a vector with one entry per observation in the \"database\"")
+    if(!test) stop("All entries in \"avail\" for model component \"",componentName,"\" need to be a scalar or a vector with one entry per observation in the \"database\"")
   }
   # choiceVar
   test <- is.vector(choiceVar) && (length(choiceVar)==nObs || length(choiceVar)==1)
-  if(!test) stop("The \"choiceVar\" argument needs to be a scalar or a vector with one entry per observation in the \"database\"")
+  if(!test) stop("The \"choiceVar\" argument for model component \"",componentName,"\" needs to be a scalar or a vector with one entry per observation in the \"database\"")
   # V
-  if(!is.list(V)) stop("The \"V\" argument needs to be a list")
+  if(!is.list(V)) stop("The \"V\" argument for model component \"",componentName,"\" needs to be a list")
   lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-  test <- all(lenV==nObs | lenV==1) && !is.null(names(V))
-  if(!test) stop("Each element of \"V\" must be named and needs to be a scalar or a vector with one entry per observation in the \"database\"")  
+  test <- all(lenV==nObs | lenV==1)
+  if(!test) stop("Each element of \"V\" for model component \"",componentName,"\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")  
   # rows
   test <- is.vector(rows) && ( (is.logical(rows) && length(rows)==nObs) || (length(rows)==1 && rows=="all") )
-  if(!test) stop("The \"rows\" argument needs to be \"all\" or a vector of boolean statements with one entry per observation in the \"database\"")
+  if(!test) stop("The \"rows\" argument for model component \"",componentName,"\" needs to be \"all\" or a vector of boolean statements with one entry per observation in the \"database\"")
   # functionality
   test <- functionality %in% c("estimate","prediction","validate","zero_LL","conditionals","output","raw")
-  if(!test) stop("Non-permissable setting for \"functionality\"")
+  if(!test) stop("Non-permissable setting for \"functionality\" for model component \"",componentName,"\"")
   # nlStructure
   test <- is.list(nlStructure) && !is.null(names(nlStructure)) && all(sapply(nlStructure, is.vector)) && all(sapply(nlStructure, is.character))
-  if(!test) stop("Argument \"nlStructure\" must be a named list of character vectors describing the content of each nest.")
+  if(!test) stop("Argument \"nlStructure\" for model component \"",componentName,"\" must be a named list of character vectors describing the contents of each nest.")
   
   ### Expand availabilities if =1
   avail_set <- FALSE
@@ -173,42 +177,46 @@ apollo_nl <- function(nl_settings, functionality){
     
     if(apollo_control$noValidation==FALSE){
       
+      # Check that alternatives are named in altcodes and V
+      if(is.null(altnames) || is.null(altcodes) || is.null(names(V))) stop("Alternatives for model component \"",componentName,"\" must be named, both in 'alternatives' and 'V'.")
+      
       # Check there are at least three alternatives
-      if(nAlt<3) stop("NL requires at least three alternatives")
+      if(nAlt<3) stop("Model component \"",componentName,"\"  requires at least three alternatives")
       
       # Check that choice vector is not empty
-      if(nObs==0) stop("No choices to model")
+      if(length(choiceVar)==0) stop("Choice vector is empty for model component \"",componentName,"\"")
+      if(nObs==0) stop("No data for model component \"",componentName,"\"")
       
       # Check that labels in choice match those in the utilities and availabilities
       choiceLabs <- unique(choiceVar)
-      if(!all(altnames %in% names(V))) stop("Alternative labels in \"altnames\" do not match those in \"V\".")
-      if(!all(altnames %in% names(avail))) stop("Alternative labels in \"altnames\" do not match those in \"avail\".")
+      if(!all(altnames %in% names(V))) stop("The names of the alternatives for model component \"",componentName,"\" do not match those in \"V\".")
+      if(!all(altnames %in% names(avail))) stop("The names of the alternatives for model component \"",componentName,"\" do not match those in \"avail\".")
       
       # Check that there are no values in the choice column for undefined alternatives
-      if(!all(choiceLabs %in% altcodes)) stop("Value in choice column that is not included in altcodes.")
+      if(!all(choiceLabs %in% altcodes)) stop("The data contains values for \"choiceVar\" for model component \"",componentName,"\" that are not included in \"alternatives\".")
       
       # check that nothing unavailable is chosen
-      for(j in 1:nAlt) if(any(choiceVar==altcodes[j] & avail[[j]]==0)) stop("Alternative ",altnames[j]," chosen despite being listed as unavailable\n")
+      for(j in 1:nAlt) if(any(choiceVar==altcodes[j] & avail[[j]]==0)) stop("The data contains cases where alternative ",altnames[j]," is chosen for model component \"",componentName,"\" despite being listed as unavailable\n")
       
       # check that all availabilities are either 0 or 1
-      for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values are not 0 or 1.")
+      for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values for model component \"",componentName,"\" are not 0 or 1.")
       
       # Check that no available alternative has utility = NA
       # Requires setting non available alternatives utility to 0 first
       V <- mapply(function(v,a) apollo_setRows(v, !a, 0), V, avail, SIMPLIFY=FALSE)
-      if(any(sapply(V, anyNA))) warning("At least one utility contains one or more NA values at parameter starting values")
+      if(any(sapply(V, anyNA))) cat("\nAt least one utility for model component \"",componentName,"\" contains one or more NA values at parameter starting values")
       
       
       # checks that are specific to nlStructure component
       
       allElements <- c("root", unlist(nlStructure))
-      if(nlNests["root"]!=1) stop("The root lambda parameter should be equal to 1.")
-      if( !all(altnames %in% allElements) ) stop("All alternatives must be included in the tree structure.")
-      if( !all(nestnames %in% allElements) ) stop("All nests must be included in the tree structure.")
-      if( (length(nestnames)+length(altnames))!=length(allElements) ) stop("Tree structure is inconsistent. Each element must appear only once.")
-      if( !all(names(nlNests) %in% names(nlStructure)) | !all(names(nlStructure) %in% names(nlNests)) ) stop("All nests in argument 'nlNests' should be in 'nlStructure', and vice versa (including 'root').")
+      if(is.null(nlStructure[["root"]])) stop("Tree structure for model component \"",componentName,"\" is missing an element called root!")
+      if(nlNests["root"]!=1) stop("The root lambda parameter for model component \"",componentName,"\" should be equal to 1.")
+      if( !all(altnames %in% allElements) ) stop("All alternatives must be included in the tree structure for model component \"",componentName,"\".")
+      if( !all(nestnames %in% allElements) ) stop("All nests must be included in the tree structure for model component \"",componentName,"\".")
+      if( (length(nestnames)+length(altnames))!=length(allElements) ) stop("Tree structure for model component \"",componentName,"\" is inconsistent. Each element must appear only once.")
+      if( !all(names(nlNests) %in% names(nlStructure)) | !all(names(nlStructure) %in% names(nlNests)) ) stop("All nests in argument 'nlNests' for model component \"",componentName,"\" should be in 'nlStructure', and vice versa (including 'root').")
       
-      if(is.null(nlStructure[["root"]])) stop("Tree structure is missing an element called root!")
       combined_elements="root"
       j=1
       while(j<= length(nlStructure)){
@@ -218,21 +226,21 @@ apollo_nl <- function(nl_settings, functionality){
       
       j=1
       while(j<= length(altnames)){
-        if(sum(nestnames==altnames[j])) stop("A nest cannot have the same name as an alternative!")
-        if(sum(combined_elements==altnames[j])!=1) stop("An alternative needs to appear exactly once in a tree!")
+        if(sum(nestnames==altnames[j])) stop("A nest for model component \"",componentName,"\" cannot have the same name as an alternative!")
+        if(sum(combined_elements==altnames[j])!=1) stop("An alternative for model component \"",componentName,"\" needs to appear exactly once in a tree!")
         j=j+1
       }
       
       j=1
       while(j<= length(nlStructure)){
-        if(sum(nestnames==names(nlStructure)[j])!=1) stop("A defined nest needs to appear exactly once in a tree!")
+        if(sum(nestnames==names(nlStructure)[j])!=1) stop("A defined nest for model component \"",componentName,"\" needs to appear exactly once in a tree!")
         j=j+1
       }
       
       j=1
       while(j<= length(nestnames)){
-        if(sum(altnames==nestnames[j])) stop("A nest cannot have the same name as an alternative!")
-        if(sum(combined_elements==nestnames[j])!=1) stop("A defined nest needs to appear exactly once in a tree!")
+        if(sum(altnames==nestnames[j])) stop("A nest for model component \"",componentName,"\" cannot have the same name as an alternative!")
+        if(sum(combined_elements==nestnames[j])!=1) stop("A defined nest for model component \"",componentName,"\" needs to appear exactly once in a tree!")
         j=j+1
       }
     }
@@ -324,13 +332,16 @@ apollo_nl <- function(nl_settings, functionality){
       if(avail_set==TRUE) content[[length(content)+1]] <- paste0("Warning: Availability not provided (or some elements are NA).",
                                                                  "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
       if(root_set==TRUE) content[[length(content)+1]] <- "Notice: Root lambda parameter set to 1."
-      content[[length(content)+1]] <- "Nested structure:"
+      content[[length(content)+1]] <- "Nesting structure:"
       content[[length(content)+1]] <- capture.output(print_tree(nlStructure, ancestors))
       apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-      apollo_addLog("Overview of choices for NL model component:", content, apolloLog)
+      apollo_addLog(paste0("Overview of choices for model component \"",componentName,"\""), content, apolloLog)
     }
     
-    return(TRUE)
+    testL=apollo_nl(nl_settings, functionality="estimate")
+    if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"",componentName,"\"")
+    if(any(testL==0)) cat("\nSome observations have zero probability at starting value for model component \"",componentName,"\"")
+    return(invisible(testL))
   }
   
   # ############################## #
@@ -563,11 +574,17 @@ apollo_nl <- function(nl_settings, functionality){
     if(avail_set==TRUE) content[[length(content)+1]] <- paste0("Warning: Availability not provided (or some elements are NA).",
                                                                "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
     if(root_set==TRUE) content[[length(content)+1]] <- "Notice: Root lambda parameter set to 1."
-    content[[length(content)+1]] <- "Nested structure:"
+    content[[length(content)+1]] <- "Nesting structure:"
     content[[length(content)+1]] <- capture.output(print_tree(nlStructure, ancestors))
     apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-    apollo_addLog("Overview of choices for NL model component:", content, apolloLog)
-    
+    apollo_addLog(title   = paste0("Overview of choices for model component \"",componentName,"\""), 
+                  content = content,
+                  apolloLog)
+    apollo_addLog(title   = paste0("Nesting structure model component \"", componentName,"\""),
+                  content = capture.output(print_tree(nlStructure, ancestors)),
+                  apolloLog, 
+                  book    = 2)
+    apollo_reportModelTypeLog(modelType="NL", apolloLog)
   }
   
   return(P)

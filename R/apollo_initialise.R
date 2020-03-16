@@ -8,9 +8,9 @@
 #' @export
 apollo_initialise <- function()
 {
-doDetach <- !grepl("^(.GlobalEnv|package:|tools:|Autoloads|CheckExEnv|TempEnv)", search())
-doDetach <- (search())[which(doDetach)]
-if(length(doDetach)>0) for(i in 1:length(doDetach)) detach(pos=(which(doDetach[i]==search()))[1])
-if(sink.number()>0) sink()
-cat("Apollo ignition sequence completed\n")
+  doDetach <- !grepl("^(.GlobalEnv|package:|tools:|Autoloads|CheckExEnv|TempEnv)", search())
+  doDetach <- (search())[which(doDetach)]
+  if(length(doDetach)>0) for(i in 1:length(doDetach)) detach(pos=(which(doDetach[i]==search()))[1])
+  if(sink.number()>0) sink()
+  cat("Apollo ignition sequence completed\n")
 }

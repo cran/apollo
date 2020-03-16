@@ -14,8 +14,15 @@
 #' @return A matrix with the posterior class allocation probabilities for each individual.
 #' @export
 apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
+  if(!is.function(apollo_inputs$apollo_lcPars)) stop("This function is for latent class models. For other models use \"apollo_conditionals\".")
+  
   apollo_beta    = model$estimate
   apollo_fixed   = model$apollo_fixed
+
+  cat("Updating inputs...")
+  apollo_inputs <- apollo_validateInputs(silent=TRUE)
+  cat("Done.\n")
+  
   apollo_control = apollo_inputs[["apollo_control"]]
   database       = apollo_inputs[["database"]]
   apollo_lcPars  = apollo_inputs[["apollo_lcPars"]]
@@ -23,6 +30,9 @@ apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
   apollo_randCoeff  = apollo_inputs[["apollo_randCoeff"]]
   apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
   
+  if(is.null(apollo_control$HB)) apollo_control$HB=FALSE
+  if(apollo_control$HB) stop("The function \'apollo_lcConditionals\' is not applicables for models estimated using HB!") 
+
   ### Validation
   if(apollo_control$mixing) stop("apollo_lcConditionals can only be used for latent class models without continuous random heterogeneity")
   

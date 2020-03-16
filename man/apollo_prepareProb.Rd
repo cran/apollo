@@ -23,7 +23,16 @@ apollo_prepareProb(P, apollo_inputs, functionality)
 }}
 }
 \value{
-The likelihood (i.e. probability in the case of choice models) of the model in the appropriate form for the given functionality.
+The returned object depends on the value of argument \code{functionality} as follows.
+        \itemize{
+          \item \strong{\code{"estimate"}}: Returns only the \code{"model"} component of argument \code{P}.
+          \item \strong{\code{"prediction"}}: Returns argument \code{P} without any changes.
+          \item \strong{\code{"validate"}}: Returns argument \code{P} without any changes.
+          \item \strong{\code{"zero_LL"}}: Returns argument \code{P} without any changes to its content, but gives names the unnamed elements.
+          \item \strong{\code{"conditionals"}}: Returns only the \code{"model"} component of argument \code{P}.
+          \item \strong{\code{"output"}}: Returns argument \code{P} without any changes to its content, but gives names the unnamed elements.
+          \item \strong{\code{"raw"}}: Returns argument \code{P} without any changes.
+        }
 }
 \description{
 Checks that likelihoods, i.e. probabilities in the case of choice models, are in the appropiate format to be returned.

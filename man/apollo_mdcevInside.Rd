@@ -4,9 +4,21 @@
 \alias{apollo_mdcevInside}
 \title{Calculates MDCEV likelihoods without an outside good.}
 \usage{
-apollo_mdcevInside(V, alternatives, alpha, gamma, sigma, cost, avail,
-  continuousChoice, budget, functionality, minConsumption = NA,
-  rows = "all")
+apollo_mdcevInside(
+  V,
+  alternatives,
+  alpha,
+  gamma,
+  sigma,
+  cost,
+  avail,
+  continuousChoice,
+  budget,
+  functionality,
+  minConsumption = NA,
+  rows = "all",
+  componentName = "MDCEV"
+)
 }
 \arguments{
 \item{V}{Named list. Utilities of the alternatives. Names of elements must match those in argument 'alternatives'.}
@@ -41,17 +53,19 @@ apollo_mdcevInside(V, alternatives, alpha, gamma, sigma, cost, avail,
 \item{minConsumption}{Named list of scalars or numeric vectors. Minimum consumption of the alternatives, if consumed. As many elements as alternatives. Names must match those in \code{alternatives}.}
 
 \item{rows}{Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.}
+
+\item{componentName}{Character. Name given to model component.}
 }
 \value{
 The returned object depends on the value of argument \code{functionality} as follows.
         \itemize{
-          \item "estimate": vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
-          \item "prediction": A matrix with one row per observation, and means and s.d. of predicted consumptions.
-          \item "validate": Boolean. Returns TRUE if all tests are passed.
-          \item "zero_LL": Not applicable.
-          \item "conditionals": Same as "prediction".
-          \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
-          \item "raw": Same as "prediction".
+          \item \code{"estimate"}: vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
+          \item \code{"prediction"}: A matrix with one row per observation, and means and s.d. of predicted consumptions.
+          \item \code{"validate"}: Boolean. Returns TRUE if all tests are passed.
+          \item \code{"zero_LL"}: Not applicable.
+          \item \code{"conditionals"}: Same as "prediction".
+          \item \code{"output"}: Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
+          \item \code{"raw"}: Same as "prediction".
         }
 }
 \description{

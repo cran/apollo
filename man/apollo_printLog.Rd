@@ -4,10 +4,12 @@
 \alias{apollo_printLog}
 \title{Returns the log of Apollo}
 \usage{
-apollo_printLog(apolloLog)
+apollo_printLog(apolloLog, book = 1)
 }
 \arguments{
 \item{apolloLog}{Environment. It contains the character vectors of titles and content.}
+
+\item{book}{Positive scalar integer. Book number inside the log (default is 1).}
 }
 \value{
 A list or a scalar character variable.

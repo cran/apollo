@@ -16,27 +16,43 @@
 #'                        \item{"output"}{Checks that the model is well defined.}
 #'                        \item{"raw"}{For debugging, returns probabilities of all alternatives}
 #'                      }
-#' @return The likelihood (i.e. probability in the case of choice models) of the model in the appropriate form for the given functionality.
+#' @return The returned object depends on the value of argument \code{functionality} as follows.
+#'         \itemize{
+#'           \item \strong{\code{"estimate"}}: Returns only the \code{"model"} component of argument \code{P}.
+#'           \item \strong{\code{"prediction"}}: Returns argument \code{P} without any changes.
+#'           \item \strong{\code{"validate"}}: Returns argument \code{P} without any changes.
+#'           \item \strong{\code{"zero_LL"}}: Returns argument \code{P} without any changes to its content, but gives names the unnamed elements.
+#'           \item \strong{\code{"conditionals"}}: Returns only the \code{"model"} component of argument \code{P}.
+#'           \item \strong{\code{"output"}}: Returns argument \code{P} without any changes to its content, but gives names the unnamed elements.
+#'           \item \strong{\code{"raw"}}: Returns argument \code{P} without any changes.
+#'         }
 #' @export
 apollo_prepareProb=function(P, apollo_inputs, functionality){
   panelData <- apollo_inputs$apollo_control$panelData
   nIndiv <- length(unique(apollo_inputs$database[, apollo_inputs$apollo_control$indivID]))
   HB <- apollo_inputs$apollo_control$HB
   
-  if(functionality %in% c("validate", "output") && is.list(P) && length(P)>1){
-    ### Add name of components to titles in apolloLog
-    apolloLog <- apollo_inputs$apolloLog
-    if(is.environment(apolloLog)){
-      newTitles <- names(P)
-      for(i in 1:min(length(apolloLog$title), length(newTitles))){
-        apolloLog$title[i] <- paste(apolloLog$title[i], newTitles[i])
-      }
-    }
+  if(!is.list(P)) P=list(model=P)
+  if(is.null(P[["model"]]) && functionality!="prediction" ) stop('Element called model is missing in list P!')
+  
+  if(functionality=="gradient"){
+    if(is.list(P)) P = P[[1]]
+    if( !is.function(P) ) stop("P should be a function when functionality='gradient'")
+    return(P)
   }
   
-  if(functionality %in% c("prediction", "validate")) return(P)
+  #if(functionality %in% c("validate", "output") && is.list(P) && length(P)>1){
+  #  ### Add name of components to titles in apolloLog
+  #  apolloLog <- apollo_inputs$apolloLog
+  #  if(is.environment(apolloLog)){
+  #    newTitles <- names(P)
+  #    for(i in 1:min(length(apolloLog$title), length(newTitles))){
+  #      apolloLog$title[i] <- paste(apolloLog$title[i], newTitles[i])
+  #    }
+  #  }
+  #}
   
-  if(is.null(P[["model"]])) stop('Element called model is missing in list P!')
+  if(functionality %in% c("prediction", "validate")) return(P)
   
   if(HB){
     test = ifelse(is.na(P[["model"]]), TRUE, P[["model"]] < 9.88131291682493e-324)
@@ -64,7 +80,7 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
     P_out=P[["model"]]
   } 
   
-  if(functionality=="output"){
+  if(functionality%in%c("output","zero_LL")){
     P_out=P
     # Give name to unnamed components
     origNames <- names(P_out)
@@ -74,9 +90,12 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
   }
   if(functionality=="raw") P_out=P
   if(functionality=="conditionals") P_out=P[["model"]]
-  if(functionality=="zero_LL") P_out=P[["model"]]
+  #if(functionality=="zero_LL") P_out=P[["model"]]
   
-  
+  # This cannot be done here as it messes up EM estimation
+  #if(is.list(P_out)){
+  #  P_out=P_out[c("model",names(P_out)[names(P_out)!="model"])]
+  #}
   
   return(P_out)
 }

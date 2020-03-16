@@ -4,7 +4,8 @@
 \name{apollo_drugChoiceData}
 \alias{apollo_drugChoiceData}
 \title{Simulated dataset of medication choice.}
-\format{A data frame with 10000 rows and 33 variables:
+\format{
+A data frame with 10000 rows and 33 variables:
 \describe{
   \item{ID}{Numeric. Identification number of the individual.}
   \item{task}{Numeric. 1 if the row corresponds to a revealed preference (RP) observation. 0 otherwise.}
@@ -39,7 +40,8 @@
   \item{attitude_ingredients}{Numeric. Level of agreement from 1 (strongly disagree) to 5 (strongly agree) with the phrase 'I believe that ingredients are the same no matter what brand'.}
   \item{attitude_patent}{Numeric. Level of agreement from 1 (strongly disagree) to 5 (strongly agree) with the phrase 'The original patent holders have valuable experience with their medicines'.}
   \item{attitude_dominance}{Numeric. Level of agreement from 1 (strongly disagree) to 5 (strongly agree) with the phrase 'I believe the dominance of big pharmaceutical companies is unhelpful'.}
-}}
+}
+}
 \source{
 \url{http://www.apollochoicemodelling.com/}
 }

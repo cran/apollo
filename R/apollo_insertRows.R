@@ -28,11 +28,15 @@ apollo_insertRows <- function(v, r, val){
     v2[r] <- v
   }
   if(isMat){
-    v2     <- matrix(val, nrow=length(r), ncol=ncol(v))
+    v2     <- matrix(val, nrow=length(r), ncol=ncol(v),
+                     dimnames=list(NULL, colnames(v)))
     v2[r,] <- v
+    
   }
   if(isCub){
     v2      <- array(val, dim=c(length(r), dim(v)[2], dim(v)[3]))
+    dn <- dimnames(v)
+    if(!is.null(dn)) dimnames(v2) <- list(NULL, dn[2], dn[3])
     v2[r,,] <- v
   }
   if(!isVec & !isMat & !isCub) v2 <- v

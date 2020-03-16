@@ -12,10 +12,10 @@ apollo_splitDataDraws(apollo_inputs, silent = FALSE)
 \item{silent}{Boolean. If TRUE, no information is printed to console or default output.}
 }
 \value{
-List. Each element is a copy of apollo_inputs, but with only a piece of \code{database} and \code{draws}.
+Character vector of file names of the pieces of apollo_inputs.
 }
 \description{
-Copies \code{apollo_inputs} as many times as cores, but each copy contains only part of \code{database} and \code{draws}.
+Splits apollo_inputs into pieces and writes them to disk (temporary folder).
 }
 \details{
 Internal use only. This function is called by \link{apollo_makeCluster}.

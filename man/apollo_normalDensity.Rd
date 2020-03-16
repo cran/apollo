@@ -8,13 +8,14 @@ apollo_normalDensity(normalDensity_settings, functionality)
 }
 \arguments{
 \item{normalDensity_settings}{List of arguments to the functions. It must contain the following.
-        \itemize{
-          \item outcomeNormal: Numeric vector. Dependant variable.
-          \item xNormal: Numeric vector. Single explanatory variable.
-          \item mu: Numeric scalar. Intercept of the linear model.
-          \item sigma: Numeric scalar. Variance of error component of linear model to be estimated.
-\item rows: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
-        }}
+\itemize{
+  \item \code{outcomeNormal}: Numeric vector. Dependant variable.
+  \item \code{xNormal}: Numeric vector. Single explanatory variable.
+  \item \code{mu}: Numeric scalar. Intercept of the linear model.
+  \item \code{sigma}: Numeric scalar. Variance of error component of linear model to be estimated.
+  \item \code{rows}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+  \item \code{componentName}: Character. Name given to model component.
+}}
 
 \item{functionality}{Character. Can take different values depending on desired output.
 \itemize{
@@ -30,13 +31,13 @@ apollo_normalDensity(normalDensity_settings, functionality)
 \value{
 The returned object depends on the value of argument \code{functionality} as follows.
         \itemize{
-          \item "estimate": vector/matrix/array. Returns the probabilities for the chosen value for each observation.
-          \item "prediction": Not applicable.
-          \item "validate": Boolean. Returns TRUE if all tests are passed.
-          \item "zero_LL": Not applicable.
-          \item "conditionals": Same as "estimate".
-          \item "output": Same as "estimate" but also writes summary of choices into temporary file (later read by \code{apollo_modelOutput}).
-          \item "raw": Same as "estimate".
+          \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the likelihood for each observation.
+          \item \strong{\code{"prediction"}}: Not implemented. Returns NA.
+          \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
+          \item \strong{\code{"zero_LL"}}: Not implemented. Returns NA.
+          \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
+          \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
+          \item \strong{\code{"raw"}}: Same as \code{"estimate"}
         }
 }
 \description{

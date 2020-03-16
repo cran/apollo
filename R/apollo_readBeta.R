@@ -23,9 +23,14 @@
 #' }
 apollo_readBeta=function(apollo_beta, apollo_fixed, inputModelName, overwriteFixed=FALSE){
   
-  tmp <- paste0(inputModelName, "_estimates.csv")
-  input_apollo_beta = tryCatch(utils::read.csv(tmp), error=function(e) stop("Could not load ", tmp))
-
+  filename <- paste0(inputModelName, "_estimates.csv")
+  if(!file.exists(filename)) stop("File ",filename," not found!") 
+  input_apollo_beta = tryCatch(utils::read.csv(filename), 
+                               warning=function(w) x=FALSE,
+                               error=function(e) x=FALSE)
+  
+  if(is.logical(input_apollo_beta) && input_apollo_beta==FALSE) stop("Could not open file ",filename) 
+  
   if(overwriteFixed!=FALSE) overwriteFixed=TRUE
 
   input_pars=input_apollo_beta[,2]
@@ -36,17 +41,17 @@ apollo_readBeta=function(apollo_beta, apollo_fixed, inputModelName, overwriteFix
 
   if((overwriteFixed==FALSE)&(length(apollo_fixed)>0)){
     if(length(common_var_pars)==0) cat("\nNo parameter names in the input file match those of parameters to be estimated in apollo_beta!")
-    if(length(common_var_pars)==1) cat("\nOut of the",length(apollo_beta),"parameters in apollo_beta, 1 parameter was updated with the value from the input file.")
-    if(length(common_var_pars)>1) cat("\nOut of the",length(apollo_beta),"parameters in apollo_beta,",length(common_var_pars),"were updated with values from the input file.")
-    if(length(common_fixed_pars)==1) cat("\n1 parameter in apollo_beta was kept fixed at its starting value rather than being updated from the input file.")
-    if(length(common_fixed_pars)>1) cat("\n",length(common_fixed_pars),"parameters in apollo_beta were kept fixed at their starting values rather than being updated from the input file.")
+    if(length(common_var_pars)==1) cat("\nOut of the",length(apollo_beta),"parameters in apollo_beta, 1 parameter\n was updated with the value from the input file.")
+    if(length(common_var_pars)>1) cat("\nOut of the",length(apollo_beta),"parameters in apollo_beta,",length(common_var_pars),"\n were updated with values from the input file.")
+    if(length(common_fixed_pars)==1) cat("\n1 parameter in apollo_beta was kept fixed at its starting\n value rather than being updated from the input file.")
+    if(length(common_fixed_pars)>1) cat("\n",length(common_fixed_pars),"parameters in apollo_beta were kept fixed at\n their starting values rather than being updated from the input file.")
     apollo_beta[common_var_pars]=input_pars[common_var_pars]
   } else {
     if(length(common_pars)==0) cat("\nNo parameter names in the input file match those in apollo_beta!")
-    if(length(common_pars)==1) cat("\nOut of the",length(apollo_beta),"parameters in apollo_beta, 1 parameter was updated with the value from the input file.")
-    if(length(common_pars)>1) cat("\nOut of the",length(apollo_beta),"parameters in apollo_beta,",length(common_pars),"were updated with values from the input file.")
-    if(length(common_fixed_pars)==1) cat("\nThis includes 1 parameter in apollo_fixed whose value has been set to that from the input file.")
-    if(length(common_fixed_pars)>1) cat("\nThis includes",length(common_fixed_pars),"parameters in apollo_fixed whose values have been set to those from the input file.")
+    if(length(common_pars)==1) cat("\nOut of the",length(apollo_beta),"parameters in apollo_beta, 1 parameter\n was updated with the value from the input file.")
+    if(length(common_pars)>1) cat("\nOut of the",length(apollo_beta),"parameters in apollo_beta,",length(common_pars),"\n were updated with values from the input file.")
+    if(length(common_fixed_pars)==1) cat("\nThis includes 1 parameter in apollo_fixed whose\n value has been set to that from the input file.")
+    if(length(common_fixed_pars)>1) cat("\nThis includes",length(common_fixed_pars),"parameters in apollo_fixed\n whose values have been set to those from the input file.")
     apollo_beta[common_pars]=input_pars[common_pars]
   }
   return(apollo_beta)

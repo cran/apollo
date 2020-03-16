@@ -4,7 +4,7 @@
 \alias{apollo_detach}
 \title{Detaches parameters and the database.}
 \usage{
-apollo_detach(apollo_beta, apollo_inputs)
+apollo_detach(apollo_beta = NA, apollo_inputs = NA)
 }
 \arguments{
 \item{apollo_beta}{Named numeric vector. Names and values for parameters.}
@@ -23,6 +23,7 @@ It should be called at the end of \code{apollo_probabilities}, only if
 \link{apollo_attach} was called and the beginning. This can be achieved 
 by adding the line \code{on.exit(apollo_detach(apollo_beta, apollo_inputs))} 
 right after calling \link{apollo_attach}.
+This function can also be called without any arguments, i.e. \code{apollo_detach()}.
 }
 \examples{
 apollo_beta  <- c(b1=0.3, b2=-0.5)

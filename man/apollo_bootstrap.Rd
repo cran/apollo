@@ -4,11 +4,15 @@
 \alias{apollo_bootstrap}
 \title{Bootstrap a model}
 \usage{
-apollo_bootstrap(apollo_beta, apollo_fixed, apollo_probabilities,
-  apollo_inputs, estimate_settings = list(estimationRoutine = "bfgs",
-  maxIterations = 200, writeIter = FALSE, hessianRoutine = "none",
-  printLevel = 2L, silent = FALSE), bootstrap_settings = list(nRep = 30,
-  samples = NA, seed = 24))
+apollo_bootstrap(
+  apollo_beta,
+  apollo_fixed,
+  apollo_probabilities,
+  apollo_inputs,
+  estimate_settings = list(estimationRoutine = "bfgs", maxIterations = 200, writeIter =
+    FALSE, hessianRoutine = "none", printLevel = 2L, silent = FALSE),
+  bootstrap_settings = list(nRep = 30, samples = NA, seed = 24)
+)
 }
 \arguments{
 \item{apollo_beta}{Named numeric vector. Names and values for parameters.}
@@ -47,7 +51,7 @@ Covariance matrix of the \code{nRep} sets of estimated parameters. Also written 
 Samples individuals with replacement from the database, and estimates the model in each sample.
 }
 \details{
-This function implements a basic block bootstrap. It estimate the model parameters on \code{nRep} number of different samples.
+This function implements a basic block bootstrap. It estimates the model parameters on \code{nRep} number of different samples.
 Each new sample is constructed by sampling \strong{with replacement} from the original full sample. Each new sample has as many 
 individuals as the original sample, though some of them may be repeated. Sampling is done at the \strong{individual} level, 
 therefore if different individuals have different number of observations, each re-sample could have different number of observations.
@@ -65,4 +69,8 @@ This function writes three different files to the working directory:
   \item \code{modelName_bootstrap_vcov.csv}: Variance-covariance matrix of the estimated parameters across re-samples.
 }
 The first two files are updated throughout the run of this function, while the last one is only written once the function finishes.
+
+When run, this function will look for the first two files above in the working directory. If they are found, the function will
+attempt to pick up re-sampling from where those files left off. This is useful in cases where the original bootstrapping was 
+interrupted, or when additional re-sampling wants to be performed.
 }

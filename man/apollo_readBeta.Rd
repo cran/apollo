@@ -4,8 +4,12 @@
 \alias{apollo_readBeta}
 \title{Reads parameters from file}
 \usage{
-apollo_readBeta(apollo_beta, apollo_fixed, inputModelName,
-  overwriteFixed = FALSE)
+apollo_readBeta(
+  apollo_beta,
+  apollo_fixed,
+  inputModelName,
+  overwriteFixed = FALSE
+)
 }
 \arguments{
 \item{apollo_beta}{Named numeric vector. Names and values for parameters.}

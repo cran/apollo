@@ -9,12 +9,11 @@ apollo_choiceAnalysis(choiceAnalysis_settings, apollo_control, database)
 \arguments{
 \item{choiceAnalysis_settings}{List containing settings for this function. The settings must be:
 \itemize{
-  \item alternatives: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
-  \item avail: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
-  \item choiceVar: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
-  \item explanators: data.frame. Variables determining subsamples of the database. Values in each column must describe a group or groups of individuals (e.g. socio-demographics). Most usually a subset of columns from database.
-  \item rows: Boolean vector. Consideration of rows to include, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
-  
+  \item \strong{alternatives}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
+  \item \strong{avail}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
+  \item \strong{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
+  \item \strong{explanators}: data.frame. Variables determining subsamples of the database. Values in each column must describe a group or groups of individuals (e.g. socio-demographics). Most usually a subset of columns from database.
+  \item \strong{rows}: Boolean vector. Consideration of rows to include, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
 }}
 
 \item{apollo_control}{List. Options controlling the running of the code. See \link{apollo_validateInputs}.}

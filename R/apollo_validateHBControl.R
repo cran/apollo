@@ -71,6 +71,56 @@ apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_c
     if(!is.null(apollo_HB$gMAXCOEF) && length(apollo_HB$gMAXCOEF)!=length(apollo_HB$gVarNamesNormal)) stop("'gMINCOEF' has a different length than 'gVarNamesNormal' inside 'apollo_HB'")
   }
   
+  ### Process constraints.
+  if(!is.null(apollo_HB$constraintsNorm)){
+    # If in old format, e.g.: list( c(1,1,2), c(3,2,5) )
+    if(is.list(apollo_HB$constraintsNorm) && all(sapply(apollo_HB$constraintsNorm, is.numeric))){
+      # Print constraints
+      #nam <- names(theta_est)
+      nam <- gVarNamesNormal
+      cat("Constraints (parameters in apollo_fixed are ignored):\n")
+      for(i in 1:length(apollo_HB$constraintsNorm)){
+        t0 <- apollo_HB$constraintsNorm[[i]]
+        #test <- 0 < t0[1] & t0[1]<length(theta_est)
+        test <- 0 < t0[1] & t0[1]<length(nam)
+        test <- test & t0[2] %in% 1:2
+        #test <- test & ( 0 <= t0[3] & t0[3]<length(theta_est) )
+        test <- test & ( 0 <= t0[3] & t0[3]<length(nam) )
+        if(!test) stop(paste0("Incorrect format for constraintsNorm element c(", t0, ")."))
+        cat(" ", nam[t0[1]], ifelse(t0[2]==1, " < ", " > "), ifelse(t0[3]==0, 0, nam[t0[3]]), "\n", sep="")
+      }
+    } else { # If in new format, e.g: c("b1<b2","b3>b5")
+      # Validate input
+      if(length(apollo_HB$constraintsNorm)<1) stop("constraintsNorm, if included, should be at least one element long")
+      if(!is.character(apollo_HB$constraintsNorm)) stop("constraintsNorm, if included, should be a character vector")
+      if(!all(grepl("[<>]", apollo_HB$constraintsNorm))) stop("constraintsNorm, if included, must contain constraints written as 'param1>param2', 'param1<param2', 'param1>0' or 'param1<0'")
+      if(any(grepl("=", apollo_HB$constraintsNorm))) stop("constraintsNorm does not support equality (=), greater or equal (>=), or less or equal (<=) constraints")
+      if(length(apollo_fixed)>0) for(f in apollo_fixed) if(any(grepl(f,apollo_HB$constraintsNorm))) stop("constraintsNorm, if included, should not include any fixed parameter")
+      # Translate constraints
+      translated <- list()
+      apollo_HB$constraintsNorm <- gsub(" ", "", apollo_HB$constraintsNorm) # remove white spaces
+      for(i in 1:length(apollo_HB$constraintsNorm)){
+        con<- apollo_HB$constraintsNorm[i]
+        t0 <- gregexpr("[<>]", con)[[1]][1]
+        t1 <- substr(con, 1, t0-1)
+        if(t1=="0") stop(paste0("Constraint ", con, " should have zero in the right hand side"))
+        t2 <- substr(con, t0, t0)
+        t3 <- substr(con, t0+1, nchar(con))
+        t0 <- c(0,0,0)
+        #if(!all(c(t1,t3) %in% c(gVarNamesFixed, gVarNamesNormal, "0"))) stop(paste0("Constraint ", con, " includes invalid variable names"))
+        if(!all(c(t1,t3) %in% c(gVarNamesNormal, "0"))) stop(paste0("Constraint ", con, " includes invalid variable names (only random params allowed)"))
+        #t0[1] <- which(names(theta_est)==t1)
+        t0[1] <- which(gVarNamesNormal==t1)
+        t0[2] <- ifelse(t2=="<", 1, 2)
+        #t0[3] <- ifelse(t3=="0", 0, which(names(theta_est)==t3))
+        t0[3] <- ifelse(t3=="0", 0, which(gVarNamesNormal==t3))
+        translated[[i]] <- t0
+      }
+      names(translated) <- NULL
+      apollo_HB$constraintsNorm <- translated
+    }
+  }
+  
   cat("All checks on apollo_HB completed.\n")
   return(apollo_HB)
 }

@@ -19,7 +19,7 @@ apollo_deltaMethod(model, deltaMethod_settings)
 }}
 }
 \value{
-Value, s.e. and t-ratio resulting from the operation.
+Matrix contating calue, s.e. and t-ratio resulting from the operation. This is also printed to screen.
 }
 \description{
 Applies the delta method to calculate the standard errors of transformations of parameters.

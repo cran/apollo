@@ -13,8 +13,8 @@
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param fitsTest_settings List of arguments. It must contain the following elements.
 #'                         \itemize{
-#'                              \item subsamples: Named list of boolean vectors. Each element of the list defines whether a given observation belongs to a given subsample (e.g. by sociodemographics).
-#'                              \item modelComponent: Name of model component. Set to model by default.
+#'                              \item \strong{subsamples}: Named list of boolean vectors. Each element of the list defines whether a given observation belongs to a given subsample (e.g. by sociodemographics).
+#'                              \item \strong{modelComponent}: Name of model component. Set to model by default.
 #'                         }
 #' @return Matrix with average fit per category (invisibly).
 #' @export
@@ -23,8 +23,9 @@ apollo_fitsTest=function(model,apollo_probabilities,apollo_inputs,fitsTest_setti
   if(is.null(fitsTest_settings[["modelComponent"]])) fitsTest_settings$modelComponent="model"
   if(is.null(fitsTest_settings[["subsamples"]])) fitsTest_settings[["subsamples"]]=NULL
   
-  fits = apollo_prediction(model, apollo_probabilities, apollo_inputs, fitsTest_settings$modelComponent)
+  fits = apollo_prediction(model, apollo_probabilities, apollo_inputs, prediction_settings=list(modelComponent=fitsTest_settings$modelComponent,silent=TRUE))
   
+  cat("\n")
   ### fits=fits[,ncol(fits)] ### REMOVED
   #fits=fits[,!colnames(fits)%in%c("ID","Choice situation","chosen")]#### NEW
   if(!"chosen"%in%colnames(fits)) stop("No 'chosen' column in prediction.")

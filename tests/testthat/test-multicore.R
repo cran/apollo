@@ -10,9 +10,8 @@ test_that("multicore estimation works", {
     nCores     = 2
   )
 
-  data(apollo_modeChoiceData)
+  data("apollo_modeChoiceData", package="apollo")
   database = apollo_modeChoiceData
-  rm(apollo_modeChoiceData)
   database = subset(database,database$RP==1)
   database$mean_income = mean(database$income)
 

@@ -4,7 +4,8 @@
 \name{apollo_modeChoiceData}
 \alias{apollo_modeChoiceData}
 \title{Simulated dataset of mode choice.}
-\format{A data frame with 8000 rows and 25 variables:
+\format{
+A data frame with 8000 rows and 25 variables:
 \describe{
   \item{ID}{Numeric. Identification number of the individual.}
   \item{RP}{Numeric. 1 if the row corresponds to a revealed preference (RP) observation. 0 otherwise.}
@@ -32,7 +33,8 @@
   \item{time_bus}{Numeric. Travel time (in minutes) of mode bus.}
   \item{time_car}{Numeric. Travel time (in minutes) of mode car.}
   \item{time_rail}{Numeric. Travel time (in minutes) of mode rail.}
-}}
+}
+}
 \source{
 \url{http://www.apollochoicemodelling.com/}
 }
