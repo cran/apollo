@@ -18,6 +18,7 @@
 #'                        \item "conditionals" Used for calculating conditionals.
 #'                        \item "output" Used for preparing output after model estimation.
 #'                        \item "raw" Used for debugging.
+#'                        \item "components" Returns \code{P} without changes.
 #'                      }
 #' @return The returned object depends on the value of argument \code{functionality} as follows.
 #'         \itemize{
@@ -29,80 +30,90 @@
 #'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'         }
-#' @examples
-#' data(apollo_modeChoiceData)
-#' database <- apollo_modeChoiceData
-#' rm(apollo_modeChoiceData)
-#' N <- nrow(database)
-#' lc_settings <- list(inClassProb=list(rnorm(N), rnorm(N)),
-#'                     classProb=list(stats::runif(N), stats::runif(N)))
-#' apollo_control <- list(indivID="ID")
-#' x <- apollo_lc(lc_settings, apollo_control, functionality="estimate")
-#' summary(x)
+#' @importFrom utils capture.output
 #' @export
 apollo_lc <- function(lc_settings, apollo_inputs, functionality){
-  if(is.null(lc_settings[["componentName"]])) lc_settings[["componentName"]]="Latent class"
-  componentName=lc_settings[["componentName"]]
+
+  # ############################################### #
+  #### functionalities with untransformed return ####
+  # ############################################### #
   
-  if(is.null(lc_settings[["inClassProb"]])) stop("The lc_settings list for model component \"",componentName,"\" needs to include an object called \"inClassProb\"!")
-  if(is.null(lc_settings[["classProb"]])) stop("The lc_settings list for model component \"",componentName,"\" needs to include an object called \"classProb\"!")
+  if(functionality %in% c("components", "preprocess")) return(NULL)
   
-  inClassProb=lc_settings[["inClassProb"]]
-  classProb=lc_settings[["classProb"]]
-  
-  apollo_control=apollo_inputs[["apollo_control"]]
+  ### Special case for EM estimation
+  test <- !is.null(apollo_inputs$EM) && apollo_inputs$EM 
+  test <- test && !is.null(apollo_inputs$class_specific) && apollo_inputs$class_specific>0
+  if(test) return(lc_settings$inClassProb[[1]])
+  rm(test)
+
+  # #################### #
+  #### General checks ####
+  # #################### #
+  if(is.null(lc_settings[["componentName"]])){
+    modelType <- 'LatentClass'
+    lc_settings[["componentName"]] = ifelse(!is.null(lc_settings[['componentName2']]),
+                                            lc_settings[['componentName2']], modelType)
+    test <- functionality=="validate" && lc_settings[["componentName"]]!='model' && !apollo_inputs$silent
+    if(test) apollo_print(paste0('Apollo found a model component of type ', modelType,
+                                 ' without a componentName. The name was set to "',
+                                 lc_settings[["componentName"]],'" by default.'))
+  }
+  if(is.null(lc_settings[["inClassProb"]])) stop('The lc_settings list for model component "',
+                                                 lc_settings$componentName,'" needs to include an object called "inClassProb"!')
+  if(is.null(lc_settings[["classProb"]])) stop('The lc_settings list for model component "',
+                                               lc_settings$componentName,'" needs to include an object called "classProb"!')
+  inClassProb    = lc_settings[["inClassProb"]]
+  classProb      = lc_settings[["classProb"]]
+  apollo_control = apollo_inputs[["apollo_control"]]
+  if(apollo_control$workInLogs && apollo_control$mixing) stop('The settings "workInLogs" and "mixing" in "apollo_control" ',
+                                                              'cannot be used together for latent class models.')
   
   # Count number of rows in classProb
   nRowsClassProb <- 0
   if(is.vector(classProb[[1]])) nRowsClassProb <- length(classProb[[1]]) else {
-    nRowsClassProb <- dim(classProb[[1]])[1]
+    if(functionality=="gradient"){
+      nRowsClassProb <- dim(classProb[[1]][["like"]])[1]
+      } else nRowsClassProb <- dim(classProb[[1]])[1]
   }
   
+  # Count number of rows in inClassProb
+  nRowsInClassProb <- 0
+  ### SH bug fix 10 Oct - needed as a list is also a vector!
+  #if(is.vector(inClassProb[[1]])) nRowsInClassProb <- length(inClassProb[[1]]) else {
+  #  nRowsInClassProb <- dim(inClassProb[[1]])[1]
+  #}
+  if(is.list(inClassProb[[1]])){
+    nRowsInClassProb <- length(inClassProb[[1]][[1]])
+  } else if(is.vector(inClassProb[[1]])) nRowsInClassProb <- length(inClassProb[[1]])
+  
+  # ############## #
+  #### Validate ####
+  # ############## #
   if(functionality=="validate"){
-    if(length(inClassProb)!=length(classProb)) stop("Arguments 'inClassProb' and 'classProb' for model component \"",componentName,"\" must have the same length.")
-    ### NEW LINES SH 28/2
-    c=1
-    while(c<=length(classProb)){
-      #if(sum(inClassProb[[c]])==0) stop("Within class probabilities for model component \"",componentName,"\" are zero for every individual for class ",c)
-      #replaced by
-      if(sum(inClassProb[[c]])==0) stop("Within class probabilities for model component \"",componentName,"\" are zero for every individual for class ",ifelse(is.numeric(names(inClassProb)[c]),c,names(inClassProb)[c]))
-      c=c+1
+    
+    if(!apollo_inputs$apollo_control$noValidation){
+      if(length(inClassProb)!=length(classProb)) stop("Arguments 'inClassProb' and 'classProb' for model component \"",
+                                                      lc_settings$componentName,"\" must have the same length.")
+      for(cc in 1:length(classProb)) if(sum(inClassProb[[cc]])==0) stop('Within class probabilities for model component "',
+                                                                        lc_settings$componentName, 
+                                                                        '" are zero for every individual for class ',
+                                                                        ifelse(is.numeric(names(inClassProb)[cc]),cc,names(inClassProb)[cc]))
+      classprobsum = Reduce("+",classProb)
+      if(any(round(classprobsum,10)!=1)) stop("Class allocation probabilities in 'classProb' for model component \"",
+                                              lc_settings$componentName,"\" must sum to 1.")
     }
-    classprobsum=Reduce("+",classProb)
-    if(any(round(classprobsum,10)!=1)) stop("Class allocation probabilities in 'classProb' for model component \"",componentName,"\" must sum to 1.")    
-    class_summary=matrix(0,nrow=length(classProb),ncol=1)
-    #rownames(class_summary)=paste0("class_", 1:length(classProb))
-    ## replaced by next few lines
-    if(is.numeric(names(inClassProb)[1])){
-      rownames(class_summary)=paste0("class_", 1:length(classProb))
-    } else {
-      rownames(class_summary)=names(inClassProb)
-    }
-    colnames(class_summary)=c("Mean prob.")
-    c=1
-    while(c<=length(classProb)){
-      class_summary[c,1]=mean(classProb[[c]])
-      c=c+1
-    }
-    #cat("\nAll checks passed for latent class structure.")
-    #cat("\nClass allocation summary for LC before estimation:\n")
-    #print(round(class_summary,2))
-    apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-    apollo_addLog(paste0("Class allocation summary for model component \"",componentName,"\" before estimation:"), round(class_summary,2), apolloLog)
-    # NEW LINES SH 8/3/2020
-    testL=apollo_lc(lc_settings, apollo_inputs, functionality="estimate")
+    
+    if(!apollo_inputs$apollo_control$noDiagnostics) apollo_diagnostics(lc_settings, modelType="LC", apollo_inputs)
+    
+    testL = apollo_lc(lc_settings, apollo_inputs, functionality="estimate")
     return(testL)
-    #return(TRUE)
   } 
   
+  
+  # ############################################# #
+  #### Estimate, conditionals, output, zero_LL ####
+  # ############################################# #
   if(functionality %in% c("estimate", "conditionals", "output", "zero_LL")){
-    
-    # Count number of rows in inClassProb
-    nRowsInClassProb <- 0
-    if(is.vector(inClassProb[[1]])) nRowsInClassProb <- length(inClassProb[[1]]) else {
-      nRowsInClassProb <- dim(inClassProb[[1]])[1]
-    }
-    
     # Match the number of rows in each list
     # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
     if( nRowsInClassProb!=nRowsClassProb & nRowsClassProb!=1 ){
@@ -112,7 +123,9 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
         # If classProb is calculated at the obs level while the inClassProb is at the indiv level
         classProb <- lapply(classProb, rowsum, group=indivID)
         classProb <- lapply(classProb, '/', nObsPerIndiv)
-        cat("\nClass probability for model component \"",componentName,"\" averaged across observations of each individual.")
+        if(!apollo_inputs$silent) apollo_print(paste0('Class probability for model component "', 
+                                                      lc_settings$componentName, 
+                                                      '" averaged across observations of each individual.'))
       } else {
         # If inClassProb is calculated at the obs level while the classProb is at the indiv level
         classProb <- lapply(classProb, rep, nObsPerIndiv)
@@ -120,42 +133,25 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
       }
     }
     
-    # Returns inClassProb*classProb
-    Pout <- mapply(function(p,pi) pi*p, inClassProb, classProb, SIMPLIFY=FALSE)
-    Pout <- Reduce('+', Pout)
-    if(functionality=="output"){
-      #if(!apollo_control$noDiagnostics){
-      class_summary=matrix(0,nrow=length(classProb),ncol=1)
-      #rownames(class_summary)=paste0("class_", 1:length(classProb))
-      ## replaced by next few lines
-      if(is.numeric(names(inClassProb)[1])){
-        rownames(class_summary)=paste0("class_", 1:length(classProb))
-      } else {
-        rownames(class_summary)=names(inClassProb)
-      }
-      colnames(class_summary)=c("Mean prob.")
-      c=1
-      while(c<=length(classProb)){
-        class_summary[c,1]=mean(classProb[[c]])
-        c=c+1
-      }
-      
-      apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-      apollo_addLog(paste0("Class allocation summary for model component \"",componentName,"\"\n after estimation:"), 
-                    round(class_summary,2), apolloLog)
-      apollo_reportModelTypeLog(modelType="LC", apolloLog)
+    # Calculate inClassProb*classProb
+    nIndiv <- length(unique(get(apollo_control$indivID)))                                  ## FIX DP 18/05/2020
+    panelProdApplied <- sapply(inClassProb, function(v) is.vector(v) && length(v)==nIndiv) ## FIX DP 18/05/2020
+    if(apollo_control$workInLogs && all(panelProdApplied)){                                ## FIX DP 18/05/2020
+      # Assuming panelProd was applied inside each class, inClasProb is log(P[ns])         ## FIX DP 18/05/2020
+      Bbar <- Reduce("+", inClassProb)/length(inClassProb)
+      Pout <- mapply(function(pi, lnP) pi*exp(lnP - Bbar), classProb, inClassProb, SIMPLIFY=FALSE)
+      Pout <- Bbar + log( Reduce("+", Pout) )
+    } else {
+      Pout <- mapply(function(p,pi) pi*p, inClassProb, classProb, SIMPLIFY=FALSE)
+      Pout <- Reduce('+', Pout)
     }
     return( Pout )
   }
   
-  if((functionality=="prediction")|(functionality=="raw")){
-    
-    # Count number of rows in inClassProb
-    nRowsInClassProb <- 0
-    if(is.vector(inClassProb[[1]][[1]])) nRowsInClassProb <- length(inClassProb[[1]][[1]]) else {
-      nRowsInClassProb <- dim(inClassProb[[1]][[1]])[1]
-    }
-    
+  # ##################### #
+  #### Prediction, raw ####
+  # ##################### #
+  if(functionality %in% c("prediction", "raw")){
     # Match the number of rows in each list
     # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
     if( nRowsInClassProb!=nRowsClassProb  & nRowsClassProb!=1 ){
@@ -163,12 +159,11 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
       nObsPerIndiv <- as.vector(table(indivID))
       if( nRowsInClassProb < nRowsClassProb ){
         # If classProb is calculated at the obs level while the inClassProb is at the indiv level
-        stop("Class-probability variable for model component \"",componentName,"\" has more elements than in-class-probability.")
+        stop("Class-probability variable for model component \"",lc_settings$componentName,"\" has more elements than in-class-probability.")
       } else {
         # If inClassProb is calculated at the obs level while the classProb is at the indiv level
         S=length(classProb)
-        s=1
-        while(s<=S){
+        for(s in 1:S){
           isMat <- is.matrix(classProb[[s]])
           isCub <- is.array(classProb[[s]]) && !isMat && length(dim(classProb[[s]]))==3
           if(isCub){
@@ -188,7 +183,6 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
             }
             classProb[[s]] <- tmp
           } 
-          s=s+1
         }
         
       }
@@ -205,4 +199,67 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
     return(Pout)
     
   }
+  
+  
+  # ############## #
+  #### Gradient ####
+  # ############## #
+  
+  if(functionality==("gradient")){
+    if(any(sapply(inClassProb, function(p) is.null(p$like) || is.null(p$grad)))) stop("Some components in inClassProb are missing the 'like' and/or 'grad' elements")
+    if(any(sapply(classProb, function(p) is.null(p$like) || is.null(p$grad)))) stop("Some components in classProb are missing the 'like' and/or 'grad' elements")
+    if(apollo_inputs$apollo_control$workInLogs && apollo_inputs$apollo_control$analyticGrad) stop("workInLogs cannot be used in conjunction with analyticGrad")
+    K <- length(inClassProb[[1]]$grad) # number of parameters
+    if(K!=length(classProb[[1]]$grad)) stop("Dimensions of gradients not consistent between classProb and inClassProb")
+    if(any(sapply(inClassProb, function(p) length(inClassProb$grad))!=K)) stop("Dimensions of gradients from different components in inClassProb imply different number of parameters")
+    if(any(sapply(classProb, function(p) length(classProb$grad))!=K)) stop("Dimensions of gradients from different components in classProb imply different number of parameters")
+    
+    # Count number of rows in inClassProb
+    nRowsInClassProb <- 0
+    if(is.vector(inClassProb[[1]]$like)) nRowsInClassProb <- length(inClassProb[[1]]$like) else {
+      nRowsInClassProb <- dim(inClassProb[[1]][["like"]])[1]
+    }
+    
+    # Match the number of rows in each list
+    # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
+    if( nRowsInClassProb!=nRowsClassProb & nRowsClassProb!=1 ){
+      indivID <- get(apollo_control$indivID) 
+      nObsPerIndiv <- as.vector(table(indivID))
+      if( nRowsInClassProb < nRowsClassProb ){
+        # If classProb is calculated at the obs level while the inClassProb is at the indiv level
+        classProb$grad <- lapply(classProb$grad, rowsum, group=indivID)
+        classProb$grad <- lapply(classProb$grad, '/', nObsPerIndiv)
+        classProb$like <- lapply(classProb$like, rowsum, group=indivID)
+        classProb$like <- lapply(classProb$like, '/', nObsPerIndiv)
+        if(!apollo_inputs$silent) apollo_print(paste0('Class probability for model component "', 
+                                                      lc_settings$componentName, 
+                                                      '" averaged across observations of each individual.'))
+      } else {
+        # If inClassProb is calculated at the obs level while the classProb is at the indiv level
+        classProb$grad <- lapply(classProb$grad, rep, nObsPerIndiv)
+        classProb$like <- lapply(classProb$like, rep, nObsPerIndiv)
+        ### warning('Class probability repeated for all observations of the same individual.')
+      }
+    }
+    
+    Pout = list()
+    Pout$like=Reduce('+',mapply(function(p,pi) pi*p, inClassProb$like, classProb$like, SIMPLIFY=FALSE))
+    Pout$like=Reduce('+',mapply(function(plike, pilike ,pgrad ,pigrad) pigrad*plike + pilike*pgrad, 
+                                inClassProb$like, classProb$like, inClassProb$grad, classProb$grad, SIMPLIFY=FALSE))
+
+    return(Pout)
+    
+  } 
+  
+  # ############ #
+  #### Report ####
+  # ############ #
+  if(functionality=='report'){
+    P <- list()
+    apollo_inputs$silent <- FALSE
+    P$data  <- capture.output(apollo_diagnostics(lc_settings, modelType="LC", apollo_inputs, param=FALSE))
+    P$param <- capture.output(apollo_diagnostics(lc_settings, modelType="LC", apollo_inputs, data =FALSE))
+    return(P)
+  }
+  
 }

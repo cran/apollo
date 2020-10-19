@@ -3,6 +3,7 @@
 #' @param truncateCoeffNames Boolean. TRUE to truncate parameter names to 10 characters.
 #'                           FALSE by default.
 #' @return Nothing.
+#' @export
 apollo_writeF12 <- function(model, truncateCoeffNames=TRUE){
   ### Remove fixed parameters from the estimated ones
   if(length(model$apollo_fixed)>0){

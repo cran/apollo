@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_outOfSample.R
 \name{apollo_outOfSample}
 \alias{apollo_outOfSample}
-\title{Out-of-sample fit (LL)}
+\title{Cross-validation of fit (LL)}
 \usage{
 apollo_outOfSample(
   apollo_beta,
@@ -10,7 +10,7 @@ apollo_outOfSample(
   apollo_probabilities,
   apollo_inputs,
   estimate_settings = list(estimationRoutine = "bfgs", maxIterations = 200, writeIter =
-    FALSE, hessianRoutine = "numDeriv", printLevel = 3L, silent = TRUE),
+    FALSE, hessianRoutine = "none", printLevel = 3L, silent = TRUE),
   outOfSample_settings = list(nRep = 10, validationSize = 0.1, samples = NA)
 )
 }
@@ -67,7 +67,7 @@ minimise this issue is to randomly draw several pairs of estimation and validati
 complete dataset, and apply the procedure to each pair.
 
 The splitting of the database into estimation and validation samples is done at the individual 
-level not at the observation level. If the sampling wants to be done at the individual level 
+level, not at the observation level. If the sampling wants to be done at the individual level 
 (not recommended on panel data), then the optional \code{outOfSample_settings$samples} argument 
 should be provided.
 

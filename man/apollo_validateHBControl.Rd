@@ -4,7 +4,13 @@
 \alias{apollo_validateHBControl}
 \title{Validates the apollo_HB list of parameters}
 \usage{
-apollo_validateHBControl(apollo_HB, apollo_beta, apollo_fixed, apollo_control)
+apollo_validateHBControl(
+  apollo_HB,
+  apollo_beta,
+  apollo_fixed,
+  apollo_control,
+  silent = FALSE
+)
 }
 \arguments{
 \item{apollo_HB}{List. Contains options for bayesian estimation. See \link[RSGHB]{doHB} for details.
@@ -14,8 +20,8 @@ other arguments of this function.
 It should also include a named character vector called \code{hbDist} identifying 
 the distribution of each parameter to be estimated. Possible values are as follows.
 \itemize{
-  \item "DNE": Parameter kept at its starting value (not estimated).
-  \item "F": Fixed (as in non-random) parameter.
+  \item "F": Fixed - parameter kept at its starting value (not estimated).
+  \item "NR": Non-random parameter, i.e. with a generic value across individuals.
   \item "N": Normal.
   \item "LN+": Positive log-normal.
   \item "LN-": Negative log-normal.
@@ -30,6 +36,8 @@ the distribution of each parameter to be estimated. Possible values are as follo
 value is constant throughout estimation).}
 
 \item{apollo_control}{List. Options controlling the running of the code. See \link{apollo_validateInputs}.}
+
+\item{silent}{Boolean. TRUE to keep the function from printing to the console. Default is FALSE.}
 }
 \value{
 Validated apollo_HB

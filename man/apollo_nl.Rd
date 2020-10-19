@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_nl.R
 \name{apollo_nl}
 \alias{apollo_nl}
-\title{Calculates probabilities of a nested logit}
+\title{Calculates probabilities of a Nested Logit}
 \usage{
 apollo_nl(nl_settings, functionality)
 }
@@ -43,10 +43,10 @@ The returned object depends on the value of argument \code{functionality} as fol
         }
 }
 \description{
-Calculates probabilities of a nested logit model.
+Calculates probabilities of a Nested Logit model.
 }
 \details{
-In this implementation of the nested logit model, each nest must have a lambda parameter associated to it.
+In this implementation of the Nested Logit model, each nest must have a lambda parameter associated to it.
 For the model to be consistent with utility maximisation, the estimated value of the Lambda parameter of all nests
 should be between 0 and 1. Lambda parameters are inversely proportional to the correlation between the error terms of 
 alternatives in a nest. If lambda=1, then there is no relevant correlation between the unobserved
@@ -54,36 +54,4 @@ utility of alternatives in that nest.
 The tree must contain an upper nest called \code{"root"}. The lambda parameter of the root is automatically
 set to 1 if not specified in \code{nlNests}. And while setting it to another value is possible, it is not
 recommended.
-}
-\examples{
-### Load data
-data(apollo_modeChoiceData)
-database <- apollo_modeChoiceData
-rm(apollo_modeChoiceData)
-
-### Parameters
-b = list(asc_1=0, asc_2=0, asc_3=0, asc_4=0, tt=0, tc=0, acc=0, lambda=0.5)
-
-V = list()
-V[['car' ]] = b$asc_1 + b$tt*database$time_car  + b$tc*database$cost_car
-V[['bus' ]] = b$asc_2 + b$tt*database$time_bus  + b$tc*database$cost_bus  +
-              b$acc*database$access_bus
-V[['air' ]] = b$asc_3 + b$tt*database$time_air  + b$tc*database$cost_air  +
-              b$acc*database$access_air
-V[['rail']] = b$asc_4 + b$tt*database$time_rail + b$tc*database$cost_rail +
-              b$acc*database$access_rail
-
-### NL settings
-nl_settings <- list(
-   alternatives = c(car=1, bus=2, air=3, rail=4),
-   avail        = list(car=database$av_car, bus=database$av_bus,
-                       air=database$av_air, rail=database$av_rail),
-   choiceVar    = database$choice,
-   V            = V,
-   nlNests      = list(root=1, public=b$lambda),
-   nlStructure  = list(root=c("car", "public"), public=c("bus","air","rail"))
-)
-
-### Compute choice probabilities using NL model
-apollo_nl(nl_settings, functionality="estimate")
 }

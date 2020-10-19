@@ -1,8 +1,8 @@
 #' Creates cluster for estimation.
 #'
-#' Creates cluster and loads pieces of the database for each worker.
+#' Splits data, creates cluster and loads different pieces of the database on each worker.
 #' 
-#' Internal use only. Called by \code{apollo_estimate} before estimation. AT least doubles up memory usage. But during the splitting it uses even more (~250% of the original).
+#' Internal use only. Called by \code{apollo_estimate} before estimation. Using multiple cores greatly increases memory consumption.
 #' 
 #' @param apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 #'                          \itemize{
@@ -11,34 +11,166 @@
 #'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
-#' @param silent Boolean. If TRUE, it reports progress to the console. Default is FALSE.
+#' @param silent Boolean. If TRUE, no messages are printed to the terminal. FALSE by default. It overrides \code{apollo_inputs$silent}.
 #' @param cleanMemory Boolean. If TRUE, it saves apollo_inputs to disc, and removes database and draws from 
 #'                    the apollo_inputs in .GlobalEnv and the parent environment.
 #' @return Cluster (i.e. an object of class cluster from package parallel)
+#' @export
 apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE, cleanMemory=FALSE){
   
+  #### Split data ####
+  apollo_control <- apollo_inputs[["apollo_control"]]
+  database       <- apollo_inputs[["database"]]
+  ### change 27 July
+  ###silent         <- apollo_inputs$silent
+  if(silent==FALSE) silent         <- apollo_inputs$silent
+  ### end change
+  debug          <- apollo_inputs$apollo_control$debug
+  
+  ### Extract useful elements
+  nObs    <- nrow(database)
+  indivID <- database[,apollo_control$indivID]
+  namesID <- unique(indivID)
+  nIndiv  <- length(namesID)
+  nObsID  <- as.vector(table(indivID))
+  mixing  <- apollo_control$mixing
+  nCores  <- apollo_control$nCores
+  
+  ### Figure out how to split the database per individual
+  database <- database[order(indivID),]
+  indivID  <- database[,apollo_control$indivID] # update order
+  namesID  <- unique(indivID)                   # update order
+  apollo_inputs$database <- database            # update order
+  rm(database); gc()
+  if(debug) apollo_print(paste0('Attempting to split data into ', nCores, ' pieces.'))
+  obj          <- ceiling(nObs/nCores)
+  counter      <- 0
+  currentCore  <- 1
+  assignedCore <- rep(0,nObs) 
+  i <- 1
+  for(n in 1:nIndiv){
+    assignedCore[i:(i+nObsID[n]-1)] <- currentCore
+    i <- i+nObsID[n]
+    counter <- counter + nObsID[n]
+    if(counter>=obj & currentCore<nCores){
+      currentCore <- currentCore + 1
+      counter <- 0
+    }
+  }
+  nCores <- max(assignedCore)
+  if(debug && nCores!=apollo_inputs$apollo_control$nCores) apollo_print(paste(nCores, ' workers (threads) will be used for estimation.'))
+  apollo_inputs$apollo_control$nCores <- nCores
+  coreLoad <- as.vector(table(assignedCore)) 
+  names(coreLoad) <- paste('worker',1:nCores,sep='_')
+  if(debug){
+    apollo_print('Number of observations per worker (thread):')
+    apollo_print(paste0(coreLoad, collapse=", "))
+  }
+  rm(obj, counter, currentCore, i, n)
+  
+  
+  ### Create names of temp files
+  inputPieceFile <- rep("", nCores)
+  for(i in 1:nCores) inputPieceFile[i] <- tempfile()
+  
+  ### Identify elements to split
+  # For lists, it looks at its first element
+  asLst <- c()
+  byObs <- c()
+  byInd <- c()
+  asIs  <- c()
+  for(e in ls(apollo_inputs)){
+    E <- apollo_inputs[[e]]
+    if(is.list(E) && length(E)==nIndiv) asLst <- c(asLst, e) else{
+      if(is.list(E)) E <- E[[1]]
+      if(is.array(E)) nRows <- dim(E)[1] else nRows <- length(E)
+      if(nRows==nObs) byObs <- c(byObs, e)
+      if(nRows==nIndiv) byInd <- c(byInd, e)
+      if(nRows!=nObs & nRows!=nIndiv) asIs <- c(asIs, e)
+    }
+  }; rm(e, E, nRows)
+  
+  ### Create and write to disk each fragment of apollo_inputs
+  if(debug) cat("Writing pieces to disk") # do not turn to apollo_print
+  for(i in 1:nCores){
+    L <- list()
+    # Elements to be kept unchanged
+    L <- apollo_inputs[ asIs ]
+    # Elements to be splitted by observations
+    if(length(byObs)>0) for(e in byObs){
+      E <- apollo_inputs[[e]]
+      r <- assignedCore==i
+      if(is.list(E) & !is.data.frame(E)){
+        L[[e]] <- lapply(E, apollo_keepRows, r=r)
+      } else L[[e]] <- apollo_keepRows(E, r)
+    }
+    # Elements to be splitted by individual
+    if(length(byInd)>0) for(e in byInd){
+      E <- apollo_inputs[[e]]
+      r <- namesID %in% indivID[assignedCore==i]
+      if(is.list(E) & !is.data.frame(E)){
+        L[[e]] <- lapply(E, apollo_keepRows, r=r)
+      } else L[[e]] <- apollo_keepRows(E, r)
+    }
+    # Elements to be splitted as list
+    if(length(asLst)>0) for(e in asLst){
+      E <- apollo_inputs[[e]]
+      r <- which(namesID %in% indivID[assignedCore==i])
+      L[[e]] <- E[r]
+    }
+    # Write to disk
+    wroteOK <- tryCatch({
+      saveRDS(L, file=inputPieceFile[i])
+      TRUE
+    }, warning=function(w) FALSE, error=function(e) FALSE)
+    if(!wroteOK) stop("Apollo could not write data pieces to disk. This is necessary for multi-core processing to work.")
+    if(debug) cat(".")
+    if(debug && i==nCores) cat("\n")
+  }
+  
+  if(debug) apollo_print(paste0("Writing completed. ", sum(gc()[,2]), 'MB of RAM in use.'))
+  
   ### Split data and draws
-  inputPieceFile <- apollo_splitDataDraws(apollo_inputs, silent)
+  #inputPieceFile <- apollo_splitDataDraws(apollo_inputs)
   nCores         <- length(inputPieceFile)
+  debug          <- apollo_inputs$apollo_control$debug
+  
+  
+  
+  #### Create cluster and load data ####
   
   ### Create cluster
-  if(!silent) cat('\nPreparing workers')
-  cl <- parallel::makeCluster(nCores)
+  if(!silent) apollo_print('Preparing workers for multithreading...')
+  if(Sys.info()["sysname"] == "Darwin"){
+    cl <- parallel::makeCluster(nCores, setup_strategy="sequential")
+  } else cl <- parallel::makeCluster(nCores)
   
   ### Delete draws and database from memory in main thread
   if(cleanMemory){
-    if(!silent) cat('\n Cleaning memory in main thread...')
-    saveRDS(apollo_inputs, file=paste0(tempdir(), "\\", apollo_inputs$apollo_control$modelName,"_inputs"))
-    apollo_inputs$draws <- NULL
-    apollo_inputs$database <- NULL
-    assign("apollo_inputs", apollo_inputs, envir=parent.frame())
-    tmp <- .GlobalEnv
-    if(exists("apollo_inputs", envir=tmp)) assign("apollo_inputs", apollo_inputs, envir=tmp)
-    if(!silent) cat(' Done. ',sum(gc()[,2]),'MB of RAM in use.',sep='')
+    # No backup of apollo_inputs is created, it is the caller responsability to do that (e.g. apollo_estimate)
+    if(debug) cat('Cleaning memory in main thread...') # do not change to apollo_print
+    # Go over calling stack and delete apollo_inputs$database and apollo_inputs$draws wherever found
+    for(e in sys.frames()){
+      x <- tryCatch(get('apollo_inputs', envir=e, inherits=FALSE), error=function(e) NULL)
+      if(!is.null(x)){
+        if(!is.null(x$database)) x$database <- NULL
+        if(!is.null(x$draws   )) x$draws    <- NULL
+        assign('apollo_inputs', x, envir=e)
+      }
+    }
+    tmp <- globalenv()
+    x <- tryCatch(get('apollo_inputs', envir=tmp, inherits=FALSE), error=function(e) NULL)
+    if(!is.null(x)){
+      if(!is.null(x$database)) x$database <- NULL
+      if(!is.null(x$draws   )) x$draws    <- NULL
+      assign('apollo_inputs', x, envir=tmp)
+    }
+    gc()
+    if(debug) cat(' Done. ',sum(gc()[,2]),'MB of RAM in use.\n',sep='') # do not change to apollo_print
   }
   
   ### Load libraries in the cluster (same as in workspace)
-  if(!silent) cat('\n Loading libraries...')
+  if(debug) cat('Loading libraries...')  # do not change to apollo_print
   excludePackages<- c('parallel')
   loadedPackages <- search()
   loadedPackages <- loadedPackages[grepl("^(package:)", loadedPackages)]
@@ -56,18 +188,18 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
   funcs <- as.vector(utils::lsf.str(envir=.GlobalEnv))
   parallel::clusterExport(cl, funcs, envir=.GlobalEnv)
   parallel::clusterExport(cl, "apollo_probabilities", envir=environment())
-  if(!silent){
+  if(debug){
     mbRAM <- sum(gc()[,2])
     if(nCores>1){
       gcClusters <- parallel::clusterCall(cl, gc)
       gcClusters <- Reduce('+',lapply(gcClusters, function(x) sum(x[,2])))
       mbRAM <- mbRAM + gcClusters
     }
-    cat(' Done. ',mbRAM,'MB of RAM in use.',sep='')
+    cat(' Done. ',mbRAM,'MB of RAM in use.',sep='') # do not change to apollo_print
   }
   
   ### Load apollo_input pieces in each worker
-  if(!silent) cat("\n Loading data...")
+  if(debug) cat("\nLoading data...") # do not change to apollo_print
   parallel::parLapply(cl, inputPieceFile, fun=function(fileName){
     tmp <- globalenv()
     txt <- " This is necessary for multi-core processing to work."
@@ -81,14 +213,14 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
   unlink(inputPieceFile) # delete tmp files
   
   ### Report memory usage
-  if(!silent){
+  if(debug){
     mbRAM1 <- sum(gc()[,2])
     mbRAM2 <- 0
     if(nCores>1){
       mbRAM2 <- parallel::clusterCall(cl, gc)
       mbRAM2 <- Reduce('+',lapply(mbRAM2, function(x) sum(x[,2])))
     }
-    cat(' Done. ', mbRAM1+mbRAM2, 'MB of RAM in use\n', sep='')
+    cat(' Done. ', mbRAM1+mbRAM2, 'MB of RAM in use\n', sep='') # do not change to apollo_print
   }
   
   # The following two lines enumerate 

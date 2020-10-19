@@ -1,7 +1,7 @@
 Package: apollo
 Type: Package
 Title: Tools for Choice Model Estimation and Application
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: c(
     person("Stephane", "Hess", email="S.Hess@leeds.ac.uk", role="aut"),
     person("David", "Palma", email="D.Palma@leeds.ac.uk", role=c("aut","cre")) )
@@ -27,17 +27,18 @@ URL: http://www.apolloChoiceModelling.com
 BugReports: https://groups.google.com/d/forum/apollo-choice-modelling
 Encoding: UTF-8
 LazyData: true
-Depends: R (>= 3.6.0), stats, utils
-Imports: Rcpp (>= 1.0.0), maxLik, mnormt, mvtnorm, graphics, coda,
-        sandwich, randtoolbox, numDeriv, RSGHB, parallel, Deriv
+Depends: R (>= 4.0.0), stats, utils
+Imports: Rcpp (>= 1.0.0), maxLik, mnormt, mvtnorm, graphics,
+        randtoolbox, numDeriv, parallel, Deriv, matrixStats, RSGHB,
+        coda
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen
 Suggests: knitr, rmarkdown, testthat
 VignetteBuilder: knitr
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1
 NeedsCompilation: yes
-Packaged: 2020-03-16 11:06:35 UTC; tradpa
+Packaged: 2020-10-19 18:40:39 UTC; david
 Author: Stephane Hess [aut],
   David Palma [aut, cre]
 Maintainer: David Palma <D.Palma@leeds.ac.uk>
 Repository: CRAN
-Date/Publication: 2020-03-16 12:10:09 UTC
+Date/Publication: 2020-10-19 21:40:08 UTC

@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_fitsTest.R
 \name{apollo_fitsTest}
 \alias{apollo_fitsTest}
-\title{Compares fit of model across categories}
+\title{Compares log-likelihood of model across categories}
 \usage{
 apollo_fitsTest(model, apollo_probabilities, apollo_inputs, fitsTest_settings)
 }
@@ -25,11 +25,11 @@ apollo_fitsTest(model, apollo_probabilities, apollo_inputs, fitsTest_settings)
 }}
 }
 \value{
-Matrix with average fit per category (invisibly).
+Matrix with average log-likelihood at observation level per category (invisibly).
 }
 \description{
-Given the predictions of a model, it compares the fit across categories of observations.
+Given the estimates of a model, it compares the log-likelihood at the observation level across categories of observations.
 }
 \details{
-Prints a table comparing the average fit for each category.
+Prints a table comparing the average log-likelihood at the observation level for each category.
 }

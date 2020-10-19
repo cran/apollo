@@ -1,10 +1,11 @@
 #' Keeps only some rows
 #' 
-#' Given a numeric object (scalar, vector, matrix or 3-dim array) keeps only the specieifed rows.
+#' Given a numeric object (scalar, vector, matrix or 3-dim array) keeps only the specified rows.
 #' 
 #' @param v Numeric scalar, vector, matrix or 3-dim array.
 #' @param r Boolean vector. As many elements as rows in \code{v}. TRUE for keeping the row. \code{FALSE} to drop it.
 #' @return The same argument \code{v} but with the rows where \code{r==FALSE} removed.
+#' @export
 apollo_keepRows <- function(v, r){
   # If v is scalar, but r isn't, don't change anything
   if(length(v)==1){

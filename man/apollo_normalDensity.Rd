@@ -51,22 +51,3 @@ multiplied by a parameter to measure its correlation with the indicator, e.g. xN
 an additional parameter to be estimated (the mean of the indicator, which should be fixed to zero if the indicator is
 centered around its mean beforehand).
 }
-\examples{
-### Load data
-xNormal <- runif(100)
-outcomeNormal <- 1 + 2*xNormal + rnorm(100, mean=0, sd=0.5)
-
-### Parameters
-b = list(a=1, m=2)
-
-### normalDensity settings
-normalDensity_settings <- list(
-   outcomeNormal     = outcomeNormal,
-   xNormal     = 2*xNormal,
-   mu    = 1,
-   sigma = 0.5
-)
-
-### Compute choice probabilities using MNL model
-apollo_normalDensity(normalDensity_settings, functionality="estimate")
-}

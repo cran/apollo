@@ -6,6 +6,7 @@
 #' @param r Boolean vector. As many elements as rows in \code{v}. TRUE for replacing that row, FALSE for not changing it.
 #' @param val Numeric scalar. Value to which the specified rows must be set to.
 #' @return The same argument \code{v} but with the rows where \code{r==TRUE} set to \code{val}.
+#' @export
 apollo_setRows <- function(v, r, val){
   # If v is scalar, but r isn't, don't change anything
   if(length(v)==1){

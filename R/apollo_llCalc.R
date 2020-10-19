@@ -16,13 +16,12 @@
 #' @export
 apollo_llCalc <- function(apollo_beta, apollo_probabilities, apollo_inputs, silent=FALSE){
   apollo_fixed=c()
-  if(!silent) cat("Updating inputs...")
-  dataUpdated <- TRUE
-  apollo_inputs <- tryCatch(apollo_validateInputs(silent=TRUE), error=function(e){
-    dataUpdated <- FALSE
-    return(apollo_inputs)
-  })
-  if(!silent){ if(dataUpdated) cat(" Done.\n") else cat(" Not updated.") }
+  
+  # Use 'silent' from apollo_inputs if available
+  if(!is.null(apollo_inputs$silent)) silent <- apollo_inputs$silent
+  
+  # Compare apollo_inputs values to those on the global environment
+  apollo_compareInputs(apollo_inputs)
   
   apollo_randCoeff  = apollo_inputs[["apollo_randCoeff"]]
   apollo_lcPars     = apollo_inputs[["apollo_lcPars"]]

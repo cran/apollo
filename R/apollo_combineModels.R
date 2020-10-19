@@ -1,97 +1,110 @@
+# UPDATED
 #' Combines separate model components.
 #' 
-#' Combines model components to create probability for overall model.
+#' Combines model components to create likelihood for overall model.
 #' 
 #' This function should be called inside apollo_probabilities after all model components have been produced.
 #' 
-#' It should be called before apollo_avgInterDraws, apollo_avgIntraDraws, apollo_panelProd and apollo_prepareProb, whichever apply. 
+#' It should be called before apollo_avgInterDraws, apollo_avgIntraDraws, apollo_panelProd and apollo_prepareProb, whichever apply, except where these functions are called inside any latent class components of the overall model. 
 #' 
 #' @param P List of vectors, matrices or 3-dim arrays. Likelihood of the model components.
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
-#' @param functionality Character. Can take different values depending on desired output.
+#' @param functionality Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call apollo_probabilities, though the user can also call apollo_probabilities manually with a given functionality for testing/debugging. Possible values are:
 #'                      \itemize{
-#'                        \item \code{"estimate"}: For model estimation, returns likelihood of model.
-#'                        \item \code{"prediction"}: For model predictions, returns probabilities of all alternatives.
-#'                        \item \code{"validate"}: Validates input.
-#'                        \item \code{"zero_LL"}: Return probabilities with all parameters at zero.
-#'                        \item \code{"conditionals"}: For conditionals, returns likelihood of model.
-#'                        \item \code{"output"}: Checks that the model is well defined.
-#'                        \item \code{"raw"}: For debugging, returns probabilities of all alternatives.
+#'                        \item \strong{\code{"components"}}: For further processing/debugging, produces likelihood for each model component (if multiple components are present), at the level of individual draws and observations.
+#'                        \item \strong{\code{"conditionals"}}: For conditionals, produces likelihood of the full model, at the level of individual inter-individual draws.
+#'                        \item \strong{\code{"estimate"}}: For model estimation, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"gradient"}}: For model estimation, produces analytical gradients of the likelihood, where possible.
+#'                        \item \strong{\code{"output"}}: Prepares output for post-estimation reporting.
+#'                        \item \strong{\code{"prediction"}}: For model prediction, produces probabilities for individual alternatives and individual model components (if multiple components are present) at the level of an observation, after averaging across draws.
+#'                        \item \strong{\code{"preprocess"}}: Prepares likelihood functions for use in estimation.
+#'                        \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
+#'                        \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 #'                      }
-#' @return Argument \code{P} with an extra element called "model", which is the product of all the other elements. Shape depends on argument \code{functionality}.
+#' @param components Character vector. Optional argument. Names of elements in P that should be multiplied to construct the whole model likelihood. If a single element is provided, it is interpreted as a regular expression. Default is to include all components in P.
+#' @return Argument \code{P} with (for most functionalities) an extra element called "model", which is the product of all the other elements. Shape depends on argument \code{functionality}.
 #'         \itemize{
-#'           \item \strong{\code{"estimate"}}: Returns argument \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
-#'           \item \strong{\code{"prediction"}}: Returns argument \code{P} without any change.
-#'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}.
-#'           \item \strong{\code{"zero_LL"}}: Same as \code{"estimate"}.
-#'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}.
-#'           \item \strong{\code{"output"}}: Same as \code{"estimate"}.
-#'           \item \strong{\code{"raw"}}: Returns argument \code{P} without any change.
+#'           \item \strong{\code{"components"}}: Returns \code{P} without changes.
+#'           \item \strong{\code{"conditionals"}}: Returns \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
+#'           \item \strong{\code{"estimate"}}: Returns \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
+#'           \item \strong{\code{"gradient"}}: Returns \code{P} containing the gradient of the likelihood after applying the product rule across model components.
+#'           \item \strong{\code{"output"}}: Returns \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
+#'           \item \strong{\code{"prediction"}}: Returns \code{P} without changes.
+#'           \item \strong{\code{"preprocess"}}: Returns \code{P} without changes.
+#'           \item \strong{\code{"raw"}}: Returns \code{P} without changes.
+#'           \item \strong{\code{"validate"}}: Returns \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
+#'           \item \strong{\code{"zero_LL"}}: Returns \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
 #'         }
 #' @export
-apollo_combineModels=function(P, apollo_inputs, functionality){
+apollo_combineModels=function(P, apollo_inputs, functionality, components=NULL){
   
-  # ############################### #
-  #### pre-checks                ####
-  # ############################### #
+  # ###################################################################### #
+  #### load and check inputs, prepare variables that are used elsewhere ####
+  # ###################################################################### #
   
-  if(!is.null(P[["model"]])) stop("\nA component called \"model\" already exists in P before calling apollo_combineModels!")
-  
-  if(length(P)==1) stop("\nNo need to call apollo_combineModels for models with only one component!")
-  
-  # ########################################## #
-  #### functionality="gradient"             ####
-  # ########################################## #
-  if(functionality=="gradient"){
-    if(length(P)==1) return(P[[1]]) else {
-      ### If multiple components, implement product rule
-      g <- function(b, db){
-        #like   <- get("apollo_probabilities", envir=parent.frame())
-        #inputs <- get("apollo_inputs", envir=parent.frame(), inherits=TRUE)
-        #LL <- tryCatch(get("LL", envir=parent.frame(), inherits=FALSE),
-        #               error=function(e) like(b, inputs, functionality="raw")) # this is probably wrong for mixing
-        #dLL <- lapply(P, function(p) p(b, db))
-        #LL  <- LL[names(dLL)] # remove "model" and make sure both LL and dLL are in the same order
-        #LL  <- lapply(LL, log)
-        #dLL <- mapply("/", dLL, LL, SIMPLIFY=FALSE)
-        #LL  <- Reduce("+", LL)
-        #dLL <- Reduce("+", dLL)
-        #return(LL*dLL)
-        dLL <- Reduce("+", lapply(P, function(p) p(b, db)) )
-        return(dLL)
-      }
-      environment(g) <- new.env(parent=baseenv())
-      assign("P", P, envir=environment(g))
-      return(g)
-    }
-  }
-  
-  
-  # ########################################## #
-  #### functionality="prediction"           ####
-  # ########################################## #
-  
-  if(functionality=="prediction" | functionality=="raw") return(P)
-
-  # ########################################## #
-  #### functionality!="prediction"          ####
-  # ########################################## #
+  if(!is.null(P[["model"]])) stop("A component called model already exists in P before calling apollo_combineModels!")
+  if(length(P)==1) stop("No need to call apollo_combineModels for models with only one component!")
   
   elements = names(P)
   if(is.null(elements) || length(unique(elements))<length(elements)){
     stop("For models using multiple components, all components in P must be named and all names must be unique!")
-  } 
-  
-  if(!apollo_inputs$apollo_control$workInLogs){
-    P[["model"]] = P[[elements[1]]]
-    k = 2
-    while(k <= length(elements)){
-      P[["model"]] = P[["model"]]*P[[elements[k]]]
-      k=k+1
-    }
-  } else {
-    P[["model"]] <- exp(Reduce("+", lapply(P, log)))
   }
-
-  return(P)
+  
+  
+  # ############################################### #
+  #### functionalities with untransformed return ####
+  # ############################################### #
+  
+  if(functionality %in% c("components","prediction",
+                          "preprocess","raw", "report")) return(P)
+  
+  
+  # ############################ #
+  #### Drop unused components ####
+  # ############################ #
+  if(!is.null(components)){
+    if(!is.character(components)) stop('Argument "components", if provided, should be a character vector.')
+    if(length(components)==1) components <- grep(components, names(P), value=TRUE)
+    if(!all(components %in% names(P))) stop('Elements', paste0(components[-which(components %in% names(P))], collapse=', '),
+                                            ' do not exist in "P".')
+    P <- P[components]
+  }
+  
+  
+  # ########################################### #
+  #### functionality=="gradient"             ####
+  # ########################################### #
+  
+  if(functionality=="gradient"){
+    # Checks
+    if(!is.list(P)) stop("Input P should be a list with at least one component")
+    if(any(sapply(P, function(p) is.null(p$like) || is.null(p$grad)))) stop("Some components are missing the like and/or grad elements")
+    if(apollo_inputs$apollo_control$workInLogs && apollo_inputs$apollo_control$analyticGrad) stop("workInLogs cannot be used in conjunction with analyticGrad")
+    K <- length(P[[1]]$grad) # number of parameters
+    if(any(sapply(P, function(p) length(p$grad))!=K)) stop("Dimensions of gradients from different components imply different number of parameters")
+    
+    # Remove zeros from components' likelihoods
+    for(i in 1:length(P)) P[[i]]$like[P[[i]]$like==0] <- 1e-50
+    
+    # Create "model" component
+    model <- list(like=Reduce("*", lapply(P, function(p) p$like)), 
+                  grad=list())
+    for(k in 1:K) model$grad[[k]] <- model$like*Reduce("+", lapply(P, function(p) p$grad[[k]]/p$like))
+    
+    return( list(model=model) )
+  }
+  
+  # ############################################################# #
+  #### functionality=="conditionals/estimate/validate/zero_LL" ####
+  # ############################################################# #
+  
+  if(functionality %in% c("conditionals","estimate","validate","zero_LL", "output")){
+    if(!apollo_inputs$apollo_control$workInLogs){
+      P[["model"]] <- Reduce("*", P)
+    } else {
+      P[["model"]] <- exp(Reduce("+", lapply(P, log)))
+    }
+    return(P)
+  }
 }

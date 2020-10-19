@@ -7,27 +7,36 @@
 #' @param modelOutput_settings List of options. It can include the following.
 #'                             \itemize{
 #'                               \item \code{printClassical}: Boolean. TRUE for printing classical standard errors. TRUE by default.
-#'                               \item \code{printPVal}: Boolean. TRUE for printing p-values. FALSE by default.
+#'                               \item \code{printPVal}: Boolean or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
 #'                               \item \code{printT1}: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
-#'                               \item \code{printDiagnostics}: Boolean. TRUE for printing summary of choices in database and other diagnostics. TRUE by default.
+#'                               \item \code{printDataReport}: Boolean. TRUE for printing summary of choices in database and other diagnostics. FALSE by default.
+#'                               \item \code{printModelStructure}: Boolean. TRUE for printing model structure. TRUE by default.
 #'                               \item \code{printCovar}: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
 #'                               \item \code{printCorr}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
 #'                               \item \code{printOutliers}: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
 #'                               \item \code{printChange}: Boolean. TRUE for printing difference between starting values and estimates. FALSE by default.
+#'                               \item \code{printFunctions}: Boolean. TRUE for printing apollo_control, apollo_randCoeff (when available), apollo_lcPars (when available) and apollo_probabilities. FALSE by default.
 #'                             }
 #' @return A matrix of coefficients, s.d. and t-tests (invisible)
 #' @export
 #' @importFrom coda geweke.diag
+#' @importFrom utils capture.output
 apollo_modelOutput=function(model, modelOutput_settings=NA){
   if(length(modelOutput_settings)==1 && is.na(modelOutput_settings)) modelOutput_settings=list()
+  if(is.null(modelOutput_settings[["printModelStructure"]])) modelOutput_settings[["printModelStructure"]] = TRUE
+  if(is.null(modelOutput_settings[["printDataReport"]])) modelOutput_settings[["printDataReport"]] = FALSE
+  if(!is.null(modelOutput_settings[["printDiagnostics"]])){
+    modelOutput_settings[["printModelStructure"]] = modelOutput_settings[["printDiagnostics"]]
+    modelOutput_settings[["printDataReport"]]     = modelOutput_settings[["printDiagnostics"]]
+  } 
   if(is.null(modelOutput_settings[["printClassical"]])) modelOutput_settings[["printClassical"]] = TRUE
   if(is.null(modelOutput_settings[["printPVal"]])) modelOutput_settings[["printPVal"]] = FALSE
   if(is.null(modelOutput_settings[["printT1"]])) modelOutput_settings[["printT1"]] = FALSE
-  if(is.null(modelOutput_settings[["printDiagnostics"]])) modelOutput_settings[["printDiagnostics"]] = TRUE
   if(is.null(modelOutput_settings[["printCovar"]])) modelOutput_settings[["printCovar"]] = FALSE
   if(is.null(modelOutput_settings[["printCorr"]])) modelOutput_settings[["printCorr"]] = FALSE
   if(is.null(modelOutput_settings[["printOutliers"]])) modelOutput_settings[["printOutliers"]] = FALSE
   if(is.null(modelOutput_settings[["printChange"]])) modelOutput_settings[["printChange"]] = FALSE
+  if(is.null(modelOutput_settings[["printFunctions"]])) modelOutput_settings[["printFunctions"]] = FALSE
   
   printClassical   = modelOutput_settings[["printClassical"]]
   printPVal        = modelOutput_settings[["printPVal"]]
@@ -37,8 +46,9 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   printCorr        = modelOutput_settings[["printCorr"]]
   printOutliers    = modelOutput_settings[["printOutliers"]]
   printChange      = modelOutput_settings[["printChange"]]
+  printFunctions   = modelOutput_settings[["printFunctions"]]
   
-  if(length(model$scaling)>0 && !is.na(model$scaling)){
+  if(length(model$scaling)>0 && !anyNA(model$scaling) && !all(model$scaling==1)){
     scaling_used=TRUE
   }else{
     scaling_used=FALSE
@@ -60,7 +70,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
                               error=function(e) return("alpha"))
   } else apolloVersion <- "alpha"
   
-  cat("Model run using Apollo for R, version", apolloVersion,"\n")
+  cat('Model run using Apollo for R, version', apolloVersion, 'on', Sys.info()['sysname'], 'by', Sys.info()['user'], '\n')
   cat("www.ApolloChoiceModelling.com\n\n")
   cat("Model name                       : ", model$apollo_control$modelName,"\n", sep="")
   cat("Model description                : ", model$apollo_control$modelDescr,"\n", sep="")
@@ -73,13 +83,13 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   if(model$apollo_control$mixing){
     d <- model$apollo_draws
     if(d$interNDraws>0 && length(c(d$interUnifDraws, d$interNormDraws))>0){
-      cat("Number of inter-person draws     : ", d$interNDraws, ' (', d$interDrawsType, ')', "\n", sep='')
+      cat("Number of inter-individual draws : ", d$interNDraws, ' (', d$interDrawsType, ')', "\n", sep='')
     }
     if(d$intraNDraws>0 && length(c(d$intraUnifDraws, d$intraNormDraws))>0){
-      cat("Number of intra-person draws     : ", d$intraNDraws, ' (', d$intraDrawsType, ')', "\n", sep='')
+      cat("Number of intra-individual draws     : ", d$intraNDraws, ' (', d$intraDrawsType, ')', "\n", sep='')
     }
     if(!model$apollo_control$panelData & model$apollo_control$mixing & d$interNDraws>0){
-      cat("WARNING: Inter-person draws were used\n")
+      cat("WARNING: Inter-individual draws were used\n")
       cat("         without a panel data structure.\n")
     }
     rm(d)
@@ -96,11 +106,21 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     cat("Burn-in iterations               : ",model$gNCREP,"\n", sep="")
     cat("Post burn-in iterations          : ",model$gNEREP,"\n", sep="")
     cat("LL(start)                        : ",model$LLStart,"\n", sep="")
-    #if(!anyNA(model$LL0)) cat("LL(0)                            : ",model$LL0,"\n",sep="")
     cat("LL(0)                            : ",model$LL0[1],"\n", sep="")
     cat("Average post. LL post burn-in    : ",mean(colSums(log(model$cmcLLout))),"\n",sep="")
     cat("Average post. RLH post burn-in   : ",round(mean(colMeans((model$cmcRLHout))),4),"\n",sep="")
-    if(!apollo_control$HB) cat("Estimated parameters             :  ", nFreeParams,"\n", sep="")
+    f <- function(t){
+      tmpH <- floor(t/60^2)
+      tmpM <- floor((t-tmpH*60^2)/60)
+      tmpS <- round(t-tmpH*60^2-tmpM*60,2)
+      paste(formatC(tmpH,width=2,format='d',flag=0),
+            formatC(tmpM,width=2,format='d',flag=0),
+            tmpS,sep=':')
+    }
+    cat("Time taken (hh:mm:ss)            : ",f(model$timeTaken),"\n")
+    cat("     pre-estimation              : ",f(model$timePre),"\n")
+    cat("     estimation                  : ",f(model$timeEst),"\n")
+    cat("     post-estimation             : ",f(model$timePost),"\n")
     cat("\n\n")
     
     cat("Chain convergence report (Geweke test)\n\n")
@@ -201,29 +221,46 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   # ####################### #
   #### CLASSICAL OUTPUT  ####
   # ####################### #
-  output=cbind(round(model$estimate,4),
-               round(model$se,4),
-               round(model$estimate/model$se,2),
-               round(2*(1-stats::pnorm(abs(model$estimate/model$se))),3),
-               round((model$estimate-1)/model$se,2),
-               round(2*(1-stats::pnorm(abs((model$estimate-1)/model$se))),3),
-               round(model$robse,4),
-               round(model$estimate/model$robse,2),
-               round(2*(1-stats::pnorm(abs(model$estimate/model$robse))),3),
-               round((model$estimate-1)/model$robse,2),
-               round(2*(1-stats::pnorm(abs((model$estimate-1)/model$robse))),3))
-  colnames(output) <- c('Estimate',
-                        'Std.err.', 't.ratio(0)', 'p-val(0)','t.ratio(1)','p-val(1)', 
-                        'Rob.std.err.','Rob.t.ratio(0)','Rob.p-val(0)','Rob.t.ratio(1)','Rob.p-val(1)')
+  
+  ### change 7 August (next line, and then replacing 2 by multiplier in several lines belwo)
+  if(printPVal==2) pMult <- 2 else pMult <- 1
+  output=cbind(model$estimate,
+               model$se,
+               model$estimate/model$se,
+               pMult*(1-stats::pnorm(abs(model$estimate/model$se))),
+               (model$estimate-1)/model$se,
+               pMult*(1-stats::pnorm(abs((model$estimate-1)/model$se))),
+               model$robse,
+               model$estimate/model$robse,
+               pMult*(1-stats::pnorm(abs(model$estimate/model$robse))),
+               (model$estimate-1)/model$robse,
+               pMult*(1-stats::pnorm(abs((model$estimate-1)/model$robse))))
+  #output <- signif(output,4)
+  ### change 7
+  if(pMult==2){
+    colnames(output) <- c('Estimate',
+                          's.e.', 't.rat.(0)', 'p(2-sided)','t.rat(1)','p(2-sided)', 
+                          'Rob.s.e.','Rob.t.rat.(0)','p(2-sided)','Rob.t.rat.(1)','p(2-sided)')
+  } else {
+    colnames(output) <- c('Estimate',
+                          's.e.', 't.rat.(0)', 'p(1-sided)','t.rat(1)','p(1-sided)', 
+                          'Rob.s.e.','Rob.t.rat.(0)','p(1-sided)','Rob.t.rat.(1)','p(1-sided)')
+  }
   rownames(output) <- names(model$estimate)
   # If there is a bootstrap covariance matrix
   if(!is.null(model$bootvarcov)){
     tmp <- model$bootse
-    tmp <- cbind('Bootstrap.std.err.'   = round(tmp,4),
-                 'Bootstrap.t.ratio(0)' = round(model$estimate/tmp,2),
-                 'Bootstrap.p-val(0)'   = round(2*(1-stats::pnorm(abs(model$estimate/tmp))),3),
-                 'Bootstrap.t.ratio(1)' = round((model$estimate-1)/tmp,2),
-                 'Bootstrap.p-val(1)'   = round(2*(1-stats::pnorm(abs((model$estimate-1)/tmp))),3))
+    tmp <- cbind(`Bootstrap.s.e.`   = tmp,
+                 `Bootstrap.t.rat.(0)` = model$estimate/tmp,
+                 `p(2-sided)`       = 2*(1-stats::pnorm(abs(model$estimate/tmp))),
+                 `p(1-sided)`       = 1*(1-stats::pnorm(abs(model$estimate/tmp))),
+                 `Bootstrap.t.rat.(1)` = (model$estimate-1)/tmp,
+                 `p(2-sided)`       = 2*(1-stats::pnorm(abs((model$estimate-1)/tmp))),
+                 `p(1-sided)`       = 1*(1-stats::pnorm(abs((model$estimate-1)/tmp))) )
+    if(!printPVal) tmp <- tmp[,-grep('p(', colnames(tmp), fixed=TRUE)]
+    if(printPVal & pMult==1) tmp <- tmp[,-grep('p(2', colnames(tmp), fixed=TRUE)]
+    if(printPVal & pMult==2) tmp <- tmp[,-grep('p(1', colnames(tmp), fixed=TRUE)]
+    if(!printT1) tmp <- tmp[,-grep('t.rat.(1', colnames(tmp), fixed=TRUE)]
     output <- cbind(output, tmp)
   }
   
@@ -235,74 +272,81 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   if(length(dropcolumns)>0) output = output[,-dropcolumns, drop=FALSE]
   
   cat("LL(start)                        : ",model$LLStart,"\n", sep="")
-  #if(!anyNA(model$LL0)) cat("LL(0)                            : ",model$LL0,"\n",sep="")
   if(length(model$LLout)==1) cat("LL(0)                            : ",ifelse(!anyNA(model$LL0[1]),model$LL0[1],"Not applicable"),"\n", sep="")
   if(length(model$LLout)>1)  cat("LL(0, whole model)               : ",ifelse(!anyNA(model$LL0[1]),model$LL0[1],"Not applicable"),"\n", sep="")
   if(length(model$LLout)==1) cat("LL(final)                        : ",model$maximum,"\n",sep="")
   if(length(model$LLout)>1)  cat("LL(final, whole model)           : ",model$maximum,"\n",sep="")
-  ###if(length(model$LLout)==1 && !anyNA(model$LL0[1])){
-  ###if(!anyNA(model$LL0[1])){
-    test <- exists("modelTypeList", envir=model$apolloLog)
-    test <- test && all(tolower(unlist(model$apolloLog$modelTypeList)) %in% c("mnl", "nl", "cnl", "el", "dft", "lc"))
-    test <- test && !anyNA(model$LL0[1])
-    if(test){
-      cat("Rho-square (0)                   : ",round(1-(model$maximum/model$LL0[1]),4),"\n")
-      cat("Adj.Rho-square (0)               : ",round(1-((model$maximum-nFreeParams)/model$LL0[1]),4),"\n")
-    } 
-    if(!test){
-      cat("Rho-square (0)                   : Not applicable\n")
-      cat("Adj.Rho-square (0)               : Not applicable\n")
-    }
-  #}
+  test <- !is.null(model$modelTypeList) && all(tolower(model$modelTypeList) %in% c("mnl", "nl", "cnl", "el", "dft", "lc"))
+  test <- test && !anyNA(model$LL0[1])
+  if(test){
+    cat("Rho-square (0)                   : ",round(1-(model$maximum/model$LL0[1]),4),"\n")
+    cat("Adj.Rho-square (0)               : ",round(1-((model$maximum-nFreeParams)/model$LL0[1]),4),"\n")
+  } else {
+    cat("Rho-square (0)                   : Not applicable\n")
+    cat("Adj.Rho-square (0)               : Not applicable\n")
+  }
   cat("AIC                              : ",round(-2*model$maximum + 2*nFreeParams,2),"\n")
   cat("BIC                              : ",round(-2*model$maximum + nFreeParams*log(model$nObs),2),"\n")
+  
+  cat("\n")
   if(length(model$LLout)>1){
-    j=2
-    nameList <- names(model$LLout)
-    while(j<=length(model$LLout)){
-      spaces  <- 31-(6+nchar(nameList[j]))
-      spaces1 <- 27-(6+nchar(nameList[j]))
-      if(spaces>0)  spaces  <- paste(rep(" ",spaces),sep='')  else spaces  <- ""
-      if(spaces1>0) spaces1 <- paste(rep(" ",spaces1),sep='') else spaces1 <- ""
-      cat("  LL(0,",nameList[j],")",spaces,": ",ifelse(is.finite(model$LL0[j]),model$LL0[j],"Not applicable"),"\n",sep="")
-      cat("  LL(final,",nameList[j],")",spaces1,": ",model$LLout[j],"\n",sep="")
-      j=j+1
-    }
+    for(j in 2:length(model$LLout)){
+      nam <- names(model$LLout)[j]
+      sp1 <- ifelse(6+nchar(nam)<33, paste0(rep(" ",33-nchar(nam)-6), collapse=""), "")
+      sp2 <- ifelse(9+nchar(nam)<33, paste0(rep(" ",33-nchar(nam)-10), collapse=""), "")
+      cat("LL(0,",nam,")",sp1,": ",ifelse(is.finite(model$LL0[j]),model$LL0[j],"Not applicable"),"\n", sep="")
+      cat("LL(final,",nam,")",sp2,": ",model$LLout[j],"\n", sep="")
+    }; rm(nam, sp1, sp2)
   }
+  
+  cat("\n")
   cat("Estimated parameters             :  ", nFreeParams,"\n", sep="")
   #cat("Norm of the gradient at optimum  : ",round( sqrt(sum(model$gradient^2)),2), "\n\n")
-  tmpH <- floor(model$timeTaken/60^2)
-  tmpM <- floor((model$timeTaken-tmpH*60^2)/60)
-  tmpS <- round(model$timeTaken-tmpH*60^2-tmpM*60,2)
-  timeTaken <- paste(formatC(tmpH,width=2,format='d',flag=0),
-                     formatC(tmpM,width=2,format='d',flag=0),
-                     tmpS,sep=':')
-  cat("Time taken (hh:mm:ss)            : ",timeTaken,"\n")
-  cat("Iterations                       : ",model$nIter,"\n")
-  if(model$bootstrapSE>0){
-    nRep <- tryCatch(nrow(utils::read.csv(paste0(model$apollo_control$modelName, "_bootstrap_params.csv"))),
-                     error=function(e) model$bootstrapSE)
-    cat("Number of bootstrap repetitions  : ",nRep,"\n")
+  f <- function(t){
+    tmpH <- floor(t/60^2)
+    tmpM <- floor((t-tmpH*60^2)/60)
+    tmpS <- round(t-tmpH*60^2-tmpM*60,2)
+    paste(formatC(tmpH,width=2,format='d',flag=0),
+          formatC(tmpM,width=2,format='d',flag=0),
+          tmpS,sep=':')
   }
-  if(!is.null(model$eigen)){
-    cat("Min abs eigenvalue of hessian    : ",abs(model$eigen),"\n") 
+  cat("Time taken (hh:mm:ss)            : ",f(model$timeTaken),"\n")
+  cat("     pre-estimation              : ",f(model$timePre),"\n")
+  cat("     estimation                  : ",f(model$timeEst),"\n")
+  cat("     post-estimation             : ",f(model$timePost),"\n")
+  if(length(grep('successful', model$message))==0) tmp <- paste0("(",model$message,")") else tmp <- ""
+  cat("Iterations                       : ",model$nIter, tmp, "\n")
+  if(model$bootstrapSE>0) cat("Number of bootstrap repetitions  : ", model$bootstrapSE, "\n")
+  if(!is.null(model$eigValue) && !anyNA(model$eigValue)){
+    cat("Min abs eigenvalue of Hessian    : ",round(min(abs(model$eigValue)),6),"\n")
+    if(any(model$eigValue>0)) apollo_print("Some eigenvalues of Hessian are positive, indicating potential problems!") 
   }
-  if(!is.null(model$eigenpos) && model$eigenpos) cat("Some eigenvalues of hessian are positive, indicating potential problems!\n") 
   cat("\n")
   
   if(!printClassical & anyNA(model$se[!(names(model$estimate) %in% model$apollo_fixed)]) ){
-    cat("\nWARNING: Classical standard errors could not be calculated for some parameters .")
-    cat("\n         This could point to an identification or estimation problem.")
+    apollo_print('WARNING: Classical standard errors could not be calculated for some parameters. This could point to an identification or estimation problem.')
   }
   
-  if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
+  if(scaling_used) apollo_print("These outputs have had the scaling used in estimation applied to them.")
   cat("Estimates:\n")
   if(nrow(output)>options("max.print")) options(max.print=nrow(output)+100)
-  print(output)
+  apollo_print(output) #print(output, digits=4)
   cat('\n')
   
-  cat(apollo_printLog(model$apolloLog))
-  cat("\n")
+  ### Print diagnostics
+  # Model structure
+  if(!is.null(model$componentReport)) for(r in model$componentReport){
+    test <- !is.null(r$param) && length(r$param)>0 && modelOutput_settings$printModelStructure
+    if(test) for(j in r$param) cat(j, '\n', sep='')
+    if(test) cat('\n')
+  }
+  if(!is.null(model$componentReport)) for(r in model$componentReport){
+    test <- !is.null(r$data ) && length(r$data )>0 && modelOutput_settings$printDataReport
+    if(test) for(j in r$data ) cat(j, '\n', sep='')
+    if(test) cat('\n')
+  }
+  if(exists('r')) rm(r)
+  if(exists('j')) rm(j)
   
   ### Fill shorter param names with spaces
   longNames <- names( model$estimate )
@@ -314,21 +358,21 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     if(printClassical==TRUE){
       cat("\n")
       cat("Classical covariance matrix:\n")
-      tmp <- round(model$varcov,4)
+      tmp <- model$varcov
       colnames(tmp) <- longNames
-      print(tmp)
+      apollo_print(tmp) #print(tmp, digits=4)
     }
     cat("\n")
     cat("Robust covariance matrix:\n")
-    tmp <- round(model$robvarcov,4)
+    tmp <- model$robvarcov
     colnames(tmp) <- longNames
-    print(tmp)
+    apollo_print(tmp) #print(tmp, digits=4)
     if(model$bootstrapSE>0){
       cat("\n")
       cat("Bootstrap covariance matrix:\n")
-      tmp <- round(model$bootvarcov,4)
+      tmp <- model$bootvarcov
       colnames(tmp) <- longNames
-      print(tmp)
+      apollo_print(tmp) #print(tmp, digits=4)
     }
   }
   
@@ -336,21 +380,21 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     if(printClassical==TRUE){
       cat("\n")
       cat("Classical correlation matrix:\n")
-      tmp <- round(model$corrmat,4)
+      tmp <- model$corrmat
       colnames(tmp) <- longNames
-      print(tmp)
+      apollo_print(tmp) #print(tmp, digits=4)
     }
     cat("\n")
     cat("Robust correlation matrix:\n")
-    tmp <- round(model$robcorrmat,4)
+    tmp <- model$robcorrmat
     colnames(tmp) <- longNames
-    print(tmp)
+    apollo_print(tmp) #print(tmp, digits=4)
     if(model$bootstrapSE>0){
       cat("\n")
       cat("Bootstrap correlation matrix:\n")
-      tmp <- round(model$bootcorrmat,4)
+      tmp <- model$bootcorrmat
       colnames(tmp) <- longNames
-      print(tmp)
+      apollo_print(tmp) #print(tmp, digits=4)
     }
   }
   
@@ -367,12 +411,58 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   
   if(printChange){
     cat("\nChanges in parameter estimates from starting values:\n")
-    x <- cbind(model$apollo_beta, model$estimate[names(model$apollo_beta)],
+    tmp <- cbind(model$apollo_beta, model$estimate[names(model$apollo_beta)],
                model$estimate[names(model$apollo_beta)]-model$apollo_beta)
-    x <- round(x,4)
-    colnames(x) <- c("Initial", "Estimate", "Difference")
-    print(x)
+    colnames(tmp) <- c("Initial", "Estimate", "Difference")
+    apollo_print(tmp)
   }
+  
+  if(printFunctions){
+    cat("\nSettings and functions used in model definition:\n")
+    cat("\napollo_control")
+    cat("\n--------------\n")
+    ### change 27 July
+    ##txt=t(data.frame(model$apollo_control))
+    tmp=model$apollo_control
+    tmp$cpp=NULL
+    ##tmp$analyticGrad=NULL
+    tmp$matrixMult=NULL
+    tmp$subMaxV=NULL
+    txt=t(data.frame(tmp))
+    ### end change 27 July
+    colnames(txt)="Value"
+    print(txt)
+    cat("\nHessian routines attempted")
+    cat("\n--------------\n")
+    cat(model$hessianMethodsAttempted)
+    cat("\n")
+  if(!is.null(model$scaling) && !all(model$scaling==1)){
+    cat("\nScaling in estimation")
+    cat("\n--------------\n")
+    txt=as.matrix(model$scaling)
+    colnames(txt)="Value"
+    print(txt)}
+    if(!is.null(model$hessianScaling) && !all(model$hessianScaling==1)){
+      cat("\nScaling used in computing Hessian")
+      cat("\n--------------\n")
+      txt=as.matrix(model$hessianScaling)
+      colnames(txt)="Value"
+      print(txt)}
+    if(is.function(model$apollo_randCoeff)){
+    cat("\n\napollo_randCoeff")
+    cat("\n----------------\n")
+    txt=capture.output(print(model$apollo_randCoeff))
+    cat(txt[1:(length(txt)-1)],sep="\n")}
+  if(is.function(model$apollo_lcPars)){
+    cat("\n\napollo_lcPars")
+    cat("\n-------------\n")
+    txt=capture.output(print(model$apollo_lcPars))
+    cat(txt[1:(length(txt)-1)],sep="\n")}
+  cat("\n\napollo_probabilities")
+  cat("\n--------------------\n")
+  txt=capture.output(print(model$apollo_probabilities))
+  cat(txt[1:(length(txt)-1)],sep="\n")
+    }
   
   invisible(output)
 }

@@ -10,17 +10,6 @@
 #' @param overwriteFixed Boolean. TRUE if starting values for fixed parameters should also be updated from input file.
 #' @return Named numeric vector. Names and updated starting values for parameters.
 #' @export
-#' @examples
-#' ### Define starting values and fixed parameters
-#' apollo_beta <- c(asc1=0, asc2=0, b1=0, b2=0)
-#' apollo_fixed <- c("asc1")
-#' \dontrun{
-#' ## Not run:
-#' ### Update starting values
-#' apollo_beta <- apollo_readBeta(apollo_beta, apollo_fixed, 
-#'                                "oldModelName", overwriteFixed=FALSE)
-#' ## End(Not run)
-#' }
 apollo_readBeta=function(apollo_beta, apollo_fixed, inputModelName, overwriteFixed=FALSE){
   
   filename <- paste0(inputModelName, "_estimates.csv")
@@ -54,6 +43,7 @@ apollo_readBeta=function(apollo_beta, apollo_fixed, inputModelName, overwriteFix
     if(length(common_fixed_pars)>1) cat("\nThis includes",length(common_fixed_pars),"parameters in apollo_fixed\n whose values have been set to those from the input file.")
     apollo_beta[common_pars]=input_pars[common_pars]
   }
+  cat("\n")
   return(apollo_beta)
 
 }

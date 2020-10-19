@@ -15,7 +15,7 @@ apollo_attach(apollo_beta, apollo_inputs)
 Nothing.
 }
 \description{
-Attaches parameters and data to allow users to refer to individual variables by name without reference to the object they are contained in.
+Attaches parameters and data to allow users to refer to individual variables by name without reference to the object that contains them. Also applies scaling if in use.
 }
 \details{
 This function should be called at the beginning of \code{apollo_probabilities}
@@ -24,15 +24,5 @@ should be called at the end \code{apollo_probabilities}, or more conveniently,
 using \link{on.exit}.
 \code{apollo_attach} attaches \code{apollo_beta}, \code{database}, \code{draws},
 and the output of \code{apollo_randCoeff} and \code{apollo_lcPars}, if they are
-defined by the user.
-}
-\examples{
-apollo_beta  <- c(b1=0.3, b2=-0.5)
-apollo_fixed <- c()
-apollo_control <- list(indivID="id", mixing = FALSE, panelData = FALSE)
-database <- data.frame(id=1:100, x1=stats::runif(100), x2=stats::runif(100))
-apollo_inputs <- apollo_validateInputs()
-apollo_attach(apollo_beta, apollo_inputs)
-V = b1*x1 + b2*x2
-apollo_detach(apollo_beta, apollo_inputs)
+defined by the user. The use of \code{apollo_attach} is mandatory in models using scaling.
 }

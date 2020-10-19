@@ -21,7 +21,7 @@ apollo_makeCluster(
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
-\item{silent}{Boolean. If TRUE, it reports progress to the console. Default is FALSE.}
+\item{silent}{Boolean. If TRUE, no messages are printed to the terminal. FALSE by default. It overrides \code{apollo_inputs$silent}.}
 
 \item{cleanMemory}{Boolean. If TRUE, it saves apollo_inputs to disc, and removes database and draws from 
 the apollo_inputs in .GlobalEnv and the parent environment.}
@@ -30,8 +30,8 @@ the apollo_inputs in .GlobalEnv and the parent environment.}
 Cluster (i.e. an object of class cluster from package parallel)
 }
 \description{
-Creates cluster and loads pieces of the database for each worker.
+Splits data, creates cluster and loads different pieces of the database on each worker.
 }
 \details{
-Internal use only. Called by \code{apollo_estimate} before estimation. AT least doubles up memory usage. But during the splitting it uses even more (~250% of the original).
+Internal use only. Called by \code{apollo_estimate} before estimation. Using multiple cores greatly increases memory consumption.
 }

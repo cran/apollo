@@ -10,6 +10,7 @@
 #' @param r Boolean vector. TRUE for inserting a row from \code{v}, \code{FALSE} to insert a new row with value \code{val}.
 #' @param val Numeric scalar. Value that will fill new rows.
 #' @return The same argument \code{v} but with the rows where \code{r==FALSE} removed.
+#' @export
 apollo_insertRows <- function(v, r, val){
   isVec <- is.vector(v)
   isMat <- is.matrix(v)

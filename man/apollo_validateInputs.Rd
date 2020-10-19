@@ -13,6 +13,7 @@ apollo_validateInputs(
   apollo_draws = NA,
   apollo_randCoeff = NA,
   apollo_lcPars = NA,
+  recycle = FALSE,
   silent = FALSE
 )
 }
@@ -44,17 +45,28 @@ apollo_validateInputs(
 Parameters \code{modelname}, \code{gVarNamesFixed}, \code{gVarNamesNormal},
 \code{gDIST}, \code{svN} and \code{FC} are automatically set based on the
 other arguments of this function.
-It should also include a named character vector called \code{hbDist} identifying 
-the distribution of each parameter to be estimated. Possible values are as follows.
+Other settings to include are the following.
 \itemize{
-  \item \code{"DNE"}: Parameter kept at its starting value (not estimated).
-  \item \code{"F"}: Fixed (as in non-random) parameter.
-  \item \code{"N"}: Normal.
-  \item \code{"LN+"}: Positive log-normal.
-  \item \code{"LN-"}: Negative log-normal.
-  \item \code{"CN+"}: Positive censored normal.
-  \item \code{"CN-"}: Negative censored normal.
-  \item \code{"JSB"}: Johnson SB.
+  \item \strong{\code{hbDist}} \emph{Mandatory} setting. A named character vector determining
+                               the distribution of each parameter to be estimated. Possible 
+                               values are as follows.
+                               \itemize{
+                                 \item \code{"DNE"}: Parameter kept at its starting value (not estimated).
+                                 \item \code{"F"}: Fixed (as in non-random) parameter.
+                                 \item \code{"N"}: Normal.
+                                 \item \code{"LN+"}: Positive log-normal.
+                                 \item \code{"LN-"}: Negative log-normal.
+                                 \item \code{"CN+"}: Positive censored normal.
+                                 \item \code{"CN-"}: Negative censored normal.
+                                 \item \code{"JSB"}: Johnson SB.
+                               }
+  \item \strong{\code{constraintNorm}} Character vector. Constraints for \emph{random} coefficients 
+                                       in bayesian estimation. Constraints can be written as 
+                                       "b1>b2", "b1<b2", "b1>0", or "b1<0".
+  \item \strong{\code{fixedA}} Named numeric vector. Contains the names and fixed mean values of 
+                               random parameters. For example, c(b1=0) fixes the mean of b1 to zero.
+  \item \strong{\code{fixedD}} Named numeric vector. Contains the names and fixed variance of 
+                               random parameters. For example, c(b1=1) fixes the variance of b1 to zero.
 }}
 
 \item{apollo_draws}{List of arguments describing the inter and intra individual draws. Required only if \code{apollo_control$mixing = TRUE}. Unused elements can be ommited.
@@ -83,7 +95,12 @@ the distribution of each parameter to be estimated. Possible values are as follo
   \item \code{apollo_inputs}: The output of this function (\code{apollo_validateInputs}).
 }}
 
-\item{silent}{Boolean. TRUE to keep the function from printing to the console. Default is FALSE.}
+\item{recycle}{Logical. If TRUE, an older version of apollo_inputs is looked for in the calling environment (parent frame), and any
+element in that old version created by the user is copied into the new apollo_inputs returned by this function.
+For \code{recycle=TRUE} to work, the old version of apollo_inputs \strong{must} be named "apollo_inputs".
+If FALSE, nothing is copied from any older version of apollo_inputs. FALSE is the default.}
+
+\item{silent}{Logical. TRUE to keep the function from printing to the console. Default is FALSE.}
 }
 \value{
 List grouping several required input for model estimation.

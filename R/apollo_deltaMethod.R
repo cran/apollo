@@ -55,7 +55,7 @@ apollo_deltaMethod=function(model, deltaMethod_settings){
   
   operation <- tolower(operation)
   
-  if( !(operation %in% c("sum","diff","ratio","exp","logistic","lognormal")) ) stop("Invalid value of 'operation' parameter. See ?apollo_deltaMethod.")
+  if( !(operation %in% c("sum","diff","ratio","exp","logistic","lognormal","prod")) ) stop("Invalid value of 'operation' parameter. See ?apollo_deltaMethod.")
   if(is.na(parName2) & !(operation %in% c("logistic","exp"))) stop("Need two parameters if using operation: ",operation)
   if(!(parName1 %in% names(model$estimate))) stop("parName1=", parName1, " not found among model estimates.")
   if(!is.na(parName2) && !(parName2 %in% names(model$estimate))) stop("parName2=", parName2, " not found among model estimates.")
@@ -98,6 +98,11 @@ apollo_deltaMethod=function(model, deltaMethod_settings){
     v=est[parName1]/est[parName2]
     se=sqrt(v^2*(robvarcov[parName1,parName1]/(est[parName1]^2)+robvarcov[parName2,parName2]/(est[parName2]^2)-2*robvarcov[parName1,parName2]/(est[parName1]*est[parName2])))
     operation_name=paste("Ratio of ",parName1name," and ",parName2name,": ",sep="")}
+  
+  if(operation=="prod"){
+    v=est[parName1]*est[parName2]
+    se=sqrt((est[parName2]^2)*robvarcov[parName1,parName1]+(est[parName1]^2)*robvarcov[parName2,parName2]+2*est[parName1]*est[parName2]*robvarcov[parName1,parName2])
+    operation_name=paste("Product of ",parName1name," and ",parName2name,": ",sep="")}
   
   if(operation=="exp"){
     v=exp(est[parName1])
@@ -153,14 +158,14 @@ apollo_deltaMethod=function(model, deltaMethod_settings){
   }
   
   
-  t=round(v/se,2)
+  t = v/se
   
-  delta_output=cbind(round(v,4),round(se,4),round(t,2))
+  delta_output=cbind(v,se,t)
   colnames(delta_output)=c("Value","Robust s.e.","Rob t-ratio (0)")
   rownames(delta_output)=operation_name
   
   cat("\nRunning Delta method computations\n")
-  print(delta_output)
+  print(delta_output, digits=4)
   cat("\n")
   return(invisible(delta_output))
 }

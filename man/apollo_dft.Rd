@@ -9,13 +9,40 @@ apollo_dft(dft_settings, functionality)
 \arguments{
 \item{dft_settings}{List of settings for the DFT model. It should contain the following elements.
 \itemize{
-  \item \strong{alternatives}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
-  \item \strong{avail}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
-  \item \strong{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
-  \item \strong{attrValues}: A named list with as many elements as alternatives. Each element is itself a named list of vectors of the alternative attributes for each observation (usually a column from the database). All alternatives must have the same attributes (can be set to zero if not relevant).
-  \item \strong{altStart}: A named list with as many elements as alternatives. Each elment can be a scalar or vector containing the starting preference value for the alternative.  
-  \item \strong{attrWeights}: A named list with as many elements as attributes, or fewer. Each element is the weight of the attribute, and can be a scalar, a vector with as many elements as observations, or a matrix/array if random. They should add up to one for each observation and draw (if present), and will be re-scaled if they do not. \code{attrWeights} and \code{attrScalings} are incompatible, and they should not be both defined for an attribute. Default is 1 for all attributes.
-  \item \strong{attrScalings}: A named list with as many elements as attributes, or fewer. Each element is a factor that scale the attribute, and can be a scalar, a vector or a matrix/array. They do not need to add up to one for each observation. \code{attrWeights} and \code{attrScalings} are incompatible, and they should not be both defined for an attribute. Default is 1 for all attributes.
+  \item \strong{alternatives}: Named numeric vector. Names of alternatives and 
+                               their corresponding value in \code{choiceVar}.
+  \item \strong{avail}: Named list of numeric vectors or scalars. Availabilities 
+                        of alternatives, one element per alternative. Names of 
+                        elements must match those in \code{alternatives}. Values 
+                        can be 0 or 1.
+  \item \strong{choiceVar}: Numeric vector. Contains choices for all observations. 
+                            It will usually be a column from the database. Values 
+                            are defined in \code{alternatives}.
+  \item \strong{attrValues}: A named list with as many elements as alternatives. 
+                             Each element is itself a named list of vectors of the 
+                             alternative attributes for each observation (usually a 
+                             column from the database). All alternatives must have 
+                             the same attributes (can be set to zero if not relevant).
+  \item \strong{altStart}: A named list with as many elements as alternatives. 
+                           Each elment can be a scalar or vector containing the 
+                           starting preference value for the alternative.  
+  \item \strong{attrWeights}: A named list with as many elements as attributes, 
+                              or fewer. Each element is the weight of the attribute, 
+                              and can be a scalar, a vector with as many elements as 
+                              observations, or a matrix/array if random. They should 
+                              add up to one for each observation and draw (if present), 
+                              and will be re-scaled if they do not. \code{attrWeights} 
+                              and \code{attrScalings} are incompatible, and they should 
+                              not be both defined for an attribute. Default is 1 for 
+                              all attributes.
+  \item \strong{attrScalings}: A named list with as many elements as attributes, 
+                               or fewer. Each element is a factor that scale the 
+                               attribute, and can be a scalar, a vector or a 
+                               matrix/array. They do not need to add up to one 
+                               for each observation. \code{attrWeights} and 
+                               \code{attrScalings} are incompatible, and they 
+                               should not be both defined for an attribute. 
+                               Default is 1 for all attributes.
   \item \strong{procPars}: A list containing the four DFT 'process parameters'
     \itemize{
       \item \strong{error_sd}: Numeric scalar or vector. The standard deviation of the the error term in each timestep.

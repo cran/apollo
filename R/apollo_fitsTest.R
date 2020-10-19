@@ -1,8 +1,8 @@
-#' Compares fit of model across categories
+#' Compares log-likelihood of model across categories
 #' 
-#' Given the predictions of a model, it compares the fit across categories of observations.
+#' Given the estimates of a model, it compares the log-likelihood at the observation level across categories of observations.
 #' 
-#' Prints a table comparing the average fit for each category.
+#' Prints a table comparing the average log-likelihood at the observation level for each category.
 #' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}.
 #' @param apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 #'                          \itemize{
@@ -16,20 +16,15 @@
 #'                              \item \strong{subsamples}: Named list of boolean vectors. Each element of the list defines whether a given observation belongs to a given subsample (e.g. by sociodemographics).
 #'                              \item \strong{modelComponent}: Name of model component. Set to model by default.
 #'                         }
-#' @return Matrix with average fit per category (invisibly).
+#' @return Matrix with average log-likelihood at observation level per category (invisibly).
 #' @export
 apollo_fitsTest=function(model,apollo_probabilities,apollo_inputs,fitsTest_settings){
   
   if(is.null(fitsTest_settings[["modelComponent"]])) fitsTest_settings$modelComponent="model"
   if(is.null(fitsTest_settings[["subsamples"]])) fitsTest_settings[["subsamples"]]=NULL
   
-  fits = apollo_prediction(model, apollo_probabilities, apollo_inputs, prediction_settings=list(modelComponent=fitsTest_settings$modelComponent,silent=TRUE))
+  fits=model$avgLL
   
-  cat("\n")
-  ### fits=fits[,ncol(fits)] ### REMOVED
-  #fits=fits[,!colnames(fits)%in%c("ID","Choice situation","chosen")]#### NEW
-  if(!"chosen"%in%colnames(fits)) stop("No 'chosen' column in prediction.")
-  fits = as.vector(fits[, "chosen"])#### NEW
   
   if(is.null(fitsTest_settings[["subsamples"]])){
     iterations=0
@@ -46,15 +41,8 @@ apollo_fitsTest=function(model,apollo_probabilities,apollo_inputs,fitsTest_setti
   output[5,1]=stats::sd(fits)
   output[6,1]=NA
   
-  j=1
-  while(j<=iterations){
-    #temp1=as.data.frame(cbind(fits,categories[[j]]))
-    #output[1,j+1]=min(temp1[temp1$V2==1,1])
-    #output[2,j+1]=mean(temp1[temp1$V2==1,1])
-    #output[3,j+1]=stats::median(temp1[temp1$V2==1,1])
-    #output[4,j+1]=max(temp1[temp1$V2==1,1])
-    #output[5,j+1]=stats::sd(temp1[temp1$V2==1,1])
-    #output[6,j+1]=mean(temp1[temp1$V2==1,1])-mean(temp1[temp1$V2!=1,1])
+  for(j in 1:iterations){
+    categories[[j]]=apollo_firstRow(categories[[j]],apollo_inputs)
     
     tmp = fits[categories[[j]]]
     output[1,j+1]=min(tmp)
@@ -64,14 +52,13 @@ apollo_fitsTest=function(model,apollo_probabilities,apollo_inputs,fitsTest_setti
     output[5,j+1]=stats::sd(tmp)
     output[6,j+1]=mean(tmp-mean(fits[!categories[[j]]]))
     
-    j=j+1
   }
   if(iterations>0){
     colnames(output)=c("All data",names(categories))
   } else {
     colnames(output)="All data"
   }
-  rownames(output)=c("Min P(chosen)","Mean P(chosen)","Median P(chosen)","Max P(chosen)","SD P(chosen)","mean vs mean of all other")
+  rownames(output)=c("Min LL per obs","Mean LL per obs","Median LL per obs","Max LL per obs","SD LL per obs","mean vs mean of all others")
   if(iterations==0) output=output[1:5,]
   print(round(output,2))
   invisible(output)

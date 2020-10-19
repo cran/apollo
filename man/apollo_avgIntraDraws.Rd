@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_avgIntraDraws.R
 \name{apollo_avgIntraDraws}
 \alias{apollo_avgIntraDraws}
-\title{Averages intra-individual draws}
+\title{Averages across intra-individual draws.}
 \usage{
 apollo_avgIntraDraws(P, apollo_inputs, functionality)
 }
@@ -11,18 +11,33 @@ apollo_avgIntraDraws(P, apollo_inputs, functionality)
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
-\item{functionality}{Character. Description of the desired output from \code{apollo_probabilities}. Can take the values: "estimate", "prediction", "validate", "zero_LL", "conditionals", "output", "raw".}
+\item{functionality}{Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call apollo_probabilities, though the user can also call apollo_probabilities manually with a given functionality for testing/debugging. Possible values are:
+\itemize{
+  \item \strong{\code{"components"}}: For further processing/debugging, produces likelihood for each model component (if multiple components are present), at the level of individual draws and observations.
+  \item \strong{\code{"conditionals"}}: For conditionals, produces likelihood of the full model, at the level of individual inter-individual draws.
+  \item \strong{\code{"estimate"}}: For model estimation, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+  \item \strong{\code{"gradient"}}: For model estimation, produces analytical gradients of the likelihood, where possible.
+  \item \strong{\code{"output"}}: Prepares output for post-estimation reporting.
+  \item \strong{\code{"prediction"}}: For model prediction, produces probabilities for individual alternatives and individual model components (if multiple components are present) at the level of an observation, after averaging across draws.
+  \item \strong{\code{"preprocess"}}: Prepares likelihood functions for use in estimation.
+  \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
+  \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+  \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
+}}
 }
 \value{
-Likelihood averaged over intra-individual draws (shape depends on argument \code{functionality}).
+Argument \code{P} with (for most functionalities) the original contents averaged over intra-individual draws. Shape depends on argument \code{functionality}.
         \itemize{
-          \item \strong{\code{"estimate"}}: Returns the likelihood of the model averaged across intra-individual draws. Drops all components but \code{"model"}.
-          \item \strong{\code{"prediction"}}: Returns the likelihood of all alternatives and all model components averaged across intra-individual draws.
-          \item \strong{\code{"validate"}}: Same as \code{"estimate"}.
-          \item \strong{\code{"zero_LL"}}: Returns \code{P} without changes.
-          \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}.
-          \item \strong{\code{"output"}}: Returns the likelihood of all model components averaged across intra-individual draws.
+          \item \strong{\code{"components"}}: Returns \code{P} without changes.
+          \item \strong{\code{"conditionals"}}: Returns \code{P} containing the likelihood of the model averaged across intra-individual draws. Drops all components except for \code{"model"}.
+          \item \strong{\code{"estimate"}}: Returns \code{P} containing the likelihood of the model averaged across intra-individual draws. Drops all components except \code{"model"}.
+          \item \strong{\code{"gradient"}}: Returns \code{P} containing the gradient of the likelihood averaged across intra-individual draws. Drops all components except \code{"model"}.
+          \item \strong{\code{"output"}}: Returns \code{P} containing the likelihood of all model components averaged across intra-individual draws.
+          \item \strong{\code{"prediction"}}: Returns \code{P} containing the probabilities of all alternatives for all model components averaged across intra-individual draws.
+          \item \strong{\code{"preprocess"}}: Returns \code{P} without changes.           
           \item \strong{\code{"raw"}}: Returns \code{P} without changes.
+          \item \strong{\code{"validate"}}: Returns \code{P} containing the likelihood of the model averaged across intra-individual draws. Drops all components but \code{"model"}.
+          \item \strong{\code{"zero_LL"}}: Returns \code{P} without changes.
         }
 }
 \description{

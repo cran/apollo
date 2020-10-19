@@ -1,8 +1,8 @@
-#' Calculates the probability of an ordered logit model
+#' Calculates the probability of an Ordered Logit model
 #'
-#' Calculates the probabilities of an ordered logit model and can also perform other operations based on the value of the \code{functionality} argument.
+#' Calculates the probabilities of an Ordered Logit model and can also perform other operations based on the value of the \code{functionality} argument.
 #'
-#' This function estimates an ordered logit model of the type:
+#' This function estimates an Ordered Logit model of the type:
 #' y* = V + epsilon
 #' outcomeOrdered =  1 if   -Inf < y* < tau[1]
 #'      2 if tau[1] < y* < tau[2]
@@ -15,7 +15,7 @@
 #'                   \itemize{
 #'                     \item \code{outcomeOrdered} Numeric vector. Dependant variable. The coding of this variable is assumed to be from 1 to the maximum number of different levels. For example, if the ordered response has three possible values: "never", "sometimes" and "always", then it is assumed that outcomeOrdered contains "1" for "never", "2" for "sometimes", and 3 for "always". If another coding is used, then it should be specified using the \code{coding} argument.
 #'                     \item \code{V} Numeric vector. A single explanatory variable (usually a latent variable). Must have the same number of rows as outcomeOrdered.
-#'                     \item \code{tau} Numeric vector. Thresholds. As many as number of different levels in the dependent variable - 1. Extreme thresholds are fixed at -inf and +inf. No mixing allowed in thresholds.
+#'                     \item \code{tau} List of numeric vector/matrix/3-dim arrays. Thresholds. As many elements as number of different levels in the dependent variable - 1. Extreme thresholds are fixed at -inf and +inf. Mixing is allowed in thresholds.
 #'                     \item \code{coding} Numeric or character vector. Optional argument. Defines the order of the levels in \code{outcomeOrdered}. The first value is associated with the lowest level of \code{outcomeOrdered}, and the last one with the highest value. If not provided, is assumed to be \code{1:(length(tau) + 1)}.
 #'                     \item \code{rows} Boolean vector. TRUE if a row must be considered in the calculations, FALSE if it must be excluded. It must have length equal to the length of argument \code{outcomeOrdered}. Default value is \code{"all"}, meaning all rows are considered in the calculation.
 #'                     \item \code{componentName} Character. Name given to model component.
@@ -40,105 +40,136 @@
 #'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'         }
+#' @importFrom utils capture.output
 #' @export
 apollo_ol  <- function(ol_settings, functionality){
-  if(is.null(ol_settings[["componentName"]])) ol_settings[["componentName"]]="OL"
-  componentName=ol_settings[["componentName"]]
+  ### Set or extract componentName
+  modelType = "OL"
+  if(is.null(ol_settings[["componentName"]])){
+    ol_settings[["componentName"]] = ifelse(!is.null(ol_settings[['componentName2']]),
+                                            ol_settings[['componentName2']], modelType)
+    test <- functionality=="validate" && ol_settings[["componentName"]]!='model' && !apollo_inputs$silent
+    if(test) apollo_print(paste0('Apollo found a model component of type ', modelType,
+                                 ' without a componentName. The name was set to "',
+                                 ol_settings[["componentName"]],'" by default.'))
+  }
+  ### Check for duplicated modelComponent name
+  if(functionality=="validate"){
+    apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
+    apollo_modelList <- c(apollo_modelList, ol_settings$componentName)
+    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", ol_settings$componentName,
+                                             "). Names must be different for each component.")
+    assign("apollo_modelList", apollo_modelList, envir=parent.frame())
+  }
   
-  if(is.null(ol_settings[["outcomeOrdered"]])) stop("The ol_settings list for model component \"",componentName,"\" needs to include an object called \"outcomeOrdered\"!")
-  if(is.null(ol_settings[["V"]])             ) stop("The ol_settings list for model component \"",componentName,"\" needs to include an object called \"V\"!")
-  if(is.null(ol_settings[["tau"]])           ) stop("The ol_settings list for model component \"",componentName,"\" needs to include an object called \"tau\"!")
-  if(is.null(ol_settings[["coding"]])        ) ol_settings[["coding"]] = NULL
-  if(is.null(ol_settings[["rows"]])          ) ol_settings[["rows"]]   = "all"
-
-  outcomeOrdered=ol_settings[["outcomeOrdered"]]
-  V      = ol_settings[["V"]]
-  tau    = ol_settings[["tau"]]
-  coding = ol_settings[["coding"]]
-  rows   = ol_settings[["rows"]]
-  nObs <- tryCatch(nrow( get("apollo_inputs", parent.frame(), inherits=FALSE)$database ),
-                   error=function(e){
-                     lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-                     lenC <- length(outcomeOrdered)
-                     return(max(lenV, lenC))
-                   })
+  # ############################### #
+  #### Load or do pre-processing ####
+  # ############################### #
+  # Fetch apollo_inputs
+  apollo_inputs = tryCatch(get("apollo_inputs", parent.frame(), inherits=FALSE),
+                           error=function(e) return( list(apollo_control=list(cpp=FALSE)) ))
   
-  ### Format checks
-  # outcomeOrdered
-  test <- is.vector(outcomeOrdered) && (length(outcomeOrdered)==nObs || length(outcomeOrdered)==1)
-  if(!test) stop("The \"outcomeOrdered\" argument for model component \"",componentName,"\" needs to be a scalar or a vector with one entry per observation in the \"database\"")
-  # V
-  test <- is.numeric(V) && (is.vector(V) | is.array(V))
-  lenV <- ifelse(is.array(V), dim(V)[1], length(V))
-  test <- test && (lenV==nObs | lenV==1)
-  if(!test) stop("\"V\" for model component \"",componentName,"\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")  
-  # rows
-  test <- is.vector(rows) && ( (is.logical(rows) && length(rows)==nObs) || (length(rows)==1 && rows=="all") )
-  if(!test) stop("The \"rows\" argument for model component \"",componentName,"\" needs to be \"all\" or a vector of boolean statements with one entry per observation in the \"database\"")
-  # functionality
-  test <- functionality %in% c("estimate","prediction","validate","zero_LL","conditionals","output","raw")
-  if(!test) stop("Non-permissable setting for \"functionality\" for model component \"",componentName,"\"")
-  # coding
-  test <- is.null(coding) || (is.vector(coding))
-  if(!test) stop("Argument 'coding', if provided for model component \"",componentName,"\", must be a vector.")
+  if( !is.null(apollo_inputs[[paste0(ol_settings$componentName, "_settings")]]) && (functionality!="preprocess") ){
+    
+    # Load ol_settings from apollo_inputs
+    tmp <- apollo_inputs[[paste0(ol_settings$componentName, "_settings")]]
+    # If there is no V inside the loaded ol_settings, restore the one received as argument
+    if(is.null(tmp$V)  ) tmp$V <- ol_settings$V
+    if(is.null(tmp$tau)) if(is.list(tmp$tau)) tmp$tau <- ol_settings$tau else tmp$tau <- as.list(ol_settings$tau)
+    ol_settings <- tmp
+    rm(tmp)
+    
+  } else { 
+    ### Do pre-processing
+    # Do pre-processing common to most models
+    ol_settings <- apollo_preprocess(inputs=ol_settings, modelType, 
+                                     functionality, apollo_inputs)
+    
+    # Determine which mnl likelihood to use (R or C++)
+    if(apollo_inputs$apollo_control$cpp & !apollo_inputs$silent) apollo_print("No C++ optimisation available for OL components.")
+    # Using R likelihood
+    ol_settings$probs_OL <- function(ol_settings, all=FALSE, restoreRows=TRUE){
+      nThr <- length(ol_settings$tau) # number of thresholds
+      tau1 <- Reduce("+", mapply("*", ol_settings$Y[-(nThr+1)], ol_settings$tau, SIMPLIFY=FALSE))
+      tau0 <- Reduce("+", mapply("*", ol_settings$Y[-1       ], ol_settings$tau, SIMPLIFY=FALSE))
+      tau1[ol_settings$outcomeOrdered==length(ol_settings$coding)] <- Inf
+      tau0[ol_settings$outcomeOrdered==1] <- -Inf
+      P <- 1/(1 + exp(ol_settings$V-tau1)) - 1/(1 + exp(ol_settings$V-tau0))
+      if(restoreRows && any(!ol_settings$rows)) P <- apollo_insertRows(P, ol_settings$rows, 1)
+      if(all){
+        P2 = list()
+        ol_settings$tau <- c(-Inf, ol_settings$tau, Inf)
+        for(j in 1:(length(ol_settings$tau)-1)) P2[[j]] = 
+            1/(1 + exp(ol_settings$V-ol_settings$tau[[j+1]])) - 1/(1 + exp(ol_settings$V-ol_settings$tau[[j]]))
+        names(P2) <- ol_settings$coding
+        if(restoreRows && any(!ol_settings$rows)) P2 <- lapply(P2, apollo_insertRows, r=ol_settings$rows, val=1)
+        if(!(length(ol_settings$outcomeOrdered)==1 && is.na(ol_settings$outcomeOrdered))) P2[["chosen"]] <- P
+        P <- P2
+      }
+      return(P)
+    }
+    
+    # Construct necessary input for gradient (including gradient of utilities)
+    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
+                            error=function(e) return(NULL))
+    test <- !is.null(apollo_beta) && (functionality %in% c("preprocess", "gradient"))
+    test <- test && is.function(ol_settings$V) && all(sapply(ol_settings$tau, is.function))
+    test <- test && apollo_inputs$apollo_control$analyticGrad
+    ol_settings$gradient <- FALSE
+    if(test){
+      tmp <- list(V=ol_settings$V); tmp <- c(tmp, ol_settings$tau)
+      tmp <- apollo_dVdB(apollo_beta, apollo_inputs, tmp)
+      if(!is.null(tmp)){
+        ol_settings$dV   <- tmp$V
+        ol_settings$dTau <- tmp[-which(names(tmp)=="V")]
+      }
+      test <- !is.null(ol_settings$dV) && is.function(ol_settings$dV)
+      test <- test && !is.null(ol_settings$dTau) && is.list(ol_settings$dTau) 
+      test <- test && all(sapply(ol_settings$dTau, is.function))
+      ol_settings$gradient <- test
+    }; rm(test)
+    
+    # Return ol_settings if pre-processing
+    if(functionality=="preprocess"){
+      # Remove things that change from one iteration to the next
+      ol_settings$V   <- NULL
+      ol_settings$tau <- NULL
+      return(ol_settings)
+    }
+  }
   
-  ### Get number of observations
-  nObs <- tryCatch(nrow( get("apollo_inputs", parent.frame(), inherits=TRUE)$database ),
-                   error=function(e){
-                     lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-                     lenC <- length(outcomeOrdered)
-                     return(max(lenV, lenC))
-                   })
   
-  ### Validate input
-  #if(!is.vector(outcomeOrdered)) stop("Argument 'outcomeOrdered' must be a vector of length nObs.")
-  #if(!is.numeric(V) || !(is.array(V) | is.vector(V))) stop("Argument 'V' must be a numeric vector or array.")
-  #if(!is.null(coding) && (!is.vector(coding) | is.null(names(coding)))) stop("Argument 'coding', if provided, must be a named vector.")
-  ### CORRECTED NEXT LINE
-  ### if(rows!="all" & ( length(rows)!=nObs | !is.logical(rows) )) stop("Argument 'rows', if provided, must be \"all\" or a vector of boolean statements of length nObs.")
-  #if(!( length(rows)==1 && (rows=="all")) & ( length(rows)!=nObs | !is.logical(rows) )) stop("Argument 'rows', if provided, must be \"all\" or a vector of boolean statements of length nObs.")
+  # ################################################## #
+  #### Transform V & tau into numeric and drop rows ####
+  # ################################################## #
+  
+  ### Evaluate V, tau
+  if(is.function(ol_settings$V)) ol_settings$V <- ol_settings$V()
+  if(any(sapply(ol_settings$tau, is.function))){
+    ol_settings$tau <- lapply(ol_settings$tau, function(f) if(is.function(f)) f() else f)
+  }
+  if(is.matrix(ol_settings$V) && ncol(ol_settings$V)==1) ol_settings$V <- as.vector(ol_settings$V)
+  ol_settings$tau <- lapply(ol_settings$tau, function(v) if(is.matrix(v) && ncol(v)==1) as.vector(v) else v)
   
   ### Filter rows
-  if(length(rows)==1 && rows=="all") rows <- rep(TRUE, length(nObs))
-  if(any(!rows)){
-    outcomeOrdered <- outcomeOrdered[rows]
-    V <- apollo_keepRows(V, rows)
+  if(any(!ol_settings$rows)){
+    ol_settings$V   <- apollo_keepRows(ol_settings$V, ol_settings$rows)
+    ol_settings$tau <- lapply(ol_settings$tau, apollo_keepRows, r=ol_settings$rows)
   }
-  nObs <- max(ifelse(is.array(V), dim(V)[1], length(V)) , length(outcomeOrdered))
-  
 
   # ############################## #
   #### functionality="validate" ####
   # ############################## #
 
   if(functionality=="validate"){
-    apollo_control <- tryCatch(get("apollo_control", parent.frame(), inherits=FALSE),
-                            error = function(e) list(noValidation=FALSE, noDiagnostics=FALSE))
+    if(!apollo_inputs$apollo_control$noValidation) apollo_validate(ol_settings, modelType, 
+                                                                   functionality, apollo_inputs)
     
-    if(!apollo_control$noValidation){
-      if(!is.vector(tau)) stop("Thresholds for ordered logit for model component \"",componentName,"\" need to be a vector (no random components allowed)!")
-      values_present=unique(outcomeOrdered)
-      if(is.null(coding)){
-        coding <- 1:(length(tau)+1)  
-        cat("\nNo coding provided for ordered logit for model component \"",componentName,"\",\n so assuming outcomeOrdered goes from 1 to",max(coding),"\n")
-      }
-      if(!(all(values_present %in% coding ))) stop("Some levels in 'outcomeOrdered' do not exist in 'coding' for model component \"",componentName,"\" !")
-      if(!(all(coding %in% values_present ))) stop("Some levels in 'coding' do not exist in 'outcomeOrdered' for model component \"",componentName,"\"!")
-      if( (length(tau)+1)!=length(coding) ) stop("Threshold vector length +1 does not match number of elements in argument 'coding' for model component \"",componentName,"\".")
-    }
-    
-    if(!apollo_control$noDiagnostics){
-      choicematrix <- t(as.matrix(table(outcomeOrdered)))
-      choicematrix <- rbind(choicematrix, choicematrix[1,]/nObs*100)
-      rownames(choicematrix) <- c("Times chosen", "Percentage chosen overall")
-      apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-      apollo_addLog(title   = paste0("Overview of choices for model component \"",componentName,"\""), 
-                    content = round(choicematrix,2), apolloLog)
-    }
-
-    testL = apollo_ol(ol_settings, functionality="estimate")
-    if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"",componentName,"\"")
-    if(any(testL==0)) cat("\nSome observations have zero probability at starting value for model component \"",componentName,"\"")
+    if(!apollo_inputs$apollo_control$noDiagnostics) apollo_diagnostics(ol_settings, modelType, apollo_inputs)
+    testL = ol_settings$probs_OL(ol_settings)
+    if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"",ol_settings$componentName,"\"")
+    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0('Some observations have zero probability at starting value for model component "', 
+                                          ol_settings$componentName,'".'))
     return(invisible(testL))
   }
 
@@ -147,73 +178,85 @@ apollo_ol  <- function(ol_settings, functionality){
   # ########################################################## #
 
   if(functionality=="zero_LL"){
-    P <- rep(NA, nObs)
-    if(any(!rows)) P <- apollo_insertRows(P, rows, 1)
+    P <- rep(NA, ol_settings$nObs)
+    if(any(!ol_settings$rows)) P <- apollo_insertRows(P, ol_settings$rows, 1)
     return(P)
   }
 
-  # ########################################################## #
-  #### functionality="estimate | conditionals | raw"        ####
-  # ########################################################## #
+  # ################################################################## #
+  #### functionality = estimate, conditional, raw, prediction & raw ####
+  # ################################################################## #
 
-  if(functionality %in% c("estimate","conditionals")){
-
-    if(is.null(coding)) coding <- 1:(length(tau)+1)
-    map <- stats::setNames(1:length(coding), coding)
-    outcomeOrdered2 <- map[as.character(outcomeOrdered)]
-
-    tau <- c(-Inf,tau,Inf)
-
-    p <- 1/(1 + exp(V-tau[outcomeOrdered2+1])) - 1/(1 + exp(V-tau[outcomeOrdered2]))
-
-    if(any(!rows)) p <- apollo_insertRows(p, rows, 1) # insert excluded rows with value 1
+  if(functionality %in% c("estimate","conditionals","output")) return(ol_settings$probs_OL(ol_settings, all=FALSE))
+  
+  if(functionality %in% c("prediction", "raw")) return(ol_settings$probs_OL(ol_settings, all=TRUE))
+  
+  # ############################## #
+  #### functionality="gradient" ####
+  # ############################## #
+  
+  if(functionality=="gradient"){
+    # Verify everything necessary is available
+    if(is.null(ol_settings$gradient) || !ol_settings$gradient) stop("Analytical gradient could not be calculated. Please set apollo_control$analyticGrad=FALSE.")
+    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
+                            error=function(e) stop("apollo_ol could not fetch apollo_beta for gradient estimation."))
+    if(is.null(apollo_inputs$database)) stop("apollo_ol could not fetch apollo_inputs$database for gradient estimation.")
     
-    return(p)
-  }
-
-  # ########################################################## #
-  #### functionality="prediction"                           ####
-  # ########################################################## #
-  if(functionality %in% c("prediction", "raw")){
+    # Calculate probabilities and derivatives of utilities for all alternatives
+    Pcho <- ol_settings$probs_OL(ol_settings, all=FALSE, restoreRows=FALSE)
+    e <- list2env(c(as.list(apollo_beta), apollo_inputs$database, list(apollo_inputs=apollo_inputs)), hash=TRUE)
+    dV <- ol_settings$dV; environment(dV) <- e
+    dV <- dV()
+    for(i in 1:length(ol_settings$dTau)) environment(ol_settings$dTau[[i]]) <- e
+    dTau <- lapply(ol_settings$dTau, function(dT) dT())
+    if(!all(ol_settings$rows)){
+      dV <- lapply(dV, apollo_keepRows, ol_settings$rows)
+      for(i in 1:length(dTau)) dTau[[i]] <- lapply(dTau[[i]], apollo_keepRows, ol_settings$rows)
+    }; rm(e)
     
-    if(is.null(coding)) coding <- 1:(length(tau)+1)
-    tau <- c(-Inf,tau,Inf)
-    
-    p = list()
-    for(j in 1:(length(tau)-1)) p[[j]] = 1/(1 + exp(V-tau[j+1])) - 1/(1 + exp(V-tau[j]))
-    
-    if(is.null(coding)) coding <- 1:(length(tau)-1)
-    names(p) <- coding
-    
-    # insert excluded rows with value NA
-	  if(any(!rows)) p <- lapply(p, apollo_insertRows, r=rows, val=NA)
-    
-    # Add chosen alternative (unless outcomeOrdered is NA)
-    if(!(length(outcomeOrdered)==1 && is.na(outcomeOrdered))){
-      p[["chosen"]] <- apollo_ol(ol_settings, functionality="estimate")
+    # Extract right thresholds
+    nPar <- length(dV) # number of parameters
+    nThr <- length(ol_settings$tau) # number of thresholds
+    dTau1 <- list(); dTau0 <- list()
+    for(i in 1:nPar){
+      dTau1[[i]] <- Reduce("+", mapply("*", ol_settings$Y[-(nThr+1)], lapply(dTau, function(dT) dT[[i]]), SIMPLIFY=FALSE) )
+      dTau0[[i]] <- Reduce("+", mapply("*", ol_settings$Y[-1       ], lapply(dTau, function(dT) dT[[i]]), SIMPLIFY=FALSE) )
+      #dTau1[choFirst] <- Inf # No need as these will be zero be default (the derivative of Inf)
+      #dTau0[choLast] <- -Inf
     }
-
-    return(p)
+    rm(dTau)
+    tau1 <- Reduce("+", mapply("*", ol_settings$Y[-(nThr+1)], ol_settings$tau, SIMPLIFY=FALSE))
+    tau0 <- Reduce("+", mapply("*", ol_settings$Y[-1       ], ol_settings$tau, SIMPLIFY=FALSE))
+    tau1[ol_settings$outcomeOrdered==length(ol_settings$coding)] <- Inf
+    tau0[ol_settings$outcomeOrdered==1] <- -Inf
+    
+    # Calculate gradient
+    tmp1 <- mapply("-", dV, dTau1, SIMPLIFY=FALSE)
+    tmp0 <- mapply("-", dV, dTau0, SIMPLIFY=FALSE)
+    tmpA <- exp(ol_settings$V - tau1)
+    tmpA <- tmpA/(1 + tmpA)^2
+    tmpB <- exp(ol_settings$V - tau0)
+    tmpB[tmpB==Inf] <- 0
+    tmpB <- tmpB/(1 + tmpB)^2
+    G    <- mapply(function(t1, t0) -tmpA*t1 + tmpB*t0, tmp1, tmp0, SIMPLIFY=FALSE)
+    
+    # Restore rows and return
+    if(!all(ol_settings$rows)){
+      Pcho <- apollo_insertRows(Pcho, ol_settings$rows, 1)
+      G    <- lapply(G, apollo_insertRows, r=ol_settings$rows, val=0)
+    }
+    return(list(like=Pcho, grad=G))
   }
-
-  # ############################# #
-  #### functionality="output"  ####
-  # ############################# #
-  if(functionality=="output"){
-
-    p <- apollo_ol(ol_settings, functionality="estimate")
-    
-    choicematrix <- t(as.matrix(table(outcomeOrdered)))
-    choicematrix <- rbind(choicematrix, choicematrix[1,]/nObs*100)
-    rownames(choicematrix) <- c("Times chosen", "Percentage chosen overall")
-    
-    apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-    apollo_addLog(title   = paste0("Overview of choices for model component \"",componentName,"\""), 
-                  content = round(choicematrix,2), apolloLog)
-    apollo_reportModelTypeLog(modelType="OL", apolloLog)
-    
-    return(p)
+  
+  # ############ #
+  #### Report ####
+  # ############ #
+  if(functionality=='report'){
+    P <- list()
+    apollo_inputs$silent <- FALSE
+    P$data  <- capture.output(apollo_diagnostics(ol_settings, modelType, apollo_inputs, param=FALSE))
+    P$param <- capture.output(apollo_diagnostics(ol_settings, modelType, apollo_inputs, data =FALSE))
+    return(P)
   }
-
-
+  
 }

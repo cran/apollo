@@ -1,4 +1,5 @@
-#' Calculates product of panel observations.
+# UPDATED
+#' Calculates product across observations from same individual.
 #' 
 #' Multiplies likelihood of observations from the same individual, or adds the log of them.
 #' 
@@ -7,131 +8,114 @@
 #' 
 #' @param P List of vectors, matrices or 3-dim arrays. Likelihood of the model components.
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
-#' @param functionality Character. Can take different values depending on desired output.
+#' @param functionality Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call apollo_probabilities, though the user can also call apollo_probabilities manually with a given functionality for testing/debugging. Possible values are:
 #'                      \itemize{
-#'                        \item \code{"estimate"} For model estimation, returns probabilities of chosen alternatives.
-#'                        \item \code{"prediction"} For model predictions, returns probabilities of all alternatives.
-#'                        \item \code{"validate"} Validates input.
-#'                        \item \code{"zero_LL"} Return probabilities with all parameters at zero.
-#'                        \item \code{"conditionals"} For conditionals, returns probabilities of chosen alternatives.
-#'                        \item \code{"output"} Checks that the model is well defined.
-#'                        \item \code{"raw"} For debugging, returns probabilities of all alternatives.
+#'                        \item \strong{\code{"components"}}: For further processing/debugging, produces likelihood for each model component (if multiple components are present), at the level of individual draws and observations.
+#'                        \item \strong{\code{"conditionals"}}: For conditionals, produces likelihood of the full model, at the level of individual inter-individual draws.
+#'                        \item \strong{\code{"estimate"}}: For model estimation, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"gradient"}}: For model estimation, produces analytical gradients of the likelihood, where possible.
+#'                        \item \strong{\code{"output"}}: Prepares output for post-estimation reporting.
+#'                        \item \strong{\code{"prediction"}}: For model prediction, produces probabilities for individual alternatives and individual model components (if multiple components are present) at the level of an observation, after averaging across draws.
+#'                        \item \strong{\code{"preprocess"}}: Prepares likelihood functions for use in estimation.
+#'                        \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
+#'                        \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 #'                      }
-#' @return Probabilities at the individual level.
+#' @return Argument \code{P} with (for most functionalities) the original contents averaged over inter-individual draws. Shape depends on argument \code{functionality}.
+#'         \itemize{
+#'           \item \strong{\code{"components"}}: Returns \code{P} without changes.
+#'           \item \strong{\code{"conditionals"}}: Returns \code{P} without averaging across draws. Drops all components except \code{"model"}.
+#'           \item \strong{\code{"estimate"}}: Returns \code{P} containing the likelihood of the model averaged across inter-individual draws. Drops all components except \code{"model"}.
+#'           \item \strong{\code{"gradient"}}: Returns \code{P} containing the gradient of the likelihood after applying the product rule across observations for the same individual.
+#'           \item \strong{\code{"output"}}: Returns \code{P} containing the likelihood of all model components averaged across inter-individual draws.
+#'           \item \strong{\code{"prediction"}}: Returns \code{P} containing the probabilities/likelihoods of all alternatives for all model components averaged across inter-individual draws.
+#'           \item \strong{\code{"preprocess"}}: Returns \code{P} without changes.           
+#'           \item \strong{\code{"raw"}}: Returns \code{P} without changes.
+#'           \item \strong{\code{"validate"}}: Returns \code{P} containing the likelihood of the model averaged across inter-individual draws. Drops all components except \code{"model"}.
+#'           \item \strong{\code{"zero_LL"}}: Returns \code{P} without changes.
+#'         }
 #' @export
 apollo_panelProd <- function(P, apollo_inputs, functionality){
+
+  # ###################################################################### #
+  #### load and check inputs, prepare variables that are used elsewhere ####
+  # ###################################################################### #
+
   apollo_control = apollo_inputs[["apollo_control"]]
-  workInLogs     = apollo_control$workInLogs
-  
-  inputIsList <- is.list(P)
-  if(inputIsList && is.null(P[["model"]]) && functionality!="prediction") stop("The list \"P\" should contain an element called \"model\"!")
-  
-  # ############################### #
-  #### ignored for HB estimation ####
-  # ############################### #
-  
   if(apollo_control$HB==TRUE) stop('Function apollo_panelProd should not be used when apollo_control$HB==TRUE!')
+  if(!apollo_control$panelData) stop('Panel data setting not used, so multiplying over choices using apollo_panelProd not applicable!')
+    
+  inputIsList <- is.list(P)
+  indivID <- apollo_inputs$database[, apollo_control$indivID]
+
+  # ############################################### #
+  #### functionalities with untransformed return ####
+  # ############################################### #
   
-  # ############################### #
-  #### pre-checks                ####
-  # ############################### #
-  
-  if(!apollo_control$panelData){
-    stop('Panel data setting not used, so multiplying over choices not applicable!')
-    return(P)
-  } 
-  
+  if(functionality%in%c("components","prediction","preprocess","raw", "report")) return(P)
+
   # ########################################## #
   #### functionality="gradient"             ####
   # ########################################## #
+
   if(functionality=="gradient"){
-    if(!apollo_control$panelData) return(P)
-    if(is.list(P)) P <- P[[1]]
-    g <- function(b, db){
-      #like  <- get("apollo_probabilities", envir=parent.frame(), inherits=TRUE)
-      input <- get("apollo_inputs", envir=parent.frame(), inherits=TRUE)
-      indiv <- db[,input$apollo_control$indivID]
-      #input$apollo_control$panelData <- FALSE
-      #dLL <- P(b, db)
-      #LL  <- like(b, input, functionality="estimate")
-      #if(!input$apollo_control$workInLogs) LL <- log(LL)
-      #dLL <- rowsum(dLL/LL, group=indiv)
-      #LL  <- stats::aggregate(as.data.frame(LL), by=list(ind=indiv), FUN=prod)[,2]
-      #return( LL*dLL )
-      dLL <- P(b, db)
-      dLL <- rowsum(dLL, group=indiv)
-      return(dLL)
-    }
-    environment(g) <- new.env(parent=baseenv())
-    assign("P", P, envir=environment(g))
-    return(g)
+    # Checks
+    if(!is.list(P)) stop("Input P should be a list with at least one component (called model)")
+    if("model" %in% names(P)) P <- P$model
+    if(is.null(P$like) || is.null(P$grad)) stop("Missing like and/or grad elements inside components")
+    if(apollo_control$workInLogs && apollo_control$analyticGrad) stop("workInLogs cannot be used in conjunction with analyticGrad")
+    
+    # Remove zeros from P$like
+    P$like[P$like==0] <- 1e-50 #1e-100 #1e-16 #1e-300
+    
+    # Average gradient respecting product rule
+    tmp <- apollo_panelProd(P$like, apollo_inputs, "estimate")
+    P$grad <- lapply(P$grad, function(g) tmp*rowsum(g/P$like, group=indivID))
+    P$like <- tmp
+    return(P)
   }
   
-  # ############################################# #
-  #### functionality="prediction/validate/raw" ####
-  # ############################################# #
+  # ################################################################### #
+  #### functionality="estimate/conditionals/validate/output/zero_LL" ####
+  # ################################################################### #
   
-  ### NEW LINES SH 28/2
-  if(functionality %in% c("prediction","raw")) return(P)
-  #if(functionality %in% c("prediction","raw","validate")) return(P)
-  
-  # ########################################################## #
-  #### functionality="estimate/conditionals/zero_LL/output" ####
-  # ########################################################## #
-  
-  indivID <- apollo_inputs$database[, apollo_control$indivID]
-  
-  #if(functionality=="zero_LL"){
-  #  if(inputIsList) P <- P[["model"]]
-  #  Pout = rowsum(log(P), group=indivID)
-  #  if(!workInLogs) Pout <- exp(Pout)
-  #  if(is.matrix(Pout) && ncol(Pout)==1) Pout=as.vector(Pout)
-  #  if(inputIsList) Pout <- list(model=Pout)
-  #  return(Pout)
-  #}
-  
-  ### NEW LINES SH 28/2
-  #if(functionality %in% c("estimate", "conditionals")){
-  if(functionality %in% c("estimate", "conditionals","validate")){
-    if(inputIsList) P <- P[["model"]]
-    if(is.array(P) && length(dim(P))==3) stop('Need to average over intra-individual draws first before multiplying over choices!')
-    if(is.vector(P) || (is.matrix(P) && !workInLogs) ){
-      Pout <- rowsum(log(P), group=indivID)
-      if(!workInLogs) Pout <- exp(Pout)
-    }
-    if(apollo_control$panelData && is.matrix(P) && workInLogs){
-      # approach to use if working in logs with mixing
-      B    <- rowsum(log(P), group=indivID) # nIndiv x nDraws
-      Bbar <- rowMeans(B) # nIndiv x 1
-      Pout <- Bbar + log( rowMeans(exp(B-Bbar)) ) # nIndiv x 1
-    }
-    if(is.matrix(Pout) && ncol(Pout)==1) Pout <- as.vector(Pout) ### Added on 16 April due to Fangqing spotted bug
-    if(inputIsList) Pout <- list(model=Pout)
-    return(Pout)
-  }
-  
-  if(functionality%in%c("output","zero_LL")){
+  if(functionality=='zero_LL'){
     if(!inputIsList) P <- list(model=P)
-    j=1
-    Pout=P
-    while(j<= length(P)){
-      if(is.array(P[[j]]) && length(dim(P[[j]]))==3) stop('Need to average over intra-individual draws first before multiplying over choices!')
-      if(is.vector(P[[j]]) || (is.matrix(P[[j]]) && !workInLogs) ){
-        Pout[[j]] <- rowsum(log(P[[j]]), group=indivID)
-        if(!workInLogs) Pout[[j]] <- exp(Pout[[j]])
+    if(any(sapply(P, function(p) is.array(p) && length(dim(p)==3)))) stop('Need to average over intra-individual draws first before multiplying over choices!')
+    for(j in 1:length(P)){
+      test <- is.vector(P[[j]]) && length(P[[j]])==length(indivID)
+      test <- test || is.matrix(P[[j]]) && nrow(P[[j]])==length(indivID)
+      if(test){
+        P[[j]] <- rowsum(log(P[[j]]), group=indivID)
+        if(!apollo_control$workInLogs) P[[j]] <- exp(P[[j]])
       }
-      if(apollo_control$panelData && is.matrix(P[[j]]) && workInLogs){
+      if(is.matrix(P[[j]]) && ncol(P[[j]])==1) P[[j]] <- as.vector(P[[j]])
+    }
+    if(!inputIsList) P <- P[[1]]
+    return(P)
+  }
+  
+  if(functionality %in% c("estimate", "conditionals","output","validate")){
+    if(inputIsList && is.null(P[["model"]])) stop("The list \"P\" should contain an element called \"model\"!")
+    if(functionality %in% c("estimate", "conditionals","validate") && inputIsList) P <- P["model"]  ### only keep the model element, but P is still a list
+    if(!inputIsList) P <- list(model=P)
+    for(j in 1:length(P)){
+      if(is.array(P[[j]]) && length(dim(P[[j]]))==3) stop('Need to average over intra-individual draws first before multiplying over choices!')
+      if(is.vector(P[[j]]) || (is.matrix(P[[j]]) && !apollo_control$workInLogs) ){
+        P[[j]] <- rowsum(log(P[[j]]), group=indivID)
+        if(!apollo_control$workInLogs) P[[j]] <- exp(P[[j]])
+      }
+      if(apollo_control$panelData && is.matrix(P[[j]]) && apollo_control$workInLogs && nrow(P[[j]])==length(indivID)){
         # approach to use if working in logs with mixing
         B    <- rowsum(log(P[[j]]), group=indivID) # nIndiv x nDraws
-        Bbar <- rowMeans(B) # nIndiv x 1
-        Pout[[j]] <- Bbar + log( rowMeans(exp(B-Bbar)) ) # nIndiv x 1
+        Bbar <- apply(B, MARGIN=1, function(r) mean(r[is.finite(r)]) ) # nIndiv x 1 ### FIX: 15/5/2020
+        P[[j]] <- ifelse(is.finite(Bbar), Bbar + log( rowMeans(exp(B-Bbar)) ), -Inf) # nIndiv x 1 ### FIX 18/5/2020
       }
-      if(is.matrix(Pout[[j]]) && ncol(Pout[[j]])==1) Pout[[j]] <- as.vector(Pout[[j]])
-      j=j+1
+      if(is.matrix(P[[j]]) && ncol(P[[j]])==1) P[[j]] <- as.vector(P[[j]])
     }
-    if(!inputIsList) Pout <- Pout[[1]]
-    return(Pout)
+    if(!inputIsList) P <- P[[1]]
+    #if(functionality %in% c("estimate", "conditionals","validate") && inputIsList) Pout <- list(model=Pout) # Removed. Pout is already a list
+    return(P)
   }
-  
-  
+
 }

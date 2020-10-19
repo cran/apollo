@@ -10,13 +10,13 @@ apollo_combineResults(combineResults_settings = NULL)
 \item{combineResults_settings}{List of options. It can include the following.
 \itemize{
   \item modelNames: Character vector. List of names of models to combine. Use an empty vector to combine results from all models in the directory.
-  \item printClassical: Boolean. TRUE for printing classical standard errors. TRUE by default.
+  \item printClassical: Boolean. TRUE for printing classical standard errors. FALSE by default.
   \item printPVal: Boolean. TRUE for printing p-values. FALSE by default.
   \item printT1: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
   \item estimateDigits: Numeric scalar. Number of decimal places to print for estimates. Default is 4.
   \item tDigits: Numeric scalar. Number of decimal places to print for t-ratios values. Default is 2.
   \item pDigits: Numeric scalar. Number of decimal places to print for p-values. Default is 2.
-  \item sortByDate: Boolean. If TRUE, models are ordered by date.
+  \item sortByDate: Boolean. If TRUE, models are ordered by date. Default is TRUE.
 }}
 }
 \value{

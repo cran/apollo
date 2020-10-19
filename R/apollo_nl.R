@@ -1,8 +1,8 @@
-#' Calculates probabilities of a nested logit
+#' Calculates probabilities of a Nested Logit
 #'
-#' Calculates probabilities of a nested logit model.
+#' Calculates probabilities of a Nested Logit model.
 #'
-#' In this implementation of the nested logit model, each nest must have a lambda parameter associated to it.
+#' In this implementation of the Nested Logit model, each nest must have a lambda parameter associated to it.
 #' For the model to be consistent with utility maximisation, the estimated value of the Lambda parameter of all nests
 #' should be between 0 and 1. Lambda parameters are inversely proportional to the correlation between the error terms of 
 #' alternatives in a nest. If lambda=1, then there is no relevant correlation between the unobserved
@@ -41,306 +41,163 @@
 #'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'         }
-#' @examples
-#' ### Load data
-#' data(apollo_modeChoiceData)
-#' database <- apollo_modeChoiceData
-#' rm(apollo_modeChoiceData)
-#'
-#' ### Parameters
-#' b = list(asc_1=0, asc_2=0, asc_3=0, asc_4=0, tt=0, tc=0, acc=0, lambda=0.5)
-#'
-#' V = list()
-#' V[['car' ]] = b$asc_1 + b$tt*database$time_car  + b$tc*database$cost_car
-#' V[['bus' ]] = b$asc_2 + b$tt*database$time_bus  + b$tc*database$cost_bus  +
-#'               b$acc*database$access_bus
-#' V[['air' ]] = b$asc_3 + b$tt*database$time_air  + b$tc*database$cost_air  +
-#'               b$acc*database$access_air
-#' V[['rail']] = b$asc_4 + b$tt*database$time_rail + b$tc*database$cost_rail +
-#'               b$acc*database$access_rail
-#'
-#' ### NL settings
-#' nl_settings <- list(
-#'    alternatives = c(car=1, bus=2, air=3, rail=4),
-#'    avail        = list(car=database$av_car, bus=database$av_bus,
-#'                        air=database$av_air, rail=database$av_rail),
-#'    choiceVar    = database$choice,
-#'    V            = V,
-#'    nlNests      = list(root=1, public=b$lambda),
-#'    nlStructure  = list(root=c("car", "public"), public=c("bus","air","rail"))
-#' )
-#'
-#' ### Compute choice probabilities using NL model
-#' apollo_nl(nl_settings, functionality="estimate")
+#' @importFrom utils capture.output
 #' @export
 apollo_nl <- function(nl_settings, functionality){
-  if(is.null(nl_settings[["componentName"]])       ) nl_settings[["componentName"]]="NL"
-  componentName= nl_settings[["componentName"]]
-  
-  if(is.null(nl_settings[["alternatives"]])) stop("The nl_settings list for model component \"",componentName,"\" needs to include an object called \"alternatives\"!")
-  if(is.null(nl_settings[["avail"]])) stop("The nl_settings list for model component \"",componentName,"\" needs to include an object called \"avail\"!")
-  if(is.null(nl_settings[["choiceVar"]])) stop("The nl_settings list for model component \"",componentName,"\" needs to include an object called \"choiceVar\"!")
-  if(is.null(nl_settings[["V"]])) stop("The nl_settings list for model component \"",componentName,"\" needs to include an object called \"V\"!")
-  if(is.null(nl_settings[["nlNests"]])) stop("The nl_settings list for model component \"",componentName,"\" needs to include an object called \"nlNests\"!")
-  if(is.null(nl_settings[["nlStructure"]])) stop("The nl_settings list for model component \"",componentName,"\" needs to include an object called \"nlStructure\"!")
-  if(is.null(nl_settings[["rows"]])) nl_settings[["rows"]]="all"
-  
-  alternatives = nl_settings[["alternatives"]]
-  avail        = nl_settings[["avail"]]
-  choiceVar    = nl_settings[["choiceVar"]]
-  V            = nl_settings[["V"]]
-  rows         = nl_settings[["rows"]]
-  nlNests      = nl_settings[["nlNests"]]
-  nlStructure  = nl_settings[["nlStructure"]]
-  nAlt <- length(V)
-  nObs <- tryCatch(nrow( get("apollo_inputs", parent.frame(), inherits=FALSE)$database ),
-                   error=function(e){
-                     lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-                     lenA <- sapply(avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-                     lenC <- length(choiceVar)
-                     return(max(lenV, lenA, lenC))
-                   })
-  altnames = names(alternatives)
-  altcodes = alternatives
-  nestnames= names(nlStructure)
-  
-  ### Format checks
-  # alternatives
-  test <- is.vector(alternatives) & !is.null(names(alternatives))
-  if(!test) stop("The \"alternatives\" argument for model component \"",componentName,"\" needs to be a named vector")
-  # avail
-  test <- is.list(avail) || (length(avail)==1 && avail==1)
-  if(!test) stop("The \"avail\" argument for model component \"",componentName,"\" needs to be a list or set to 1")
-  if(is.list(avail)){
-    lenA <- sapply(avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-    test <- all(lenA==nObs | lenA==1)
-    if(!test) stop("All entries in \"avail\" for model component \"",componentName,"\" need to be a scalar or a vector with one entry per observation in the \"database\"")
+  ### Set or extract componentName
+  modelType   = "NL"
+  if(is.null(nl_settings[["componentName"]])){
+    nl_settings[["componentName"]] = ifelse(!is.null(nl_settings[['componentName2']]),
+                                            nl_settings[['componentName2']], modelType)
+    test <- functionality=="validate" && nl_settings[["componentName"]]!='model' && !apollo_inputs$silent
+    if(test) apollo_print(paste0('Apollo found a model component of type ', modelType,
+                                 ' without a componentName. The name was set to "',
+                                 nl_settings[["componentName"]],'" by default.'))
   }
-  # choiceVar
-  test <- is.vector(choiceVar) && (length(choiceVar)==nObs || length(choiceVar)==1)
-  if(!test) stop("The \"choiceVar\" argument for model component \"",componentName,"\" needs to be a scalar or a vector with one entry per observation in the \"database\"")
-  # V
-  if(!is.list(V)) stop("The \"V\" argument for model component \"",componentName,"\" needs to be a list")
-  lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-  test <- all(lenV==nObs | lenV==1)
-  if(!test) stop("Each element of \"V\" for model component \"",componentName,"\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")  
-  # rows
-  test <- is.vector(rows) && ( (is.logical(rows) && length(rows)==nObs) || (length(rows)==1 && rows=="all") )
-  if(!test) stop("The \"rows\" argument for model component \"",componentName,"\" needs to be \"all\" or a vector of boolean statements with one entry per observation in the \"database\"")
-  # functionality
-  test <- functionality %in% c("estimate","prediction","validate","zero_LL","conditionals","output","raw")
-  if(!test) stop("Non-permissable setting for \"functionality\" for model component \"",componentName,"\"")
-  # nlStructure
-  test <- is.list(nlStructure) && !is.null(names(nlStructure)) && all(sapply(nlStructure, is.vector)) && all(sapply(nlStructure, is.character))
-  if(!test) stop("Argument \"nlStructure\" for model component \"",componentName,"\" must be a named list of character vectors describing the contents of each nest.")
-  
-  ### Expand availabilities if =1
-  avail_set <- FALSE
-  if(length(avail)==1 && avail==1){
-    avail <- as.list(setNames(rep(1,nAlt), altnames))
-    avail_set <- TRUE
-  } 
-  
-  ### Filter rows
-  if(length(rows)==1 && rows=="all") rows <- rep(TRUE, length(nObs))
-  if(any(!rows)){
-    avail <- lapply(avail, function(av) if(length(av)==1) return(av) else return(av[rows]))
-    choiceVar <- choiceVar[rows]
-    V <- lapply(V, apollo_keepRows, r=rows)
-    # update nObs
-    lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-    lenA <- sapply(avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-    lenC <- length(choiceVar)
-    nObs <- max(lenV, lenA, lenC)
-    rm(lenV, lenA, lenC)
+  ### Check for duplicated modelComponent name
+  if(functionality=="validate"){
+    apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
+    apollo_modelList <- c(apollo_modelList, nl_settings$componentName)
+    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", nl_settings$componentName,
+                                             "). Names must be different for each component.")
+    assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
   
-  ### Reorder arguments
-  avail <- avail[altnames]
-  V     <- V[altnames]
+  # ############################### #
+  #### Load or do pre-processing ####
+  # ############################### #
+  # Fetch apollo_inputs
+  apollo_inputs = tryCatch(get("apollo_inputs", parent.frame(), inherits=FALSE),
+                           error=function(e) return( list(apollo_control=list(cpp=FALSE)) ))
   
-  ### Set lambda_root to 1 if necessary
-  root_set  <- FALSE
-  if(!("root" %in% names(nlNests))){
-    root_set <- TRUE
-    nlNests["root"] <- 1
+  if( !is.null(apollo_inputs[[paste0(nl_settings$componentName, "_settings")]]) && (functionality!="preprocess") ){
+    # Load nl_settings from apollo_inputs
+    tmp <- apollo_inputs[[paste0(nl_settings$componentName, "_settings")]]
+    # If there is no V inside the loaded nl_settings, restore the one received as argument
+    if(is.null(tmp$V)          ) tmp$V           <- nl_settings$V
+    if(is.null(tmp$nlNests)    ) tmp$nlNests     <- nl_settings$nlNests
+    if(is.null(tmp$nlStructure)) tmp$nlStructure <- nl_settings$nlStructure
+    nl_settings <- tmp
+    rm(tmp)
+    
+  } else { 
+    ### Do pre-processing
+    # Do pre-processing common to most models
+    nl_settings <- apollo_preprocess(inputs = nl_settings, modelType, 
+                                     functionality, apollo_inputs)
+    
+    # Determine which likelihood to use (R or C++)
+    if(apollo_inputs$apollo_control$cpp) if(!apollo_inputs$silent) apollo_print("No C++ optimisation available for NL")
+    nl_settings$probs_NL <- function(nl_settings, all=FALSE){
+      # Fix choiceVar if "raw" and choiceVar==NA
+      nl_settings$choiceNA = FALSE
+      if(all(is.na(nl_settings$choiceVar))){
+        nl_settings$choiceVar = nl_settings$alternatives[1]
+        nl_settings$choiceNA = TRUE
+      }
+      # Set utility of unavailable alternatives to 0 to avoid numerical issues (eg attributes = -999)
+      nl_settings$V <- mapply(function(v,a) apollo_setRows(v, !a, 0), 
+                              nl_settings$V, nl_settings$avail, SIMPLIFY=FALSE)
+      # Extract chosen V or maximum V
+      if(!all) VSubs <- Reduce('+', mapply("*", nl_settings$Y, nl_settings$V, SIMPLIFY=FALSE)) else VSubs <- do.call(pmax, nl_settings$V)
+      nl_settings$V <- lapply(nl_settings$V, "-", VSubs)
+      rm(VSubs)
+      # Not sure what the two following lines are supposed to used for
+      #combined_elements="root"
+      #for(j in 1:length(nlStructure)) combined_elements=c(combined_elements,nlStructure[[j]])
+      # loop over nests to create new utility elements and new availability terms
+      for(k in length(nl_settings$nlStructure):1){
+        nestK <- names(nl_settings$nlStructure)[k]
+        nl_settings$V[[nestK]] = 0
+        # calculate availability of nest
+        nl_settings$avail[[nestK]] = 1*( Reduce('+', nl_settings$avail[ nl_settings$nlStructure[[k]] ]) > 0 )
+        for(j in 1:length(nl_settings$nlStructure[[k]])){
+          nodeJ <- nl_settings$nlStructure[[k]][j]
+          nl_settings$V[[nestK]] = nl_settings$V[[nestK]] + 
+            nl_settings$avail[[nodeJ]]*exp( nl_settings$V[[nodeJ]]/nl_settings$nlNests[[nestK]] )
+        }
+        nl_settings$V[[nestK]] = nl_settings$nlNests[[nestK]]*log(nl_settings$V[[nestK]])
+      }
+      # calculate log(probabilities)
+      logPalts=list()
+      for(j in 1:length(nl_settings$altnames)){
+        logPalts[[j]]=0
+        ancestorsJ <- nl_settings$ancestors[[nl_settings$altnames[[j]]]]
+        for(k in 1:(length(ancestorsJ)-1)){ # loop to level just below root
+          current_V = nl_settings$V[[ ancestorsJ[k] ]]
+          next_V    = nl_settings$V[[ ancestorsJ[k+1] ]]
+          logPalts[[j]] = logPalts[[j]] + (current_V-next_V)/nl_settings$nlNests[[ ancestorsJ[k+1] ]]
+        }
+      }
+      Palts = lapply(X=logPalts, FUN=exp)
+      names(Palts)=names(nl_settings$V)[1:length(nl_settings$altnames)]
+      # consider availabilities (it assumes Palts and avail are in the same order)
+      Palts <- mapply('*', Palts, nl_settings$avail[1:length(nl_settings$altnames)], SIMPLIFY = FALSE)
+      Palts <- lapply(Palts, function(x) {
+        x[is.na(x)] <- 0
+        return(x)}) # replace all NaN by 0
+      # Prepare output
+      if(!(all && nl_settings$choiceNA)) Palts[["chosen"]] <- Reduce('+', mapply('*', nl_settings$Y, Palts, SIMPLIFY=FALSE))
+      if(!all) Palts <- Palts[["chosen"]]
+      return(Palts)
+    }
+    
+    # Construct necessary input for gradient (including gradient of utilities)
+    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
+                            error=function(e) return(NULL))
+    test <- !is.null(apollo_beta) && functionality %in% c("preprocess", "gradient")
+    test <- test && all(sapply(nl_settings$V, is.function))
+    test <- test && apollo_inputs$apollo_control$analyticGrad
+    nl_settings$gradient <- FALSE
+    if(test){
+      nl_settings$dV       <- apollo_dVdB(apollo_beta, apollo_inputs, nl_settings$V)
+      nl_settings$gradient <- !is.null(nl_settings$dV)
+    }; rm(test)
+    
+    # Return nl_settings if pre-processing
+    if(functionality=="preprocess"){
+      # Remove things that change from one iteration to the next
+      nl_settings$V           <- NULL
+      nl_settings$nlNests     <- NULL
+      nl_settings$nlStructure <- NULL
+      return(nl_settings)
+    }
   }
+  
+  # ############################################ #
+  #### Transform V into numeric and drop rows ####
+  # ############################################ #
+  
+  ### Execute V (makes sure we are now working with vectors/matrices/arrays and not functions)
+  if(any(sapply(nl_settings$V, is.function))){
+    nl_settings$V = lapply(nl_settings$V, function(f) if(is.function(f)) f() else f )
+  }
+  if(any(sapply(nl_settings$nlNests, is.function))){
+    nl_settings$nlNests = lapply(nl_settings$nlNests, function(f) if(is.function(f)) f() else f )
+  }
+  if(is.function(nl_settings$nlStructure)) nl_settings$nlStructure <- nl_settings$nlStructure()
+  nl_settings$V <- lapply(nl_settings$V, function(v) if(is.matrix(v) && ncol(v)==1) as.vector(v) else v)
+  
+  ### Reorder V if neccesary
+  nl_settings$V        <- nl_settings$V[nl_settings$altnames]
+  if(!all(nl_settings$rows)) nl_settings$V <- lapply(nl_settings$V, apollo_keepRows, r=nl_settings$rows)
+  # No need to drop rows in avail, choiceVar nor Y, as these are
+  # already filtered due to them not changing across iterations.
   
   # ############################## #
   #### functionality="validate" ####
   # ############################## #
   
   if(functionality=="validate"){
-    # Store useful values
-    apollo_control <- tryCatch(get("apollo_control", parent.frame(), inherits=FALSE),
-                               error = function(e) list(noValidation=FALSE, noDiagnostics=FALSE))
+    if(!apollo_inputs$apollo_control$noValidation) apollo_validate(nl_settings, modelType, 
+                                                                   functionality, apollo_inputs)
     
-    if(apollo_control$noValidation==FALSE){
-      
-      # Check that alternatives are named in altcodes and V
-      if(is.null(altnames) || is.null(altcodes) || is.null(names(V))) stop("Alternatives for model component \"",componentName,"\" must be named, both in 'alternatives' and 'V'.")
-      
-      # Check there are at least three alternatives
-      if(nAlt<3) stop("Model component \"",componentName,"\"  requires at least three alternatives")
-      
-      # Check that choice vector is not empty
-      if(length(choiceVar)==0) stop("Choice vector is empty for model component \"",componentName,"\"")
-      if(nObs==0) stop("No data for model component \"",componentName,"\"")
-      
-      # Check that labels in choice match those in the utilities and availabilities
-      choiceLabs <- unique(choiceVar)
-      if(!all(altnames %in% names(V))) stop("The names of the alternatives for model component \"",componentName,"\" do not match those in \"V\".")
-      if(!all(altnames %in% names(avail))) stop("The names of the alternatives for model component \"",componentName,"\" do not match those in \"avail\".")
-      
-      # Check that there are no values in the choice column for undefined alternatives
-      if(!all(choiceLabs %in% altcodes)) stop("The data contains values for \"choiceVar\" for model component \"",componentName,"\" that are not included in \"alternatives\".")
-      
-      # check that nothing unavailable is chosen
-      for(j in 1:nAlt) if(any(choiceVar==altcodes[j] & avail[[j]]==0)) stop("The data contains cases where alternative ",altnames[j]," is chosen for model component \"",componentName,"\" despite being listed as unavailable\n")
-      
-      # check that all availabilities are either 0 or 1
-      for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values for model component \"",componentName,"\" are not 0 or 1.")
-      
-      # Check that no available alternative has utility = NA
-      # Requires setting non available alternatives utility to 0 first
-      V <- mapply(function(v,a) apollo_setRows(v, !a, 0), V, avail, SIMPLIFY=FALSE)
-      if(any(sapply(V, anyNA))) cat("\nAt least one utility for model component \"",componentName,"\" contains one or more NA values at parameter starting values")
-      
-      
-      # checks that are specific to nlStructure component
-      
-      allElements <- c("root", unlist(nlStructure))
-      if(is.null(nlStructure[["root"]])) stop("Tree structure for model component \"",componentName,"\" is missing an element called root!")
-      if(nlNests["root"]!=1) stop("The root lambda parameter for model component \"",componentName,"\" should be equal to 1.")
-      if( !all(altnames %in% allElements) ) stop("All alternatives must be included in the tree structure for model component \"",componentName,"\".")
-      if( !all(nestnames %in% allElements) ) stop("All nests must be included in the tree structure for model component \"",componentName,"\".")
-      if( (length(nestnames)+length(altnames))!=length(allElements) ) stop("Tree structure for model component \"",componentName,"\" is inconsistent. Each element must appear only once.")
-      if( !all(names(nlNests) %in% names(nlStructure)) | !all(names(nlStructure) %in% names(nlNests)) ) stop("All nests in argument 'nlNests' for model component \"",componentName,"\" should be in 'nlStructure', and vice versa (including 'root').")
-      
-      combined_elements="root"
-      j=1
-      while(j<= length(nlStructure)){
-        combined_elements=c(combined_elements,nlStructure[[j]])
-        j=j+1
-      }
-      
-      j=1
-      while(j<= length(altnames)){
-        if(sum(nestnames==altnames[j])) stop("A nest for model component \"",componentName,"\" cannot have the same name as an alternative!")
-        if(sum(combined_elements==altnames[j])!=1) stop("An alternative for model component \"",componentName,"\" needs to appear exactly once in a tree!")
-        j=j+1
-      }
-      
-      j=1
-      while(j<= length(nlStructure)){
-        if(sum(nestnames==names(nlStructure)[j])!=1) stop("A defined nest for model component \"",componentName,"\" needs to appear exactly once in a tree!")
-        j=j+1
-      }
-      
-      j=1
-      while(j<= length(nestnames)){
-        if(sum(altnames==nestnames[j])) stop("A nest for model component \"",componentName,"\" cannot have the same name as an alternative!")
-        if(sum(combined_elements==nestnames[j])!=1) stop("A defined nest for model component \"",componentName,"\" needs to appear exactly once in a tree!")
-        j=j+1
-      }
-    }
-    if(apollo_control$noDiagnostics==FALSE){
-      
-      ### turn scalar availabilities into vectors
-      for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs)
-      
-      ### Construct summary table of availabilities and market share
-      choicematrix = matrix(0, nrow=4, ncol=length(altnames), 
-                            dimnames=list(c("Times available", "Times chosen", "Percentage chosen overall",
-                                            "Percentage chosen when available"), altnames))
-      choicematrix[1,] = unlist(lapply(avail, sum))
-      for(j in 1:length(altnames)) choicematrix[2,j] = sum(choiceVar==altcodes[j]) # number of times each alt is chosen
-      choicematrix[3,] = choicematrix[2,]/nObs*100 # market share
-      choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 # market share controlled by availability
-      choicematrix[4,!is.finite(choicematrix[4,])] <- 0
-      
-      # Order tree structure
-      nlStructure_ordered=list()
-      element_list="root"
-      j=1
-      while(j>0){
-        k=1
-        temp=rep(TRUE,length(element_list))
-        while(k<= length(element_list)){
-          if(element_list[k] %in% altnames) temp[k]=FALSE
-          k=k+1
-        }
-        element_list=element_list[temp]
-        if(length(element_list)>0){
-          nlStructure_ordered[[element_list[1]]]=nlStructure[[element_list[1]]]
-          element_list=c(element_list,nlStructure[[element_list[1]]])
-          element_list=element_list[-1]
-        }
-        j=length(element_list)
-      }
-      nlStructure=nlStructure_ordered
-      
-      # Calculate ancestors
-      ancestors=list()
-      j=1
-      while(j<= length(altnames)){
-        altJ <- altnames[[j]]
-        ancestors[[altJ]] = altJ
-        current = altJ
-        k = length(nlStructure)
-        while(k>0){
-          if(current %in% nlStructure[[k]]){
-            ancestors[[altnames[[j]]]] = c(ancestors[[altJ]],names(nlStructure)[k])
-            current = names(nlStructure)[k]
-          }
-          k=k-1
-        }
-        j=j+1
-      }
-      
-      # Load function to print tree structure and print tree structure
-      print_tree=function(nlStructure, ancestors){
-        
-        print_tree_level = function(nlStructure, component, preceding_nest_layer, space){
-          j=1
-          if(preceding_nest_layer!=0) space=c(space,"  |")
-          while(j<=length(nlStructure[[component]])){
-            space <- gsub("[']", " ", space)
-            if(j==length(nlStructure[[component]])) space[length(space)] <- gsub("[|]", "'", space[length(space)])
-            if(nlStructure[[component]][j] %in% altnames){
-              depth <- length(space)
-              cat("\n",space,rep("-",3*(maxDepth-depth)),"-Alternative: ",nlStructure[[component]][j], sep="")
-            } else {
-              cat("\n",space,"-Nest: ",nlStructure[[component]][j]," (",round(nlNests[[nlStructure[[component]][j]]],4), ")", sep="")
-              print_tree_level(nlStructure, nlStructure[[component]][j], preceding_nest_layer+1, space)
-            }
-            j=j+1
-          }
-        }
-        
-        maxDepth <- max(sapply(ancestors, length))-1
-        cat("Nest: ",names(nlStructure)[[1]]," (",round(nlNests[[names(nlStructure)[[1]]]],4),")", sep="")
-        
-        print_tree_level(nlStructure, "root", preceding_nest_layer=0, space="|")
-      }
-      
-      
-      ### Printing diagnostics
-      content <- list(round(choicematrix,2))
-      if(any(choicematrix[4,]==0)) content[[length(content)+1]] <- "Warning: some alternatives are never chosen in your data!"
-      if(any(choicematrix[4,]==1)) content[[length(content)+1]] <- "Warning: some alternatives are always chosen when available!"
-      if(avail_set==TRUE) content[[length(content)+1]] <- paste0("Warning: Availability not provided (or some elements are NA).",
-                                                                 "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
-      if(root_set==TRUE) content[[length(content)+1]] <- "Notice: Root lambda parameter set to 1."
-      content[[length(content)+1]] <- "Nesting structure:"
-      content[[length(content)+1]] <- capture.output(print_tree(nlStructure, ancestors))
-      apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-      apollo_addLog(paste0("Overview of choices for model component \"",componentName,"\""), content, apolloLog)
-    }
+    if(!apollo_inputs$apollo_control$noDiagnostics) apollo_diagnostics(nl_settings, modelType, apollo_inputs)
     
-    testL=apollo_nl(nl_settings, functionality="estimate")
-    if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"",componentName,"\"")
-    if(any(testL==0)) cat("\nSome observations have zero probability at starting value for model component \"",componentName,"\"")
+    testL=nl_settings$probs_NL(nl_settings)
+    if(any(!nl_settings$rows)) testL <- apollo_insertRows(testL, nl_settings$rows, 1) # insert excluded rows with value 1
+    if(all(testL==0)) stop('All observations have zero probability at starting value for model component "', nl_settings$componentName,'"')
+    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0('Some observations have zero probability at starting value for model component "', nl_settings$componentName,'"'))
     return(invisible(testL))
   }
   
@@ -349,243 +206,40 @@ apollo_nl <- function(nl_settings, functionality){
   # ############################## #
   
   if(functionality=="zero_LL"){
-    for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs) # turn scalar availabilities into vectors
-    nAvAlt <- rowSums(matrix(unlist(avail), ncol = length(avail))) # number of available alts in each observation
+    # turn scalar availabilities into vectors
+    for(i in 1:nl_settings$nAlt) if(length(nl_settings$avail[[i]])==1) nl_settings$avail[[i]] <- rep(nl_settings$avail[[i]], nl_settings$nObs)
+    # number of available alts in each observation
+    nAvAlt <- rowSums(matrix(unlist(nl_settings$avail), ncol=nl_settings$nAlt))
     P = 1/nAvAlt # likelihood at zero
-    if(any(!rows)) P <- apollo_insertRows(P, rows, 1)
+    if(any(!nl_settings$rows)) P <- apollo_insertRows(P, nl_settings$rows, 1)
     return(P)
   }
   
-  # ############################################################ #
-  #### functionality="estimate/prediction/conditionals/raw" ####
-  # ############################################################ #
+  # ############################################################################ #
+  #### functionality="estimate/prediction/conditionals/raw/output/components" ####
+  # ############################################################################ #
   
-  if(functionality %in% c("estimate","prediction","conditionals","raw")){
-    
-    # Fix choiceVar if "raw" and choiceVar==NA
-    choiceNA = FALSE
-    if(length(choiceVar)==1 && is.na(choiceVar)){
-      choiceVar = alternatives[1]
-      choiceNA  = TRUE
-    }
-    
-    # Set utility of unavailable alternatives to 0 to avoid numerical issues
-    V <- mapply(function(v,a) apollo_setRows(v, !a, 0), V, avail, SIMPLIFY=FALSE)
-    
-    combined_elements="root"
-    j=1
-    while(j<= length(nlStructure)){
-      combined_elements=c(combined_elements,nlStructure[[j]])
-      j=j+1
-    }
-    
-    # Order tree structure
-    nlStructure_ordered=list()
-    element_list="root"
-    j=1
-    while(j>0){
-      k=1
-      temp=rep(TRUE,length(element_list))
-      while(k<= length(element_list)){
-        if(element_list[k] %in% altnames) temp[k]=FALSE
-        k=k+1
-      }
-      element_list=element_list[temp]
-      if(length(element_list)>0){
-        nlStructure_ordered[[element_list[1]]]=nlStructure[[element_list[1]]]
-        element_list=c(element_list,nlStructure[[element_list[1]]])
-        element_list=element_list[-1]
-      }
-      j=length(element_list)
-    }
-    nlStructure=nlStructure_ordered
-    
-    # extract chosen utility
-    chosenV <- Reduce('+',
-                      lapply(as.list(1:nAlt),
-                             FUN=function(i) (choiceVar==altcodes[i])*V[[altnames[i]]])
-    )
-    
-    # substract chosen utility from all others for numerical stability
-    V = lapply(X=V, FUN=function(v) v-chosenV)
-    
-    # loop over nests to create new utility elements and new availability terms
-    k=length(nlStructure)
-    while(k>0){
-      nestK <- names(nlStructure)[k]
-      V[[nestK]] = 0
-      avail[[nestK]] = 1*( Reduce('+', avail[ nlStructure[[k]] ]) > 0 ) # calculate availability of nest
-      j = 1
-      while(j<= length(nlStructure[[k]])){
-        nodeJ <- nlStructure[[k]][j]
-        V[[nestK]] = V[[nestK]] + avail[[nodeJ]]*exp( V[[nodeJ]]/nlNests[[nestK]] )
-        j = j+1
-      }
-      V[[nestK]] = nlNests[[nestK]]*log(V[[nestK]])
-      k = k-1
-    }
-    
-    # work out ancestors
-    ancestors=list()
-    j=1
-    while(j<= length(altnames)){
-      altJ <- altnames[[j]]
-      ancestors[[altJ]] = altJ
-      current = altJ
-      k = length(nlStructure)
-      while(k>0){
-        if(current %in% nlStructure[[k]]){
-          ancestors[[altnames[[j]]]] = c(ancestors[[altJ]],names(nlStructure)[k])
-          current = names(nlStructure)[k]
-        }
-        k=k-1
-      }
-      j=j+1
-    }
-    
-    # calculate log(probabilities)
-    logPalts=list()
-    j=1
-    while(j <= length(altnames)){
-      logPalts[[j]]=0
-      k=1
-      ancestorsJ <- ancestors[[altnames[[j]]]]
-      while(k< length(ancestorsJ)){ # loop to level just below root
-        current_V = V[[ ancestorsJ[k] ]]
-        next_V    = V[[ ancestorsJ[k+1] ]]
-        logPalts[[j]] = logPalts[[j]] + (current_V-next_V)/nlNests[[ ancestorsJ[k+1] ]]
-        k=k+1
-      }
-      j=j+1
-    }
-    
-    Palts = lapply(X=logPalts, FUN=exp)
-    
-    tempnames=names(V)
-    names(Palts)=tempnames[1:length(altnames)]
-    
-    # consider availabilities (it assumes Palts and avail are in the same order)
-    Palts <- mapply('*', Palts, avail[1:length(altnames)], SIMPLIFY = FALSE)
-    Palts <- lapply(Palts, function(x) {
-      x[is.na(x)] <- 0
-      return(x)}) # replace all NaN by 0
-    
-    if(functionality=="prediction"| functionality=="raw"){
-      if(!choiceNA) Palts[["chosen"]] = Reduce('+', tmp <- mapply(function(x,y) (choiceVar==y)*x, Palts, as.list(altcodes), SIMPLIFY=FALSE) ) # keep only probability for chosen alternative
-      if(any(!rows)) Palts <- lapply(Palts, apollo_insertRows, r=rows, val=NA) # insert excluded rows with value NA
-    } else {
-      Palts = Reduce('+', tmp <- mapply(function(x,y) (choiceVar==y)*x, Palts, as.list(altcodes), SIMPLIFY=FALSE) ) # keep only probability for chosen alternative
-      if(any(!rows)) Palts <- apollo_insertRows(Palts, rows, 1) # insert excluded rows with value 1
-    }
-    
-    return(Palts)
+  if(functionality %in% c("estimate","conditionals", "output", "components")){
+    P <- nl_settings$probs_NL(nl_settings, all=FALSE)
+    if(any(!nl_settings$rows)) P <- apollo_insertRows(P, nl_settings$rows, 1) # insert excluded rows with value 1
+    return(P)
   }
   
-  # ############################## #
-  #### functionality="output" ####
-  # ############################## #
-  
-  if(functionality=="output"){
-    
-    P <- apollo_nl(nl_settings, functionality="estimate")
-    
-    ### turn scalar availabilities into vectors
-    for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs)
-    
-    ### Construct summary table of availabilities and market share
-    choicematrix = matrix(0, nrow=4, ncol=length(altnames), 
-                          dimnames=list(c("Times available", "Times chosen", "Percentage chosen overall",
-                                          "Percentage chosen when available"), altnames))
-    choicematrix[1,] = unlist(lapply(avail, sum))
-    for(j in 1:length(altnames)) choicematrix[2,j] = sum(choiceVar==altcodes[j]) # number of times each alt is chosen
-    choicematrix[3,] = choicematrix[2,]/nObs*100 # market share
-    choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 # market share controlled by availability
-    choicematrix[4,!is.finite(choicematrix[4,])] <- 0
-    
-    ### Load function to write tree structure
-    print_tree=function(nlStructure, ancestors){
-      
-      print_tree_level = function(nlStructure, component, preceding_nest_layer, space){
-        j=1
-        if(preceding_nest_layer!=0) space=c(space,"  |")
-        while(j<=length(nlStructure[[component]])){
-          space <- gsub("[']", " ", space)
-          if(j==length(nlStructure[[component]])) space[length(space)] <- gsub("[|]", "'", space[length(space)])
-          if(nlStructure[[component]][j] %in% altnames){
-            depth <- length(space)
-            cat("\n",space,rep("-",3*(maxDepth-depth)),"-Alternative: ",nlStructure[[component]][j], sep="")
-          } else {
-            cat("\n",space,"-Nest: ",nlStructure[[component]][j]," (",round(nlNests[[nlStructure[[component]][j]]],4), ")", sep="")
-            print_tree_level(nlStructure, nlStructure[[component]][j], preceding_nest_layer+1, space)
-          }
-          j=j+1
-        }
-      }
-      
-      maxDepth <- max(sapply(ancestors, length))-1
-      cat("Nest: ",names(nlStructure)[[1]]," (",round(nlNests[[names(nlStructure)[[1]]]],4),")", sep="")
-      
-      print_tree_level(nlStructure, "root", preceding_nest_layer=0, space="|")
-    }
-    
-    ### Order tree structure
-    nlStructure_ordered=list()
-    element_list="root"
-    j=1
-    while(j>0){
-      k=1
-      temp=rep(TRUE,length(element_list))
-      while(k<= length(element_list)){
-        if(element_list[k] %in% altnames) temp[k]=FALSE
-        k=k+1
-      }
-      element_list=element_list[temp]
-      if(length(element_list)>0){
-        nlStructure_ordered[[element_list[1]]]=nlStructure[[element_list[1]]]
-        element_list=c(element_list,nlStructure[[element_list[1]]])
-        element_list=element_list[-1]
-      }
-      j=length(element_list)
-    }
-    nlStructure=nlStructure_ordered
-    
-    # work out ancestors
-    ancestors=list()
-    j=1
-    while(j<= length(altnames)){
-      altJ <- altnames[[j]]
-      ancestors[[altJ]] = altJ
-      current = altJ
-      k = length(nlStructure)
-      while(k>0){
-        if(current %in% nlStructure[[k]]){
-          ancestors[[altnames[[j]]]] = c(ancestors[[altJ]],names(nlStructure)[k])
-          current = names(nlStructure)[k]
-        }
-        k=k-1
-      }
-      j=j+1
-    }
-    
-    ### Write to apollo log
-    content <- list(round(choicematrix,2))
-    if(any(choicematrix[4,]==0)) content[[length(content)+1]] <- "Warning: some alternatives are never chosen in your data!"
-    if(any(choicematrix[4,]==1)) content[[length(content)+1]] <- "Warning: some alternatives are always chosen when available!"
-    if(avail_set==TRUE) content[[length(content)+1]] <- paste0("Warning: Availability not provided (or some elements are NA).",
-                                                               "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
-    if(root_set==TRUE) content[[length(content)+1]] <- "Notice: Root lambda parameter set to 1."
-    content[[length(content)+1]] <- "Nesting structure:"
-    content[[length(content)+1]] <- capture.output(print_tree(nlStructure, ancestors))
-    apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-    apollo_addLog(title   = paste0("Overview of choices for model component \"",componentName,"\""), 
-                  content = content,
-                  apolloLog)
-    apollo_addLog(title   = paste0("Nesting structure model component \"", componentName,"\""),
-                  content = capture.output(print_tree(nlStructure, ancestors)),
-                  apolloLog, 
-                  book    = 2)
-    apollo_reportModelTypeLog(modelType="NL", apolloLog)
+  if(functionality %in% c("prediction","raw")){
+    P <- nl_settings$probs_NL(nl_settings, all=TRUE)
+    if(any(!nl_settings$rows)) P <- lapply(P, apollo_insertRows, r=nl_settings$rows, val=1) # insert excluded rows with value 1
+    return(P)
   }
   
-  return(P)
+  # ############ #
+  #### Report ####
+  # ############ #
+  if(functionality=='report'){
+    P <- list()
+    apollo_inputs$silent <- FALSE
+    P$data  <- capture.output(apollo_diagnostics(nl_settings, modelType, apollo_inputs, param=FALSE))
+    P$param <- capture.output(apollo_diagnostics(nl_settings, modelType, apollo_inputs, data =FALSE))
+    return(P)
+  }
+  
 }

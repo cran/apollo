@@ -17,12 +17,14 @@
 #' @export
 apollo_unconditionals <- function(model, apollo_probabilities, apollo_inputs){
   
-  apollo_beta=model$estimate
-  apollo_fixed=model$apollo_fixed
+  if(is.null(apollo_inputs$silent)) silent = FALSE else silent = apollo_inputs$silent
+  apollo_beta  = model$estimate
+  apollo_fixed = model$apollo_fixed
   
-  cat("Updating inputs...")
-  apollo_inputs <- apollo_validateInputs(silent=TRUE)
-  cat("Done.\n")
+  #if(!silent) apollo_print("Updating inputs...")
+  #apollo_inputs <- apollo_validateInputs(silent=TRUE, recycle=TRUE)
+  ### Warn the user in case elements in apollo_inputs are different from those in the global environment
+  apollo_compareInputs(apollo_inputs)
   
   apollo_control   = apollo_inputs[["apollo_control"]]
   database         = apollo_inputs[["database"]]
@@ -40,12 +42,15 @@ apollo_unconditionals <- function(model, apollo_probabilities, apollo_inputs){
   if(!apollo_control$mixing) stop("Sample level random parameters can only be produced for mixture models!")
   if(anyNA(draws)) stop("Random draws have not been specified despite setting mixing=TRUE")
   
-  toAttach  <- c(as.list(apollo_beta), apollo_inputs$database, apollo_inputs$draws)
-  
-  randcoeff = with(toAttach, {
-    environment(apollo_randCoeff) <- environment()
-    apollo_randCoeff(apollo_beta, apollo_inputs)
-  } )
+  ### Run apollo_randCoeff
+  env <- list2env( c(as.list(apollo_beta), apollo_inputs$database, apollo_inputs$draws), 
+                   hash=TRUE, parent=parent.frame() )
+  environment(apollo_randCoeff) <- env
+  randcoeff <- apollo_randCoeff(apollo_beta, apollo_inputs)
+  if(any(sapply(randcoeff, is.function))){
+    randcoeff = lapply(randcoeff, 
+                       function(f) if(is.function(f)){ environment(f) <- env; return(f()) } else { return(f) })
+  }
   
   if(apollo_draws$intraNDraws==0){
     nObsPerIndiv <- as.vector(table(database[,apollo_control$indivID]))
@@ -53,12 +58,11 @@ apollo_unconditionals <- function(model, apollo_probabilities, apollo_inputs){
     firstRows    <- rep(1, nIndiv)
     for(i in 2:nIndiv) firstRows[i] <- firstRows[i-1] + nObsPerIndiv[i-1]
     j=1
-    while(j<(length(randcoeff)+1)){
+    for(j in 1:length(randcoeff)){
       randcoeff[[j]]=randcoeff[[j]][firstRows,]  
-      j=j+1    
     }
   }
   
-  cat("Unconditional distributions computed\n") 
+  if(!silent) apollo_print("Unconditional distributions computed") 
   return(randcoeff)
 }

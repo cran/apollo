@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_cnl.R
 \name{apollo_cnl}
 \alias{apollo_cnl}
-\title{Calculates probabilities of a cross nested logit}
+\title{Calculates probabilities of a Cross-nested Logit}
 \usage{
 apollo_cnl(cnl_settings, functionality)
 }
@@ -43,7 +43,7 @@ The returned object depends on the value of argument \code{functionality} as fol
         }
 }
 \description{
-Calculates probabilities of a cross nested logit model.
+Calculates probabilities of a Cross-nested Logit model.
 }
 \details{
 For the model to be consistent with utility maximisation, the estimated value of the lambda parameter of all nests
@@ -55,43 +55,4 @@ set to 1 if not specified in \code{nlNests}. And while setting it to another val
 recommended.
 Alpha parameters inside \code{cnlStructure} should be between 0 and 1. Using a transformation to ensure
 this constraint is satisfied is recommended (e.g. logistic transformation).
-}
-\examples{
-### Load data
-data(apollo_modeChoiceData)
-database <- apollo_modeChoiceData
-rm(apollo_modeChoiceData)
-
-### Parameters
-b = list(asc_1=0, asc_2=0, asc_3=0, asc_4=0, tt=0, tc=0, acc=0,
-         lambda_fastPT=0.5, lambda_groundPT=0.5, alpha_rail_fastPT=0.5)
-
-### List of utilities
-V = list()
-V[['car' ]] = b$asc_1 + b$tt*database$time_car  + b$tc*database$cost_car
-V[['bus' ]] = b$asc_2 + b$tt*database$time_bus  + b$tc*database$cost_bus  +
-              b$acc*database$access_bus
-V[['air' ]] = b$asc_3 + b$tt*database$time_air  + b$tc*database$cost_air  +
-              b$acc*database$access_air
-V[['rail']] = b$asc_4 + b$tt*database$time_rail + b$tc*database$cost_rail +
-              b$acc*database$access_rail
-
-cnlStructure     = matrix(0, nrow=3, ncol=4)
-cnlStructure[1,] = c( 0,  0, 1, b$alpha_rail_fastPT  ) # fastPT
-cnlStructure[2,] = c( 0,  1, 0, 1-b$alpha_rail_fastPT) # groundPT
-cnlStructure[3,] = c( 1,  0, 0, 0                    ) # car
-
-### CNL settings
-cnl_settings <- list(
-    alternatives = c(car=1, bus=2, air=3, rail=4),
-    avail        = list(car=database$av_car, bus=database$av_bus,
-                        air=database$av_air, rail=database$av_rail),
-    choiceVar    = database$choice,
-    V            = V,
-    cnlNests     = list(fastPT=b$lambda_fastPT, groundPT=b$lambda_groundPT, car=1),
-    cnlStructure = cnlStructure
-)
-
-### Compute choice probabilities using CNL model
-apollo_cnl(cnl_settings, functionality="estimate")
 }

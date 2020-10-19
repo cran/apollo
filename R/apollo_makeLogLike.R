@@ -15,9 +15,152 @@
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param apollo_estSet List of estimation options. It must contain at least one element called
 #'                      estimationRoutine defining the estimation algorithm. See \link{apollo_estimate}.
-#' @param cl Cluster as provided by \link[parallel]{makeCluster}. Assumed to be PSock.
+#' @param cleanMemory Logical. If TRUE, then \code{apollo_inputs$draws} and \code{apollo_inputs$database} are erased
+#'                    throughout the calling stack. Used to reduce memory usage in case of multithreading and a large
+#'                    database or number o draws.
 #' @return apollo_logLike function.
-apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, apollo_estSet, cl=NA){
+#' @export
+apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, 
+                               apollo_estSet, cleanMemory=FALSE){
+  
+  if(!is.null(apollo_inputs$silent)) silent <- apollo_inputs$silent else silent <- FALSE
+  if(!is.null(apollo_inputs$apollo_control$debug)) debug <- apollo_inputs$apollo_control$debug else debug <- FALSE
+  
+  # # # #  # # # # 
+  #### Checks ####
+  # # # #  # # # # 
+  
+  ### Check that names of params in apollo_beta, apollo_randCoeff & apollo_lcPars are not re-defined
+  tmp <- as.character(body(apollo_probabilities))
+  tmp <- gsub("(", "", tmp, fixed=TRUE)
+  tmp <- gsub(")", "", tmp, fixed=TRUE)
+  tmp <- gsub(" ", "", tmp, fixed=TRUE)
+  # check for apollo_beta
+  for(i in names(apollo_beta)){
+    test <- grep(paste0("^",i,"="), tmp)
+    test <- c(test, grep(paste0("^",i,"<-"), tmp))
+    if(length(test)>0) stop("Parameter ", i, " from apollo_beta was re-defined ",
+                            "inside apollo_probabilities. This is not allowed.")
+  }; rm(i, test)
+  #check for apollo_randCoeff
+  if(apollo_inputs$apollo_control$mixing && is.function(apollo_inputs$apollo_randCoeff)){
+    env <- c(apollo_inputs$database, apollo_inputs$draws, as.list(apollo_beta))
+    env <- list2env(env, hash=TRUE, parent=parent.frame())
+    rnd <- apollo_inputs$apollo_randCoeff; environment(rnd) <- env
+    rnd <- rnd(apollo_beta, apollo_inputs)
+    for(i in names(rnd)){
+      test <- grep(paste0('^', i, '=|^', i, '<-'), tmp)
+      if(length(test)>0) stop("Parameter ", i, " from apollo_randCoeff was re-defined ",
+                              "inside apollo_probabilities. This is not allowed.")
+    }; rm(env, i, test)
+  }
+  #check for apollo_lcPars
+  if(is.function(apollo_inputs$apollo_lcPars)){
+    env <- c(apollo_inputs$database, as.list(apollo_beta))
+    if(exists('rnd', inherits=FALSE)) env <- c(env, apollo_inputs$draws, rnd)
+    env <- list2env(env, hash=TRUE, parent=parent.frame())
+    lcp <- apollo_inputs$apollo_lcPars; environment(lcp) <- env
+    lcp <- names(lcp(apollo_beta, apollo_inputs))
+    for(i in lcp){
+      test <- grep(paste0('^', i, '=|^', i, '<-'), tmp)
+      if(length(test)>0) stop("Parameter ", i, " from apollo_lcPars was re-defined ",
+                              "inside apollo_probabilities. This is not allowed.")
+    }; rm(env, lcp, i, test)
+  }; if(exists('rnd')) rm(rnd)
+  rm(tmp)
+  
+  ### Check there are no references to database inside apollo_probabilities
+  if(is.function(apollo_probabilities)){
+    tmp <- as.character(body(apollo_probabilities))
+    tmp <- gsub("apollo_inputs$database", " ", tmp, fixed=TRUE)
+    tmp <- grep("database", tmp, fixed=TRUE)
+    if(length(tmp)>0) stop("The database object is 'attached' and elements should thus be called",
+                           " directly in apollo_probabilities without the 'database$' prefix.")
+    rm(tmp)
+  }
+  
+  ### Check apollo_weighting is called if apollo_control$weights are defined (unles apollo_inputs$EM is TRUE)
+  w <- apollo_inputs$apollo_control[['weights']]
+  test <- is.null(apollo_inputs$EM) || (is.logical(apollo_inputs$EM) && !apollo_inputs$EM)
+  test <- test && !is.null(w) && !is.null(apollo_inputs$database) && (w %in% names(apollo_inputs$database))
+  if(test){
+    tmp <- as.character(body(apollo_probabilities))
+    tmp <- grep('apollo_weighting', tmp, fixed=TRUE)
+    if(length(tmp)==0) stop('When using weights, apollo_weighting should be called inside apollo_probabilities.')
+    rm(tmp)
+  }; rm(w)
+  
+  
+  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+  #### Modify apollo_probabilities, apollo_randCoeff & apollo_lcPars ####
+  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+  
+  ### Checks for scaling and insert them inside apollo_probabilities
+  # Create scaling if needed
+  test <- is.null(apollo_inputs$apollo_scaling)
+  test <- test || (length(apollo_inputs$apollo_scaling)==1 && is.na(apollo_inputs$apollo_scaling))
+  if(test) apollo_inputs$apollo_scaling <- setNames(rep(1, length(apollo_beta)-length(apollo_fixed)), 
+                                                    names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)])
+  # Validate scaling
+  if(any(!(names(apollo_inputs$apollo_scaling) %in% names(apollo_beta)))) stop("Some parameters included in 'scaling' are not included in 'apollo_beta'")
+  if(any((names(apollo_inputs$apollo_scaling) %in% apollo_fixed))) stop("Parameters in 'apollo_fixed' should not be included in 'scaling'")
+  if(any(apollo_inputs$apollo_scaling<0)){
+    apollo_inputs$apollo_scaling <- abs(apollo_inputs$apollo_scaling)
+    txt <- 'Some values in "scaling" were negative, they were replaced by their absolute value.'
+    if(!silent) apollo_print(paste0('WARNING: ', txt)) else warning(txt)
+  }
+  if(any(!(apollo_inputs$apollo_scaling>0))) stop('All terms in "scaling" should be strictly positive!')
+  #if(!all(apollo_inputs$apollo_scaling==1)){
+  #  txt <- "During estimation, parameters will be scaled using the values in estimate_settings$scaling"
+  #  if(!silent) apollo_print(txt) else warning(txt)
+  #}
+  ### Insert scaling if needed
+  apollo_probabilities <- apollo_insertScaling(apollo_probabilities, apollo_inputs$apollo_scaling)
+  if(apollo_inputs$apollo_control$mixing && is.function(apollo_inputs$apollo_randCoeff)){
+    apollo_inputs$apollo_randCoeff <- apollo_insertScaling(apollo_inputs$apollo_randCoeff, apollo_inputs$apollo_scaling)
+  }
+  if(is.function(apollo_inputs$apollo_lcPars)){
+    apollo_inputs$apollo_lcPars <- apollo_insertScaling(apollo_inputs$apollo_lcPars, apollo_inputs$apollo_scaling)
+  }
+  if(exists('txt', inherits=FALSE)) rm(txt)
+  
+  ### Insert componentName if missing
+  apollo_probabilities <- apollo_insertComponentName(apollo_probabilities)
+  
+  ### Insert "function ()" in apollo_probabilities and apollo_randCoeff (if needed)
+  if(apollo_inputs$apollo_control$analyticGrad){
+    tmp1 <- apollo_insertFunc(apollo_probabilities, like=TRUE)
+    test <- !is.null(apollo_inputs$apollo_randCoeff) && is.function(apollo_inputs$apollo_randCoeff)
+    if(test) tmp2 <- apollo_insertFunc(apollo_inputs$apollo_randCoeff, randCoeff=TRUE)
+    # Test that modified LL actually works
+    ll <- tryCatch(tmp1(apollo_beta, apollo_inputs), error=function(e) NULL)
+    if(is.null(ll)){
+      if(debug) apollo_print('Modified apollo_probabilities did not work. Defaulting to original one (no analytic gradients possible)')
+      apollo_inputs$apollo_control$analyticGrad <- FALSE
+    } else {
+      apollo_probabilities <- tmp1
+      if(exists('tmp2', inherits=FALSE)) apollo_inputs$apollo_randCoeff <- tmp2
+    }
+    rm(ll, tmp1, test); if(exists('tmp2', inherits=FALSE)) rm(tmp2)
+  }
+  
+  ### Copy the modified apollo_probabilities inside apollo_inputs
+  apollo_inputs$apollo_probabilities <- apollo_probabilities
+  
+  # # # # # # # # # # # # #
+  #### Create workers  ####
+  # # # # # # # # # # # # #
+  
+  if(apollo_inputs$apollo_control$nCores==1) cl <- NA else {
+    # Creates cluster and also deletes database and draws from apollo_inputs in here and in .GlobalEnv
+    cl <- apollo_makeCluster(apollo_probabilities, apollo_inputs, silent=silent, cleanMemory=cleanMemory)
+    apollo_inputs$apollo_control$nCores <- length(cl)
+  }
+  
+  # # # # # # # # # # # # # # # #
+  #### Create apollo_logLike ####
+  # # # # # # # # # # # # # # # #
+  
   ### Copying from apollo_inputs to current environment
   singleCore <- apollo_inputs$apollo_control$nCores==1
   panelData  <- apollo_inputs$apollo_control$panelData
@@ -25,30 +168,42 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   bFixedVal  <- apollo_beta[apollo_fixed]
   workInLogs <- apollo_inputs$apollo_control$workInLogs
   estAlg     <- apollo_estSet$estimationRoutine
-
+  analyticGrad <- apollo_inputs$apollo_control$analyticGrad
+  
   ### Iterations count
-  nIter <- 0
+  if(analyticGrad) nIter <- 1 else nIter <- -1
+  preLL <- -Inf
 
   ### SINGLE CORE
   if(singleCore){
     apollo_logLike <- function(bVar, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE){
+      # Return iteration count, if requested
       if(getNIter) return(nIter)
-      b <- c(bVar, bFixedVal)
-      P <- apollo_probabilities(b, apollo_inputs, functionality="estimate")
-      if(workInLogs) ll <- P  else ll <- log(P) # condition used to be workInLogs & panelData
-      if(sumLL) ll <- sum(ll)
-      if(countIter && estAlg=="bfgs" && exists('lastFuncParam', envir=globalenv())){
+      # Calculate LL
+      b  <- c(bVar, bFixedVal)
+      ll <- apollo_probabilities(b, apollo_inputs, functionality="estimate")
+      if(!workInLogs) ll <- log(ll) # condition used to be workInLogs & panelData
+      sumll <- sum(ll)
+      # Keep count of iterations and write them to file, if requested
+      if(analyticGrad){
+        newIter <- is.finite(sumll) && (sumll > preLL)
+        if(countIter && newIter) nIter <<- nIter + 1
+        if(writeIter && newIter) apollo_writeTheta(bVar, sumll, modelName)
+        if(newIter) preLL <<- sumll
+      } else if(estAlg=="bfgs" && exists('lastFuncParam', envir=globalenv())) {
         lastFuncParam <- get("lastFuncParam", envir=globalenv())
-        if(!anyNA(lastFuncParam) && all(lastFuncParam==bVar)) nIter <<- nIter + 1
+        newIter       <- !anyNA(lastFuncParam) && length(lastFuncParam)==length(bVar) && all(lastFuncParam==bVar)
+        if(countIter && newIter) nIter <<- nIter + 1
+        if(writeIter && newIter) apollo_writeTheta(bVar, sumll, modelName)
       }
-      if(writeIter) apollo_writeTheta(bVar, sum(ll), modelName)
-      return(ll)
+      # Return LL
+      if(sumLL) return(sumll) else return(ll)
     }
   } else {
     ### MULTI CORE
-
+    
     # Clean up parent environment and check that cluster exists
-    rm(apollo_inputs, apollo_probabilities, apollo_beta, apollo_fixed, singleCore)
+    rm(apollo_inputs, apollo_probabilities, apollo_beta, apollo_fixed, apollo_estSet, panelData)
     if(length(cl)==1 && is.na(cl)) stop("Cluster is missing on 'apollo_makeLogLike' despite nCores>1.")
 
     # Function to be run on each thread
@@ -56,25 +211,93 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
       P <- apollo_probabilities(b, apollo_inputs, functionality="estimate")
       return(P)
     }
-    environment(apollo_parProb) <- new.env(parent=parent.env(environment(apollo_parProb)))
-
+    environment(apollo_parProb) <- new.env(parent=environment())
+    
     # Loglike
     apollo_logLike <- function(bVar, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE){
+      # Return iteration count, if requested
       if(getNIter) return(nIter)
-      b <- c(bVar, bFixedVal)
-      P <- parallel::clusterCall(cl=cl, fun=apollo_parProb, b=b)
-      P <- unlist(P)
-      if(workInLogs) ll <- P  else ll <- log(P) # condition used to be workInLogs & panelData
-      if(countIter && estAlg=="bfgs" && exists('lastFuncParam', envir=globalenv())){
+      # Calculate LL
+      b  <- c(bVar, bFixedVal)
+      ll <- parallel::clusterCall(cl=cl, fun=apollo_parProb, b=b)
+      ll <- unlist(ll)
+      if(!workInLogs) ll <- log(ll) # condition used to be workInLogs & panelData
+      sumll <- sum(ll)
+      # Keep count of iterations and write them to file, if requested
+      if(analyticGrad){
+        newIter <- is.finite(sumll) && (sumll > preLL)
+        if(countIter && newIter) nIter <<- nIter + 1
+        if(writeIter && newIter) apollo_writeTheta(bVar, sumll, modelName)
+        if(newIter) preLL <<- sumll
+      } else if(estAlg=="bfgs" && exists('lastFuncParam', envir=globalenv())) {
         lastFuncParam <- get("lastFuncParam", envir=globalenv())
-        if(!anyNA(lastFuncParam) && all(lastFuncParam==bVar)) nIter <<- nIter + 1
+        newIter       <- !anyNA(lastFuncParam) && all(lastFuncParam==bVar)
+        if(countIter && newIter) nIter <<- nIter + 1
+        if(writeIter && newIter) apollo_writeTheta(bVar, sumll, modelName)
       }
-      if(writeIter) apollo_writeTheta(bVar, sum(ll), modelName)
-      if(sumLL) ll <- sum(ll)
-      return(ll)
+      # Return LL
+      if(sumLL) return(sumll) else return(ll)
     }
 
   }
+  
+  # # # #  # # # # # # # # # # # # # # # # #
+  #### Pre-process apollo_probabilities ####
+  # # # #  # # # # # # # # # # # # # # # # #
+  
+  ### Preprocess model (for optimisation)
+  if(singleCore){
+    preprocess_outputs = tryCatch(apollo_probabilities(apollo_beta, apollo_inputs, functionality="preprocess"),
+                                  error=function(e) NULL)
+    if(is.null(preprocess_outputs) & debug) apollo_print('Storing preprocessing failed. It will be repeated in each iteration.')
+    apollo_inputs      = c(apollo_inputs, preprocess_outputs)
+    assign("apollo_inputs", apollo_inputs, envir=environment(apollo_logLike))
+    rm(preprocess_outputs)
+  } else if(!anyNA(cl)){
+    b <- apollo_beta
+    parallel::clusterExport(cl, "b", envir=environment())
+    parallel::clusterEvalQ(cl, {
+      po = tryCatch(apollo_probabilities(b, apollo_inputs, functionality="preprocess"),
+                    error=function(e) NULL)
+      if(is.null(po)) apollo_print('Storing preprocessing failed. It will be repeated in each iteration.')
+      po = c(apollo_inputs, po)
+      tmp <- globalenv()
+      assign("apollo_inputs", po, envir=tmp)
+      rm(po)
+      rm(b, envir=globalenv())
+    } )
+    rm(b)
+  }
+  
+  #### Pre-processing report
+  # fetch reports
+  f <- function(){
+    name <- grep("_settings$", ls(apollo_inputs), value=TRUE)
+    grad  <- c(); mType <- c()
+    for(i in name){
+      grad  <- c(grad , apollo_inputs[[i]]$gradient)
+      mType <- c(mType, apollo_inputs[[i]]$modelType)
+    }
+    name <- substr(name, 1, nchar(name)-nchar("_settings"))
+    return( list(name=name, grad=grad, mType=mType) )
+  }
+  if(!anyNA(cl)) tmp <- parallel::clusterCall(cl, function(f) {environment(f) <- globalenv(); f()}, f)[[1]] else tmp <- f()
+  if(length(tmp$name)>0 && length(tmp$name)==length(tmp$mType)) mType <- setNames(tmp$mType, tmp$name) else mType <- NULL
+  rm(f, tmp)
+  #if(debug){
+  #  if(length(tmp$name)==0) apollo_print("No pre-processing performed") else {
+  #    # Print report
+  #    cat("ComponentName  Type   Gradient Optimisation\n") # cat, as apollo_print messes up the alignment
+  #    for(i in 1:length(tmp$grad)){
+  #      txt <- 14 - nchar(tmp$name[i])
+  #      txt <- ifelse(txt>=0, paste0(tmp$name[i], paste0(rep(" ", txt), collapse="")), substr(tmp$name[i], 1, 14))
+  #      txt <- paste0(txt, " ", substr(paste0(tmp$mType[i], '      '), 1, 6))
+  #      txt <- paste0(txt, " ", ifelse(tmp$grad[i], "analytic\n", "numeric \n"))
+  #      cat(txt) # cat, as apollo_print messes up the alignment
+  #    }; rm(i, txt)
+  #    apollo_print(paste0("Whole model gradient function creation ", ifelse(is.null(grad), "failed.", "succeeded.")))
+  #  }
+  #}; rm(tmp)
   
   return(apollo_logLike)
 }

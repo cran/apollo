@@ -15,5 +15,5 @@ apollo_keepRows(v, r)
 The same argument \code{v} but with the rows where \code{r==FALSE} removed.
 }
 \description{
-Given a numeric object (scalar, vector, matrix or 3-dim array) keeps only the specieifed rows.
+Given a numeric object (scalar, vector, matrix or 3-dim array) keeps only the specified rows.
 }

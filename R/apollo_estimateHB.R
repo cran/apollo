@@ -55,8 +55,12 @@
 #' @importFrom RSGHB doHB
 #' @importFrom mvtnorm rmvnorm
 #' @importFrom stats sd cor cov runif
+#' @export
 apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, estimate_settings=NA){
   
+  ### First checkpoint
+  time1 <- Sys.time()
+
   ### Extract variables from pollo_input
   database          = apollo_inputs[["database"]]
   apollo_control    = apollo_inputs[["apollo_control"]]
@@ -78,15 +82,15 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   bootstrapSeed     = estimate_settings[["bootstrapSeed"]]
   
   # Checks for scaling
-  if(length(apollo_inputs$scaling)>0 && !is.na(apollo_inputs$scaling)){
+  if(length(apollo_inputs$apollo_scaling)>0 && !is.na(apollo_inputs$apollo_scaling)){
     if(!is.null(apollo_HB$gVarNamesFixed)){
-      r <- ( names(apollo_beta) %in% names(apollo_inputs$scaling) ) & ( names(apollo_beta) %in% apollo_HB$gVarNamesFixed )
+      r <- ( names(apollo_beta) %in% names(apollo_inputs$apollo_scaling) ) & ( names(apollo_beta) %in% apollo_HB$gVarNamesFixed )
       r <- names(apollo_beta)[r]
-      apollo_HB$FC[r] <- 1/apollo_inputs$scaling[r]*apollo_HB$FC[r]
+      apollo_HB$FC[r] <- 1/apollo_inputs$apollo_scaling[r]*apollo_HB$FC[r]
       rm(r)
     }
     if(!is.null(apollo_HB$gVarNamesNormal)){
-      r <- ( names(apollo_beta) %in% names(apollo_inputs$scaling) ) & ( names(apollo_beta) %in% apollo_HB$gVarNamesNormal )
+      r <- ( names(apollo_beta) %in% names(apollo_inputs$apollo_scaling) ) & ( names(apollo_beta) %in% apollo_HB$gVarNamesNormal )
       r <- names(apollo_beta)[r]
       hb<- apollo_HB
       dists_normal= names(hb$gDIST[r][hb$gDIST[r]==1])
@@ -95,7 +99,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
       dists_cnp   = names(hb$gDIST[r][hb$gDIST[r]==4])
       dists_cnn   = names(hb$gDIST[r][hb$gDIST[r]==5])
       dists_sb    = names(hb$gDIST[r][hb$gDIST[r]==6])
-      s <- apollo_inputs$scaling
+      s <- apollo_inputs$apollo_scaling
       if(length(dists_normal)>0) apollo_HB$svN[dists_normal] <- 1/s[dists_normal]*hb$svN[dists_normal]
       if(length(dists_lnp)>0) apollo_HB$svN[dists_lnp] <- -log(s[dists_lnp]) + hb$svN[dists_lnp]
       if(length(dists_lnn)>0) apollo_HB$svN[dists_lnn] <- -log(s[dists_lnn]) + hb$svN[dists_lnn]
@@ -111,9 +115,8 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
     }
   }
   
-  ### Start clock & apolloLog
+  ### Start clock
   starttime <- Sys.time()
-  apollo_inputs$apolloLog <- new.env(parent=emptyenv())
   
   
   # ####################################### #
@@ -151,7 +154,6 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
       }
     }
     apollo_probabilities(apollo_test_beta, apollo_inputs, functionality="validate")
-    if(!silent & !apollo_control$noDiagnostics ) cat(apollo_printLog(apollo_inputs$apolloLog))
     testLL = apollo_probabilities(apollo_test_beta, apollo_inputs, functionality="estimate")
     if(!workInLogs) testLL=log(testLL)
     # Maybe here we could return the value of the likelihood and print and error with cat, instead of simply stopping
@@ -201,10 +203,14 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
     return(P)
   }
   
+  ### Second checkpoint
+  time2 <- Sys.time()
+
   model <- RSGHB::doHB(apollo_HB_likelihood, database, apollo_HB)
   
-  
-  
+  ### Third checkpoint
+  time3 <- Sys.time()
+
   model$apollo_HB   <- apollo_HB
   ### use pre-scaling values as starting values in output 
   model$apollo_beta <- apollo_test_beta
@@ -287,6 +293,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
     posterior[,2]=apply(model$C,FUN=stats::sd,2)[3:ncol(model$C)]
     rownames(posterior)=apollo_HB$gVarNamesNormal
     model$posterior_mean=posterior
+    colnames(model$posterior_mean)=c("Mean","SD")
     
     ### create matrix of draws from distributions
     
@@ -296,8 +303,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
     pars = length(meanA)
     covMat=as.matrix(covMat)
     Ndraws=mvtnorm::rmvnorm(draws,meanA,covMat,method="chol")
-    i=1
-    while(i<(pars+1)){
+    for(i in 1:pars){
       if(apollo_HB$gDIST[i]==6){
         Ndraws[,i]=apollo_HB$gMINCOEF+(apollo_HB$gMAXCOEF[i]-apollo_HB$gMINCOEF[i])*1/(1+exp(-Ndraws[,i]))
       }
@@ -313,14 +319,12 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
       if(apollo_HB$gDIST[i]==2){
         Ndraws[,i]=exp(Ndraws[,i])
       }
-      i=i+1
     }
     
   }
   
   if(length(scaling)>0 && !is.na(scaling)){
-    s=1
-    while(s<=length(scaling)){
+    for(s in 1:length(scaling)){
       ss=names(scaling)[s]
       if(ss%in%colnames(model$C)) model$C[,ss]=scaling[s]*model$C[,ss]
       if(ss%in%colnames(model$Csd)) model$Csd[,ss]=scaling[s]*model$Csd[,ss]
@@ -328,7 +332,6 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
       if(any(!is.null(apollo_HB$gVarNamesNormal)) && length(apollo_HB$gVarNamesNormal)>0){if(ss%in%colnames(Ndraws)) Ndraws[,ss]=scaling[s]*Ndraws[,ss]}
       if(ss%in%rownames(model$chain_non_random)) model$chain_non_random[ss,]=scaling[s]*model$chain_non_random[ss,]
       if(ss%in%rownames(model$posterior_mean)) model$posterior_mean[ss,]=scaling[s]*model$posterior_mean[ss,]
-      s=s+1
     }
     model$scaling <- scaling
   }
@@ -373,15 +376,22 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   model$estimate=c(fc1,b1)
   
   # Report number of times the probs have been censored
-  if(exists("HBcensor", envir=apollo_inputs$apolloLog)){
-    txt <- paste0(" Please note that in at least some iterations RSGHB has\n",
-                  " avoided numerical issues by left censoring the\n",
-                  " probabilities. This has the side effect of zero or\n",
-                  " negative probabilities not leading to failures!", collapse="")
-    apollo_addLog(title="WARNING: RSGHB has censored the probabilities", content=txt, apollo_inputs$apolloLog)
+  if(exists("apollo_HBcensor", envir=globalenv()) && !apollo_inputs$silent){
+    apollo_print(paste0('WARNING: RSGHB has censored the probabilities. ',
+                        'Please note that in at least some iterations RSGHB has ',
+                        'avoided numerical issues by left censoring the ',
+                        'probabilities. This has the side effect of zero or ',
+                        'negative probabilities not leading to failures!'))
+    rm("apollo_HBcensor", envir=globalenv())
   }
-  if(!silent) cat("\n", apollo_printLog(apollo_inputs$apolloLog), sep="")
-  model$apolloLog <- apollo_inputs$apolloLog
+  
+  ### Fourth checkpoint
+  time4 <- Sys.time()
+ 
+  model$timeTaken <- as.numeric(difftime(time4,time1,units='secs'))
+  model$timePre   <- as.numeric(difftime(time2,time1,units='secs'))
+  model$timeEst   <- as.numeric(difftime(time3,time2,units='secs'))
+  model$timePost  <- as.numeric(difftime(time4,time3,units='secs'))
   
   return(model)
 }

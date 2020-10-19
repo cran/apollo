@@ -29,6 +29,3 @@ The likelihood (i.e. probability in the case of choice models) of the model in t
 \description{
 Applies weights to individual observations in likelihood function.
 }
-\details{
-This function should be called inside \code{apollo_probabilities}, near the end of it, just before \code{return(P)}.
-}

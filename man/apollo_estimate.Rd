@@ -32,12 +32,13 @@ apollo_estimate(
                                     Used only if \code{apollo_control$HB} is FALSE. Default is "bfgs".
   \item \strong{maxIterations}: Numeric. Maximum number of iterations of the estimation routine before stopping.
                                 Used only if \code{apollo_control$HB} is FALSE. Default is 200.
-  \item \strong{writeIter}: Boolean. Writes value of the parameters in each iteration to a csv file. 
+  \item \strong{writeIter}: Logical. Writes value of the parameters in each iteration to a csv file. 
                             Works only if \code{estimation_routine="bfgs"}. Default is TRUE.
   \item \strong{hessianRoutine}: Character. Name of routine used to calculate the Hessian of the loglikelihood 
-                                 function after estimation. Valid values are \code{"numDeriv"} (default) and 
-                                 \code{"maxLik"} to use the routines in those packages, and \code{"none"} to avoid 
-                                 estimating the Hessian (and the covariance matrix). Only used if \code{apollo_control$HB=FALSE}.
+                                 function after estimation. Valid values are \code{"analytic"} (default), 
+                                 \code{"numDeriv"} (to use the numeric routine in package numDeric), \code{"maxLik"} 
+                                 (to use the numeric routine in packahe maxLik), and \code{"none"} to avoid 
+                                 estimating the Hessian and the covariance matrix. Only used if \code{apollo_control$HB=FALSE}.
   \item \strong{printLevel}: Higher values render more verbous outputs. Can take values 0, 1, 2 or 3. 
                              Ignored if apollo_control$HB is TRUE. Default is 3.
   \item \strong{constraints}: Constraints on parameters to estimate. Should ignore fixed parameters. 
@@ -47,6 +48,9 @@ apollo_estimate(
                           \code{scaling[i]*(apollo_beta[i]/scaling[i])} is used during estimation. For example, if parameter
                           b3=10, while b1 and b2 are close to 1, then setting \code{scaling = c(b3=10)} can help estimation, 
                           specially the calculation of the Hessian. Reports will still be based on the non-scaled parameters.
+ \item \strong{maxLik_settings}: List. Additional settings for maxLik. See argument \code{control} in \link[maxLik]{maxBFGS}, 
+                                 \link[maxLik]{maxBHHH} and \link[maxLik]{maxNM} for more details. Only used for maximum 
+                                 likelihood estimation.
  \item \strong{numDeriv_settings}: List. Additional arguments to the Richardson method used by numDeriv to calculate the Hessian. 
                                    See argument \code{method.args} in \link[numDeriv]{grad} for more details.
  \item \strong{bootstrapSE}: Numeric. Number of bootstrap samples to calculate standard errors. Default is 0, meaning
@@ -54,7 +58,8 @@ apollo_estimate(
                              if \code{apollo_control$HB} is \code{FALSE}.
  \item \strong{bootstrapSeed}: Numeric scalar (integer). Random number generator seed to generate the bootstrap samples.
                                Only used if \code{bootstrapSE>0}. Default is 24.
- \item \strong{silent}: Boolean. If TRUE, no information is printed to the console during estimation. Default is FALSE.
+ \item \strong{silent}: Logical. If TRUE, no information is printed to the console during estimation. Default is FALSE.
+ \item \strong{scaleHessian}: Logical. If TRUE, parameters are scaled to 1 for Hessian estimation. Default is TRUE.
 }}
 }
 \value{

@@ -30,15 +30,3 @@ Reads in parameters from a previously estimated model and copies the values to t
 This function will update the values of the parameters in its argument \code{apollo_beta} with the matching values in the file
 \code{(inputModelName)_estimates.csv}. If there is no match for a given parameter in \code{apollo_beta}, its value will not be updated.
 }
-\examples{
-### Define starting values and fixed parameters
-apollo_beta <- c(asc1=0, asc2=0, b1=0, b2=0)
-apollo_fixed <- c("asc1")
-\dontrun{
-## Not run:
-### Update starting values
-apollo_beta <- apollo_readBeta(apollo_beta, apollo_fixed, 
-                               "oldModelName", overwriteFixed=FALSE)
-## End(Not run)
-}
-}

@@ -10,8 +10,8 @@
 #'                  It should also include a named character vector called \code{hbDist} identifying 
 #'                  the distribution of each parameter to be estimated. Possible values are as follows.
 #'                  \itemize{
-#'                    \item "DNE": Parameter kept at its starting value (not estimated).
-#'                    \item "F": Fixed (as in non-random) parameter.
+#'                    \item "F": Fixed - parameter kept at its starting value (not estimated).
+#'                    \item "NR": Non-random parameter, i.e. with a generic value across individuals.
 #'                    \item "N": Normal.
 #'                    \item "LN+": Positive log-normal.
 #'                    \item "LN-": Negative log-normal.
@@ -23,21 +23,24 @@
 #' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
 #'                    value is constant throughout estimation).
 #' @param apollo_control List. Options controlling the running of the code. See \link{apollo_validateInputs}.
+#' @param silent Boolean. TRUE to keep the function from printing to the console. Default is FALSE.
 #' @return Validated apollo_HB
-apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_control){
+#' @export
+apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_control, silent=FALSE){
   
-  if(!("hbDist" %in% names(apollo_HB))) stop("No 'hbDist' element in apollo_HB.")
+  # Validate inputs
+  if(!("hbDist" %in% names(apollo_HB))) stop("No hbDist element in apollo_HB.")
   hbDist <- apollo_HB$hbDist
   if(length(apollo_beta)!=length(hbDist)) stop("Argument hbDist has different length than apollo_beta.")
   
   hbDist_nonest = hbDist[(names(apollo_beta) %in% apollo_fixed)]
-  if(any(hbDist_nonest!="F")) stop("Only non-random parameters should be included in apollo_fixed for HB estimation, other constraints need to be accommodated in fixedA and fixedD!")
+  if(any(!(hbDist_nonest%in%c("F","NR")))) stop("Only non-random parameters should be included in apollo_fixed for HB estimation, other constraints need to be accommodated in fixedA and fixedD!")
   
-  map <- c("F"=0, "N"=1, "LN+"=2, "LN-"=3, "CN+"=4, "CN-"=5, "JSB"=6)
+  # Translate rnd param distributions into RSGHB coding
+  map <- c("NR"=0, "F"=0, "N"=1, "LN+"=2, "LN-"=3, "CN+"=4, "CN-"=5, "JSB"=6)
   hbDist_est = hbDist[!(names(apollo_beta) %in% apollo_fixed)]
-  hbDist_est = stats::setNames(map[hbDist_est], names(hbDist_est))
-  theta_est = apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
-  
+  hbDist_est = stats::setNames(map[hbDist_est], names(hbDist_est)) # distribution in RSGHB coding
+  theta_est  = apollo_beta[!(names(apollo_beta) %in% apollo_fixed)] # starting values
   
   
   gVarNamesFixed  = names(theta_est[hbDist_est==0])
@@ -62,13 +65,35 @@ apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_c
   if(length(apollo_HB$svN)==0) apollo_HB$svN=NULL
   if(length(apollo_HB$FC)==0) apollo_HB$FC=NULL
   
+  ### Translates fixedA to RSGHB coding
+  fA <- apollo_HB$fixedA
+  if(!is.null(fA) && is.vector(fA)  && is.numeric(fA) && !is.null(names(fA))){
+    if(!all(names(fA) %in% apollo_HB$gVarNamesNormal)) stop("Some names in fixedA do not match the names of random parameters.")
+    apollo_HB$fixedA <- rep(NA, length(apollo_HB$gVarNamesNormal))
+    for(i in 1:length(fA)){
+      j <- which(apollo_HB$gVarNamesNormal==names(fA)[i])
+      apollo_HB$fixedA[j] <- fA[i]
+    }; rm(i,j)
+  }; rm(fA)
+  
+  ### Translates fixedD to RSGHB coding
+  fD <- apollo_HB$fixedD
+  if(!is.null(fD) && is.vector(fD)  && is.numeric(fD) && !is.null(names(fD))){
+    if(!all(names(fD) %in% apollo_HB$gVarNamesNormal)) stop("Some names in fixedD do not match the names of random parameters.")
+    apollo_HB$fixedD <- rep(NA, length(apollo_HB$gVarNamesNormal))
+    for(i in 1:length(fD)){
+      j <- which(apollo_HB$gVarNamesNormal==names(fD)[i])
+      apollo_HB$fixedD[j] <- fD[i]
+    }; rm(i,j)
+  }; rm(fD)
+  
   ### Additional checks
-  if(!is.null(apollo_HB$fixedA) && length(apollo_HB$fixedA)!=length(apollo_HB$gVarNamesNormal)) stop("'fixedA' has a different length than 'gVarNamesNormal' inside 'apollo_HB'")
-  if(!is.null(apollo_HB$fixedD) && length(apollo_HB$fixedD)!=length(apollo_HB$gVarNamesNormal)) stop("'fixedD' has a different length than 'gVarNamesNormal' inside 'apollo_HB'")
+  if(!is.null(apollo_HB$fixedA) && length(apollo_HB$fixedA)!=length(apollo_HB$gVarNamesNormal)) stop("fixedA has a different length than gVarNamesNormal inside apollo_HB")
+  if(!is.null(apollo_HB$fixedD) && length(apollo_HB$fixedD)!=length(apollo_HB$gVarNamesNormal)) stop("fixedD has a different length than gVarNamesNormal inside apollo_HB")
   if(any(hbDist_est==6)){
-    if(is.null(apollo_HB$gMINCOEF) | is.null(apollo_HB$gMAXCOEF)) stop("JSB distribution in use, but 'gMINCOEF' or 'gMAXCOEF' not defined in 'apollo_HB'")
-    if(!is.null(apollo_HB$gMINCOEF) && length(apollo_HB$gMINCOEF)!=length(apollo_HB$gVarNamesNormal)) stop("'gMINCOEF' has a different length than 'gVarNamesNormal' inside 'apollo_HB'")
-    if(!is.null(apollo_HB$gMAXCOEF) && length(apollo_HB$gMAXCOEF)!=length(apollo_HB$gVarNamesNormal)) stop("'gMINCOEF' has a different length than 'gVarNamesNormal' inside 'apollo_HB'")
+    if(is.null(apollo_HB$gMINCOEF) | is.null(apollo_HB$gMAXCOEF)) stop("JSB distribution in use, but gMINCOEF or gMAXCOEF not defined in apollo_HB")
+    if(!is.null(apollo_HB$gMINCOEF) && length(apollo_HB$gMINCOEF)!=length(apollo_HB$gVarNamesNormal)) stop("gMINCOEF has a different length than gVarNamesNormal inside apollo_HB")
+    if(!is.null(apollo_HB$gMAXCOEF) && length(apollo_HB$gMAXCOEF)!=length(apollo_HB$gVarNamesNormal)) stop("gMINCOEF has a different length than gVarNamesNormal inside apollo_HB")
   }
   
   ### Process constraints.
@@ -78,16 +103,16 @@ apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_c
       # Print constraints
       #nam <- names(theta_est)
       nam <- gVarNamesNormal
-      cat("Constraints (parameters in apollo_fixed are ignored):\n")
+      if(!silent) apollo_print("Constraints:")
       for(i in 1:length(apollo_HB$constraintsNorm)){
         t0 <- apollo_HB$constraintsNorm[[i]]
         #test <- 0 < t0[1] & t0[1]<length(theta_est)
-        test <- 0 < t0[1] & t0[1]<length(nam)
+        test <- 0 < t0[1] & t0[1]<=length(nam)
         test <- test & t0[2] %in% 1:2
         #test <- test & ( 0 <= t0[3] & t0[3]<length(theta_est) )
-        test <- test & ( 0 <= t0[3] & t0[3]<length(nam) )
+        test <- test & ( 0 <= t0[3] & t0[3]<=length(nam) )
         if(!test) stop(paste0("Incorrect format for constraintsNorm element c(", t0, ")."))
-        cat(" ", nam[t0[1]], ifelse(t0[2]==1, " < ", " > "), ifelse(t0[3]==0, 0, nam[t0[3]]), "\n", sep="")
+        if(!silent) apollo_print(paste0(nam[t0[1]], ifelse(t0[2]==1, " < ", " > "), ifelse(t0[3]==0, 0, nam[t0[3]]), "\n", sep=""))
       }
     } else { # If in new format, e.g: c("b1<b2","b3>b5")
       # Validate input
@@ -121,6 +146,6 @@ apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_c
     }
   }
   
-  cat("All checks on apollo_HB completed.\n")
+  if(!silent) apollo_print("All checks on apollo_HB completed.")
   return(apollo_HB)
 }

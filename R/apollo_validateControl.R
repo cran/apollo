@@ -22,57 +22,57 @@
 #'                    }
 #' @param silent Boolean. If TRUE, no messages are printed to screen.
 #' @return Validated version of apollo_control, with additional element called panelData set to TRUE for repeated choice data.
+#' @export
 apollo_validateControl=function(database,apollo_control, silent=FALSE){
   
+  if(is.null(apollo_control$debug)) apollo_control$debug <- FALSE
+  if(!is.logical(apollo_control$debug) || length(apollo_control$debug)!=1) stop('Setting "debug" in apollo_control should have a logical (boolean) value.')
+  debug <- apollo_control$debug
+  
   if(is.null(apollo_control$modelName)){
-    apollo_control$modelName <- "noname_model"
-    if(!silent) cat("Model name missing, set to default of 'noname_model'\n")
+    apollo_control$modelName <- paste("model_", gsub("[: -]", "" , Sys.time(), perl=TRUE), sep="")
+    if(!silent) apollo_print(paste0('Model name missing in apollo_control, set to default of "', apollo_control$modelName, '".'))
   }
   
-  if(is.null(apollo_control$modelDescr)){
-    apollo_control$modelDescr <- "No model description given"
-    if(!silent)cat("Model description missing, set to default of 'No model description given'\n")
-  }
+  if(is.null(apollo_control$modelDescr)) apollo_control$modelDescr <- 'No model description provided in apollo_control'
   
-  if(is.null(apollo_control$indivID)){
-    stop('Name of column with individual IDs not provided in apollo_control.')
-  }
-  
-  if(is.null(apollo_control$mixing)&is.null(apollo_control$HB)){
-    apollo_control$mixing <- FALSE
-    if(!silent) cat("Missing setting for mixing, set to default of FALSE\n")
-  }
+  if(is.null(apollo_control$indivID)) stop('Name of column with individual IDs not provided in apollo_control.')
   
   if(is.null(apollo_control$nCores)){
     apollo_control$nCores <- 1
-    if(!silent) cat("Missing setting for nCores, set to default of 1\n")
+    if(debug) apollo_print("Missing setting for nCores in apollo_control, set to default of 1")
   }
   
   if(is.null(apollo_control$workInLogs)){
     apollo_control$workInLogs <- FALSE
-    if(!silent) cat("Missing setting for workInLogs, set to default of FALSE\n")
+    if(debug) apollo_print("Missing setting for workInLogs in apollo_control, set to default of FALSE")
   }
   
   if(is.null(apollo_control$seed)){
     apollo_control$seed <- 13
-    if(!silent) cat("Missing setting for seed, set to default of 13\n")
+    if(debug) apollo_print("Missing setting for seed in apollo_control, set to default of 13")
+  }
+  
+  if(is.null(apollo_control$mixing)&is.null(apollo_control$HB)){
+    apollo_control$mixing <- FALSE
+    if(debug) apollo_print("Missing setting for mixing in apollo_control, set to default of FALSE")
   }
   
   if(is.null(apollo_control$HB)){
     apollo_control$HB <- FALSE
-    if(!silent) cat("Missing setting for HB, set to default of FALSE\n")
+    if(debug) apollo_print("Missing setting for HB in apollo_control, set to default of FALSE")
   }
   
   if(apollo_control$HB & (!is.null(apollo_control$mixing) && apollo_control$mixing!=FALSE)){
     apollo_control$mixing <- FALSE
-    if(!silent) cat("HB set to TRUE, so mixing set to FALSE\n")
+    if(!silent) apollo_print("HB set to TRUE in apollo_control, so mixing set to FALSE")
   }
   
   if(apollo_control$HB) apollo_control$mixing <- FALSE
   
   if(apollo_control$HB==TRUE & apollo_control$nCores > 1){
     apollo_control$nCores <- 1
-    if(!silent) cat("nCores set to 1 for Bayesian estimation\n")
+    if(!silent) apollo_print("nCores set to 1 in apollo_control for Bayesian estimation")
   }
   
   if(is.null(apollo_control$noValidation)){
@@ -83,40 +83,79 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
     apollo_control$noDiagnostics <- FALSE
   }  
   
-  if(is.null(apollo_control$fastExp)){
-    apollo_control$fastExp <- FALSE
-  }  
-
-    if(is.null(apollo_control$panelData)){
+  if(is.null(apollo_control$panelData)){
   if(length(unique(database[,apollo_control$indivID]))<nrow(database)){
     apollo_control$panelData  = TRUE
-    if(!silent) cat("Several observations per individual detected based on the value of ", apollo_control$indivID, ".\n  Setting panelData set to TRUE.\n", sep="")
+    if(!silent) apollo_print(paste0("Several observations per individual detected based on the value of ", apollo_control$indivID, ". Setting panelData in apollo_control set to TRUE.", sep=""))
   } else {
     apollo_control$panelData  = FALSE
-    if(!silent) cat("Only one observation per individual detected based on the value of ", apollo_control$indivID, ".\n  Setting panelData set to FALSE.\n", sep="")
+    if(debug) apollo_print(paste0("Only one observation per individual detected based on the value of ", apollo_control$indivID, ". Setting panelData in apollo_control set to FALSE.", sep=""))
   }}
   
-  if(!is.logical(apollo_control$mixing       )) stop("Setting for mixing should be TRUE or FALSE")
-  if(!is.logical(apollo_control$HB           )) stop("Setting for HB should be TRUE or FALSE")
-  if(!is.logical(apollo_control$noValidation )) stop("Setting for noValidation should be TRUE or FALSE")
-  if(!is.logical(apollo_control$noDiagnostics)) stop("Setting for noDiagnostics should be TRUE or FALSE")
-  if(!is.logical(apollo_control$workInLogs   )) stop("Setting for workInLogs should be TRUE or FALSE")
-  if(!is.logical(apollo_control$fastExp      )) stop("Setting for fastExp should be TRUE or FALSE")
+  # Check that workInLogs is only used with panelData
+  if(apollo_control$workInLogs & !apollo_control$panelData){
+    apollo_control$workInLogs <- FALSE
+    if(!silent) apollo_print("Working in logs is only applicable with panel data; workInLogs set to FALSE in apollo_control.")
+  }
   
+  if(!is.logical(apollo_control$mixing       )) stop("Setting for mixing in apollo_control should be TRUE or FALSE")
+  if(!is.logical(apollo_control$HB           )) stop("Setting for HB in apollo_control should be TRUE or FALSE")
+  if(!is.logical(apollo_control$noValidation )) stop("Setting for noValidation in apollo_control should be TRUE or FALSE")
+  if(!is.logical(apollo_control$noDiagnostics)) stop("Setting for noDiagnostics in apollo_control should be TRUE or FALSE")
+  if(!is.logical(apollo_control$workInLogs   )) stop("Setting for workInLogs in apollo_control should be TRUE or FALSE")
+
   if(!is.null(apollo_control$weights)){
     w <- apollo_control$weights
     if(length(w)!=1 || !is.character(w) || !(w %in% names(database))) stop("'apollo_control$weights' is not the name of a column in 'database'.")
   }
   
-  if((apollo_control$noValidation==TRUE)&!silent) cat("\nWith setting noValidation=TRUE, your model code will not be validated prior to estimation. This may of course be deliberate for large models or models with many components.")
+  if((apollo_control$noValidation==TRUE)&!silent) apollo_print("With setting noValidation=TRUE in apollo_control, your model code will not be validated prior to estimation. This may of course be deliberate for large models or models with many components.")
   
-  allVars <- c("modelName", "modelDescr", "indivID", "mixing", "nCores", "seed", "HB", "noValidation", "noDiagnostics", "weights", "workInLogs", "panelData", "fastExp")
-  unknownVars <- names(apollo_control)[!( names(apollo_control) %in% allVars )]
-  if(length(unknownVars)>0){
-    cat("\nVariable(s) {", paste(unknownVars, collapse=", "), "}\n where not recognised in apollo_control and will be ignored.\n Check ?apollo_control for a list of valid control variables.")
+  if(is.null(apollo_control$cpp)){
+    apollo_control$cpp <- FALSE
+    if(debug) apollo_print("Missing setting for cpp in apollo_control, set to default of FALSE.")
+  } else {
+    if(!is.logical(apollo_control$cpp) || !length(apollo_control$cpp)==1) stop("Setting cpp in apollo_control should be a single logical value!")
   }
   
-  if(!silent) cat("All checks on apollo_control completed.\n")
+  if(is.null(apollo_control$analyticGrad)){
+    apollo_control$analyticGrad <- TRUE
+    if(debug) apollo_print("Missing setting for analyticGrad in apollo_control, set to default of TRUE")
+  } else {
+    if(!is.logical(apollo_control$analyticGrad) || !length(apollo_control$analyticGrad)==1) stop("Setting analyticGrad in apollo_control should be a single logical value")
+  }
+  
+  if(apollo_control$HB){
+    apollo_control$analyticGrad <- FALSE
+    if(debug) apollo_print("Analytic gradients cannot be used with setting HB")
+  } 
+  
+  if(apollo_control$workInLogs){
+    apollo_control$analyticGrad <- FALSE
+    if(debug) apollo_print("Analytic gradients cannot be used with setting workInLogs")
+  } 
+  
+  if(is.null(apollo_control$matrixMult)){
+    apollo_control$matrixMult <- FALSE
+    if(debug) apollo_print("Missing setting for matrixMult in apollo_control, set to default of FALSE")
+  } else {
+    if(!is.logical(apollo_control$matrixMult) || !length(apollo_control$matrixMult)==1) stop("Setting matrixMult in apollo_control should be a single logical value")
+  }
+  if(apollo_control$matrixMult & apollo_control$mixing) stop("Setting matrixMult in apollo_control is only valid for models without mixing!")
+  
+  
+  
+  allVars <- c("modelName", "modelDescr", "indivID", "mixing", "nCores", "seed", "HB", 
+               "noValidation", "noDiagnostics", "weights", "workInLogs", "panelData", 
+               "cpp","subMaxV", "analyticGrad", "matrixMult", "debug")
+  unknownVars <- names(apollo_control)[!( names(apollo_control) %in% allVars )]
+  if(length(unknownVars)>0){
+    apollo_print(paste0("Variable(s) {", paste(unknownVars, collapse=", "), "} were not recognised in apollo_control and will be ignored. Check ?apollo_control for a list of valid control variables."))
+  }
+  
+  if(is.null(apollo_control$subMaxV)) apollo_control$subMaxV <- TRUE
+  
+  if(!silent) apollo_print("All checks on apollo_control completed.\n")
   return(apollo_control)
   
 }

@@ -9,7 +9,7 @@ apollo_prediction(
   apollo_probabilities,
   apollo_inputs,
   prediction_settings = list(),
-  modelComponent = "model"
+  modelComponent = NA
 )
 }
 \arguments{
@@ -27,7 +27,8 @@ apollo_prediction(
 \item{prediction_settings}{List of settings. It can have the following elements.
 \itemize{
   \item \code{modelComponent} Character. Name of component of apollo_probabilities output to calculate predictions for. Default is "model", i.e. the whole model.
-  \item \code{silent} Boolean. If TRUE, thsi function won't print any output to screen.
+  \item \code{runs} Numeric. Number of runs to use for computing confidence intervals of predictions.
+  \item \code{silent} Boolean. If TRUE, this function won't print any output to screen.
 }}
 
 \item{modelComponent}{\strong{Deprecated}. Same as \code{modelComponent} inside \code{prediction_settings}.}

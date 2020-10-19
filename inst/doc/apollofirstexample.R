@@ -1,10 +1,10 @@
-## ----setup, include = FALSE----------------------------------------------
+## ----setup, include = FALSE---------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # ####################################################### #
 #### 1. Definition of core settings                        
 # ####################################################### #
@@ -29,15 +29,12 @@ apollo_control = list(
 #### 2. Data loading                                   ####
 # ####################################################### #
 
-data("apollo_modeChoiceData")
+data("apollo_modeChoiceData", package="apollo")
 database = apollo_modeChoiceData
 rm(apollo_modeChoiceData)
 
 ### Use only SP data
 database = subset(database,database$SP==1)
-
-### Create new variable with average income
-database$mean_income = mean(database$income)
 
 # ####################################################### #
 #### 3. Parameter definition                           ####
@@ -118,7 +115,7 @@ model = apollo_estimate(apollo_beta, apollo_fixed,
 
 apollo_modelOutput(model)
 
-apollo_saveOutput(model)
+#apollo_saveOutput(model)
 
 # ####################################################### #
 #### 7. Postprocessing of results                      ####
@@ -132,6 +129,7 @@ predictions_base = apollo_prediction(model,
 ### Now imagine the cost for rail increases by 10% 
 ### and predict again
 database$cost_rail = 1.1*database$cost_rail
+apollo_inputs   = apollo_validateInputs()
 predictions_new = apollo_prediction(model, 
                                     apollo_probabilities, 
                                     apollo_inputs)
@@ -146,7 +144,7 @@ change=change[,-ncol(change)]
 summary(change)
 
 
-## ---- eval=FALSE---------------------------------------------------------
+## ---- eval=FALSE--------------------------------------------------------------
 #  # ####################################################### #
 #  #### 1. Definition of core settings
 #  # ####################################################### #
@@ -173,7 +171,7 @@ summary(change)
 #  #### 2. Data loading                                   ####
 #  # ####################################################### #
 #  
-#  data("apollo_modeChoiceData")
+#  data("apollo_modeChoiceData", package="apollo")
 #  database = apollo_modeChoiceData
 #  rm(apollo_modeChoiceData)
 #  
@@ -190,11 +188,11 @@ summary(change)
 #  ### Vector of parameters, including any that are kept fixed
 #  ### during estimation
 #  apollo_beta=c(asc_car  = 0,
-#                asc_bus  = 0,
-#                asc_air  = 0,
-#                asc_rail = 0,
-#                mu_tt    = 0,
-#                sigma_tt = 1,
+#                asc_bus  =-2,
+#                asc_air  =-1,
+#                asc_rail =-1,
+#                mu_tt    =-4,
+#                sigma_tt = 0,
 #                b_c      = 0)
 #  
 #  ### Vector with names (in quotes) of parameters to be
@@ -284,7 +282,7 @@ summary(change)
 #  
 #  apollo_modelOutput(model)
 #  
-#  apollo_saveOutput(model)
+#  #apollo_saveOutput(model)
 #  
 #  # ####################################################### #
 #  #### 7. Postprocessing of results                      ####
@@ -298,6 +296,7 @@ summary(change)
 #  ### Now imagine the cost for rail increases by 10%
 #  ### and predict again
 #  database$cost_rail = 1.1*database$cost_rail
+#  apollo_inputs   = apollo_validateInputs()
 #  predictions_new = apollo_prediction(model,
 #                                      apollo_probabilities,
 #                                      apollo_inputs)

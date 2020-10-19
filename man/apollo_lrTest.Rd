@@ -4,18 +4,19 @@
 \alias{apollo_lrTest}
 \title{Likelihood ratio test}
 \usage{
-apollo_lrTest(baseModel, generalModel)
+apollo_lrTest(model1, model2)
 }
 \arguments{
-\item{baseModel}{Character. Name of a previously estimated model whose results were written to disk by \link{apollo_saveOutput}.
-This is the restricted model, i.e. the one with fewer parameters.}
+\item{model1}{Either a character variable with the name of a previously estimated model, or an estimated 
+model in memory, as returned by \link{apollo_estimate}.}
 
-\item{generalModel}{Either a character variable with the name of a previously estimated model, or an estimated model in memory, as
-returned by \link{apollo_estimate}. This model nests \code{baseModel}, and it should have more parameters than it.}
+\item{model2}{Either a character variable with the name of a previously estimated model, or an estimated 
+model in memory, as returned by \link{apollo_estimate}.}
 }
 \value{
-LL ratio test statistic (invisibly)
+LR-test p-value (invisibly)
 }
 \description{
-Calculates the likelihood ratio test and prints result.
+Calculates the likelihood ratio test value between two models and reports the corresponding p-value. 
+The two models need to have been estimated on the same data, and one model needs to be nested within the other model.
 }

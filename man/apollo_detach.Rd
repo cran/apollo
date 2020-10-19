@@ -25,13 +25,3 @@ by adding the line \code{on.exit(apollo_detach(apollo_beta, apollo_inputs))}
 right after calling \link{apollo_attach}.
 This function can also be called without any arguments, i.e. \code{apollo_detach()}.
 }
-\examples{
-apollo_beta  <- c(b1=0.3, b2=-0.5)
-apollo_fixed <- c()
-apollo_control <- list(indivID="id", mixing = FALSE, panelData = FALSE)
-database <- data.frame(id=1:100, x1=stats::runif(100), x2=stats::runif(100))
-apollo_inputs <- apollo_validateInputs()
-apollo_attach(apollo_beta, apollo_inputs)
-V = b1*x1 + b2*x2
-apollo_detach(apollo_beta, apollo_inputs)
-}

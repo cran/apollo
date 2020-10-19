@@ -16,13 +16,17 @@
 #' @param saveOutput_settings List of options. Valid options are the following.
 #'                            \itemize{
 #'                               \item \code{printClassical}: Boolean. TRUE for printing classical standard errors. TRUE by default.
-#'                               \item \code{printPVal}: Boolean. TRUE for printing p-values. FALSE by default.
+### change 7 August
+#                                \item \code{printPVal}: Boolean. TRUE for printing p-values. FALSE by default.
+#'                               \item \code{printPVal}: Boolean or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
 #'                               \item \code{printT1}: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
-#'                               \item \code{printDiagnostics}: Boolean. TRUE for printing summary of choices in database and other diagnostics. TRUE by default.
+#'                               \item \code{printDataReport}: Boolean. TRUE for printing summary of choices in database and other diagnostics. FALSE by default.
+#'                               \item \code{printModelStructure}: Boolean. TRUE for printing model structure. TRUE by default.
 #'                               \item \code{printCovar}: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
 #'                               \item \code{printCorr}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
 #'                               \item \code{printOutliers}: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
 #'                               \item \code{printChange}: Boolean. TRUE for printing difference between starting values and estimates. TRUE by default.
+#'                               \item \code{printFunctions}: Boolean. TRUE for printing apollo_control, apollo_randCoeff (when available), apollo_lcPars (when available) and apollo_probabilities. TRUE by default.                               
 #'                               \item \code{saveEst}: Boolean. TRUE for saving estimated parameters and standard errors to a CSV file. TRUE by default.
 #'                               \item \code{saveCov}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.
 #'                               \item \code{saveCorr}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.
@@ -32,16 +36,19 @@
 #' @return nothing
 #' @export
 #' @importFrom RSGHB writeModel
+#' @importFrom utils capture.output
 apollo_saveOutput=function(model, saveOutput_settings=NA){
   if(length(saveOutput_settings)==1 && is.na(saveOutput_settings)) saveOutput_settings=list()
   default <- list(printClassical   = TRUE,
                   printPVal        = FALSE,
                   printT1          = FALSE,
-                  printDiagnostics = TRUE,
+                  printDataReport  = TRUE,
+                  printModelStructure = TRUE, 
                   printCovar       = TRUE,
                   printCorr        = TRUE,
                   printOutliers    = TRUE,
                   printChange      = TRUE,
+                  printFunctions   = TRUE,
                   saveEst          = TRUE,
                   saveCov          = TRUE,
                   saveCorr         = TRUE,
@@ -58,6 +65,7 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
   printCorr       = saveOutput_settings[["printCorr"]]
   printOutliers   = saveOutput_settings[["printOutliers"]]
   printChange     = saveOutput_settings[["printChange"]]
+  printFunctions  = saveOutput_settings[["printFunctions"]]
   saveEst         = saveOutput_settings[["saveEst"]]
   saveCov         = saveOutput_settings[["saveCov"]]
   saveCorr        = saveOutput_settings[["saveCorr"]]

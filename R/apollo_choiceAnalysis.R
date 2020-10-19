@@ -50,12 +50,10 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
   output           = matrix(0,nrow=length(alternatives),ncol=ncol(explanators)*3)
   rownames(output) = names(alternatives)
   outputnames=c(rep(0,ncol(output)))
-  s = 1
-  while(s<=ncol(explanators)){
+  for(s in 1:ncol(explanators)){
     outputnames[(s-1)*3+1] = paste("Mean for",colnames(explanators)[s],"if chosen")
     outputnames[(s-1)*3+2] = paste("Mean for",colnames(explanators)[s],"if not chosen")
     outputnames[(s-1)*3+3] = paste("t-test for difference")
-    s = s + 1
   }
   colnames(output)=outputnames
   
@@ -67,35 +65,35 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
   }
   
   ### Populate output matrix
-  j = 1
-  s = 1
-  while(j <= length(alternatives)){
+  for(j in 1:length(alternatives)){
     r               = avail[[j]]==1
     database_sub    = subset(database, r)
     explanators_sub = subset(explanators, r)
     chosen          = subset(choiceVar, r)==alternatives[j]
-    s = 1
-    while(s <= ncol(explanators)){
+    for(s in 1:ncol(explanators)){
       x = tapply(explanators_sub[,s],chosen, mean,na.rm=TRUE)
       output[j,((s-1)*3+1)] = x[2]
       output[j,((s-1)*3+2)] = x[1]
       if(x[1]==x[2]){
         output[j,((s-1)*3+3)] = NA
       }else{
-        output[j,((s-1)*3+3)] = stats::t.test(subset(explanators_sub[,s], !chosen),subset(explanators_sub[,s], chosen))[["statistic"]]
+        if(length(subset(explanators_sub[,s], !chosen))>1 && length(subset(explanators_sub[,s], chosen))>1){
+          output[j,((s-1)*3+3)] = stats::t.test(subset(explanators_sub[,s], !chosen),subset(explanators_sub[,s], chosen))[["statistic"]]
+        } else {
+          output[j,((s-1)*3+3)] = NA
+        }
+        
       }
-      s = s+1}
-    j = j+1}
+    }
+    }
   
   filename = paste(modelName,"_choiceAnalysis.csv",sep="")
   
   output_new=c()
-  s = 1
-  while(s <= ncol(explanators)){
+  for(s in 1:ncol(explanators)){
     output_new=cbind(output_new,round(output[,((s-1)*3+1)],4))
     output_new=cbind(output_new,round(output[,((s-1)*3+2)],4))
     output_new=cbind(output_new,round(output[,((s-1)*3+3)],2))
-    s=s+1
   }
   
   colnames(output_new)=colnames(output)

@@ -1,4 +1,4 @@
-#' Out-of-sample fit (LL)
+#' Cross-validation of fit (LL)
 #'
 #' Randomly generates estimation and validation samples, estimates the model on the first and 
 #' calculates the likelihood for the second, then repeats.
@@ -14,7 +14,7 @@
 #' complete dataset, and apply the procedure to each pair.
 #' 
 #' The splitting of the database into estimation and validation samples is done at the individual 
-#' level not at the observation level. If the sampling wants to be done at the individual level 
+#' level, not at the observation level. If the sampling wants to be done at the individual level 
 #' (not recommended on panel data), then the optional \code{outOfSample_settings$samples} argument 
 #' should be provided.
 #' 
@@ -65,19 +65,32 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
                                estimate_settings=list(estimationRoutine="bfgs",
                                                       maxIterations=200,
                                                       writeIter=FALSE,
-                                                      hessianRoutine="numDeriv",
+                                                      hessianRoutine="none",
                                                       printLevel=3L,
                                                       silent=TRUE),
                                outOfSample_settings=list(nRep=10,
                                                          validationSize=0.1,
                                                          samples=NA)){
   ### Set missing settings to default values
-  default <- list(estimationRoutine="bfgs", maxIterations=200, writeIter=TRUE, hessianRoutine="numDeriv", printLevel=3L, silent=FALSE)
+  default <- list(estimationRoutine="bfgs", maxIterations=200, writeIter=TRUE, hessianRoutine="none", printLevel=3L, silent=FALSE)
   tmp <- names(default)[!(names(default) %in% names(estimate_settings))] # options missing in estimate_settings
   for(i in tmp) estimate_settings[[i]] <- default[[i]]
   default <- list(nRep=10, validationSize=0.1, samples=NA)
   tmp <- names(default)[!(names(default) %in% names(outOfSample_settings))] # options missing in estimate_settings
   for(i in tmp) outOfSample_settings[[i]] <- default[[i]]
+  
+  ### Write original apollo_inputs to disk before changing it, and make sure to restore it before finishing
+  saveRDS(apollo_inputs, file=paste0(tempdir(), "\\", apollo_inputs$apollo_control$modelName,"_outOfSample"))
+  on.exit({
+    tmp <- paste0(tempdir(), "\\", apollo_inputs$apollo_control$modelName,"_outOfSample")
+    apollo_inputs <- tryCatch(readRDS(tmp), error=function(e) NULL)
+    if(!is.null(apollo_inputs)){
+      tmp <- globalenv()
+      assign('apollo_inputs', apollo_inputs, envir=tmp)
+    } 
+    if(file.exists(tmp)) file.remove(tmp)
+    rm(tmp)
+  })
   
   # Extract values from apollo_inputs
   database         <- apollo_inputs$database
@@ -117,35 +130,33 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
     if(ncol(samples)<2) stop("The 'samples' matrix must have at least two columns.")
   }
   
-  # Separate theta into variable and fixed part
-  theta_var_val <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
-  theta_fix_val <- apollo_beta[apollo_fixed]
-  
   # Start clock
   starttime <- Sys.time()
   
+  apollo_print(paste0(nRep, " separate runs will be conducted, each using a random subset of ",round((1-validationSize)*100,2),"% for estimation and the remainder for validation."))
+
   # Initial report
-  indivs  <- sort(unique(database[,apollo_control$indivID]))
+  indivs  <- unique(database[,apollo_control$indivID])
   nIndivs <- length(indivs)
   if(anyNA(samples)){
     if(validationSize < 1) validationSize <- round(outOfSample_settings$validationSize*nIndivs)
     if(!(1<=validationSize & validationSize<nIndivs)) stop("validationSize must be between 1 and (nIndivs-1).")
-    cat("\n Number of individuals")
-    cat("\n   for estimation   : ", nIndivs - validationSize, sep="")
-    cat("\n   for forecasting  : ", validationSize, sep="")
-    cat("\n   in sample (total): ", nIndivs, sep="")
+    apollo_print("Number of individuals")
+    apollo_print(paste0("- for estimation   : ", nIndivs - validationSize))
+    apollo_print(paste0("- for forecasting  : ", validationSize))
+    apollo_print(paste0("- in sample (total): ", nIndivs))
   } else {
     nRep <- ncol(samples)
     nPre <- colSums(samples)
     if(all(nPre==nPre[1])) nPre <- nPre[1]
-    cat("\n Number of observations")
-    cat("\n   for estimation : ", ifelse(length(nPre)==1, nrow(samples) - nPre, "Changes by sample") , sep="")
-    cat("\n   for forecasting: ", ifelse(length(nPre)==1, nPre, "Changes by sample"), sep="")
-    cat("\n Number of individuals in sample: ", nIndivs, sep="")
+    apollo_print("Number of observations")
+    apollo_print(paste0("- for estimation : ", ifelse(length(nPre)==1, nrow(samples) - nPre, "Changes by sample")))
+    apollo_print(paste0("- for forecasting: ", ifelse(length(nPre)==1, nPre, "Changes by sample")))
+    apollo_print(paste0("Number of individuals in sample: ", nIndivs))
   }
   
   # Get number of LL components in model
-  cat("\n Preparing loop.")
+  apollo_print("Preparing loop.")
   llComponents       <- apollo_probabilities(apollo_beta, apollo_inputs, functionality="output")
   paramStack         <- matrix(0, nrow=nRep, ncol=length(apollo_beta) , dimnames=list(c(), names(apollo_beta)))
   llInSampleStack    <- matrix(0, nrow=nRep, ncol=length(llComponents), dimnames=list(c(), paste0("inSample_", names(llComponents))) )
@@ -163,79 +174,69 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   fileNameSample <- paste(apollo_control$modelName, "outOfSample_samples.csv", sep="_")
   nRun <- 0
   if(file.exists(fileNameParams) & file.exists(fileNameSample)){
-    cat("\n Old output files found, they will be recycled.")
+    apollo_print("Old output files found, they will be recycled.")
     # Read params
-    tmp1 <- read.csv(fileNameParams) # cbind(paramStack, llInSampleStack, llOutOfSampleStack, inSampleObs, outOfSampleObs)
-    tmp1 <- as.matrix(tmp1)
-    # Read samples
-    tmp2 <- read.csv(fileNameSample)
-    tmp2 <- as.matrix(tmp2)
-    # Update start point
-    nRun <- ncol(tmp2)
-    cat("\n   ", nRun, " repetitions recovered from files.", sep="")
+    tmp <- as.matrix(read.csv(fileNameParams))
+    tmp1 <- tmp[, colnames(tmp) %in% names(apollo_beta), drop=FALSE] # paramStack
+    tmp2 <- tmp[, grep('^inSample_'   , colnames(tmp)), drop=FALSE] # llInSampleStack
+    tmp3 <- tmp[, grep('^outOfSample_', colnames(tmp)), drop=FALSE] # llOutOfSampleStack
+    tmp4 <- as.matrix(read.csv(fileNameSample)) # samples
+    nRun <- sum(tmp3[,ncol(tmp3)]!=0)
+    if(nrow(tmp1)>nRun) tmp1 <- tmp1[1:nRun,] 
+    if(nrow(tmp2)>nRun) tmp2 <- tmp2[1:nRun,] 
+    if(nrow(tmp3)>nRun) tmp3 <- tmp3[1:nRun,] 
+    if(ncol(tmp4)>nRun) tmp4 <- tmp4[, 1:nRun]
     # Check that result files match
-    test <- nRun==sum(tmp1[,ncol(tmp1)]>0) & nrow(tmp2)==nrow(database)
+    test <- ncol(tmp1)==ncol(paramStack) && ncol(tmp2)==ncol(llInSampleStack) && ncol(tmp3)==ncol(llOutOfSampleStack)
+    test <- test && nrow(tmp4)==nrow(database)
     if(test){
-      # Check if all repetitions are not done
-      if(nRun>=nRep){
-        cat("\n   All requested repetitions were completed in old files.\n   No new repetitions will be performed.\n")
-        output_matrix=cbind(tmp1[,"inSample_model"]/tmp1[,"inSampleObs"],
-                            tmp1[,"outOfSample_model"]/tmp1[,"outOfSampleObs"])
-        colnames(output_matrix)=c("LL per obs in estimation sample","LL per obs in validation sample")
-        return(output_matrix)
+      apollo_print(paste0(nRun, ' repetitions recovered from old result files. ', nRep, ' new repetitions will be added.'))
+      nRep <- nRun + nRep
+      # Expand paramStack, llInSampleStack, llOutOfSampleStack, nObsStack and samples to fit old results
+      paramStack         <- rbind(tmp1, paramStack)
+      llInSampleStack    <- rbind(tmp2, llInSampleStack)
+      llOutOfSampleStack <- rbind(tmp3, llOutOfSampleStack)
+      samples            <- cbind(tmp4, samples); colnames(samples) <- paste0("sample_",1:nRep)
+      set.seed(24)
+      for(i in 1:nRep){
+        tmp <- sample(indivs, size=validationSize)
+        if(i>nRun) samples[,i] <- database[,apollo_control$indivID] %in% tmp
       }
-      # Copy previous results to memory
-      r                      <- 1:nrow(tmp1)
-      cols                   <- c(1, ncol(paramStack))
-      paramStack[r,]         <- tmp1[, cols[1]:cols[2], drop=FALSE]
-      cols                   <- cols + c(ncol(paramStack), ncol(llInSampleStack))
-      llInSampleStack[r,]    <- tmp1[, cols[1]:cols[2], drop=FALSE]
-      cols                   <- cols + c(ncol(llInSampleStack), ncol(llOutOfSampleStack))
-      llOutOfSampleStack[r,] <- tmp1[, cols[1]:cols[2], drop=FALSE]
-      nObsStack[r]           <- tmp1[, cols[2] + 1]
-      samples[,1:ncol(tmp2)] <- tmp2
+      nObsStack          <- nrow(database) - colSums(samples)
     } else { 
       nRun <- 0
-      cat("\n   Old result files do not match, so they will be ignored.")
+      apollo_print("Old result files do not match current model, so they will be overwritten.")
     }
+    rm(tmp, tmp1, tmp2, tmp3, tmp4, test)
   }
   
   # OUT OF SAMPLE LOOP
-  cat("\n Estimated parameters and loglikelihoods of each sample will be")
-  cat("\n   written to: ", fileNameParams, sep="")
-  cat("\n The matrix defining the observations used in each repetition")
-  cat("\n   will be written to: ", fileNameSample, sep="")
-  cat("\n")
+  apollo_print(paste0("Estimated parameters and log-likelihoods for each sample will be written to: ", fileNameParams))
+  apollo_print(paste0("The matrix defining the observations used in each repetition will be written to: ", fileNameSample))
+  apollo_print("\n")
   for(i in (nRun + 1):nRep){
     
     # Filter database and create draws
-    #for(j in 1:i) obsForecast <- database[,apollo_control$indivID] %in% sample(indivs, size=validationSize)
-    obsForecast <- samples[,i]==1
-    database2   <- database[!obsForecast,]
-    apollo_inputs <- apollo_validateInputs(database=database2, silent=TRUE) # used to be apollo_inputs2
+    database2   <- database[samples[,i]==0,]
+    apollo_inputs <- apollo_validateInputs(database=database2, silent=TRUE, recycle=TRUE) # used to be apollo_inputs2
     apollo_inputs$apollo_control$noDiagnostics <- TRUE # used to be apollo_inputs2
-    if(apollo_control$mixing) draws <- apollo_makeDraws(apollo_inputs, silent=TRUE) # used to be apollo_inputs2
-    
-    # Initialize cluster if user asked for it
-    if(apollo_control$nCores==1) cl <- NA else {
-      cl <- apollo_makeCluster(apollo_probabilities, apollo_inputs, silent=TRUE) # used to be apollo_inputs2
-      apollo_control$nCores <- length(cl)
-    }
-    
-    # Create logLike function
-    apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, apollo_probabilities,
-                                         apollo_inputs, estimate_settings, cl) # used to be apollo_inputs2
-    
-    # Make sure to detach things on exit
-    on.exit( apollo_detach() )
+    apollo_inputs$apollo_control$noValidation  <- TRUE # used to be apollo_inputs2
+    #if(apollo_control$mixing) apollo_inputs$draws <- apollo_makeDraws(apollo_inputs, silent=TRUE) # used to be apollo_inputs2
     
     # Estimate
-    cat("\nEstimation cycle ", i, sep="")
-    cat("\nUsing ",nrow(database2)," observations\n", sep="")
-    nObsStack[i]=nrow(database2)
-    model <- maxLik::maxLik(apollo_logLike, start=theta_var_val,
-                            method=estimationRoutine, print.level=estimate_settings$printLevel, 
-                            finalHessian=FALSE, iterlim=maxIterations, countIter=FALSE, writeIter=FALSE, sumLL=FALSE)
+    apollo_print(paste0('Estimation cycle ', i, ' (', nrow(database2), ' obs.)'))
+    nObsStack[i] <- nrow(database2)
+    estimate_settings$hessianRoutine="none"
+    model <- apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities, 
+                             apollo_inputs, estimate_settings)
+    
+    # If apollo_inputs is missing database or draws, restore them
+    if(is.null(apollo_inputs$database)) apollo_inputs$database <- database2
+    if(is.null(apollo_inputs$draws)){
+      if(!apollo_inputs$apollo_control$mixing) apollo_inputs$draws <- NA else {
+        apollo_inputs$draws <- apollo_makeDraws(apollo_inputs, silent=TRUE)
+      }
+    }
     
     # Check convergence
     succesfulEstimation <- FALSE
@@ -249,7 +250,7 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
     if(succesfulEstimation){
       
       # Closes clusters if using multicore
-      if(exists('cl') & apollo_control$nCores>1) parallel::stopCluster(cl)
+      #if(exists('cl') & apollo_control$nCores>1) parallel::stopCluster(cl)
       
       # Store estimated parameters
       temp <- c(model$estimate, apollo_beta[apollo_fixed])
@@ -257,24 +258,25 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
       paramStack[i,] <- temp
       
       # Store in-sample LL components
-      llin <- apollo_probabilities(c(model$estimate, theta_fix_val), apollo_inputs, functionality="output") # used to be apollo_inputs2
+      llin <- apollo_probabilities(model$estimate, apollo_inputs, functionality="output") # used to be apollo_inputs2
       for(j in 1:ncol(llInSampleStack)) llInSampleStack[i,j] <- ifelse(workInLogs, sum(llin[[j]]), sum(log(llin[[j]])))
       
       # Store out-of-sample LL components
-      database2 <- database[obsForecast,]
-      apollo_inputs <- apollo_validateInputs(database=database2, silent=TRUE) # used to be apollo_inputs2
+      database2 <- database[samples[,i]>0,]
+      apollo_inputs <- apollo_validateInputs(database=database2, silent=TRUE, recycle=TRUE) # used to be apollo_inputs2
       apollo_inputs$apollo_control$noDiagnostics <- TRUE # used to be apollo_inputs2
-      llout <- apollo_probabilities(c(model$estimate, theta_fix_val), apollo_inputs, functionality="output") # used to be apollo_inputs2
+      llout <- apollo_probabilities(model$estimate, apollo_inputs, functionality="output") # used to be apollo_inputs2
       for(j in 1:ncol(llOutOfSampleStack)) llOutOfSampleStack[i,j] <- ifelse(workInLogs, sum(llout[[j]]), sum(log(llout[[j]])))
       
-      # Save results from bootstrap iteration
-      utils::write.csv(cbind(paramStack, llInSampleStack, llOutOfSampleStack,inSampleObs=nObsStack,outOfSampleObs=nrow(database)-nObsStack), 
+      # Save results from cross-validation iteration
+      utils::write.csv(cbind(paramStack, llInSampleStack, llOutOfSampleStack,
+                             inSampleObs=nObsStack, outOfSampleObs=nrow(database)-nObsStack), 
                        fileNameParams, row.names=FALSE)
       utils::write.csv(samples[,1:i], fileNameSample, row.names=FALSE)
-      cat("Estimation results written to file.\n")
+      apollo_print("Estimation results written to file.")
     } else {
       # Report error but continue with next iteration
-      cat("\nERROR: Estimation failed in cycle ", i, ".", sep="")
+      apollo_print(paste0("ERROR: Estimation failed in cycle ", i, "."))
       if(estimationRoutine=="bfgs") print(as.matrix(round(get("lastFuncParam", envir=globalenv()),4)))
     }
     
@@ -283,7 +285,8 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   # Stop clock
   endtime   <- Sys.time()
   timeTaken <- difftime(endtime, starttime, units='auto')
-  cat("\nProcessing time: ", format(timeTaken), "\n",sep="")
+  apollo_print(paste0("Processing time: ", format(timeTaken)))
+  apollo_print("\n")
   
   output_matrix=cbind(llInSampleStack[,"inSample_model"]/nObsStack,
                       llOutOfSampleStack[,"outOfSample_model"]/(nrow(database)-nObsStack))

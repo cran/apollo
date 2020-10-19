@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_mnl.R
 \name{apollo_mnl}
 \alias{apollo_mnl}
-\title{Calculates multinomial logit probabilities}
+\title{Calculates Multinomial Logit probabilities}
 \usage{
 apollo_mnl(mnl_settings, functionality)
 }
@@ -41,36 +41,5 @@ The returned object depends on the value of argument \code{functionality} as fol
         }
 }
 \description{
-Calculates probabilities of a multinomial logit model.
-}
-\examples{
-### Load data
-data(apollo_modeChoiceData)
-database <- apollo_modeChoiceData
-rm(apollo_modeChoiceData)
-
-### Parameters
-b = list(asc_1=0, asc_2=0, asc_3=0, asc_4=0, tt=0, tc=0, acc=0)
-
-### List of utilities
-V = list()
-V[['car' ]] = b$asc_1 + b$tt*database$time_car  + b$tc*database$cost_car
-V[['bus' ]] = b$asc_2 + b$tt*database$time_bus  + b$tc*database$cost_bus  +
-              b$acc*database$access_bus
-V[['air' ]] = b$asc_3 + b$tt*database$time_air  + b$tc*database$cost_air  +
-              b$acc*database$access_air
-V[['rail']] = b$asc_4 + b$tt*database$time_rail + b$tc*database$cost_rail +
-              b$acc*database$access_rail
-
-### MNL settings
-mnl_settings <- list(
-   alternatives = c(car=1, bus=2, air=3, rail=4),
-   avail        = list(car=database$av_car, bus=database$av_bus,
-                       air=database$av_air, rail=database$av_rail),
-   choiceVar    = database$choice,
-   V            = V
-)
-
-### Compute choice probabilities using MNL model
-apollo_mnl(mnl_settings, functionality="estimate")
+Calculates probabilities of a Multinomial Logit model.
 }

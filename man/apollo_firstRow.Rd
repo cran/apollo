@@ -26,23 +26,3 @@ Given a multi-row input, keeps only the first row for each individual.
 This a function to keep only the first row of an object per indidividual. It can handle multiple components, scalars, vectors and three-dimensional arrays (cubes).
 The argument database MUST contain a column called 'apollo_sequence', which is created by \link{apollo_validateData}.
 }
-\examples{
-database <- data.frame(ID=rep(1:5, each=3), apollo_sequence=rep(1:3, 5))
-apollo_inputs <- list(database=database)
-attach(database)
-
-P0 <- 0.5
-apollo_firstRow(P0, apollo_inputs) 
-
-P1 <- rep(c(0.1, 0.2, 0.3, 0.4, 0.5), each=3)
-apollo_firstRow(P1, apollo_inputs) 
-
-P2 <- matrix(rep(P1,10), nrow=15, ncol=10)
-apollo_firstRow(P2, apollo_inputs) 
-
-P3 <- array(rep(P1, 10*10), dim=c(15, 10, 10))
-apollo_firstRow(P3, apollo_inputs)
-
-P4 <- list(P0, P1, P2, P3)
-apollo_firstRow(P4, apollo_inputs)
-}

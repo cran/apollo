@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_prepareProb.R
 \name{apollo_prepareProb}
 \alias{apollo_prepareProb}
-\title{Checks likelihood}
+\title{Checks likelihood function}
 \usage{
 apollo_prepareProb(P, apollo_inputs, functionality)
 }
@@ -11,33 +11,39 @@ apollo_prepareProb(P, apollo_inputs, functionality)
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
-\item{functionality}{Character. Can take different values depending on desired output of \code{apollo_probabilities}.
-\describe{
-  \item{"estimate"}{For model estimation, returns probabilities of chosen alternatives.}
-  \item{"prediction"}{For model predictions, returns probabilities of all alternatives.}
-  \item{"validate"}{Validates input.}
-  \item{"zero_LL"}{Return probabilities with all parameters at zero.}
-  \item{"conditionals"}{For conditionals, returns probabilities of chosen alternatives.}
-  \item{"output"}{Checks that the model is well defined.}
-  \item{"raw"}{For debugging, returns probabilities of all alternatives}
+\item{functionality}{Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call apollo_probabilities, though the user can also call apollo_probabilities manually with a given functionality for testing/debugging. Possible values are:
+\itemize{
+  \item \strong{\code{"components"}}: For further processing/debugging, produces likelihood for each model component (if multiple components are present), at the level of individual draws and observations.
+  \item \strong{\code{"conditionals"}}: For conditionals, produces likelihood of the full model, at the level of individual inter-individual draws.
+  \item \strong{\code{"estimate"}}: For model estimation, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+  \item \strong{\code{"gradient"}}: For model estimation, produces analytical gradients of the likelihood, where possible.
+  \item \strong{\code{"output"}}: Prepares output for post-estimation reporting.
+  \item \strong{\code{"prediction"}}: For model prediction, produces probabilities for individual alternatives and individual model components (if multiple components are present) at the level of an observation, after averaging across draws.
+  \item \strong{\code{"preprocess"}}: Prepares likelihood functions for use in estimation.
+  \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
+  \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+  \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 }}
 }
 \value{
-The returned object depends on the value of argument \code{functionality} as follows.
+Argument \code{P} with (for most functionalities) the original contents. Output depends on argument \code{functionality}.
         \itemize{
-          \item \strong{\code{"estimate"}}: Returns only the \code{"model"} component of argument \code{P}.
-          \item \strong{\code{"prediction"}}: Returns argument \code{P} without any changes.
-          \item \strong{\code{"validate"}}: Returns argument \code{P} without any changes.
-          \item \strong{\code{"zero_LL"}}: Returns argument \code{P} without any changes to its content, but gives names the unnamed elements.
+          \item \strong{\code{"components"}}: Returns \code{P} without changes.
           \item \strong{\code{"conditionals"}}: Returns only the \code{"model"} component of argument \code{P}.
-          \item \strong{\code{"output"}}: Returns argument \code{P} without any changes to its content, but gives names the unnamed elements.
+          \item \strong{\code{"estimate"}}: Returns only the \code{"model"} component of argument \code{P}.
+          \item \strong{\code{"gradient"}}: Returns only the \code{"model"} component of argument \code{P}.
+          \item \strong{\code{"output"}}: Returns argument \code{P} without any changes to its content, but gives names to unnamed elements.
+          \item \strong{\code{"prediction"}}: Returns argument \code{P} without any changes.
+          \item \strong{\code{"preprocess"}}: Returns argument \code{P} without any changes to its content, but gives names to elements corresponding to componentNames.
           \item \strong{\code{"raw"}}: Returns argument \code{P} without any changes.
+          \item \strong{\code{"validate"}}: Returns argument \code{P} without any changes.
+          \item \strong{\code{"zero_LL"}}: Returns argument \code{P} without any changes to its content, but gives names to unnamed elements.
         }
 }
 \description{
-Checks that likelihoods, i.e. probabilities in the case of choice models, are in the appropiate format to be returned.
+Checks that the likelihood function for the mode is in the appropriate format to be returned.
 }
 \details{
 This function should be called inside \code{apollo_probabilities}, near the end of it, just before \code{return(P)}.
-This function only performs checks on the shape of P, but does not change its values in any way.
+This function only performs checks on the shape of P, but does not change its values.
 }

@@ -1,14 +1,14 @@
-#' Calculates exploded logit probabilities
+#' Calculates Exploded Logit probabilities
 #'
-#' Calculates the probabilities of an exploded logit model and can also perform other operations based on the value of the \code{functionality} argument.
-#' The function calculates the probability of a ranking as a product of logit models with gradually reducing availability, where scale differences can be allowed for.
-#' @param el_settings List of inputs of the exploded logit model. It shoud contain the following.
+#' Calculates the probabilities of an Exploded Logit model and can also perform other operations based on the value of the \code{functionality} argument.
+#' The function calculates the probability of a ranking as a product of Multinomial Logit models with gradually reducing availability, where scale differences can be allowed for.
+#' @param el_settings List of inputs of the Exploded Logit model. It shoud contain the following.
 #'                    \itemize{
 #'                     \item \strong{\code{"alternatives"}}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
 #'                     \item \strong{\code{"avail"}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
-#'                     \item \strong{\code{"choiceVars"}}: List of numeric vectors. Contain choices for each position of the ranking. The list must be ordered with the best choice first, second best second, etc. It will usually be a list of columns from the database.
+#'                     \item \strong{\code{"choiceVars"}}: List of numeric vectors. Contain choices for each position of the ranking. The list must be ordered with the best choice first, second best second, etc. It will usually be a list of columns from the database. Use value -1 if a stage does not apply for a given observations (e.g. when some individuals have shorter rankings).
 #'                     \item \strong{\code{"V"}}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
-#'                     \item \strong{\code{"scales"}}: List of vectors. Scale factors of each logit model. Should have one element less than choiceVars. At least one element should be normalized to 1. If omitted, scale=1 for all positions is assumed.
+#'                     \item \strong{\code{"scales"}}: List of vectors. Scale factors of each Logit model. At least one element should be normalized to 1. If omitted, scale=1 for all positions is assumed.
 #'                     \item \strong{\code{"rows"}}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
 #'                     \item \strong{\code{"componentName"}}: Character. Name given to model component.
 #'                    }
@@ -33,205 +33,131 @@
 #'           \item \strong{\code{"raw"}}: Same as \code{"estimate"}
 #'         }
 #' @importFrom stats setNames
+#' @importFrom matrixStats rowCounts
+#' @importFrom utils capture.output
 #' @export
 apollo_el <- function(el_settings, functionality){
-  if(is.null(el_settings[["componentName"]])       ) el_settings[["componentName"]]="EL"
-  componentName= el_settings[["componentName"]]
-  
-  if(is.null(el_settings[["alternatives"]])) stop("The el_settings list for model component \"",componentName,"\" needs to include an object called \"alternatives\"!")
-  if(is.null(el_settings[["avail"]])) stop("The el_settings list for model component \"",componentName,"\" needs to include an object called \"avail\"!")
-  if(is.null(el_settings[["choiceVars"]])) stop("The el_settings list for model component \"",componentName,"\" needs to include an object called \"choiceVars\"!")
-  if(is.null(el_settings[["V"]])) stop("The el_settings list for model component \"",componentName,"\" needs to include an object called \"V\"!")
-  if(is.null(el_settings[["scales"]])) {
-    el_settings[["scales"]]=vector(mode="list",length=length(el_settings[["alternatives"]])-1)
-    el_settings[["scales"]] <- lapply(el_settings[["scales"]], function(a) 1)
+  ### Set or extract componentName
+  modelType   = "EL"
+  if(is.null(el_settings[["componentName"]])){
+    el_settings[["componentName"]] = ifelse(!is.null(el_settings[['componentName2']]),
+                                            el_settings[['componentName2']], modelType)
+    test <- functionality=="validate" && el_settings[["componentName"]]!='model' && !apollo_inputs$silent
+    if(test) apollo_print(paste0('Apollo found a model component of type ', modelType,
+                                 ' without a componentName. The name was set to "',
+                                 el_settings[['componentName']],'" by default.'))
   }
-  if(is.null(el_settings[["rows"]])) el_settings[["rows"]]="all"
-  
-  alternatives = el_settings[["alternatives"]]
-  avail        = el_settings[["avail"]]
-  choiceVars   = el_settings[["choiceVars"]]
-  V            = el_settings[["V"]]
-  scales       = el_settings[["scales"]]
-  rows         = el_settings[["rows"]]
-  
-  stages=length(choiceVars)
-  nObs <- tryCatch(nrow( get("apollo_inputs", parent.frame(), inherits=FALSE)$database ),
-                   error=function(e){
-                     lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-                     lenA <- sapply(avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-                     lenC <- sapply(choiceVars, length)
-                     return(max(lenV, lenA, lenC))
-                   })
-  
-  ### Format checks
-  # alternatives
-  test <- is.vector(alternatives) & !is.null(names(alternatives))
-  if(!test) stop("The \"alternatives\" argument for model component \"",componentName,"\" needs to be a named vector")
-  # avail
-  test <- is.list(avail) || (length(avail)==1 && avail==1)
-  if(!test) stop("The \"avail\" argument for model component \"",componentName,"\" needs to be a list or set to 1")
-  if(is.list(avail)){
-    lenA <- sapply(avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-    test <- all(lenA==nObs | lenA==1)
-    if(!test) stop("All entries in \"avail\" for model component \"",componentName,"\" need to be a scalar or a vector with one entry per observation in the \"database\"")
+  ### Check for duplicated modelComponent name
+  if(functionality=="validate"){
+    apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
+    apollo_modelList <- c(apollo_modelList, el_settings$componentName)
+    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", el_settings$componentName,
+                                             "). Names must be different for each component.")
+    assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
-  # choiceVar
-  test <- is.list(choiceVars) && (stages==length(V)-1)
-  if(!test) stop("The \"choiceVars\" argument for model component \"",componentName,"\" needs to be a list, with one vector per stage, each with one entry per observation in the \"database\"")
-  # V
-  if(!is.list(V)) stop("The \"V\" argument for model component \"",componentName,"\" needs to be a list")
-  lenV <- sapply(V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
-  test <- all(lenV==nObs | lenV==1)
-  if(!test) stop("Each element of \"V\" for model component \"",componentName,"\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")  
-  if(length(scales)!=stages) stop("The object \"scales\" for model component \"",componentName,"\" needs to be the same length as the number of stages, i.e. one less than the number of alternatives!")
-  # rows
-  test <- is.vector(rows) && ( (is.logical(rows) && length(rows)==nObs) || (length(rows)==1 && rows=="all") )
-  if(!test) stop("The \"rows\" argument for model component \"",componentName,"\" needs to be \"all\" or a vector of boolean statements with one entry per observation in the \"database\"")
-  # functionality
-  test <- functionality %in% c("estimate","prediction","validate","zero_LL","conditionals","output","raw")
-  if(!test) stop("Non-permissable setting for \"functionality\" for model component \"",componentName,"\"")
+  
+  # ############################################### #
+  #### Load pre-processing or do it if necessary ####
+  # ############################################### #
+  # Fetch apollo_inputs
+  apollo_inputs = tryCatch(get("apollo_inputs", parent.frame(), inherits=FALSE),
+                           error=function(e) return( list(apollo_control=list(cpp=FALSE)) ))
+  
+  if( !is.null(apollo_inputs[[paste0(el_settings$componentName, "_settings")]]) && (functionality!="preprocess") ){
+    
+    # Load el_settings from apollo_inputs
+    tmp <- apollo_inputs[[paste0(el_settings$componentName, "_settings")]]
+    # If there is no V inside the loaded el_settings, restore the one received as argument
+    if(is.null(tmp$V)) tmp$V <- el_settings$V
+    if(is.null(tmp$scales)) tmp$scales <- el_settings$scales
+    el_settings <- tmp
+    rm(tmp)
+    
+  } else { ### Do pre-processing
+    ### Do pre-processing
+    # Do pre-processing common to most models
+    el_settings <- apollo_preprocess(inputs = el_settings, modelType, 
+                                      functionality, apollo_inputs)
+    
+    # Determine which likelihood to use (R or C++)
+    if(apollo_inputs$apollo_control$cpp && !apollo_inputs$silent) apollo_print("No C++ optimisation available for EL components.")
+    # Using R likelihood
+    el_settings$probs_EL <- function(el_settings){
+      # Set utility of unavailable alternatives to 0 to avoid numerical issues (eg attributes = -999)
+      el_settings$V <- mapply(function(v,a) apollo_setRows(v, !a, 0), el_settings$V, el_settings$avail[[1]], SIMPLIFY=FALSE)
+      # Loop over stages, calculating the loglikelihood for each of them
+      for(s in 1:el_settings$stages){
+        # scale V's
+        Vs <- lapply(el_settings$V, "*", el_settings$scales[[s]])
+        # Substract V of chosen alternative to all other Vs and take their exponential
+        Vi <- Reduce("+", mapply("*", el_settings$Y[[s]], Vs, SIMPLIFY=FALSE))
+        Vs <- lapply(Vs, "-", Vi)
+        Vs <- lapply(Vs, exp)
+        # consider availabilities (it assumes V and avail are in the same order)
+        Vs <- mapply('*', Vs, el_settings$avail[[s]], SIMPLIFY=FALSE)
+        # calculate the denominator of the Logit probability expression
+        denom <- Reduce('+', Vs)
+        denom[el_settings$choiceVars[[s]]==-1 | !el_settings$chosenAvail[[s]]] <- 1
+        if(s==1) P <- -log(denom) else P <- P - log(denom)
+      }
+      # Transform loglikelihood to likelihood
+      P <- exp(P)
+      return(P)
+    }
+    
+    # Construct necessary input for gradient (including gradient of utilities)
+    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
+                            error=function(e) return(NULL))
+    test <- !is.null(apollo_beta) && (functionality %in% c("preprocess", "gradient"))
+    test <- test && all(sapply(el_settings$V, is.function))
+    test <- test && apollo_inputs$apollo_control$analyticGrad
+    el_settings$gradient <- FALSE
+    if(test){
+      el_settings$dV       <- apollo_dVdB(apollo_beta, apollo_inputs, el_settings$V)
+      #el_settings$gradient <- !is.null(el_settings$dV)
+    }; rm(test)
+    
+    # Return settings without V if pre-processing
+    if(functionality=="preprocess"){
+      # Remove things that change from one iteration to the next
+      el_settings$V      <- NULL
+      if(!el_settings$fixedScales) el_settings$scales <- NULL
+      return(el_settings)
+    }
+    
+  }
+  
+  # ############################################ #
+  #### Transform V into numeric and drop rows ####
+  # ############################################ #
+  
+  ### Execute V (makes sure we are now working with vectors/matrices/arrays and not functions)
+  ### changes 28 July: this had mnl instead of el
+  if(any(sapply(el_settings$V, is.function))) el_settings$V = lapply(el_settings$V, function(f) if(is.function(f)) f() else f)
+  if(any(sapply(el_settings$scales, is.function))) el_settings$scales = lapply(el_settings$scales, function(f) if(is.function(f)) f() else f)
+  el_settings$V <- lapply(el_settings$V, function(v) if(is.matrix(v) && ncol(v)==1) as.vector(v) else v)
+  
+  ### Reorder V and drop rows if neccesary
+  el_settings$V <- el_settings$V[el_settings$altnames]
+  if(!all(el_settings$rows)) el_settings$V <- lapply(el_settings$V, apollo_keepRows, r=el_settings$rows)
+  # No need to drop rows in avail, choiceVar nor Y, as these are
+  # already filtered due to them not changing across iterations.
+  
   
   # ############################## #
   #### functionality="validate" ####
   # ############################## #
   
   if(functionality=="validate"){
-    # Store useful values
-    apollo_control <- tryCatch(get("apollo_inputs", parent.frame(), inherits=FALSE)$apollo_control,
-                               error = function(e) list(noValidation=FALSE, noDiagnostics=FALSE))
-    nObs  <- length(choiceVars[[1]])
-    nAlts <- length(V)
-    avail_set <- FALSE
-    altnames=names(alternatives)
-    altcodes=alternatives
-    if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(choiceVars[[1]]))
-    j=1
-    while(j<=length(choiceVars)){
-      choiceVars[[j]][!rows]=alternatives[1]
-      j=j+1
-    }
+    if(!apollo_inputs$apollo_control$noValidation) apollo_validate(el_settings, modelType, 
+                                                                   functionality, apollo_inputs)
     
-    # check rows statement
+    if(!apollo_inputs$apollo_control$noDiagnostics) apollo_diagnostics(el_settings, modelType, apollo_inputs)
     
-    # Check that alternatives are named in altcodes and V
-    if(is.null(altnames) || is.null(altcodes) || is.null(names(V))) stop("Alternatives for model component \"",componentName,"\" must be named, both in 'alternatives' and 'V'.")
-    
-    # Create availability if necessary
-    if(!is.list(avail)){
-      avail_set <- TRUE
-      avail <- vector(mode="list", length=nAlts)
-      avail <- lapply(avail, function(a) 1)
-      names(avail) <- altnames
-      #warning("Full availability of alternatives assumed for exploded logit component.")
-    }
-    # Reorder V to match altnames order, if necessary
-    if(any(altnames != names(V))) V <- V[altnames]
-    if(any(altnames != names(avail))) avail <- avail[altnames]
-    
-    if(apollo_control$noValidation==FALSE){
-      # Check that there are at least two alternatives
-      if(nAlts<3) stop("Model component \"",componentName,"\"  requires at least three alternatives")
-      
-      # Check that choice vector is not empty
-      if(nObs==0) stop("No data for model component \"",componentName,"\"")
-      
-      # Check that labels in choice match those in the utilities and availabilities
-      choiceLabs <- unique(choiceVars[[1]])
-      if(!all(altnames %in% names(V))) stop("The names of the alternatives for model component \"",componentName,"\" do not match those in \"V\".")
-      if(!all(altnames %in% names(avail))) stop("The names of the alternatives for model component \"",componentName,"\" do not match those in \"avail\".")
-      
-      # Check that there are no values in the choice column for undefined alternatives
-      if(!all(choiceLabs %in% altcodes)) stop("The data contains values for \"choiceVar\" for model component \"",componentName,"\" that are not included in \"alternatives\".")
-      
-      # create new availabilities list, with one list per stage
-      avail_new=list()
-      avail_new[[1]]=avail
-      s=2
-      while(s<=stages){
-        avail_new[[s]]=avail_new[[s-1]]
-        j=1
-        while(j<=nAlts)
-        {
-          avail_new[[s]][j]=lapply(avail_new[[s]][j],"*",(choiceVars[[s-1]]!=j))
-          j=j+1
-        }
-        s=s+1
-      }
-      
-      # check that nothing unavailable is chosen
-      s=1
-      while(s<=stages){
-        avail=avail_new[[s]]
-        choiceVar=choiceVars[[s]]
-        chosenunavail=0
-        j=1
-        while(j <= length(altnames)){
-          if(sum((choiceVar==altcodes[j])*(avail[[j]]==0)*rows)) chosenunavail=1
-          j=j+1
-        }
-        if(chosenunavail==1) stop("Some alternative(s) for model component \"",componentName,"\" chosen despite being listed as unavailable in stage ",s,"\n")
-        
-        # check that all availabilities are either 0 or 1
-        for(i in 1:length(avail)) if( !all(unique(avail[[i]]) %in% 0:1) ) stop("Some availability values for model component \"",componentName,"\" are not 0 or 1.")
-        s=s+1
-      }
-      
-      # Set utility of unavailable alternatives and excluded rows to 0 to avoid numerical issues
-      V <- mapply(function(v,a) apollo_setRows(v, !a | !rows, 0), V, avail, SIMPLIFY=FALSE)
-      if(any(sapply(V, anyNA))) cat("\nAt least one utility for model component \"",componentName,"\" contains one or more NA values")
-      
-      
-    }
-    
-    if(apollo_control$noDiagnostics==FALSE){
-      #if(avail_set==TRUE) warning("Availability not provided to 'apollo_el' (or some elements are NA). Full availability assumed.")
-      
-      content <- list()
-      s=1
-      while(s<=stages){
-        avail=avail_new[[s]]
-        choiceVar=choiceVars[[s]]
-        # turn scalar availabilities into vectors
-        for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs)
-        
-        # Construct summary table of availabilities and market share
-        availprint = colSums(rows*matrix(unlist(avail), ncol = length(avail))) # number of times each alt is available
-        choicematrix = matrix(0,nrow=4,ncol=length(altnames))
-        choicematrix[1,] = availprint
-        j=1
-        while(j<= length(altnames)){
-          choicematrix[2,j] = sum(choiceVar==altcodes[j] & rows) # number of times each alt is chosen
-          j=j+1
-        }
-        choicematrix[3,] = choicematrix[2,]/sum(rows)*100 # market share
-        choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 # market share controlled by availability
-        choicematrix[4,!is.finite(choicematrix[4,])] <- 0
-        rownames(choicematrix) = c("Times available","Times chosen","Percentage chosen overall","Percentage chosen when available")
-        colnames(choicematrix) = altnames
-        #cat(paste("Overview of choices for exploded logit model component, stage ",s,":\n",sep=""))
-        #print(round(choicematrix,2))
-        content[[length(content) + 1]] <- paste("Overview of choices for model component \"",componentName,"\", stage ",s,":\n",sep="")
-        content[[length(content) + 1]] <- round(choicematrix,2)
-        
-        # Check if there are shorter rankings
-        noAltAvail <- sum(Reduce("+", avail_new[[s]])==0)
-        if (noAltAvail>0) cat("There are ", noAltAvail, " observation(s) with no available alternatives in stage ", s, ".\n", sep="")
-        #cat("\n")
-        if(any(choicematrix[4,]==0)) content[[length(content) + 1]] <- "Warning: some alternatives are never chosen in your data!"
-        if(any(choicematrix[4,]==1)) content[[length(content) + 1]] <- "Warning: some alternatives are always chosen when available!"
-        s=s+1
-      }
-      if(avail_set==TRUE) content[[length(content)+1]] <- paste0("Warning: Availability not provided (or some elements are NA).",
-                                                                 "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
-      apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-      apollo_addLog(title   = paste0("Overview of choices  for model component \"",componentName,"\":"), 
-                    content = content, apolloLog)
-    }
-    
-    testL=apollo_el(el_settings, functionality="estimate")
-    if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"",componentName,"\"")
-    if(any(testL==0)) cat("\nSome observations have zero probability at starting value for model component \"",componentName,"\"")
+    testL <- el_settings$probs_EL(el_settings)
+    testL <- apollo_insertRows(testL, el_settings$rows, 1)
+    if(all(testL==0)) stop("All observations have zero probability at starting value for model component \"", el_settings$componentName,"\"")
+    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("Some observations have zero probability at starting value for model component \"", el_settings$componentName,"\"", sep=""))
     return(invisible(testL))
   }
   
@@ -240,97 +166,23 @@ apollo_el <- function(el_settings, functionality){
   # ############################## #
   
   if(functionality=="zero_LL"){
-    # Store useful values
-    nObs  <- length(choiceVars[[1]])
-    nAlts <- length(V)
-    avail_set <- FALSE
-    altnames=names(alternatives)
-    altcodes=alternatives
-    if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(choiceVars[[1]]))
-    j=1
-    while(j<=length(choiceVars)){
-      choiceVars[[j]][!rows]=alternatives[1]
-      j=j+1
+    P <- rep(1, el_settings$nObs)
+    for(s in 1:el_settings$stages){
+      nAvail <- Reduce("+", el_settings$avail[[s]])
+      if(length(nAvail)>1) nAvail[el_settings$choiceVars[[s]]==-1 | nAvail==0] <- 1
+      P <- P*1/nAvail
     }
-    # Create availability if necessary
-    if(!is.list(avail)){
-      avail_set <- TRUE
-      avail <- vector(mode="list", length=nAlts)
-      avail <- lapply(avail, function(a) 1)
-      names(avail) <- altnames
-    }
-    
-    if(!anyNA(avail)) if(any(altnames != names(avail))) avail <- avail[altnames]
-    for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs) # turn scalar availabilities into vectors
-    # create new availabilities list, with one list per stage
-    avail_new=list()
-    avail_new[[1]]=avail
-    nAvAlt <- rowSums(matrix(unlist(avail), ncol = length(avail))) # number of available alts in each observation
-    P = 1/nAvAlt # likelihood at zero
-    s=2
-    while(s<=stages){
-      avail_new[[s]]=avail_new[[s-1]]
-      j=1
-      while(j<=nAlts)
-      {
-        avail_new[[s]][j]=lapply(avail_new[[s]][j],"*",(choiceVars[[s-1]]!=j))
-        j=j+1
-      }
-      nAvAlt <- rowSums(matrix(unlist(avail_new[[s]]), ncol = length(avail_new[[s]]))) # number of available alts in each observation
-      P = P*1/nAvAlt # likelihood at zero
-      s=s+1
-    }
-    P[!rows] = 1
+    if(any(!el_settings$rows)) P <- apollo_insertRows(P, el_settings$rows, 1)
     return(P)
   }
   
-  # ############################################################ #
-  #### functionality="estimate/conditionals/raw"              ####
+  # ###################################################### #
+  #### functionality="estimate/conditionals/raw/output" ####
   # ############################################################ #
   
-  if(functionality %in% c("estimate","conditionals","raw")){
-    
-    nObs  <- length(choiceVars[[1]])
-    nAlts <- length(V)
-    avail_set <- FALSE
-    if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(choiceVars[[1]]))
-    
-    # Create availability if necessary
-    if(!is.list(avail)){
-      avail_set <- TRUE
-      avail <- setNames(as.list(rep(1,nAlts)), names(alternatives))
-    }
-    
-    # create new availabilities list, with one list per stage
-    avail_new = list(avail)
-    s=2
-    while(s<=stages){
-      avail_new[[s]] = mapply(function(a,j) a*(choiceVars[[s-1]]!=j), avail_new[[s-1]], as.list(1:nAlts), SIMPLIFY=FALSE)
-      s=s+1
-    }
-    
-    mnl_settings=list(
-       alternatives = alternatives,
-       avail        = avail_new[[1]],
-       choiceVar    = choiceVars[[1]],
-       V            = lapply(V,"*",scales[[1]]),
-       rows         = rows
-     )
-    
-    # Calculate MNL for each stage
-    P = apollo_mnl(mnl_settings, functionality) # 1st stage
-    s=2
-    while(s<=stages){
-      # Update settings
-      mnl_settings$avail     = avail_new[[s]]
-      mnl_settings$choiceVar = choiceVars[[s]]
-      mnl_settings$V         = lapply(V,"*",scales[[s]])
-      mnl_settings$rows      = mnl_settings$rows & (Reduce("+", avail_new[[s]])>0)
-      # Calculate probabilities
-      P=P*apollo_mnl(mnl_settings, functionality)
-      s=s+1
-    }
-    
+  if(functionality %in% c("estimate","conditionals","raw","output")){
+    P <- el_settings$probs_EL(el_settings)
+    P <- apollo_insertRows(P, el_settings$rows, 1)
     return(P)
   }
   
@@ -339,82 +191,29 @@ apollo_el <- function(el_settings, functionality){
   # ################################ #
   
   if(functionality=="prediction"){
+    if(!apollo_inputs$silent) apollo_print('Prediction not implemented for exploded logit models.')
     return(NA)
   }
   
   # ############################## #
-  #### functionality="output" ####
+  #### functionality="gradient" ####
   # ############################## #
   
-  if(functionality=="output"){
-    
-    # Store useful values
-    nObs  <- length(choiceVars[[1]])
-    nAlts <- length(V)
-    altnames <- names(alternatives)
-    altcodes <- alternatives
-    avail_set <- FALSE
-    if(length(rows)==1 && rows=="all") rows=rep(TRUE,length(choiceVars[[1]]))
-    
-    # Create availability if necessary
-    if(!is.list(avail)){
-      avail_set <- TRUE
-      avail <- setNames(as.list(rep(1,nAlts)), names(alternatives))
-    }
-    
-    P = apollo_el(el_settings, functionality="estimate")
-    
-    
-    # create new availabilities list, with one list per stage
-    avail_new = list(avail)
-    for(s in 2:stages){
-      avail_new[[s]] = avail_new[[s-1]]
-      for(j in 1:nAlts) avail_new[[s]][j] = lapply(avail_new[[s]][j],"*",(choiceVars[[s-1]]!=j))
-    }
-    
-    ### Write to apolloLog
-    content <- list()
-    s=1
-    while(s<=stages){
-      avail=avail_new[[s]]
-      choiceVar=choiceVars[[s]]
-      # turn scalar availabilities into vectors
-      for(i in 1:length(avail)) if(length(avail[[i]])==1) avail[[i]] <- rep(avail[[i]], nObs)
-      
-      # Construct summary table of availabilities and market share
-      availprint = colSums(rows*matrix(unlist(avail), ncol = length(avail))) # number of times each alt is available
-      choicematrix = matrix(0,nrow=4,ncol=length(altnames))
-      choicematrix[1,] = availprint
-      j=1
-      while(j<= length(altnames)){
-        choicematrix[2,j] = sum(choiceVar==altcodes[j] & rows) # number of times each alt is chosen
-        j=j+1
-      }
-      choicematrix[3,] = choicematrix[2,]/sum(rows)*100 # market share
-      choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 # market share controlled by availability
-      choicematrix[4,!is.finite(choicematrix[4,])] <- 0
-      rownames(choicematrix) = c("Times available","Times chosen","Percentage chosen overall","Percentage chosen when available")
-      colnames(choicematrix) = altnames
-      #cat(paste("Overview of choices for exploded logit model component, stage ",s,":\n",sep=""))
-      #print(round(choicematrix,2))
-      content[[length(content) + 1]] <- paste("Overview of choices for model component \"",componentName,"\", stage ",s,":\n",sep="")
-      content[[length(content) + 1]] <- round(choicematrix,2)
-      
-      # Check if there are shorter rankings
-      noAltAvail <- sum(Reduce("+", avail_new[[s]])==0)
-      if (noAltAvail>0) cat("There are ", noAltAvail, " observation(s) with no available alternatives in stage ", s, ".\n", sep="")
-      if(any(choicematrix[4,]==0)) content[[length(content) + 1]] <- "Warning: some alternatives are never chosen in your data!" #cat("Warning: some alternatives are never chosen in your data!\n")
-      if(any(choicematrix[4,]==1)) content[[length(content) + 1]] <- "Warning: some alternatives are always chosen when available!" #cat("Warning: some alternatives are always chosen when available!\n")
-      s=s+1
-    }
-    if(avail_set==TRUE) content[[length(content)+1]] <- paste0("Warning: Availability not provided (or some elements are NA).",
-                                                               "\n", paste0(rep(" ",9),collapse=""),"Full availability assumed.")
-    apolloLog <- tryCatch(get("apollo_inputs", parent.frame(), inherits=TRUE )$apolloLog, error=function(e) return(NA))
-    apollo_addLog(title   = paste0("Overview of choices  for model component \"",componentName,"\":"), 
-                  content = content, apolloLog)
-    apollo_reportModelTypeLog(modelType="EL", apolloLog)
-    
+  if(functionality=="gradient"){
+    if(!apollo_inputs$silent) apollo_print('Gradient not implemented for exploded logit models')
+    return(NA)
+  }
+  
+  # ############ #
+  #### Report ####
+  # ############ #
+  if(functionality=='report'){
+    P <- list()
+    apollo_inputs$silent <- FALSE
+    P$data  <- capture.output(apollo_diagnostics(el_settings, modelType, apollo_inputs, param=FALSE))
+    P$param <- capture.output(apollo_diagnostics(el_settings, modelType, apollo_inputs, data =FALSE))
     return(P)
   }
+    
 }
 

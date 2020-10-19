@@ -10,7 +10,7 @@ apollo_makeLogLike(
   apollo_probabilities,
   apollo_inputs,
   apollo_estSet,
-  cl = NA
+  cleanMemory = FALSE
 )
 }
 \arguments{
@@ -30,7 +30,9 @@ apollo_makeLogLike(
 \item{apollo_estSet}{List of estimation options. It must contain at least one element called
 estimationRoutine defining the estimation algorithm. See \link{apollo_estimate}.}
 
-\item{cl}{Cluster as provided by \link[parallel]{makeCluster}. Assumed to be PSock.}
+\item{cleanMemory}{Logical. If TRUE, then \code{apollo_inputs$draws} and \code{apollo_inputs$database} are erased
+throughout the calling stack. Used to reduce memory usage in case of multithreading and a large
+database or number o draws.}
 }
 \value{
 apollo_logLike function.

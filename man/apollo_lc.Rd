@@ -25,6 +25,7 @@ apollo_lc(lc_settings, apollo_inputs, functionality)
   \item "conditionals" Used for calculating conditionals.
   \item "output" Used for preparing output after model estimation.
   \item "raw" Used for debugging.
+  \item "components" Returns \code{P} without changes.
 }}
 }
 \value{
@@ -41,15 +42,4 @@ The returned object depends on the value of argument \code{functionality} as fol
 }
 \description{
 Using the conditional likelihoods of each latent class, as well as teir classification probabilities, calculate the weighted likelihood of the whole model.
-}
-\examples{
-data(apollo_modeChoiceData)
-database <- apollo_modeChoiceData
-rm(apollo_modeChoiceData)
-N <- nrow(database)
-lc_settings <- list(inClassProb=list(rnorm(N), rnorm(N)),
-                    classProb=list(stats::runif(N), stats::runif(N)))
-apollo_control <- list(indivID="ID")
-x <- apollo_lc(lc_settings, apollo_control, functionality="estimate")
-summary(x)
 }

@@ -22,17 +22,22 @@
 #' @param silent Boolean. If true, then no information is printed to console or default output. FALSE by default.
 #' @return List. Each element is an array of draws representing a random component of the mixing model.
 #' @importFrom randtoolbox halton sobol
+#' @export
 apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   apollo_control = apollo_inputs[["apollo_control"]]
   d              = apollo_inputs[["apollo_draws"]]
   database       = apollo_inputs[["database"]]
 
   if(!apollo_control$mixing) return(NA)
+  
+  if(is.null(d$antithetic)) antithetic=FALSE else antithetic=d$antithetic
+  if(!length(antithetic)==1 || !is.logical(antithetic)) stop("Setting \"antithetic\" should be a logical value.")
 
   # ################################## #
   #### Input validation             ####
   # ################################## #
-
+  if(d$interNDraws==1 | d$intraNDraws==1) stop("Number of draws should be greater than 1.")
+  
   testEGen <- rep(FALSE, 5)
   testEUsr    <- !is.null(d$interDrawsType) && d$interDrawsType!="" && length(d$interDrawsType)==1 && ( !(tolower(d$interDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka')) && exists(d$interDrawsType, envir=globalenv()) )
   testEGen[1] <- !is.null(d$interDrawsType) && d$interDrawsType!="" && length(d$interDrawsType)==1 && (tolower(d$interDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka'))
@@ -62,7 +67,8 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
     d$intraNormDraws=c()
   }
   
-  
+  if(!apollo_inputs$apollo_control$panelData & d$intraNDraws>0) stop("\nIntra-person draws are used without a panel structure. This is not allowed!")
+  if(antithetic && (testEUsr | testAUsr)) stop("\nAntithetic draws cannot be used with user provided draws!")
   # Validate input
   if(!testEUsr & !all(testEGen) & !testAUsr & !all(testAGen)){
     if(!testEGen[1] | !testAGen[1]) stop("Type of draws must be 'halton', 'mlhs', 'pmc', 'sobol','sobolOwen','sobolFaureTezuka' or 'sobolOwenFaureTezuka' to generate draws, or the name of a variable containing user generated draws.")
@@ -70,8 +76,12 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
     if(!testEGen[5] | !testAGen[5]) stop("No names for the draws were specified.")
   }
   
+  allNames=c(d$interUnifDraws, d$interNormDraws,d$intraUnifDraws, d$intraNormDraws)
+  if(length(allNames)>length(unique(allNames))) stop("The same name was used for multiple sets of draws!")
+  
   test <- c("interDrawsType", "interNDraws", "interUnifDraws", "interNormDraws", 
-            "intraDrawsType", "intraNDraws", "intraUnifDraws", "intraNormDraws")
+            "intraDrawsType", "intraNDraws", "intraUnifDraws", "intraNormDraws",
+            "antithetic")
   test <- names(d) %in% test
   if(any(!test)){
     txt <- paste0("Some elements in apollo_draws (", paste0(names(d)[!test], collapse=", "),
@@ -79,7 +89,13 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
     stop(txt)
   }
 
-
+  ### SH 17/4/2020
+  countHalton=0
+  if(!is.na(d$interDrawsType)&&(tolower(d$interDrawsType)=='halton')) countHalton=countHalton+length(c(d$interUnifDraws, d$interNormDraws))
+  if(!is.na(d$intraDrawsType)&&(tolower(d$intraDrawsType)=='halton')) countHalton=countHalton+length(c(d$intraUnifDraws, d$intraNormDraws))
+  if(countHalton>5) cat("\nYour model is using Halton draws in",countHalton,"dimensions. You should consider a different type of draws to avoid issues with collinearity!\n")
+  
+  
   # ################################## #
   #### Initialisation                ####
   # ################################## #
@@ -87,8 +103,8 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   panelData <- apollo_control$panelData
   indivID   <- database[,apollo_control$indivID]
 
-  if(is.null(apollo_control$seed_draws)) apollo_control$seed_draws=13
-  set.seed(apollo_control$seed_draws)
+  if(is.null(apollo_control$seed)) apollo_control$seed=13
+  set.seed(apollo_control$seed)
 
   nObs <- length(indivID)
   if(!panelData) indivID <- 1:nObs
@@ -103,7 +119,12 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   if(!testEUsr) d$interDrawsType <- tolower(d$interDrawsType)
   if(!testAUsr) d$intraDrawsType <- tolower(d$intraDrawsType)
 
-  # Function that expand the dimensions of a matrix of draws to whatever is necessary
+  if(antithetic){
+    nInter=ceiling(nInter/2)
+    nIntra=ceiling(nIntra/2) 
+  }
+  
+  # Function that expands the dimensions of a matrix of draws to whatever is necessary
   expand <- function(M, isInter){
     # Repeat rows if necesary
     if(isInter & nrow(M)<nObs){
@@ -255,12 +276,35 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
     if(!silent) cat(" Done\n")
   }
 
+  # ################################### #
+  #### Applying antithetic transform ####
+  # ################################### #
 
+  if(antithetic) for(i in 1:length(drawsList)){
+    isInter  <- names(drawsList)[i] %in% c(d$interUnifDraws, d$interNormDraws)
+    isUnif   <- names(drawsList)[i] %in% c(d$interUnifDraws, d$intraUnifDraws)
+    if(is.matrix(drawsList[[i]])) drawsList[[i]] <- cbind(drawsList[[i]], ifelse(isUnif, 1, 0)-drawsList[[i]])
+    if(is.array(drawsList[[i]]) && length(dim(drawsList[[i]]))==3){
+      tmp      <- dim(drawsList[[i]])
+      tmp[2:3] <- 2*tmp[2:3]
+      tmp      <- array(0, tmp)
+      if(isInter){
+        tmp[,1:nInter             ,] <- drawsList[[i]]
+        tmp[,(nInter+1):(2*nInter),] <-  - drawsList[[i]]
+      } else {
+        tmp[,,1:nIntra             ] <- drawsList[[i]]
+        tmp[,,(nIntra+1):(2*nIntra)] <- ifelse(isUnif, 1, 0) - drawsList[[i]]
+      }
+      drawsList[[i]] <- tmp
+    }
+  }
+  
   # ################################## #
   #### Returning draws              ####
   # ################################## #
 
   if(!panelData & dimInter>0) cat("Inter-person draws are being used without a panel structure.\n")
+  if(antithetic) cat("Antithetic draws were used for each dimension, meaning that the number of original draws used is half that entered by the user")
 
   return(drawsList)
 }

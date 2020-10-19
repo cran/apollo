@@ -30,6 +30,11 @@
 #' @importFrom graphics matplot title legend
 #' @export
 apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, speedTest_settings=NA){
+  
+  # # # # # # # # # # #
+  #### Initialise  ####
+  # # # # # # # # # # #
+  
   tmp <- parallel::detectCores(); if(is.na(tmp)) tmp <- 3
   default <- list(nDrawsTry = c(50, 100, 200),
                   nCoresTry = 1:tmp,
@@ -39,33 +44,36 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
   for(i in tmp)  speedTest_settings[[i]] <- default[[i]]
   rm(tmp, default)
   
-  database         = apollo_inputs[["database"]]
-  apollo_control   = apollo_inputs[["apollo_control"]]
-  apollo_draws     = apollo_inputs[["apollo_draws"]]
-  apollo_randCoeff = apollo_inputs[["apollo_randCoeff"]]
+  apollo_inputs$silent <- TRUE
+  
   nDrawsTry        = speedTest_settings[["nDrawsTry"]]
   nCoresTry        = speedTest_settings[["nCoresTry"]]
   nRep             = speedTest_settings[["nRep"]]
-  apollo_lcPars    = apollo_inputs[["apollo_lcPars"]]
-  apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
+  apollo_checkArguments(apollo_probabilities,apollo_inputs$apollo_randCoeff,apollo_inputs$apollo_lcPars)
   
-  if(apollo_control$mixing){
-    if(anyNA(apollo_draws)) stop("Argument 'apollo_draws' must be provided when estimating mixture models.")
-    if(!is.function(apollo_randCoeff)) stop("Argument 'apollo_randCoeff' must be provided when estimating mixture models.")
+  ### Checks
+  if(apollo_inputs$apollo_control$HB) stop("The function 'apollo_speedTest' is not applicable for models estimated using HB.")
+  if(apollo_inputs$apollo_control$mixing){
+    if(anyNA(apollo_inputs$apollo_draws)) stop("Argument 'apollo_draws' must be provided when estimating mixture models.")
+    if(!is.function(apollo_inputs$apollo_randCoeff)) stop("Argument 'apollo_randCoeff' must be provided when estimating mixture models.")
   }
-  if(!apollo_control$mixing){
-    apollo_draws <- list(interUnifDraws=c(), interNormDraws=c(), interNDraws=0,
+  if(!apollo_inputs$apollo_control$mixing){
+    apollo_inputs$apollo_draws <- list(interUnifDraws=c(), interNormDraws=c(), interNDraws=0,
                          intraUnifDraws=c(), intraNormDraws=c(), intraNDraws=0)
     nDrawsTry <- 0
-    apollo_randCoeff <- NA
+    apollo_inputs$apollo_randCoeff <- NA
   }
   
-  usesInter <- (length(apollo_draws$interUnifDraws) + length(apollo_draws$interNormDraws))>0 &
-    apollo_draws$interNDraws>0
-  usesIntra <- (length(apollo_draws$intraUnifDraws) + length(apollo_draws$intraNormDraws))>0 &
-    apollo_draws$intraNDraws>0
-  if(!usesInter) apollo_draws$interNDraws <- 0
-  if(!usesIntra) apollo_draws$intraNDraws <- 0
+  usesInter <- (length(apollo_inputs$apollo_draws$interUnifDraws) + length(apollo_inputs$apollo_draws$interNormDraws))>0 &
+    apollo_inputs$apollo_draws$interNDraws>0
+  usesIntra <- (length(apollo_inputs$apollo_draws$intraUnifDraws) + length(apollo_inputs$apollo_draws$intraNormDraws))>0 &
+    apollo_inputs$apollo_draws$intraNDraws>0
+  if(!usesInter) apollo_inputs$apollo_draws$interNDraws <- 0
+  if(!usesIntra) apollo_inputs$apollo_draws$intraNDraws <- 0
+  
+  # # # # # # # # # #
+  #### Main Loop ####
+  # # # # # # # # # #
   
   cat("       ___Draws___              sec/")
   cat("\nnCores inter intra  progress  LLCall RAM(MB)")
@@ -89,9 +97,9 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
         apollo_inputs$draws <- apollo_makeDraws(apollo_inputs, silent=TRUE)
       } else draws <- NA
       
-      if(apollo_inputs$apollo_control$nCores>1){
-        cl <- apollo_makeCluster(apollo_probabilities, apollo_inputs, silent=TRUE)
-      } else cl <- NA
+      #if(apollo_inputs$apollo_control$nCores>1){
+      #  cl <- apollo_makeCluster(apollo_probabilities, apollo_inputs, silent=TRUE)
+      #} else cl <- NA
       
       theta_var_val <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
       theta_fix_val <- apollo_beta[apollo_fixed]
@@ -101,7 +109,7 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
       deltaTheta <- theta_max - theta_min
       
       apollo_estSet  <- list(estimationRoutine="bfgs", maxIterations=2, writeIter=FALSE, hessianRoutine="none", printLevel=0, silent=FALSE)
-      apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, apollo_estSet, cl=cl)
+      apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, apollo_estSet)
       
       t0 <- Sys.time()
       
@@ -119,13 +127,13 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
       
       mbRAM <- sum(gc()[,2])
       if(apollo_inputs$apollo_control$nCores>1){
-        gcClusters <- parallel::clusterCall(cl, gc)
+        gcClusters <- parallel::clusterCall(environment(apollo_logLike)$cl, gc)
         gcClusters <- Reduce('+',lapply(gcClusters, function(x) sum(x[,2])))
         mbRAM <- mbRAM + gcClusters
       }
       cat(' ', sprintf("%7.1f", mbRAM), sep='')
       
-      if(apollo_inputs$apollo_control$nCores>1) parallel::stopCluster(cl)
+      if(exists('apollo_logLike') && !anyNA(environment(apollo_logLike)$cl)) parallel::stopCluster(environment(apollo_logLike)$cl)
     }
   }
   cat("\n")
@@ -138,8 +146,8 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
           lab=c(length(nCoresTry), length(nDrawsTry), 1),
           pch=1:length(nDrawsTry), col=1:length(nDrawsTry),
           xlab='Number of cores', ylab='Avg. time per call to apollo_probabilities (sec)') 
-  graphics::title(apollo_control$modelName)
-  if(apollo_control$mixing) graphics::legend("topright", legend = colnames(timeTaken),
+  graphics::title(apollo_inputs$apollo_control$modelName)
+  if(apollo_inputs$apollo_control$mixing) graphics::legend("topright", legend = colnames(timeTaken),
                                    pch=1:length(nDrawsTry), col=1:length(nDrawsTry), lty=1,
                                    bg='transparent', bty='n', horiz=TRUE) 
   

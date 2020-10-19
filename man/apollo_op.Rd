@@ -10,8 +10,8 @@ apollo_op(op_settings, functionality)
 \item{op_settings}{List of settings for the OP model. It should include the following.
 \itemize{
   \item \code{outcomeOrdered} Numeric vector. Dependant variable. The coding of this variable is assumed to be from 1 to the maximum number of different levels. For example, if the ordered response has three possible values: "never", "sometimes" and "always", then it is assumed that outcomeOrdered contains "1" for "never", "2" for "sometimes", and 3 for "always". If another coding is used, then it should be specified using the \code{coding} argument.
-  \item \code{V} Numeric vector. A single explanatory variable (usually a latent variable). Must have the same number of rows as outcomeOrdered.
-  \item \code{tau} Numeric vector. Thresholds. As many as number of different levels in the dependent variable - 1. Extreme thresholds are fixed at -inf and +inf. No mixing allowed in thresholds.
+  \item \code{V} Numeric vector/matrix/3-sim array. A single explanatory variable (usually a latent variable). Must have the same number of rows as outcomeOrdered.
+  \item \code{tau} List of numeric vectors/matrices/3-dim arrays. Thresholds. As many as number of different levels in the dependent variable - 1. Extreme thresholds are fixed at -inf and +inf. Mixing is allowed in thresholds. Can also be a matrix with as many rows as observations and as many columns as thresholds.
   \item \code{coding} Numeric or character vector. Optional argument. Defines the order of the levels in \code{outcomeOrdered}. The first value is associated with the lowest level of \code{outcomeOrdered}, and the last one with the highest value. If not provided, is assumed to be \code{1:(length(tau) + 1)}.
   \item \code{rows} Boolean vector. TRUE if a row must be considered in the calculations, FALSE if it must be excluded. It must have length equal to the length of argument \code{outcomeOrdered}. Default value is \code{"all"}, meaning all rows are considered in the calculation.
   \item \code{componentName} Character. Name given to model component.
@@ -50,7 +50,7 @@ y = 1 if -\infty < y^{*} < \tau_1,
     2 if \tau_1 < y^{*} < \tau_2,
     ...,
     max(y) if \tau_{max(y)-1} < y^{*} < \infty}
-Where \eqn{\epsilon} is distributed standard logistic, and the values 1, 2, ..., \eqn{max(y)} can be
+Where \eqn{\epsilon} is distributed standard normal, and the values 1, 2, ..., \eqn{max(y)} can be
 replaced by \code{coding[1], coding[2], ..., coding[maxLvl]}.
 The behaviour of the function changes depending on the value of the \code{functionality} argument.
 }

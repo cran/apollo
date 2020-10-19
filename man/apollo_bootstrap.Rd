@@ -10,8 +10,10 @@ apollo_bootstrap(
   apollo_probabilities,
   apollo_inputs,
   estimate_settings = list(estimationRoutine = "bfgs", maxIterations = 200, writeIter =
-    FALSE, hessianRoutine = "none", printLevel = 2L, silent = FALSE),
-  bootstrap_settings = list(nRep = 30, samples = NA, seed = 24)
+    FALSE, hessianRoutine = "none", printLevel = 2L, silent = FALSE, maxLik_settings =
+    list()),
+  bootstrap_settings = list(nRep = 30, samples = NA, seed = 24, calledByEstimate =
+    FALSE, recycle = TRUE)
 )
 }
 \arguments{
@@ -42,10 +44,23 @@ apollo_bootstrap(
                           rather than the individual level, which is not recommended for panel data.
   \item \strong{seed}: Numeric scalar (integer). Random number generator seed to generate the bootstrap samples.
                        Only used if \code{samples} is \code{NA}. Default is 24.
+  \item \strong{calledByEstimate}: Logical. TRUE if \code{apollo_bootstrap} is called by \code{apollo_estimate}. FALSE by default.
+  \item \strong{recycle}: Logical. If TRUE, the function will look for old output files and append new repetitions to them. If FALSE, output files will be overwritten.
 }}
 }
 \value{
-Covariance matrix of the \code{nRep} sets of estimated parameters. Also written to file.
+List with three elements.
+        \itemize{
+          \item \code{estimates}: Matrix containing the parameter estimates for each repetition. As many rows as repetitions and as many columns as parameters.
+          \item \code{varcov}: Covariance matrix of the estimated parameters across the repetitions.
+          \item \code{LL}: Vector of final loglikelihoods of each repetition.
+        }
+        This function also writes three output files to the working directory, with the following names ('x' represents the model name):
+        \itemize{
+          \item \strong{x_bootstrap_params.csv}: Table containing the parameter estimates, loglikelihood, and number of observations for each repetition.
+          \item \strong{x_bootstrap_samples.csv}: Table containing the description of the sample used in each repetition. Same format than \code{bootstrap_settings$samples}.
+          \item \strong{x_bootstrap_vcov}: Table containing the covariance matrix of estimated parameters across the repetitions.
+        }
 }
 \description{
 Samples individuals with replacement from the database, and estimates the model in each sample.

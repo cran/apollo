@@ -15,13 +15,14 @@
 #' @export
 apollo_lcUnconditionals <- function(model, apollo_probabilities, apollo_inputs){
   if(!is.function(apollo_inputs$apollo_lcPars)) stop("This function is for latent class models. For other models use \"apollo_unconditionals\".")
-  
+  if(is.null(apollo_inputs$silent)) silent = FALSE else silent = apollo_inputs$silent
   apollo_beta  = model$estimate
   apollo_fixed = model$apollo_fixed
 
-  cat("Updating inputs...")
-  apollo_inputs <- apollo_validateInputs(silent=TRUE)
-  cat("Done.\n")
+  #if(!silent) apollo_print("Updating inputs...")
+  #apollo_inputs <- apollo_validateInputs(silent=TRUE, recycle=TRUE)
+  ### Warn the user in case elements in apollo_inputs are different from those in the global environment
+  apollo_compareInputs(apollo_inputs)
 
   apollo_control   = apollo_inputs[["apollo_control"]]
   database         = apollo_inputs[["database"]]
@@ -69,6 +70,6 @@ apollo_lcUnconditionals <- function(model, apollo_probabilities, apollo_inputs){
     }
   }
   
-  cat("Unconditional distributions computed\n")
+  if(!silent) apollo_print("Unconditional distributions computed")
   return(unconditionals)
 }

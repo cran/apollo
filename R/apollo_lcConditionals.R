@@ -16,12 +16,14 @@
 apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
   if(!is.function(apollo_inputs$apollo_lcPars)) stop("This function is for latent class models. For other models use \"apollo_conditionals\".")
   
-  apollo_beta    = model$estimate
-  apollo_fixed   = model$apollo_fixed
-
-  cat("Updating inputs...")
-  apollo_inputs <- apollo_validateInputs(silent=TRUE)
-  cat("Done.\n")
+  if(is.null(apollo_inputs$silent)) silent = FALSE else silent = apollo_inputs$silent
+  apollo_beta  = model$estimate
+  apollo_fixed = model$apollo_fixed
+  
+  #if(!silent) apollo_print("Updating inputs...")
+  #apollo_inputs <- apollo_validateInputs(silent=TRUE, recycle=TRUE)
+  ### Warn the user in case elements in apollo_inputs are different from those in the global environment
+  apollo_compareInputs(apollo_inputs)
   
   apollo_control = apollo_inputs[["apollo_control"]]
   database       = apollo_inputs[["database"]]
@@ -36,7 +38,7 @@ apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
   ### Validation
   if(apollo_control$mixing) stop("apollo_lcConditionals can only be used for latent class models without continuous random heterogeneity")
   
-  cat("Calculating conditionals...")
+  if(!silent) apollo_print("Calculating conditionals...")
   ### Get allocation and inClass probs
   lcpars = with(c(apollo_beta, apollo_inputs$database, apollo_inputs$draws), {
     environment(apollo_lcPars) <- environment()
@@ -56,9 +58,9 @@ apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
   ### Prepare output
   conditionals = matrix(unlist(post_pi), ncol = length(post_pi), byrow = FALSE)
   classnames   = paste("Class ",seq(1:classes),sep="")
-  rownames(conditionals) = c(unique(database[,apollo_control$indivID]))
-  colnames(conditionals) = c(classnames)
-  cat("Done.\n")
+  #rownames(conditionals) = c(unique(database[,apollo_control$indivID]))
+  conditionals=cbind(unique(database[,apollo_control$indivID]),conditionals)
+  colnames(conditionals) = c("ID",classnames)
   
   return(conditionals)
 }

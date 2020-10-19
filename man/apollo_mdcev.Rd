@@ -22,6 +22,7 @@ apollo_mdcev(mdcev_settings, functionality)
   \item \strong{\code{outside}}: Character. Optional name of the outside good.
   \item \strong{\code{rows}}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
   \item \strong{\code{componentName}}: Character. Name given to model component.
+  \item \strong{\code{nRep}}: Numeric scalar. Number of simulations of the whole dataset used for forecasting. The forecast is the average of these simulations. Default is 100.
 }}
 
 \item{functionality}{Character. Can take different values depending on desired output.
