@@ -15,5 +15,7 @@ apollo_insertScaling(e, sca)
 A function, expression, call or symbol with the corresponding variables scaled.
 }
 \description{
-It changes the syntax of the function by replacing variable names for their scaled form (e.g. x -> x*apollo_inputs$apollo_scale[["x"]])
+It changes the syntax of the function by replacing variable names for their scaled form, 
+e.g. x --> x*apollo_inputs$apollo_scale[["x"]]. In assignments, it only scales the
+right side of the assignment.
 }

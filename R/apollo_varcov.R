@@ -256,7 +256,8 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
     }
     # Calculate eigenvalues
     eigValue <- tryCatch(eigen(H, only.values=TRUE)$values, error=function(e) return(NA))
-    if(!silent && !anyNA(eigValue)){
+    if(!silent && is.complex(eigValue)) apollo_print('WARNING: Some eigenvalues of the Hessian are complex, indicating that the Hessian is not symmetrical.')
+    if(!silent && !anyNA(eigValue) && !is.complex(eigValue)){
       if(any(eigValue>0)) apollo_print("WARNING: Some eigenvalues of the Hessian are positive, indicating convergence to a saddle point!") 
       if(all(eigValue<0)) apollo_print(paste0("Negative definite Hessian with maximum eigenvalue: ",round(max(eigValue),6)))
     }
@@ -349,6 +350,6 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
   if(varcov_settings$scaleBeta) L$hessianScaling <- scaling else {
     L$hessianScaling <- environment(apollo_logLike)$apollo_inputs$apollo_scaling
   }
-  if(is.matrix(H)) L$eigValue = round(max(eigValue),6)
+  if(is.matrix(H) && !is.complex(eigValue)) L$eigValue = round(max(eigValue),6)
   return(L)
 }

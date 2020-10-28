@@ -257,19 +257,27 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
       } 
     } else {
       # Multi-core
-      parallel::clusterCall(environment(LL)$cl, function(h, cs, w){
-        apollo_inputs <- get('apollo_inputs', envir=globalenv())
-        if(!is.null(h) ) apollo_inputs$h                <- h
-        if(!is.null(cs)) apollo_inputs$class_specific   <- cs
-        if(w){
-          nObsPerIndiv <- apollo_inputs$database[,apollo_inputs$apollo_control$indivID]
-          nObsPerIndiv <- as.vector(table(nObsPerIndiv))
-          apollo_inputs$database$weights <- rep(h[[cs]], times=nObsPerIndiv)
-        }
+      if(is.list(h)){
+        # split h into lists with only the relevant data for each core (assumes length(h[[i]])==nInd)
+        nInd<- length(unique(apollo_inputs$database[,apollo_inputs$apollo_control$indivID]))
+        ind <- parallel::clusterEvalQ(environment(LL)$cl, length(unique(apollo_inputs$database[,apollo_inputs$apollo_control$indivID])))
+        ind <- c(0, unlist(ind))
+        for(i in 3:length(ind)) ind[i] <- ind[i-1] + ind[i]
+        h2  <- vector(mode='list', length=length(ind)-1)
+        for(nc in 1:length(h2)) h2[[nc]] <- lapply(h, apollo_keepRows, 1:nInd %in% (ind[nc]+1):ind[nc+1])
+        h   <- h2; rm(h2)
+      } else h <- vector(mode='list', length=length(environment(LL)$cl))
+      # copy elements into each core
+      parallel::parLapply(environment(LL)$cl, h, function(hh, w, cs){
+        apollo_inputs   <- get('apollo_inputs', envir=globalenv())
+        if(!is.null(cs)) apollo_inputs$class_specific <- cs
+        if( is.list(hh)) apollo_inputs$h              <- hh
+        nObsPerIndiv    <- as.vector(table(apollo_inputs$database[,apollo_inputs$apollo_control$indivID]))
+        if(w & !is.null(cs)) apollo_inputs$database$weights <- rep(hh[[cs]], times=nObsPerIndiv)
         tmp <- globalenv()
         assign("apollo_inputs", apollo_inputs, tmp)
         return(TRUE)
-      }, h=h, cs=cs, w=w)
+      }, w=w, cs=cs)
     }
   }
   
@@ -278,8 +286,8 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   if(test){
     ### new 13 Oct  
     r <- names(apollo_beta) %in% names(apollo_inputs$apollo_scaling)
-      r <- names(apollo_beta)[r]
-      apollo_beta[r] <- apollo_beta[r]/apollo_inputs$apollo_scaling[r]
+    r <- names(apollo_beta)[r]
+    apollo_beta[r] <- apollo_beta[r]/apollo_inputs$apollo_scaling[r]
     ### end
     apollo_probabilities <- apollo_insertScaling(apollo_probabilities, apollo_inputs$apollo_scaling)
     test2 <- is.function(apollo_inputs$apollo_lcPars)
@@ -474,16 +482,17 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   
   #### POST-EM TASKS
   apollo_inputs$EM = FALSE
+  ### Reinstate original functions inside apollo_inputs
+  test <- apollo_inputs$apollo_control$mixing && is.function(apollo_inputs$apollo_randCoeff)
+  if(test) apollo_inputs$apollo_randCoeff <- apollo_randCoeff_ORIG
+  if(is.function(apollo_inputs$apollo_lcPars)) apollo_inputs$apollo_lcPars <- apollo_lcPars_ORIG
+  ### Avoid diagnostics and validation
+  apollo_inputs$apollo_control$noValidation  <- TRUE
+  apollo_inputs$apollo_control$noDiagnostics <- TRUE
+  ### Get a model object. Call to apollo_estimate is different depending on needing a covariance matrix or not
   if(lcEM_settings$postEM>0 && iteration<EMmaxIterations){
     if(lcEM_settings$postEM==1) apollo_print("Computing covariance matrix...")
     if(lcEM_settings$postEM>1) apollo_print("Continuing with classical estimation...")
-    ### Reinstate original functions inside apollo_inputs
-    test <- apollo_inputs$apollo_control$mixing && is.function(apollo_inputs$apollo_randCoeff)
-    if(test) apollo_inputs$apollo_randCoeff <- apollo_randCoeff_ORIG
-    if(is.function(apollo_inputs$apollo_lcPars)) apollo_inputs$apollo_lcPars <- apollo_lcPars_ORIG
-    ### Avoid diagnostics and validation
-    apollo_inputs$apollo_control$noValidation  <- TRUE
-    apollo_inputs$apollo_control$noDiagnostics <- TRUE
     ### Set maxIter and writeIter
     if(!is.list(estimate_settings)) estimate_settings = list()
     if(lcEM_settings$postEM<2) estimate_settings$maxIterations <- 0
@@ -491,7 +500,7 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
     estimate_settings$silent    <- ifelse(lcEM_settings$postEM<2, TRUE, FALSE)
     ### Calculate S.E.
     model = apollo_estimate(apollo_beta, apollo_fixed_base, apollo_probabilities_ORIG, apollo_inputs, estimate_settings)
-  } else model=apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities, 
+  } else model=apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities_ORIG, 
                                apollo_inputs, estimate_settings=list(maxIterations=0,hessianRoutine="none",silent=TRUE))  
   if(lcEM_settings$postEM>1) classicalIter=model$nIter
   time4 <- Sys.time()

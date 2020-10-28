@@ -85,8 +85,8 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
     tmp <- paste0(tempdir(), "\\", apollo_inputs$apollo_control$modelName,"_outOfSample")
     apollo_inputs <- tryCatch(readRDS(tmp), error=function(e) NULL)
     if(!is.null(apollo_inputs)){
-      tmp <- globalenv()
-      assign('apollo_inputs', apollo_inputs, envir=tmp)
+      tmp2 <- globalenv()
+      assign('apollo_inputs', apollo_inputs, envir=tmp2)
     } 
     if(file.exists(tmp)) file.remove(tmp)
     rm(tmp)

@@ -1,4 +1,4 @@
-cbf806e278711f9c3296947e82c99c6f *DESCRIPTION
+7cc576823a0d2841d15ef2272d9e1aec *DESCRIPTION
 3fc8ec2039b01048a967cf74e0cbd4df *NAMESPACE
 603c4954c8239df4127d6ce180c27aee *R/RcppExports.R
 cf945bb61a1c049fbff2543db6a769e1 *R/apollo_addCovariance.R
@@ -22,7 +22,7 @@ be4ec01df85f2c1402ae538218a666b7 *R/apollo_detach.R
 b71451408f490af9e4bcc3148576f95e *R/apollo_diagnostics.R
 227fcdecb3b092f0cef5517e5c9d95a4 *R/apollo_drugChoiceData.R
 a3ce27610ce3e5cdfe3f0423df24943d *R/apollo_el.R
-4b3558023def15ca79f78f10100747ac *R/apollo_estimate.R
+17672be0a98c011b7d64dfe81f47d1f7 *R/apollo_estimate.R
 0e47593e8d0d400077987b514dde9364 *R/apollo_estimateHB.R
 5aad0b02b22ee8e041f6d90dd967e462 *R/apollo_firstRow.R
 3210bcd348606a388de06cdf3c491162 *R/apollo_fitsTest.R
@@ -30,11 +30,11 @@ a3ce27610ce3e5cdfe3f0423df24943d *R/apollo_el.R
 8c7eb2d3f0ca63dc630cdaef33e281c0 *R/apollo_insertComponentName.R
 fe626e26995b871c0fc646fb54ec07d8 *R/apollo_insertFunc.R
 b4b4d005e7b5e6ad6d3f002997762442 *R/apollo_insertRows.R
-96fb0206aee067372d0c43ee85861576 *R/apollo_insertScaling.R
+2047d2c05b0b65803c0c9ca948f7a59f *R/apollo_insertScaling.R
 efe14e2228c5f87a75ec42320e54808f *R/apollo_keepRows.R
 cde6a3e92e6cb130777ba382d83e6431 *R/apollo_lc.R
 1ebf282eeaeb8244b45b094a682e6e17 *R/apollo_lcConditionals.R
-2504c4c9703436a6d93e3618cf7ace93 *R/apollo_lcEM.R
+fcdb33a875735ecf0e16730272f8f5ad *R/apollo_lcEM.R
 6b30ed8e34c010f02ddb0426b29a7d61 *R/apollo_lcUnconditionals.r
 b03bef59953f960207f903f8bc497068 *R/apollo_llCalc.R
 75ba4416feeb271b325019c71bc81c05 *R/apollo_loadModel.R
@@ -42,7 +42,7 @@ b03bef59953f960207f903f8bc497068 *R/apollo_llCalc.R
 1c19e782ef24b609a37dad51c2ab65a9 *R/apollo_makeCluster.R
 b2228da7a1e69b63d2bb505b19c70e7c *R/apollo_makeDraws.R
 1f8c802c2723173c7b93a182e6d7a48d *R/apollo_makeGrad.R
-b906577b59705030d42f76dffeb28209 *R/apollo_makeLogLike.R
+a71ed2738bd2e9da0b34a5c02f5c491f *R/apollo_makeLogLike.R
 772a27ec2496eae3f396470daa64bff6 *R/apollo_mdcev.R
 4bd73284ed33ee4eb96872fe5772c627 *R/apollo_mdcnev.R
 17d20be9e1a2d5bbe8678178a6e0fc75 *R/apollo_mixEM.R
@@ -54,7 +54,7 @@ ad734c6cdccb6f67620722e34b9b63dc *R/apollo_modelOutput.R
 dec98224e460c0e4a8aeb29419066c71 *R/apollo_normalDensity.R
 ff7a8ee07944d1ad2ea10189b4944936 *R/apollo_ol.R
 3fd7f3295f11d0afa8b03d57ab43b6b7 *R/apollo_op.R
-929ae8778c754a955c8b78e364033e9b *R/apollo_outOfSample.R
+9d75a0c3c24230b9c4a3a574fac7d528 *R/apollo_outOfSample.R
 bf09d44630f2c0823374c54f82dadd57 *R/apollo_panelProd.R
 e6700f9a9305cf7c7a14c6f719fad176 *R/apollo_prediction.R
 8b6fa9f24d2b76c939a5de89738bad5a *R/apollo_prepareProb.R
@@ -62,7 +62,7 @@ b81a86c4f01f9bb8c9b16303d6fd6b4d *R/apollo_preprocess.R
 a8696f8f195dc8face03aa7083b76f95 *R/apollo_print.R
 a7e6b5eea4704f17a01bd5fe2246673d *R/apollo_readBeta.R
 48046bee8c78abcba38f23d13c0fc53f *R/apollo_saveOutput.R
-6717849f67183d520ebfe328ef4d5201 *R/apollo_searchStart.R
+2d504c929c66244f5390c563088d216c *R/apollo_searchStart.R
 bb2e47e0b1762a09f29f6613e7c95d01 *R/apollo_setRows.R
 61a02652bf2a57604e9f4940989e1864 *R/apollo_sharesTest.R
 cb5d58fb33302e930a95118db8dbba60 *R/apollo_speedTest.R
@@ -74,8 +74,8 @@ f50f1cd3f3367418e28cb50a3750567f *R/apollo_swissRouteChoiceData.R
 ca745119fae7788bf00208195407d092 *R/apollo_validateData.R
 f890393015d8959a896a6cf1abdfd162 *R/apollo_validateHBControl.R
 9cf518cfafb7743264fce31489562c7d *R/apollo_validateInputs.R
-82d331c3a93f75f0db97d0537ca8f0fb *R/apollo_varList.R
-51318004fef4934787b030e5d65df3ba *R/apollo_varcov.R
+5da0adde2058238b43225876b0a5e1a1 *R/apollo_varList.R
+2bb2381dd598da451c1c22b2fbe2639e *R/apollo_varcov.R
 8e135cef53588721caf1c12a48664cef *R/apollo_weighting.R
 205ad80700c27d7dd136f797295dd60a *R/apollo_writeF12.R
 17e8b1e9016e0c7c97f5acf0aa16016d *R/apollo_writeTheta.R
@@ -88,7 +88,7 @@ b8d0d9fdb6483998c1274832a371b93d *data/apollo_timeUseData.RData
 cb09110f12691d1131ac29059c5d6f82 *inst/CITATION
 fb50805c28d07dd1259ff7d796b84117 *inst/doc/apollofirstexample.R
 18401634fe656d41007d8bb3340a099f *inst/doc/apollofirstexample.Rmd
-e8c2f1e2671b3b371ba137a5e363729e *inst/doc/apollofirstexample.html
+0d658f6146523078015d516a7ace5d25 *inst/doc/apollofirstexample.html
 d95a6896274a6fea22a01612f9df0ed9 *man/apollo_addCovariance.Rd
 d2e2994fe8cd854e10307e3ba0dec56c *man/apollo_attach.Rd
 322cbbf6f04f124625059d8aec7cdfe0 *man/apollo_avgInterDraws.Rd
@@ -118,7 +118,7 @@ a83aa23a1aa0d0194d56e056176327a6 *man/apollo_diagnostics.Rd
 45f57d9b3cfb13cc7bff641fbd9c9e77 *man/apollo_insertComponentName.Rd
 3b39b85b539de2eaac29ba39389d3bfa *man/apollo_insertFunc.Rd
 2592218106f185c120c3c4c2a5e5b07d *man/apollo_insertRows.Rd
-3f0516a03cd8cd6bf2984a9b546a7d6f *man/apollo_insertScaling.Rd
+ef90b9c6ef99a91dd478b80c1ef139de *man/apollo_insertScaling.Rd
 6a61edefe4dafee029f12547ceae3189 *man/apollo_keepRows.Rd
 17ef57ef1fa97acc1ce479ec0a06f5c9 *man/apollo_lc.Rd
 558670b215f4183fd7eb95bd112323e3 *man/apollo_lcConditionals.Rd

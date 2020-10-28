@@ -75,7 +75,9 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
    if(anyNA(c(apolloBetaMin,apolloBetaMax)) & !smartStart) stop("Invalid 'apolloBetaMin' and/or 'apolloBetaMax' parameters.")
    apollo_print("Testing probability function (apollo_probabilities)")
    apollo_inputs$apollo_control$noDiagnostics <- TRUE
-   apollo_probabilities(apollo_beta, apollo_inputs, functionality="validate")
+   apollo_probabilitiesVal <- apollo_insertComponentName(apollo_probabilities)
+   apollo_probabilitiesVal(apollo_beta, apollo_inputs, functionality="validate")
+   rm(apollo_probabilitiesVal)
    
    ### Pre-process likelihood function
    if(!silent) apollo_print("Pre-processing likelihood function...")
@@ -105,9 +107,9 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
    # Each element of the list is a matrix where each row is a candidate
    set.seed(2)
    candidates <- list()
-   apollo_print("Creating initial set of",nCandidates,"candidate values.")
+   apollo_print(paste("Creating initial set of",nCandidates,"candidate values."))
    if(smartStart){
-      # Create neighbors of starting value using Hessian (Bierlaire et al. 2007)
+      # Create neighbours of starting value using Hessian (Bierlaire et al. 2007)
       apollo_print(" (using Hessian, this might take a while).")
       if(!is.null(grad)){
          sumGradLL <- function(theta) colSums( grad(theta) )

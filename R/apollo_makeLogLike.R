@@ -96,24 +96,25 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
   
   ### Checks for scaling and insert them inside apollo_probabilities
-  # Create scaling if needed
+  scaling <- setNames(rep(1, length(apollo_beta)-length(apollo_fixed)), 
+                      names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)])
   test <- is.null(apollo_inputs$apollo_scaling)
   test <- test || (length(apollo_inputs$apollo_scaling)==1 && is.na(apollo_inputs$apollo_scaling))
-  if(test) apollo_inputs$apollo_scaling <- setNames(rep(1, length(apollo_beta)-length(apollo_fixed)), 
-                                                    names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)])
-  # Validate scaling
-  if(any(!(names(apollo_inputs$apollo_scaling) %in% names(apollo_beta)))) stop("Some parameters included in 'scaling' are not included in 'apollo_beta'")
-  if(any((names(apollo_inputs$apollo_scaling) %in% apollo_fixed))) stop("Parameters in 'apollo_fixed' should not be included in 'scaling'")
-  if(any(apollo_inputs$apollo_scaling<0)){
-    apollo_inputs$apollo_scaling <- abs(apollo_inputs$apollo_scaling)
-    txt <- 'Some values in "scaling" were negative, they were replaced by their absolute value.'
-    if(!silent) apollo_print(paste0('WARNING: ', txt)) else warning(txt)
+  if(!test){
+    scaling[names(apollo_inputs$apollo_scaling)] <- apollo_inputs$apollo_scaling
+    if(any(!(names(scaling) %in% names(apollo_beta)))) stop("Some parameters included in 'scaling' are not included in 'apollo_beta'")
+    if(any(names(scaling) %in% apollo_fixed)) stop("Parameters in 'apollo_fixed' should not be included in 'scaling'")
+    if(any(scaling<0)){
+      scaling <- abs(scaling)
+      txt <- 'Some negative values in "scaling" were replaced by their absolute value'
+      if(!silent) apollo_print(paste0('WARNING: ', txt, '.')) else warning(txt)
+      rm(txt)
+    }
+    if(any(scaling<=0)) stop('All terms in "scaling" should be strictly positive!')
   }
-  if(any(!(apollo_inputs$apollo_scaling>0))) stop('All terms in "scaling" should be strictly positive!')
-  #if(!all(apollo_inputs$apollo_scaling==1)){
-  #  txt <- "During estimation, parameters will be scaled using the values in estimate_settings$scaling"
-  #  if(!silent) apollo_print(txt) else warning(txt)
-  #}
+  apollo_inputs$apollo_scaling <- scaling
+  rm(scaling)
+  
   ### Insert scaling if needed
   apollo_probabilities <- apollo_insertScaling(apollo_probabilities, apollo_inputs$apollo_scaling)
   if(apollo_inputs$apollo_control$mixing && is.function(apollo_inputs$apollo_randCoeff)){

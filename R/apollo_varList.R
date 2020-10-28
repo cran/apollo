@@ -23,6 +23,8 @@
 #' @importFrom utils capture.output
 #' @export
 apollo_varList <- function(apollo_probabilities, apollo_beta, apollo_inputs, V, cpp=FALSE){
+  # Useful function
+  is.val <- function(e) if(is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) ) return(TRUE) else return(FALSE)
   
   # Check that V only containts functions
   test <- sapply(V, is.function)
@@ -57,7 +59,7 @@ apollo_varList <- function(apollo_probabilities, apollo_beta, apollo_inputs, V, 
     }
     if(!anyNA(rndCoeff)) for(r in rndCoeff){
       bF <- body(r)
-      for(i in 1:length(bF)){
+      if(!is.val(bF)) for(i in 1:length(bF)){
         test <- length(bF[[i]])==3 && (bF[[i]][[1]]=="=" || bF[[i]][[1]]=="<-")
         if(test) stop("Random coefficients should not contain assignments")
       }

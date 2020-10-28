@@ -188,18 +188,19 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   test <- is.null(apollo_inputs$apollo_scaling)
   test <- test || (length(apollo_inputs$apollo_scaling)==1 && is.na(apollo_inputs$apollo_scaling))
   if(test) apollo_inputs$apollo_scaling <- scaling else {
-    if(any(!(names(apollo_inputs$apollo_scaling) %in% names(apollo_beta)))) stop("Some parameters included in 'scaling' are not included in 'apollo_beta'")
-    if(any((names(apollo_inputs$apollo_scaling) %in% apollo_fixed))) stop("Parameters in 'apollo_fixed' should not be included in 'scaling'")
-    if(any(apollo_inputs$apollo_scaling<0)){
-      apollo_inputs$apollo_scaling <- abs(apollo_inputs$apollo_scaling)
-      txt <- 'WARNING: Some values in "scaling" were negative, they were replaced by their absolute value.'
-      if(!silent) apollo_print(txt) else warning('Some negative values in "scaling" were replaced by their absolute value')
-    }
-    if(any(apollo_inputs$apollo_scaling<=0)) stop('All terms in "scaling" should be strictly positive!')
-    txt <- "During estimation, parameters will be scaled using the values in estimate_settings$scaling"
-    if(!all(apollo_inputs$apollo_scaling==1)){ if(!silent) apollo_print(txt) else warning(txt)}
-    rm(txt)
     scaling[names(apollo_inputs$apollo_scaling)] <- apollo_inputs$apollo_scaling
+    if(any(!(names(scaling) %in% names(apollo_beta)))) stop("Some parameters included in 'scaling' are not included in 'apollo_beta'")
+    if(any(names(scaling) %in% apollo_fixed)) stop("Parameters in 'apollo_fixed' should not be included in 'scaling'")
+    if(any(scaling<0)){
+      scaling <- abs(scaling)
+      txt <- 'Some negative values in "scaling" were replaced by their absolute value'
+      if(!silent) apollo_print(paste0('WARNING: ', txt, '.')) else warning(txt)
+    }
+    if(any(scaling<=0)) stop('All terms in "scaling" should be strictly positive!')
+    txt <- "During estimation, parameters will be scaled using the values in estimate_settings$scaling"
+    if(!all(scaling==1)){ if(!silent) apollo_print(txt) else warning(txt)}
+    rm(txt)
+    apollo_inputs$apollo_scaling <- scaling
   }
   
   ### Recommend using multi-core if appropriate
