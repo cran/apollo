@@ -265,6 +265,31 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE){
       if(test1 | test2) break
     } 
     body(f) <- e
+    
+    # Run function (apollo_randCoeff) with dummy arguments to figure out names of LVs
+    rndCoeff <- tryCatch(f(apollo_beta=c(b1=0, b2=0), apollo_inputs=list()), error=function() NULL)
+    test <- is.list(rndCoeff) && all(sapply(rndCoeff, is.function))
+    if(!test) return(f)
+    ## replace LVs on the right side by their definitions
+    replaceByDef <- function(e, defs, rightSide=FALSE){
+      if(is.function(e)){ f <- e; e <- body(e)} else f <- NULL
+      # Case 1: LV1
+      test1 <- rightSide && is.symbol(e) && (as.character(e) %in% names(defs))
+      if(test1) e <- body(defs[[ which(names(defs)==as.character(e))[1] ]])
+      # Case 2: L$LV1
+      test2 <- !test1 && rightSide && is.call(e) && length(e)==3 && is.symbol(e[[1]]) && (as.character(e[[1]]) %in% c('$','[['))
+      test2 <- test2 && is.val(e[[3]]) && (as.character(e[[3]]) %in% names(defs))
+      if(test2) e <- body(defs[[ which(names(defs)==as.character(e[[3]]))[1] ]])
+      # Case 3: expression
+      if(!test1 && !test2 && is.call(e)){
+        test0 <- length(e)==3 && is.symbol(e[[1]]) && (as.character(e[[1]]) %in% c('<-', '=')) # Is an assignment
+        for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- replaceByDef(e[[i]], defs, rightSide=(rightSide | (test0 & i==3)))
+      } 
+      # Return
+      if(is.null(f)) return(e) else {body(f) <- e; return(f)}
+    }
+    f <- replaceByDef(f, rndCoeff)
+    
     return(f)
   }
   

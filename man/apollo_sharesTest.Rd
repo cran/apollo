@@ -29,6 +29,8 @@ apollo_sharesTest(
   \item \code{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
   \item \code{subsamples}: Named list of boolean vectors. Each element of the list defines whether a given observation belongs to a given subsample (e.g. by sociodemographics).
   \item \code{modelComponent}: Name of model component. Set to model by default.
+  \item \code{newAlts}: Optional list describing the new alternatives to be used by apollo_sharesTest. This should have as many elements as new alternatives, with each entry being a matrix of 0-1 entries, with one row per observation, and one column per alternative used in the model.
+  \item \code{newAltsOnly}: Boolean. If TRUE, results will only be printed for the 'new' alternatives defined in newAlts, not the original alternatives used in the model. Set to FALSE by default.
 }}
 }
 \value{

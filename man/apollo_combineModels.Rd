@@ -4,7 +4,13 @@
 \alias{apollo_combineModels}
 \title{Combines separate model components.}
 \usage{
-apollo_combineModels(P, apollo_inputs, functionality, components = NULL)
+apollo_combineModels(
+  P,
+  apollo_inputs,
+  functionality,
+  components = NULL,
+  asList = TRUE
+)
 }
 \arguments{
 \item{P}{List of vectors, matrices or 3-dim arrays. Likelihood of the model components.}
@@ -26,6 +32,8 @@ apollo_combineModels(P, apollo_inputs, functionality, components = NULL)
 }}
 
 \item{components}{Character vector. Optional argument. Names of elements in P that should be multiplied to construct the whole model likelihood. If a single element is provided, it is interpreted as a regular expression. Default is to include all components in P.}
+
+\item{asList}{Logical. Only used if \code{functionality} is \code{"conditionals","estimate","validate","zero_LL"} or \code{"output"}. If \code{TRUE}, it will return a list as described in the 'Value' section. If \code{FALSE}, it will only return a vector/matrix/3-dim array of the product of likelihoods inside P. Default is \code{TRUE}.}
 }
 \value{
 Argument \code{P} with (for most functionalities) an extra element called "model", which is the product of all the other elements. Shape depends on argument \code{functionality}.

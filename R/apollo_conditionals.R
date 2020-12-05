@@ -70,7 +70,7 @@ apollo_conditionals=function(model, apollo_probabilities, apollo_inputs){
   for(j in 1:length(randcoeff)){
     if(length(dim(randcoeff[[j]]))==3) randcoeff[[j]]=colSums(aperm(randcoeff[[j]], perm=c(3,1,2)))/dim(randcoeff[[j]])[3]
     b=randcoeff[[j]]
-    b <- rowsum(b, group=database[,apollo_control$indivID])
+    b <- rowsum(b, group=database[,apollo_control$indivID], reorder=FALSE)
     b=b/obsPerIndiv
     
     bn=(rowSums(b*P))/rowSums(P)

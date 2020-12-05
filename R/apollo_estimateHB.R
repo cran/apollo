@@ -115,6 +115,9 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
     }
   }
   
+  ### Insert component names
+  apollo_probabilities <- apollo_insertComponentName(apollo_probabilities)
+  
   ### Start clock
   starttime <- Sys.time()
   

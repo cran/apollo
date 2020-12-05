@@ -201,7 +201,12 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
                           ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
       colnames(inputs$mdcnevStructure) <- inputs$alternatives
       rownames(inputs$mdcnevStructure) <- names(inputs$mdcnevNests)
-      apollo_print(inputs$mdcnevStructure)
+      maxL <- max(nchar(names(inputs$mdcnevNests)))
+      for(n in rownames(inputs$mdcnevStructure)) apollo_print(paste0(
+        n, paste0(rep('.', maxL - nchar(n)), collapse=''),' (', round(inputs$mdcnevNests[[n]], 2), '): ', 
+        paste0(inputs$alternatives[inputs$mdcnevStructure[n,]>0], collapse=', ')
+      ))
+      #apollo_print(inputs$mdcnevStructure)
     }
   }
   

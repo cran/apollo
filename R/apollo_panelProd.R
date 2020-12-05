@@ -70,7 +70,7 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
     
     # Average gradient respecting product rule
     tmp <- apollo_panelProd(P$like, apollo_inputs, "estimate")
-    P$grad <- lapply(P$grad, function(g) tmp*rowsum(g/P$like, group=indivID))
+    P$grad <- lapply(P$grad, function(g) tmp*rowsum(g/P$like, group=indivID, reorder=FALSE))
     P$like <- tmp
     return(P)
   }
@@ -86,7 +86,7 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
       test <- is.vector(P[[j]]) && length(P[[j]])==length(indivID)
       test <- test || is.matrix(P[[j]]) && nrow(P[[j]])==length(indivID)
       if(test){
-        P[[j]] <- rowsum(log(P[[j]]), group=indivID)
+        P[[j]] <- rowsum(log(P[[j]]), group=indivID, reorder=FALSE)
         if(!apollo_control$workInLogs) P[[j]] <- exp(P[[j]])
       }
       if(is.matrix(P[[j]]) && ncol(P[[j]])==1) P[[j]] <- as.vector(P[[j]])
@@ -102,12 +102,12 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
     for(j in 1:length(P)){
       if(is.array(P[[j]]) && length(dim(P[[j]]))==3) stop('Need to average over intra-individual draws first before multiplying over choices!')
       if(is.vector(P[[j]]) || (is.matrix(P[[j]]) && !apollo_control$workInLogs) ){
-        P[[j]] <- rowsum(log(P[[j]]), group=indivID)
+        P[[j]] <- rowsum(log(P[[j]]), group=indivID, reorder=FALSE)
         if(!apollo_control$workInLogs) P[[j]] <- exp(P[[j]])
       }
       if(apollo_control$panelData && is.matrix(P[[j]]) && apollo_control$workInLogs && nrow(P[[j]])==length(indivID)){
         # approach to use if working in logs with mixing
-        B    <- rowsum(log(P[[j]]), group=indivID) # nIndiv x nDraws
+        B    <- rowsum(log(P[[j]]), group=indivID, reorder=FALSE) # nIndiv x nDraws
         Bbar <- apply(B, MARGIN=1, function(r) mean(r[is.finite(r)]) ) # nIndiv x 1 ### FIX: 15/5/2020
         P[[j]] <- ifelse(is.finite(Bbar), Bbar + log( rowMeans(exp(B-Bbar)) ), -Inf) # nIndiv x 1 ### FIX 18/5/2020
       }

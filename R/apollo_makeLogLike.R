@@ -79,7 +79,7 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     rm(tmp)
   }
   
-  ### Check apollo_weighting is called if apollo_control$weights are defined (unles apollo_inputs$EM is TRUE)
+  ### Check apollo_weighting is called if apollo_control$weights are defined (unless apollo_inputs$EM is TRUE)
   w <- apollo_inputs$apollo_control[['weights']]
   test <- is.null(apollo_inputs$EM) || (is.logical(apollo_inputs$EM) && !apollo_inputs$EM)
   test <- test && !is.null(w) && !is.null(apollo_inputs$database) && (w %in% names(apollo_inputs$database))
@@ -232,7 +232,7 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
         if(newIter) preLL <<- sumll
       } else if(estAlg=="bfgs" && exists('lastFuncParam', envir=globalenv())) {
         lastFuncParam <- get("lastFuncParam", envir=globalenv())
-        newIter       <- !anyNA(lastFuncParam) && all(lastFuncParam==bVar)
+        newIter       <- !anyNA(lastFuncParam) && length(lastFuncParam)==length(bVar) && all(lastFuncParam==bVar)
         if(countIter && newIter) nIter <<- nIter + 1
         if(writeIter && newIter) apollo_writeTheta(bVar, sumll, modelName)
       }
@@ -299,6 +299,29 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   #    apollo_print(paste0("Whole model gradient function creation ", ifelse(is.null(grad), "failed.", "succeeded.")))
   #  }
   #}; rm(tmp)
+  
+  ### Count number of observations
+  f <- function(){ # this function returns a vector c(component1Name=nObs1, component2Name=nObs2, ...) ignoring LC components
+    name    <- grep("_settings$", ls(apollo_inputs), value=TRUE)
+    nObsTot <- setNames(rep(0, length(name)), name)
+    discard <- c()
+    for(i in name){
+      if(!is.null(apollo_inputs[[i]][['LCNObs']])){ # if it is a latent class component
+        nObsTot[i] <- apollo_inputs[[i]]$LCNObs
+        discard <- c(discard, apollo_inputs[[i]]$LCCompNames)
+      } else nObsTot[i] <- sum(apollo_inputs[[i]]$rows) # if it is a non-LC component
+    }
+    names(nObsTot) <- substr(name, 1, nchar(name)-nchar("_settings"))
+    discard <- which(names(nObsTot) %in% discard)
+    if(length(discard)>0) nObsTot <- nObsTot[-discard]
+    return(nObsTot)
+  }
+  if(!anyNA(cl)){
+    nObsTot <- parallel::clusterCall(cl, function(f) {environment(f) <- globalenv(); f()}, f)
+    if(!all(sapply(nObsTot, length)==length(nObsTot[[1]]))) stop('Model components are inconsistent across workers. Try seting apollo_control$nCores=1')
+    nObsTot <- Reduce('+', nObsTot)
+  } else nObsTot <- f()
+  rm(f)
   
   return(apollo_logLike)
 }

@@ -33,12 +33,27 @@
 #' @importFrom utils capture.output
 #' @export
 apollo_lc <- function(lc_settings, apollo_inputs, functionality){
-
+  modelType = 'LC'
+  if(is.null(lc_settings[["componentName"]])){
+    lc_settings[["componentName"]] = ifelse(!is.null(lc_settings[['componentName2']]),
+                                            lc_settings[['componentName2']], modelType)
+    test <- functionality=="validate" && lc_settings[["componentName"]]!='model' && !apollo_inputs$silent
+    if(test) apollo_print(paste0('Apollo found a model component of type ', modelType, ' without a componentName.', 
+                                 ' The name was set to "', lc_settings[["componentName"]], '" by default.'))
+  }
+  
   # ############################################### #
   #### functionalities with untransformed return ####
   # ############################################### #
   
-  if(functionality %in% c("components", "preprocess")) return(NULL)
+  if(functionality=="components") return(NULL)
+  
+  if(functionality=="preprocess"){
+    lc_settings <- list(componentName = lc_settings$componentName,
+                        LCNObs        = max(sapply(lc_settings$inClassProb, function(m_settings) sum(m_settings$rows))), 
+                        LCCompNames   = names(lc_settings$inClassProb))
+    return(lc_settings)
+  }
   
   ### Special case for EM estimation
   test <- !is.null(apollo_inputs$EM) && apollo_inputs$EM 
@@ -67,6 +82,15 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   apollo_control = apollo_inputs[["apollo_control"]]
   if(apollo_control$workInLogs && apollo_control$mixing) stop('The settings "workInLogs" and "mixing" in "apollo_control" ',
                                                               'cannot be used together for latent class models.')
+  
+  # Check that inClassProb is not a list of lists (if its is, use 'model' component or fail)
+  if(!is.list(inClassProb)) stop('Setting "inClassProb" inside "lc_settings" must be a list.')
+  for(i in 1:length(inClassProb)) if(is.list(inClassProb[[i]]) && functionality %in% c("conditionals","estimate","validate","zero_LL", "output")){
+    test <- is.null(inClassProb[[i]]$model)
+    if(test) stop(paste0('At least one element inside "inClassProb" setting is a list. It should be a numeric vector, matrix',
+                         ' or array. If you are using apollo_combineModels inside each class, try using it with the argument', 
+                         ' apollo_combineModel(..., asList=FALSE)')) else inClassProb[[i]] <- inClassProb[[i]]$model
+  }
   
   # Count number of rows in classProb
   nRowsClassProb <- 0

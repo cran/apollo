@@ -101,9 +101,9 @@ apollo_basTest = function(model1,model2){
   adjrho=list(1-(LL[[1]]-k[[1]])/LL0[[1]],
               1-(LL[[2]]-k[[2]])/LL0[[2]])
   
+  flag_reverse=FALSE
   if(adjrho[[2]]<adjrho[[1]]){
-    apollo_print(paste0("The order of your two models will be reversed in the output as model 1 has better fit than model 2."))
-    apollo_print("\n")
+    flag_reverse=TRUE
     adjrho=adjrho[c(2,1)]
     LL=LL[c(2,1)]
     k=k[c(2,1)]
@@ -121,8 +121,13 @@ apollo_basTest = function(model1,model2){
   colnames(output)=c("LL0","LL","par","adj.rho2")
   rownames(output)=c(unlist(modelNames),"Difference")
   
-  p=pnorm(-sqrt(-2*output[3,4]*output[1,1]+(output[3,3])))
+  if(output[3,3]<0) stop("Test not run as better fitting model has fewer parameters!")
+  p=pnorm(-sqrt(-2*output[3,4]*output[1,1]+output[3,3]))
   
+  if(flag_reverse){
+    apollo_print(paste0("The order of your two models will be reversed in the output as model 1 has better fit than model 2."))
+    apollo_print("\n")}
+
   print(output)
   apollo_print("\n")
   apollo_print(paste0("p-value for Ben-Akiva & Swait test: ",formatC(p)))

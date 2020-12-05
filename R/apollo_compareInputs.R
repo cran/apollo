@@ -16,8 +16,10 @@ apollo_compareInputs <- function(apollo_inputs){
     same <- is.data.frame(db) && is.data.frame(apollo_inputs$database)
     tmp  <- which(names(apollo_inputs$database)=='apollo_sequence') # do not consider apollo_sequence
     if(length(tmp)>0) tmp <- -tmp else tmp <- 1:ncol(apollo_inputs$database)
-    same <- same && all(dim(db)==dim(apollo_inputs$database[,tmp]))
-    same <- same && all(mapply(identical, db, apollo_inputs$database[,tmp]))
+    tmp2 <- which(names(db)=='apollo_sequence') # do not consider apollo_sequence
+    if(length(tmp2)>0) tmp2 <- -tmp2 else tmp2 <- 1:ncol(db)
+    same <- same && all(dim(db[,tmp2])==dim(apollo_inputs$database[,tmp]))
+    same <- same && all(mapply(identical, db[,tmp2], apollo_inputs$database[,tmp]))
     if(!same){ ans <- FALSE; txt <- c(txt, 'database') }
   }
   

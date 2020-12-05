@@ -23,6 +23,7 @@
 #'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 #'                      }
 #' @param components Character vector. Optional argument. Names of elements in P that should be multiplied to construct the whole model likelihood. If a single element is provided, it is interpreted as a regular expression. Default is to include all components in P.
+#' @param asList Logical. Only used if \code{functionality} is \code{"conditionals","estimate","validate","zero_LL"} or \code{"output"}. If \code{TRUE}, it will return a list as described in the 'Value' section. If \code{FALSE}, it will only return a vector/matrix/3-dim array of the product of likelihoods inside P. Default is \code{TRUE}.
 #' @return Argument \code{P} with (for most functionalities) an extra element called "model", which is the product of all the other elements. Shape depends on argument \code{functionality}.
 #'         \itemize{
 #'           \item \strong{\code{"components"}}: Returns \code{P} without changes.
@@ -37,7 +38,7 @@
 #'           \item \strong{\code{"zero_LL"}}: Returns \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
 #'         }
 #' @export
-apollo_combineModels=function(P, apollo_inputs, functionality, components=NULL){
+apollo_combineModels=function(P, apollo_inputs, functionality, components=NULL, asList=TRUE){
   
   # ###################################################################### #
   #### load and check inputs, prepare variables that are used elsewhere ####
@@ -105,6 +106,6 @@ apollo_combineModels=function(P, apollo_inputs, functionality, components=NULL){
     } else {
       P[["model"]] <- exp(Reduce("+", lapply(P, log)))
     }
-    return(P)
+    if(asList) return(P) else return(P[['model']])
   }
 }

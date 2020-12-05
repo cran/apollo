@@ -1,7 +1,7 @@
 Package: apollo
 Type: Package
 Title: Tools for Choice Model Estimation and Application
-Version: 0.2.1
+Version: 0.2.2
 Authors@R: c(
     person("Stephane", "Hess", email="S.Hess@leeds.ac.uk", role="aut"),
     person("David", "Palma", email="D.Palma@leeds.ac.uk", role=c("aut","cre")) )
@@ -36,9 +36,9 @@ Suggests: knitr, rmarkdown, testthat
 VignetteBuilder: knitr
 RoxygenNote: 7.1.1
 NeedsCompilation: yes
-Packaged: 2020-10-28 14:44:21 UTC; david
+Packaged: 2020-12-05 17:33:08 UTC; david
 Author: Stephane Hess [aut],
   David Palma [aut, cre]
 Maintainer: David Palma <D.Palma@leeds.ac.uk>
 Repository: CRAN
-Date/Publication: 2020-10-28 21:10:12 UTC
+Date/Publication: 2020-12-05 22:40:02 UTC

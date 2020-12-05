@@ -41,8 +41,12 @@ apollo_estimate(
                                  estimating the Hessian and the covariance matrix. Only used if \code{apollo_control$HB=FALSE}.
   \item \strong{printLevel}: Higher values render more verbous outputs. Can take values 0, 1, 2 or 3. 
                              Ignored if apollo_control$HB is TRUE. Default is 3.
-  \item \strong{constraints}: Constraints on parameters to estimate. Should ignore fixed parameters. 
-                              See argument \code{constraints} in \link[maxLik]{maxBFGS} for more details.
+  \item \strong{constraints}: Character vector. Constraints on parameters to estimate. For example \code{c('b1>0', 'b1 + b2>1')}.
+                              Only \code{>}, \code{>=} and \code{=} can be used. And they cannot be mixed (e.g. 
+                              \code{c(b1=b2, b2>0)} will fail). All parameter names must be on the left side. Fixed 
+                              parameters cannot go into constraints. Alternatively, constraints can be defined as in 
+                              \link[maxLik]{maxLik}. Constraints can only be used with maximum likelihood estimation, 
+                              and the BFGS routine in particular.
   \item \strong{scaling}: Named vector. Names of elements should match those in \code{apollo_beta}. Optional scaling for parameters. 
                           If provided, for each parameter \code{i}, \code{(apollo_beta[i]/scaling[i])} is optimised, but 
                           \code{scaling[i]*(apollo_beta[i]/scaling[i])} is used during estimation. For example, if parameter

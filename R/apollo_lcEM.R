@@ -65,6 +65,7 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   for(i in tmp) lcEM_settings[[i]] <- default[[i]]
   test <- is.list(lcEM_settings) && !is.null(lcEM_settings$postEM) && (lcEM_settings$postEM %in% 0:2)
   if(!test) stop('Setting "postEM" inside argument "lcEM_settings" can only take values 0, 1 or 2.')
+  rm(i,tmp)
   
   ### Extract variables from apollo_input
   database           = apollo_inputs[["database"]]
@@ -102,17 +103,17 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   }
   
   ### Test apollo_probabilities
-  tmp = apollo_inputs$apollo_control$nCores
-  apollo_inputs$apollo_control$nCores = 1
+  #tmp = apollo_inputs$apollo_control$nCores
+  #apollo_inputs$apollo_control$nCores = 1
   apollo_inputs$class_specific        = 0
-  database <- apollo_inputs$database # neccesary to circumvent deletion of database across the call stack in apollo_estimate
-  draws    <- apollo_inputs$draws    # neccesary to circumvent deletion of draws across the call stack in apollo_estimate
+  database <- apollo_inputs$database # necessary to circumvent deletion of database across the call stack in apollo_estimate
+  draws    <- apollo_inputs$draws    # necessary to circumvent deletion of draws across the call stack in apollo_estimate
   apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, 
                   estimate_settings=list(maxIterations=0, writeIter=FALSE, hessianRoutine="none",silent=TRUE))
   apollo_inputs$database <- database
   apollo_inputs$draws    <- draws;    rm(draws)
-  apollo_inputs$apollo_control$nCores = tmp
-  rm(tmp)
+  #apollo_inputs$apollo_control$nCores = tmp
+  #rm(tmp)
   
   ### Create an unmodified copy of apollo_probabilities, apollo_randCoeff and apollo_lcPars
   apollo_probabilities_ORIG <- apollo_probabilities
@@ -168,18 +169,19 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
     lcPars <- lcPars[names(lcPars)[names(lcPars)!="pi_values"]]
     
     # Scale b if necessary
-    if(!is.null(apollo_inputs$scaling) && !is.null(names(apollo_inputs$scaling))){
-      for(i in names(apollo_inputs$scaling)) b[i] <- b[i]*apollo_inputs$scaling[i]
-    }
+    test <- !is.null(apollo_inputs$apollo_scaling) && !is.null(names(apollo_inputs$apollo_scaling))
+    test <- test && length(grep('apollo_scaling', capture.output(apollo_beta)))>0
+    if(test) for(i in names(apollo_inputs$apollo_scaling)) b[i] <- b[i]*apollo_inputs$apollo_scaling[i]
     
     # Recover names of parameters used in utilities
     ans <- list()
     for(s in 1:S){
       tmp <- c()
       for(i in lcPars){
-        if(!(i[[s]] %in% b)) stop(paste("A value inside the return of apollo_lcPars (except for pi_values)",
-                                        "is not inside apollo_beta. E.g. The second element of lcpars[[1]] =",
-                                        "list(b1, b1+1) is not acceptable."))
+        test <- (i[[s]] %in% b) || (length(i[[s]])==1 && is.numeric(i[[s]])) # is param or value
+        if(!test) stop(paste("A value inside the return of apollo_lcPars (except for pi_values)",
+                             "is not inside apollo_beta nor a fixed value. E.g. The second ",
+                             "element of lcpars[[1]] = list(b1, b1+1) is not acceptable."))
         tmp <- c(tmp, names(b)[which(b==i[[s]])])
       } 
       ans[[paste0("class_",s)]] <- tmp
@@ -215,6 +217,14 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   }
   
   apollo_beta_list = apollo_EMClassifyParams(apollo_beta, apollo_inputs)
+  
+  ### new line 18 Nov
+  #if(all(apollo_beta_list$generic%in%apollo_fixed)) apollo_beta_list$generic=c()
+  
+  ### Stop if there are generic parameters
+  test <- length(apollo_beta_list$generic)>0 && !all(apollo_beta_list$generic %in% apollo_fixed)
+  if(test) stop('The EM algorithm for latent classes cannot handle generic parameters across classes (', 
+                paste0(apollo_beta_list$generic, collapse=', '),')')
   
   ### DEFINE MODEL AND LIKELIHOOD FUNCTION FOR CLASS ALLOCATION
   apollo_probabilities_class = function(apollo_beta, apollo_inputs, functionality="estimate"){
@@ -370,37 +380,6 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
     ### Step 5 ###
     # ########## #
     
-    ### Update generic coefficients if present
-    test <- !is.null(apollo_beta_list$generic) && (length(apollo_beta_list$generic)!=0)
-    test <- test && !all(apollo_beta_list$generic%in%apollo_fixed_base)
-    if(test){
-      
-      ### Set class index to use inside apollo_probabilities_within_class
-      updateHCS(h=NULL, cs=0, w=FALSE, LL=withinLL)
-      
-      ### Set fixed parameters (only estimating generic parameters)
-      fix_temp=apollo_beta_list
-      fix_temp[["generic"]]=NULL
-      apollo_fixed=unique(c(apollo_fixed_base,(stack(fix_temp)[,1])))
-      # Create logLike function
-      theta_var_val <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
-      theta_fix_val <- apollo_beta[apollo_fixed]
-      environment(withinLL)$bFixedVal <- theta_fix_val
-      # Estimate
-      model <- maxLik::maxLik(withinLL, start=theta_var_val,
-                              method=estimate_settings$estimationRoutine, 
-                              control=estimate_settings$maxLik_settings, 
-                              constraints=estimate_settings$constraints,
-                              print.level=0, finalHessian=FALSE,
-                              countIter=FALSE, writeIter=FALSE, sumLL=FALSE)
-      # Restore fixed parameters
-      temp           = c(model$estimate, apollo_beta[apollo_fixed])
-      model$estimate = temp[names(apollo_beta)]
-      
-      ### Update overall parameters
-      apollo_beta=model$estimate
-      
-    }
     
     ### Update coefficients in class specific models by estimating class specific models 
     ### using posterior class allocation probabilities as weights
@@ -434,6 +413,38 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
       
       ### Update overall parameters
       apollo_beta=model$estimate
+    }
+    
+    ### Update generic coefficients if present
+    test <- !is.null(apollo_beta_list$generic) && (length(apollo_beta_list$generic)!=0)
+    test <- test && !all(apollo_beta_list$generic%in%apollo_fixed_base)
+    if(test){
+      
+      ### Set class index to use inside apollo_probabilities_within_class
+      updateHCS(h=NULL, cs=0, w=FALSE, LL=withinLL)
+      
+      ### Set fixed parameters (only estimating generic parameters)
+      fix_temp=apollo_beta_list
+      fix_temp[["generic"]]=NULL
+      apollo_fixed=unique(c(apollo_fixed_base,(stack(fix_temp)[,1])))
+      # Create logLike function
+      theta_var_val <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
+      theta_fix_val <- apollo_beta[apollo_fixed]
+      environment(withinLL)$bFixedVal <- theta_fix_val
+      # Estimate
+      model <- maxLik::maxLik(withinLL, start=theta_var_val,
+                              method=estimate_settings$estimationRoutine, 
+                              control=estimate_settings$maxLik_settings, 
+                              constraints=estimate_settings$constraints,
+                              print.level=0, finalHessian=FALSE,
+                              countIter=FALSE, writeIter=FALSE, sumLL=FALSE)
+      # Restore fixed parameters
+      temp           = c(model$estimate, apollo_beta[apollo_fixed])
+      model$estimate = temp[names(apollo_beta)]
+      
+      ### Update overall parameters
+      apollo_beta=model$estimate
+      
     }
     
     # ########## #
@@ -500,9 +511,12 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
     estimate_settings$silent    <- ifelse(lcEM_settings$postEM<2, TRUE, FALSE)
     ### Calculate S.E.
     model = apollo_estimate(apollo_beta, apollo_fixed_base, apollo_probabilities_ORIG, apollo_inputs, estimate_settings)
-  } else model=apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities_ORIG, 
-                               apollo_inputs, estimate_settings=list(maxIterations=0,hessianRoutine="none",silent=TRUE))  
-  if(lcEM_settings$postEM>1) classicalIter=model$nIter
+  #fixed 22 Nov
+  #  } else model=apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities_ORIG, 
+  #                             apollo_inputs, estimate_settings=list(maxIterations=0,hessianRoutine="none",silent=TRUE))  
+    } else model=apollo_estimate(apollo_beta, apollo_fixed_base, apollo_probabilities_ORIG, 
+                                 apollo_inputs, estimate_settings=list(maxIterations=0,hessianRoutine="none",silent=TRUE))  
+    if(lcEM_settings$postEM>1) classicalIter=model$nIter
   time4 <- Sys.time()
   
   model$timeTaken <- as.numeric(difftime(time4,time1,units='secs'))

@@ -21,15 +21,19 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
   #### MNL, NL, CNL, DFT ####
   if(modelType %in% c("mnl","nl","cnl","dft")){
     # Check for mandatory inputs
-    mandatory <- c("alternatives", "avail", "choiceVar")
+    mandatory <- c("alternatives", "choiceVar")
     if(modelType!="dft") mandatory <- c(mandatory, "V")
     if(modelType=="cnl") mandatory <- c(mandatory, "cnlNests", "cnlStructure")
     if(modelType=="nl") mandatory <- c(mandatory, "nlNests", "nlStructure")
     if(modelType=="dft") mandatory <- c(mandatory, "attrValues", "altStart", "attrWeights", "attrScalings", "procPars")
     for(i in mandatory) if(!(i %in% names(inputs))) stop('The inputs list for model component "', inputs$componentName, 
                                                          '" needs to include an object called "', i,'"!')
-    # Check for optional inputs
+    # Check for optional inputs (avail and rows)
     if(is.null(inputs[["rows"]])) inputs[["rows"]]="all"
+    if(is.null(inputs[['avail']])){
+      inputs[['avail']]=1
+      if(!apollo_inputs$silent && functionality=='validate') apollo_print('Setting "avail" is missing, so full availability is assumed.')
+    }
     
     ### Store useful values
     inputs$altnames = names(inputs$alternatives)
@@ -211,7 +215,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
   #### Exploded logit ####
   if(modelType=="el"){
     # Check for mandatory inputs
-    mandatory <- c("alternatives", "avail", "choiceVars", "V")
+    mandatory <- c("alternatives", "choiceVars", "V")
     for(i in mandatory) if(!(i %in% names(inputs))) stop('The inputs list for model component "', inputs$componentName, 
                                                          '" needs to include an object called "', i,'"!')
     # Check for optional inputs
@@ -220,6 +224,10 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
       inputs[["scales"]] <- as.list( rep(1, length(inputs$choiceVars)) ) # Changed length to number of choices (to allow for incomplete explosion) 7/05/2020
       inputs$fixedScales <- TRUE
     } else inputs$fixedScales <- FALSE
+    if(is.null(inputs[['avail']])){
+      inputs[['avail']]=1
+      if(!apollo_inputs$silent && functionality=='validate') apollo_print('Setting "avail" is missing, so full availability is assumed.')
+    }
     
     ### Store useful values
     inputs$altnames = names(inputs$alternatives)
@@ -431,7 +439,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
   #### MDCEV, MDCNEV ####
   if(modelType %in% c("mdcev", "mdcnev")){
     # Check for mandatory inputs
-    mandatory <- c("alternatives", "avail", "continuousChoice", "V", "alpha", "gamma", "cost", "budget")
+    mandatory <- c("alternatives", "continuousChoice", "V", "alpha", "gamma", "cost", "budget")
     if(modelType=="mdcev") mandatory <- c(mandatory, "sigma")
     if(modelType=="mdcnev") mandatory <- c(mandatory, "mdcnevNests", "mdcnevStructure")
     for(i in mandatory) if(!(i %in% names(inputs))) stop('The inputs list for model component "', inputs$componentName, 
@@ -449,7 +457,11 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
       if(test) apollo_print(paste0('Setting "sigma" set to 1 in model component ', inputs$componentName,
                                    ' to ensure identifiability.'))
       inputs$sigma <- 1
-    } 
+    }
+    if(is.null(inputs[['avail']])){
+      inputs[['avail']]=1
+      if(!apollo_inputs$silent && functionality=='validate') apollo_print('Setting "avail" is missing, so full availability is assumed.')
+    }
     
     # continuousChoice
     test <- is.list(inputs$continuousChoice) && all(sapply(inputs$continuousChoice, is.numeric))

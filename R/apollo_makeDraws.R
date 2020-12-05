@@ -108,8 +108,11 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
 
   nObs <- length(indivID)
   if(!panelData) indivID <- 1:nObs
-  nIndiv <- length(unique(indivID))
-  obsPerIndiv <- as.vector(table(indivID))
+  indiv  <- unique(indivID)
+  nIndiv <- length(indiv)
+  #obsPerIndiv <- as.vector(table(indivID)) # 20/11/2020 replaced by following two lines
+  obsPerIndiv <- setNames(rep(0, nIndiv), indiv)
+  for(n in 1:nIndiv) obsPerIndiv[n] <- sum(indivID==indiv[n])
   nInter <- d$interNDraws
   nIntra <- d$intraNDraws
   namesInter <- c(d$interUnifDraws, d$interNormDraws)

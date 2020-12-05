@@ -19,8 +19,8 @@
 apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE, cleanMemory=FALSE){
   
   #### Split data ####
-  apollo_control <- apollo_inputs[["apollo_control"]]
-  database       <- apollo_inputs[["database"]]
+  #apollo_control <- apollo_inputs[["apollo_control"]]
+  #database       <- apollo_inputs[["database"]]
   ### change 27 July
   ###silent         <- apollo_inputs$silent
   if(silent==FALSE) silent         <- apollo_inputs$silent
@@ -28,29 +28,33 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
   debug          <- apollo_inputs$apollo_control$debug
   
   ### Extract useful elements
-  nObs    <- nrow(database)
-  indivID <- database[,apollo_control$indivID]
+  nObs    <- nrow(apollo_inputs$database)
+  indivID <- apollo_inputs$database[,apollo_inputs$apollo_control$indivID]
   namesID <- unique(indivID)
   nIndiv  <- length(namesID)
-  nObsID  <- as.vector(table(indivID))
-  mixing  <- apollo_control$mixing
-  nCores  <- apollo_control$nCores
+  #nObsID  <- as.vector(table(indivID))
+  nObsID  <- rep(0, nIndiv)
+  for(n in 1:nIndiv) nObsID[n] <- sum(indivID==namesID[n])
+  mixing  <- apollo_inputs$apollo_control$mixing
+  nCores  <- apollo_inputs$apollo_control$nCores
   
   ### Figure out how to split the database per individual
-  database <- database[order(indivID),]
-  indivID  <- database[,apollo_control$indivID] # update order
-  namesID  <- unique(indivID)                   # update order
-  apollo_inputs$database <- database            # update order
-  rm(database); gc()
+  #database <- database[order(indivID),]
+  #indivID  <- database[,apollo_control$indivID] # update order
+  #namesID  <- unique(indivID)                   # update order
+  #apollo_inputs$database <- database            # update order
+  #rm(database); gc()
   if(debug) apollo_print(paste0('Attempting to split data into ', nCores, ' pieces.'))
   obj          <- ceiling(nObs/nCores)
   counter      <- 0
   currentCore  <- 1
-  assignedCore <- rep(0,nObs) 
+  assignedCore <- rep(0, nObs)
+  assignedCoreIndiv <- rep(0, nIndiv)
   i <- 1
   for(n in 1:nIndiv){
     assignedCore[i:(i+nObsID[n]-1)] <- currentCore
-    i <- i+nObsID[n]
+    assignedCoreIndiv[n] <- currentCore
+    i <- i + nObsID[n]
     counter <- counter + nObsID[n]
     if(counter>=obj & currentCore<nCores){
       currentCore <- currentCore + 1
@@ -58,14 +62,13 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
     }
   }
   nCores <- max(assignedCore)
-  if(debug && nCores!=apollo_inputs$apollo_control$nCores) apollo_print(paste(nCores, ' workers (threads) will be used for estimation.'))
-  apollo_inputs$apollo_control$nCores <- nCores
-  coreLoad <- as.vector(table(assignedCore)) 
-  names(coreLoad) <- paste('worker',1:nCores,sep='_')
   if(debug){
-    apollo_print('Number of observations per worker (thread):')
-    apollo_print(paste0(coreLoad, collapse=", "))
+    if(nCores!=apollo_inputs$apollo_control$nCores) apollo_print(paste0(nCores, ' workers (threads) will be used for estimation.'))
+    coreLoad <- setNames(rep(0, nCores), paste0('worker', 1:nCores))
+    for(i in 1:nCores) coreLoad[i] <- sum(assignedCore==i)
+    apollo_print(paste0('Obs. per worker (thread): ',paste0(coreLoad, collapse=", ")))
   }
+  apollo_inputs$apollo_control$nCores <- nCores
   rm(obj, counter, currentCore, i, n)
   
   
@@ -75,11 +78,11 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
   
   ### Identify elements to split
   # For lists, it looks at its first element
-  asLst <- c()
-  byObs <- c()
-  byInd <- c()
-  asIs  <- c()
-  for(e in ls(apollo_inputs)){
+  asLst <- c() # one element per individual
+  byObs <- c() # one row per observation
+  byInd <- c() # one row per individual
+  asIs  <- c() # none of the above
+  for(e in ls(apollo_inputs)){ # e is name of element, E is the element
     E <- apollo_inputs[[e]]
     if(is.list(E) && length(E)==nIndiv) asLst <- c(asLst, e) else{
       if(is.list(E)) E <- E[[1]]
@@ -96,7 +99,7 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
     L <- list()
     # Elements to be kept unchanged
     L <- apollo_inputs[ asIs ]
-    # Elements to be splitted by observations
+    # Elements to be split by observations
     if(length(byObs)>0) for(e in byObs){
       E <- apollo_inputs[[e]]
       r <- assignedCore==i
@@ -104,18 +107,18 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
         L[[e]] <- lapply(E, apollo_keepRows, r=r)
       } else L[[e]] <- apollo_keepRows(E, r)
     }
-    # Elements to be splitted by individual
+    # Elements to be split by individual
     if(length(byInd)>0) for(e in byInd){
       E <- apollo_inputs[[e]]
-      r <- namesID %in% indivID[assignedCore==i]
+      r <- assignedCoreIndiv==i
       if(is.list(E) & !is.data.frame(E)){
         L[[e]] <- lapply(E, apollo_keepRows, r=r)
       } else L[[e]] <- apollo_keepRows(E, r)
     }
-    # Elements to be splitted as list
+    # Elements to be split as list
     if(length(asLst)>0) for(e in asLst){
       E <- apollo_inputs[[e]]
-      r <- which(namesID %in% indivID[assignedCore==i])
+      r <- which(assignedCoreIndiv==i)
       L[[e]] <- E[r]
     }
     # Write to disk
@@ -130,11 +133,6 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
   
   if(debug) apollo_print(paste0("Writing completed. ", sum(gc()[,2]), 'MB of RAM in use.'))
   
-  ### Split data and draws
-  #inputPieceFile <- apollo_splitDataDraws(apollo_inputs)
-  nCores         <- length(inputPieceFile)
-  debug          <- apollo_inputs$apollo_control$debug
-  
   
   
   #### Create cluster and load data ####
@@ -147,7 +145,7 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
   
   ### Delete draws and database from memory in main thread
   if(cleanMemory){
-    # No backup of apollo_inputs is created, it is the caller responsability to do that (e.g. apollo_estimate)
+    # No backup of apollo_inputs is created, it is the caller responsibility to do that (e.g. apollo_estimate)
     if(debug) cat('Cleaning memory in main thread...') # do not change to apollo_print
     # Go over calling stack and delete apollo_inputs$database and apollo_inputs$draws wherever found
     for(e in sys.frames()){

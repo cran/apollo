@@ -147,6 +147,7 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
   }
   if(!anyNA(samples)){
     if(is.data.frame(samples)) samples <- as.matrix(samples)
+    samples <- samples[, !(colnames(samples) %in% c(apollo_control$indivID, 'apollo_sequence'))]
     if(!is.matrix(samples)) stop("The 'samples' argument must be a matrix.")
     if(nrow(samples)!=nrow(database)) stop("The 'samples' matrix must have as many rows as the database.")
     if(any(samples<0)) stop("The 'samples' matrix must only contain non-negative integers.")
@@ -292,7 +293,8 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
       tryCatch(utils::write.csv(temp, fileNameParams, row.names=FALSE),
                error=function(e) if(!silent) apollo_print(paste0("Could not write to ", fileNameParams)))
       temp <- samples[,1:i]
-      if(!anyNA(oldSamples)) temp <- cbind(oldSamples, temp)
+      if(!anyNA(oldSamples)) temp <- cbind(oldSamples, temp) else temp <- cbind(database[,c(apollo_control$indivID, 
+                                                                                            'apollo_sequence')], temp)
       tryCatch(utils::write.csv(temp, fileNameSamples, row.names=FALSE), 
                error=function(e) if(!silent) apollo_print(paste0("Could not write to ", fileNameSamples)))
       if(!silent && !calledByEstimate) apollo_print("Estimation results written to file.\n")
@@ -324,19 +326,20 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
     apollo_print(paste0("Covariance matrix of parameters written to: ", fileName))
     apollo_print(paste0("\n"))
     if(!calledByEstimate){
-    apollo_print(paste0("Mean LL across runs: ", round(mean(llStack[,ncol(llStack)]),2)))
-    apollo_print("\nMean parameter values across runs: ")
-    txt=(data.frame(round(colMeans(paramStack[includeRow,]),4)))
-    colnames(txt)="Estimate"
-    print(txt)
-    apollo_print("\nCovariance matrix across runs:")
-    longNames <- colnames(Sigma)
-    maxLen    <- max(nchar(longNames))
-    for(i in 1:length(longNames)) longNames[i] <- paste0(paste0(rep(" ", maxLen-nchar(longNames[i])), collapse=""), longNames[i])
-    tmp <- Sigma #round(Sigma,4)
-    colnames(tmp) <- longNames
-    if(nrow(tmp)==ncol(tmp)) rownames(tmp) <- longNames
-    print(tmp, digits=4)}
+      apollo_print(paste0("Mean LL across runs: ", round(mean(llStack[,ncol(llStack)]),2)))
+      apollo_print("\nMean parameter values across runs: ")
+      txt=(data.frame(round(colMeans(paramStack[includeRow,]),4)))
+      colnames(txt)="Estimate"
+      print(txt)
+      apollo_print("\nCovariance matrix across runs:")
+      longNames <- colnames(Sigma)
+      maxLen    <- max(nchar(longNames))
+      for(i in 1:length(longNames)) longNames[i] <- paste0(paste0(rep(" ", maxLen-nchar(longNames[i])), collapse=""), longNames[i])
+      tmp <- Sigma #round(Sigma,4)
+      colnames(tmp) <- longNames
+      if(nrow(tmp)==ncol(tmp)) rownames(tmp) <- longNames
+      print(tmp, digits=4)
+    }
   }
   
   # Stop clock and return results

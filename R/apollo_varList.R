@@ -26,7 +26,7 @@ apollo_varList <- function(apollo_probabilities, apollo_beta, apollo_inputs, V, 
   # Useful function
   is.val <- function(e) if(is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) ) return(TRUE) else return(FALSE)
   
-  # Check that V only containts functions
+  # Check that V only contains functions
   test <- sapply(V, is.function)
   if(!all(test)){
     if(!is.null(names(test))) test <- paste0(" (", (names(test)[test])[1], ")") else test <- ""
@@ -51,12 +51,13 @@ apollo_varList <- function(apollo_probabilities, apollo_beta, apollo_inputs, V, 
                                         apollo_inputs$draws), hash=TRUE)
     rndCoeff <- rndCoeff(apollo_beta, apollo_inputs)
     test <- which(!sapply(rndCoeff, is.function))
-    if(length(test)>0 && !is.null(names(rndCoeff))) test <- paste0('(', paste0(names(rndCoeff)[test], collapse=", "), ')')
     if(length(test)>0){
+      if(!is.null(names(rndCoeff))) test <- paste0('(', paste0(names(rndCoeff)[test], collapse=", "), ')')
       apollo_print(paste0("At least one random component inside 'apollo_randCoeff'", 
                           ifelse(is.character(test), test, ""), " is not defined as a function."))
       return(NULL)
     }
+    # Make sure there are no assignments inside the random coefficients
     if(!anyNA(rndCoeff)) for(r in rndCoeff){
       bF <- body(r)
       if(!is.val(bF)) for(i in 1:length(bF)){
@@ -91,6 +92,7 @@ apollo_varList <- function(apollo_probabilities, apollo_beta, apollo_inputs, V, 
     for(i in 1:length(rndCoeff)) r[i,2] <- lang2str(rndCoeff[[i]])
   }
   
+  
   # Read names and definitions of variables inside apollo_probabilities
   extractDef <- function(e){
     if(is.function(e)) e <- body(e)
@@ -118,30 +120,6 @@ apollo_varList <- function(apollo_probabilities, apollo_beta, apollo_inputs, V, 
   }
   p <- extractDef(apollo_probabilities)
   if(length(p)>0) p <- matrix(p, ncol=2, byrow=TRUE)
-  
-  ## Read names and definitions of variables defined in apollo_probabilities
-  #bL     <- body(apollo_probabilities)
-  #vars.p <- c(); def.p <- c()
-  #for(i in 1:length(bL)){
-  #  # An assignment has three elements: 
-  #  # [1] "=" or "<-", [2] names of new var, [3] value assigned
-  #  bLi  <- bL[[i]]
-  #  test <- length(bLi)==3 && (bLi[[1]]=="=" || bLi[[1]]=="<-")
-  #  test <- test && length(bLi[[2]])==1
-  #  test2<- test && (is.expression(bLi[[3]]) || is.call(bLi[[3]]))
-  #  test <- test && !(test2 && bLi[[3]][[1]]=="list")
-  #  test <- test && !(test2 && bLi[[3]][[1]]=="apollo_avgIntraDraws")
-  #  test <- test && !(test2 && bLi[[3]][[1]]=="apollo_panelProd")
-  #  test <- test && !(test2 && bLi[[3]][[1]]=="apollo_avgInterDraws")
-  #  test <- test && !(test2 && bLi[[3]][[1]]=="apollo_prepareProb")
-  #  test <- test && !(test2 && bLi[[3]][[1]]=="apollo_combineModels")
-  #  if(test){
-  #    vars.p <- c(vars.p, as.character(bLi[[2]]))
-  #    def.p  <- c(def.p, lang2str(bLi[[3]]))
-  #  }
-  #  if(length(vars.p)>0) p <- cbind(vars.p, def.p) else p <- NULL
-  #  if(is.vector(p)) p <- matrix(p, nrow=1)
-  #}; rm(vars.p, def.p)
   
   # Read explanatory variables, parameters and draws names
   vars.x <- names(apollo_inputs$database)
@@ -173,7 +151,7 @@ apollo_varList <- function(apollo_probabilities, apollo_beta, apollo_inputs, V, 
   #system.time(f(vars.x)) # sapply 78.9 sec
   #system.time(f(vars.x)) # for    80.2 sec
   
-  # If C++ transformations are not necesary, return
+  # If C++ transformations are not necessary, return
   if(!cpp){
     vars <- list(b=vars.b, x=vars.x, d=vars.d, r=r, p=p, v=v)
     return(vars)

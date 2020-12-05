@@ -12,7 +12,7 @@
 
 <meta name="author" content="David Palma, Stephane Hess" />
 
-<meta name="date" content="2020-10-28" />
+<meta name="date" content="2020-12-05" />
 
 <title>Model file examples</title>
 
@@ -391,7 +391,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">Model file examples</h1>
 <h4 class="author">David Palma, Stephane Hess</h4>
-<h4 class="date">2020-10-28</h4>
+<h4 class="date">2020-12-05</h4>
 
 
 
@@ -433,7 +433,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb1-7"><a href="#cb1-7"></a></span>
 <span id="cb1-8"><a href="#cb1-8"></a><span class="co">### Load libraries</span></span>
 <span id="cb1-9"><a href="#cb1-9"></a><span class="kw">library</span>(apollo)</span>
-<span id="cb1-10"><a href="#cb1-10"></a><span class="co">#&gt; Apollo 0.2.1</span></span>
+<span id="cb1-10"><a href="#cb1-10"></a><span class="co">#&gt; Apollo 0.2.2</span></span>
 <span id="cb1-11"><a href="#cb1-11"></a><span class="co">#&gt; www.ApolloChoiceModelling.com</span></span>
 <span id="cb1-12"><a href="#cb1-12"></a><span class="co">#&gt; See url for a detailed manual, examples and a help forum.</span></span>
 <span id="cb1-13"><a href="#cb1-13"></a><span class="co">#&gt; Sign up to our mailing list for updates on new releases.</span></span>
@@ -551,7 +551,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb1-125"><a href="#cb1-125"></a><span class="co">#&gt; </span></span>
 <span id="cb1-126"><a href="#cb1-126"></a><span class="co">#&gt; Pre-processing likelihood function...</span></span>
 <span id="cb1-127"><a href="#cb1-127"></a><span class="co">#&gt; </span></span>
-<span id="cb1-128"><a href="#cb1-128"></a><span class="co">#&gt; Testing likelihood function........</span></span>
+<span id="cb1-128"><a href="#cb1-128"></a><span class="co">#&gt; Testing influence of parameters........</span></span>
 <span id="cb1-129"><a href="#cb1-129"></a><span class="co">#&gt; Starting main estimation</span></span>
 <span id="cb1-130"><a href="#cb1-130"></a><span class="co">#&gt; Initial function value: -8196.021 </span></span>
 <span id="cb1-131"><a href="#cb1-131"></a><span class="co">#&gt; Initial gradient value:</span></span>
@@ -600,110 +600,111 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb1-174"><a href="#cb1-174"></a><span class="co">#&gt; Calculating LL of each model component...</span></span>
 <span id="cb1-175"><a href="#cb1-175"></a></span>
 <span id="cb1-176"><a href="#cb1-176"></a><span class="kw">apollo_modelOutput</span>(model)</span>
-<span id="cb1-177"><a href="#cb1-177"></a><span class="co">#&gt; Model run using Apollo for R, version 0.2.1 on Linux by david </span></span>
+<span id="cb1-177"><a href="#cb1-177"></a><span class="co">#&gt; Model run using Apollo for R, version 0.2.2 on Linux by david </span></span>
 <span id="cb1-178"><a href="#cb1-178"></a><span class="co">#&gt; www.ApolloChoiceModelling.com</span></span>
 <span id="cb1-179"><a href="#cb1-179"></a><span class="co">#&gt; </span></span>
 <span id="cb1-180"><a href="#cb1-180"></a><span class="co">#&gt; Model name                       : MNL</span></span>
 <span id="cb1-181"><a href="#cb1-181"></a><span class="co">#&gt; Model description                : Simple MNL model on mode choice SP data</span></span>
-<span id="cb1-182"><a href="#cb1-182"></a><span class="co">#&gt; Model run at                     : 2020-10-28 14:44:18</span></span>
+<span id="cb1-182"><a href="#cb1-182"></a><span class="co">#&gt; Model run at                     : 2020-12-05 17:33:06</span></span>
 <span id="cb1-183"><a href="#cb1-183"></a><span class="co">#&gt; Estimation method                : bfgs</span></span>
 <span id="cb1-184"><a href="#cb1-184"></a><span class="co">#&gt; Model diagnosis                  : successful convergence </span></span>
 <span id="cb1-185"><a href="#cb1-185"></a><span class="co">#&gt; Number of individuals            : 500</span></span>
-<span id="cb1-186"><a href="#cb1-186"></a><span class="co">#&gt; Number of observations           : 7000</span></span>
-<span id="cb1-187"><a href="#cb1-187"></a><span class="co">#&gt; </span></span>
-<span id="cb1-188"><a href="#cb1-188"></a><span class="co">#&gt; Number of cores used             :  1 </span></span>
-<span id="cb1-189"><a href="#cb1-189"></a><span class="co">#&gt; Model without mixing</span></span>
-<span id="cb1-190"><a href="#cb1-190"></a><span class="co">#&gt; </span></span>
-<span id="cb1-191"><a href="#cb1-191"></a><span class="co">#&gt; LL(start)                        : -8196.021</span></span>
-<span id="cb1-192"><a href="#cb1-192"></a><span class="co">#&gt; LL(0)                            : -8196.021</span></span>
-<span id="cb1-193"><a href="#cb1-193"></a><span class="co">#&gt; LL(final)                        : -5802.023</span></span>
-<span id="cb1-194"><a href="#cb1-194"></a><span class="co">#&gt; Rho-square (0)                   :  0.2921 </span></span>
-<span id="cb1-195"><a href="#cb1-195"></a><span class="co">#&gt; Adj.Rho-square (0)               :  0.2911 </span></span>
-<span id="cb1-196"><a href="#cb1-196"></a><span class="co">#&gt; AIC                              :  11620.05 </span></span>
-<span id="cb1-197"><a href="#cb1-197"></a><span class="co">#&gt; BIC                              :  11674.87 </span></span>
-<span id="cb1-198"><a href="#cb1-198"></a><span class="co">#&gt; </span></span>
+<span id="cb1-186"><a href="#cb1-186"></a><span class="co">#&gt; Number of rows in database       : 7000</span></span>
+<span id="cb1-187"><a href="#cb1-187"></a><span class="co">#&gt; Number of modelled outcomes      : 7000</span></span>
+<span id="cb1-188"><a href="#cb1-188"></a><span class="co">#&gt; </span></span>
+<span id="cb1-189"><a href="#cb1-189"></a><span class="co">#&gt; Number of cores used             :  1 </span></span>
+<span id="cb1-190"><a href="#cb1-190"></a><span class="co">#&gt; Model without mixing</span></span>
+<span id="cb1-191"><a href="#cb1-191"></a><span class="co">#&gt; </span></span>
+<span id="cb1-192"><a href="#cb1-192"></a><span class="co">#&gt; LL(start)                        : -8196.021</span></span>
+<span id="cb1-193"><a href="#cb1-193"></a><span class="co">#&gt; LL(0)                            : -8196.021</span></span>
+<span id="cb1-194"><a href="#cb1-194"></a><span class="co">#&gt; LL(final)                        : -5802.023</span></span>
+<span id="cb1-195"><a href="#cb1-195"></a><span class="co">#&gt; Rho-square (0)                   :  0.2921 </span></span>
+<span id="cb1-196"><a href="#cb1-196"></a><span class="co">#&gt; Adj.Rho-square (0)               :  0.2911 </span></span>
+<span id="cb1-197"><a href="#cb1-197"></a><span class="co">#&gt; AIC                              :  11620.05 </span></span>
+<span id="cb1-198"><a href="#cb1-198"></a><span class="co">#&gt; BIC                              :  11674.87 </span></span>
 <span id="cb1-199"><a href="#cb1-199"></a><span class="co">#&gt; </span></span>
-<span id="cb1-200"><a href="#cb1-200"></a><span class="co">#&gt; Estimated parameters             :  8</span></span>
-<span id="cb1-201"><a href="#cb1-201"></a><span class="co">#&gt; Time taken (hh:mm:ss)            :  00:00:1.87 </span></span>
-<span id="cb1-202"><a href="#cb1-202"></a><span class="co">#&gt;      pre-estimation              :  00:00:0.57 </span></span>
-<span id="cb1-203"><a href="#cb1-203"></a><span class="co">#&gt;      estimation                  :  00:00:0.63 </span></span>
-<span id="cb1-204"><a href="#cb1-204"></a><span class="co">#&gt;      post-estimation             :  00:00:0.66 </span></span>
-<span id="cb1-205"><a href="#cb1-205"></a><span class="co">#&gt; Iterations                       :  19  </span></span>
-<span id="cb1-206"><a href="#cb1-206"></a><span class="co">#&gt; Min abs eigenvalue of Hessian    :  3.304559 </span></span>
-<span id="cb1-207"><a href="#cb1-207"></a><span class="co">#&gt; </span></span>
-<span id="cb1-208"><a href="#cb1-208"></a><span class="co">#&gt; Estimates:</span></span>
-<span id="cb1-209"><a href="#cb1-209"></a><span class="co">#&gt;              Estimate        s.e.   t.rat.(0)    Rob.s.e. Rob.t.rat.(0)</span></span>
-<span id="cb1-210"><a href="#cb1-210"></a><span class="co">#&gt; asc_car      0.000000          NA          NA          NA            NA</span></span>
-<span id="cb1-211"><a href="#cb1-211"></a><span class="co">#&gt; asc_bus      0.011545    0.540840     0.02135    0.541642       0.02132</span></span>
-<span id="cb1-212"><a href="#cb1-212"></a><span class="co">#&gt; asc_air     -0.649537    0.269903    -2.40655    0.266912      -2.43352</span></span>
-<span id="cb1-213"><a href="#cb1-213"></a><span class="co">#&gt; asc_rail    -1.235710    0.321846    -3.83945    0.312775      -3.95079</span></span>
-<span id="cb1-214"><a href="#cb1-214"></a><span class="co">#&gt; b_tt_car    -0.010061  6.3867e-04   -15.75317  6.5823e-04     -15.28521</span></span>
-<span id="cb1-215"><a href="#cb1-215"></a><span class="co">#&gt; b_tt_bus    -0.016422    0.001453   -11.30290    0.001480     -11.09958</span></span>
-<span id="cb1-216"><a href="#cb1-216"></a><span class="co">#&gt; b_tt_air    -0.011831    0.002402    -4.92625    0.002370      -4.99136</span></span>
-<span id="cb1-217"><a href="#cb1-217"></a><span class="co">#&gt; b_tt_rail   -0.004780    0.001650    -2.89736    0.001623      -2.94432</span></span>
-<span id="cb1-218"><a href="#cb1-218"></a><span class="co">#&gt; b_c         -0.052923    0.001422   -37.21129    0.001701     -31.11201</span></span>
-<span id="cb1-219"><a href="#cb1-219"></a></span>
-<span id="cb1-220"><a href="#cb1-220"></a><span class="co">#apollo_saveOutput(model)</span></span>
-<span id="cb1-221"><a href="#cb1-221"></a></span>
-<span id="cb1-222"><a href="#cb1-222"></a><span class="co"># ####################################################### #</span></span>
-<span id="cb1-223"><a href="#cb1-223"></a><span class="co">#### 7. Postprocessing of results                      ####</span></span>
-<span id="cb1-224"><a href="#cb1-224"></a><span class="co"># ####################################################### #</span></span>
-<span id="cb1-225"><a href="#cb1-225"></a></span>
-<span id="cb1-226"><a href="#cb1-226"></a><span class="co">### Use the estimated model to make predictions</span></span>
-<span id="cb1-227"><a href="#cb1-227"></a>predictions_base =<span class="st"> </span><span class="kw">apollo_prediction</span>(model, </span>
-<span id="cb1-228"><a href="#cb1-228"></a>                                     apollo_probabilities, </span>
-<span id="cb1-229"><a href="#cb1-229"></a>                                     apollo_inputs)</span>
-<span id="cb1-230"><a href="#cb1-230"></a><span class="co">#&gt; Running predictions from model using parameter estimates...</span></span>
-<span id="cb1-231"><a href="#cb1-231"></a><span class="co">#&gt; Predicted aggregated demand at model estimates</span></span>
-<span id="cb1-232"><a href="#cb1-232"></a><span class="co">#&gt;         car bus  air rail</span></span>
-<span id="cb1-233"><a href="#cb1-233"></a><span class="co">#&gt; Demand 1946 358 1522 3174</span></span>
-<span id="cb1-234"><a href="#cb1-234"></a><span class="co">#&gt; </span></span>
-<span id="cb1-235"><a href="#cb1-235"></a><span class="co">#&gt; The output from apollo_prediction is a matrix containing the</span></span>
-<span id="cb1-236"><a href="#cb1-236"></a><span class="co">#&gt;   predictions at the estimated values.</span></span>
-<span id="cb1-237"><a href="#cb1-237"></a></span>
-<span id="cb1-238"><a href="#cb1-238"></a><span class="co">### Now imagine the cost for rail increases by 10% </span></span>
-<span id="cb1-239"><a href="#cb1-239"></a><span class="co">### and predict again</span></span>
-<span id="cb1-240"><a href="#cb1-240"></a>database<span class="op">$</span>cost_rail =<span class="st"> </span><span class="fl">1.1</span><span class="op">*</span>database<span class="op">$</span>cost_rail</span>
-<span id="cb1-241"><a href="#cb1-241"></a>apollo_inputs   =<span class="st"> </span><span class="kw">apollo_validateInputs</span>()</span>
-<span id="cb1-242"><a href="#cb1-242"></a><span class="co">#&gt; Several observations per individual detected based on the value of ID.</span></span>
-<span id="cb1-243"><a href="#cb1-243"></a><span class="co">#&gt;   Setting panelData in apollo_control set to TRUE.</span></span>
-<span id="cb1-244"><a href="#cb1-244"></a><span class="co">#&gt; All checks on apollo_control completed.</span></span>
-<span id="cb1-245"><a href="#cb1-245"></a><span class="co">#&gt; All checks on database completed.</span></span>
-<span id="cb1-246"><a href="#cb1-246"></a>predictions_new =<span class="st"> </span><span class="kw">apollo_prediction</span>(model, </span>
-<span id="cb1-247"><a href="#cb1-247"></a>                                    apollo_probabilities, </span>
-<span id="cb1-248"><a href="#cb1-248"></a>                                    apollo_inputs)</span>
-<span id="cb1-249"><a href="#cb1-249"></a><span class="co">#&gt; Running predictions from model using parameter estimates...</span></span>
-<span id="cb1-250"><a href="#cb1-250"></a><span class="co">#&gt; Predicted aggregated demand at model estimates</span></span>
-<span id="cb1-251"><a href="#cb1-251"></a><span class="co">#&gt;            car    bus     air    rail</span></span>
-<span id="cb1-252"><a href="#cb1-252"></a><span class="co">#&gt; Demand 2132.59 399.33 1645.75 2822.34</span></span>
-<span id="cb1-253"><a href="#cb1-253"></a><span class="co">#&gt; </span></span>
-<span id="cb1-254"><a href="#cb1-254"></a><span class="co">#&gt; The output from apollo_prediction is a matrix containing the</span></span>
-<span id="cb1-255"><a href="#cb1-255"></a><span class="co">#&gt;   predictions at the estimated values.</span></span>
-<span id="cb1-256"><a href="#cb1-256"></a></span>
-<span id="cb1-257"><a href="#cb1-257"></a><span class="co">### Compare predictions</span></span>
-<span id="cb1-258"><a href="#cb1-258"></a>change=(predictions_new<span class="op">-</span>predictions_base)<span class="op">/</span>predictions_base</span>
-<span id="cb1-259"><a href="#cb1-259"></a><span class="co">### Not interested in chosen alternative now, </span></span>
-<span id="cb1-260"><a href="#cb1-260"></a><span class="co">### so drop last column</span></span>
-<span id="cb1-261"><a href="#cb1-261"></a>change=change[,<span class="op">-</span><span class="kw">ncol</span>(change)]</span>
-<span id="cb1-262"><a href="#cb1-262"></a><span class="co">### Summary of changes (possible presence of NAs due to</span></span>
-<span id="cb1-263"><a href="#cb1-263"></a><span class="co">### unavailable alternatives)</span></span>
-<span id="cb1-264"><a href="#cb1-264"></a><span class="kw">summary</span>(change)</span>
-<span id="cb1-265"><a href="#cb1-265"></a><span class="co">#&gt;        ID     Observation      car              bus              air        </span></span>
-<span id="cb1-266"><a href="#cb1-266"></a><span class="co">#&gt;  Min.   :0   Min.   :0    Min.   :0.0000   Min.   :0.0000   Min.   :0.0000  </span></span>
-<span id="cb1-267"><a href="#cb1-267"></a><span class="co">#&gt;  1st Qu.:0   1st Qu.:0    1st Qu.:0.0725   1st Qu.:0.0738   1st Qu.:0.0704  </span></span>
-<span id="cb1-268"><a href="#cb1-268"></a><span class="co">#&gt;  Median :0   Median :0    Median :0.1168   Median :0.1218   Median :0.1100  </span></span>
-<span id="cb1-269"><a href="#cb1-269"></a><span class="co">#&gt;  Mean   :0   Mean   :0    Mean   :0.1105   Mean   :0.1225   Mean   :0.1121  </span></span>
-<span id="cb1-270"><a href="#cb1-270"></a><span class="co">#&gt;  3rd Qu.:0   3rd Qu.:0    3rd Qu.:0.1509   3rd Qu.:0.1674   3rd Qu.:0.1517  </span></span>
-<span id="cb1-271"><a href="#cb1-271"></a><span class="co">#&gt;  Max.   :0   Max.   :0    Max.   :0.2339   Max.   :0.4326   Max.   :0.3677  </span></span>
-<span id="cb1-272"><a href="#cb1-272"></a><span class="co">#&gt;                           NA&#39;s   :1554     NA&#39;s   :686      NA&#39;s   :1736    </span></span>
-<span id="cb1-273"><a href="#cb1-273"></a><span class="co">#&gt;       rail        </span></span>
-<span id="cb1-274"><a href="#cb1-274"></a><span class="co">#&gt;  Min.   :-0.3028  </span></span>
-<span id="cb1-275"><a href="#cb1-275"></a><span class="co">#&gt;  1st Qu.:-0.2060  </span></span>
-<span id="cb1-276"><a href="#cb1-276"></a><span class="co">#&gt;  Median :-0.1340  </span></span>
-<span id="cb1-277"><a href="#cb1-277"></a><span class="co">#&gt;  Mean   :-0.1434  </span></span>
-<span id="cb1-278"><a href="#cb1-278"></a><span class="co">#&gt;  3rd Qu.:-0.0723  </span></span>
-<span id="cb1-279"><a href="#cb1-279"></a><span class="co">#&gt;  Max.   :-0.0022  </span></span>
-<span id="cb1-280"><a href="#cb1-280"></a><span class="co">#&gt;  NA&#39;s   :882</span></span></code></pre></div>
+<span id="cb1-200"><a href="#cb1-200"></a><span class="co">#&gt; </span></span>
+<span id="cb1-201"><a href="#cb1-201"></a><span class="co">#&gt; Estimated parameters             :  8</span></span>
+<span id="cb1-202"><a href="#cb1-202"></a><span class="co">#&gt; Time taken (hh:mm:ss)            :  00:00:1.67 </span></span>
+<span id="cb1-203"><a href="#cb1-203"></a><span class="co">#&gt;      pre-estimation              :  00:00:0.54 </span></span>
+<span id="cb1-204"><a href="#cb1-204"></a><span class="co">#&gt;      estimation                  :  00:00:0.55 </span></span>
+<span id="cb1-205"><a href="#cb1-205"></a><span class="co">#&gt;      post-estimation             :  00:00:0.58 </span></span>
+<span id="cb1-206"><a href="#cb1-206"></a><span class="co">#&gt; Iterations                       :  19  </span></span>
+<span id="cb1-207"><a href="#cb1-207"></a><span class="co">#&gt; Min abs eigenvalue of Hessian    :  3.304559 </span></span>
+<span id="cb1-208"><a href="#cb1-208"></a><span class="co">#&gt; </span></span>
+<span id="cb1-209"><a href="#cb1-209"></a><span class="co">#&gt; Estimates:</span></span>
+<span id="cb1-210"><a href="#cb1-210"></a><span class="co">#&gt;              Estimate        s.e.   t.rat.(0)    Rob.s.e. Rob.t.rat.(0)</span></span>
+<span id="cb1-211"><a href="#cb1-211"></a><span class="co">#&gt; asc_car      0.000000          NA          NA          NA            NA</span></span>
+<span id="cb1-212"><a href="#cb1-212"></a><span class="co">#&gt; asc_bus      0.011545    0.540840     0.02135    0.541642       0.02132</span></span>
+<span id="cb1-213"><a href="#cb1-213"></a><span class="co">#&gt; asc_air     -0.649537    0.269903    -2.40655    0.266912      -2.43352</span></span>
+<span id="cb1-214"><a href="#cb1-214"></a><span class="co">#&gt; asc_rail    -1.235710    0.321846    -3.83945    0.312775      -3.95079</span></span>
+<span id="cb1-215"><a href="#cb1-215"></a><span class="co">#&gt; b_tt_car    -0.010061  6.3867e-04   -15.75317  6.5823e-04     -15.28521</span></span>
+<span id="cb1-216"><a href="#cb1-216"></a><span class="co">#&gt; b_tt_bus    -0.016422    0.001453   -11.30290    0.001480     -11.09958</span></span>
+<span id="cb1-217"><a href="#cb1-217"></a><span class="co">#&gt; b_tt_air    -0.011831    0.002402    -4.92625    0.002370      -4.99136</span></span>
+<span id="cb1-218"><a href="#cb1-218"></a><span class="co">#&gt; b_tt_rail   -0.004780    0.001650    -2.89736    0.001623      -2.94432</span></span>
+<span id="cb1-219"><a href="#cb1-219"></a><span class="co">#&gt; b_c         -0.052923    0.001422   -37.21129    0.001701     -31.11201</span></span>
+<span id="cb1-220"><a href="#cb1-220"></a></span>
+<span id="cb1-221"><a href="#cb1-221"></a><span class="co">#apollo_saveOutput(model)</span></span>
+<span id="cb1-222"><a href="#cb1-222"></a></span>
+<span id="cb1-223"><a href="#cb1-223"></a><span class="co"># ####################################################### #</span></span>
+<span id="cb1-224"><a href="#cb1-224"></a><span class="co">#### 7. Postprocessing of results                      ####</span></span>
+<span id="cb1-225"><a href="#cb1-225"></a><span class="co"># ####################################################### #</span></span>
+<span id="cb1-226"><a href="#cb1-226"></a></span>
+<span id="cb1-227"><a href="#cb1-227"></a><span class="co">### Use the estimated model to make predictions</span></span>
+<span id="cb1-228"><a href="#cb1-228"></a>predictions_base =<span class="st"> </span><span class="kw">apollo_prediction</span>(model, </span>
+<span id="cb1-229"><a href="#cb1-229"></a>                                     apollo_probabilities, </span>
+<span id="cb1-230"><a href="#cb1-230"></a>                                     apollo_inputs)</span>
+<span id="cb1-231"><a href="#cb1-231"></a><span class="co">#&gt; Running predictions from model using parameter estimates...</span></span>
+<span id="cb1-232"><a href="#cb1-232"></a><span class="co">#&gt; Predicted aggregated demand at model estimates</span></span>
+<span id="cb1-233"><a href="#cb1-233"></a><span class="co">#&gt;         car bus  air rail</span></span>
+<span id="cb1-234"><a href="#cb1-234"></a><span class="co">#&gt; Demand 1946 358 1522 3174</span></span>
+<span id="cb1-235"><a href="#cb1-235"></a><span class="co">#&gt; </span></span>
+<span id="cb1-236"><a href="#cb1-236"></a><span class="co">#&gt; The output from apollo_prediction is a matrix containing the</span></span>
+<span id="cb1-237"><a href="#cb1-237"></a><span class="co">#&gt;   predictions at the estimated values.</span></span>
+<span id="cb1-238"><a href="#cb1-238"></a></span>
+<span id="cb1-239"><a href="#cb1-239"></a><span class="co">### Now imagine the cost for rail increases by 10% </span></span>
+<span id="cb1-240"><a href="#cb1-240"></a><span class="co">### and predict again</span></span>
+<span id="cb1-241"><a href="#cb1-241"></a>database<span class="op">$</span>cost_rail =<span class="st"> </span><span class="fl">1.1</span><span class="op">*</span>database<span class="op">$</span>cost_rail</span>
+<span id="cb1-242"><a href="#cb1-242"></a>apollo_inputs   =<span class="st"> </span><span class="kw">apollo_validateInputs</span>()</span>
+<span id="cb1-243"><a href="#cb1-243"></a><span class="co">#&gt; Several observations per individual detected based on the value of ID.</span></span>
+<span id="cb1-244"><a href="#cb1-244"></a><span class="co">#&gt;   Setting panelData in apollo_control set to TRUE.</span></span>
+<span id="cb1-245"><a href="#cb1-245"></a><span class="co">#&gt; All checks on apollo_control completed.</span></span>
+<span id="cb1-246"><a href="#cb1-246"></a><span class="co">#&gt; All checks on database completed.</span></span>
+<span id="cb1-247"><a href="#cb1-247"></a>predictions_new =<span class="st"> </span><span class="kw">apollo_prediction</span>(model, </span>
+<span id="cb1-248"><a href="#cb1-248"></a>                                    apollo_probabilities, </span>
+<span id="cb1-249"><a href="#cb1-249"></a>                                    apollo_inputs)</span>
+<span id="cb1-250"><a href="#cb1-250"></a><span class="co">#&gt; Running predictions from model using parameter estimates...</span></span>
+<span id="cb1-251"><a href="#cb1-251"></a><span class="co">#&gt; Predicted aggregated demand at model estimates</span></span>
+<span id="cb1-252"><a href="#cb1-252"></a><span class="co">#&gt;            car    bus     air    rail</span></span>
+<span id="cb1-253"><a href="#cb1-253"></a><span class="co">#&gt; Demand 2132.59 399.33 1645.75 2822.34</span></span>
+<span id="cb1-254"><a href="#cb1-254"></a><span class="co">#&gt; </span></span>
+<span id="cb1-255"><a href="#cb1-255"></a><span class="co">#&gt; The output from apollo_prediction is a matrix containing the</span></span>
+<span id="cb1-256"><a href="#cb1-256"></a><span class="co">#&gt;   predictions at the estimated values.</span></span>
+<span id="cb1-257"><a href="#cb1-257"></a></span>
+<span id="cb1-258"><a href="#cb1-258"></a><span class="co">### Compare predictions</span></span>
+<span id="cb1-259"><a href="#cb1-259"></a>change=(predictions_new<span class="op">-</span>predictions_base)<span class="op">/</span>predictions_base</span>
+<span id="cb1-260"><a href="#cb1-260"></a><span class="co">### Not interested in chosen alternative now, </span></span>
+<span id="cb1-261"><a href="#cb1-261"></a><span class="co">### so drop last column</span></span>
+<span id="cb1-262"><a href="#cb1-262"></a>change=change[,<span class="op">-</span><span class="kw">ncol</span>(change)]</span>
+<span id="cb1-263"><a href="#cb1-263"></a><span class="co">### Summary of changes (possible presence of NAs due to</span></span>
+<span id="cb1-264"><a href="#cb1-264"></a><span class="co">### unavailable alternatives)</span></span>
+<span id="cb1-265"><a href="#cb1-265"></a><span class="kw">summary</span>(change)</span>
+<span id="cb1-266"><a href="#cb1-266"></a><span class="co">#&gt;        ID     Observation      car              bus              air        </span></span>
+<span id="cb1-267"><a href="#cb1-267"></a><span class="co">#&gt;  Min.   :0   Min.   :0    Min.   :0.0000   Min.   :0.0000   Min.   :0.0000  </span></span>
+<span id="cb1-268"><a href="#cb1-268"></a><span class="co">#&gt;  1st Qu.:0   1st Qu.:0    1st Qu.:0.0725   1st Qu.:0.0738   1st Qu.:0.0704  </span></span>
+<span id="cb1-269"><a href="#cb1-269"></a><span class="co">#&gt;  Median :0   Median :0    Median :0.1168   Median :0.1218   Median :0.1100  </span></span>
+<span id="cb1-270"><a href="#cb1-270"></a><span class="co">#&gt;  Mean   :0   Mean   :0    Mean   :0.1105   Mean   :0.1225   Mean   :0.1121  </span></span>
+<span id="cb1-271"><a href="#cb1-271"></a><span class="co">#&gt;  3rd Qu.:0   3rd Qu.:0    3rd Qu.:0.1509   3rd Qu.:0.1674   3rd Qu.:0.1517  </span></span>
+<span id="cb1-272"><a href="#cb1-272"></a><span class="co">#&gt;  Max.   :0   Max.   :0    Max.   :0.2339   Max.   :0.4326   Max.   :0.3677  </span></span>
+<span id="cb1-273"><a href="#cb1-273"></a><span class="co">#&gt;                           NA&#39;s   :1554     NA&#39;s   :686      NA&#39;s   :1736    </span></span>
+<span id="cb1-274"><a href="#cb1-274"></a><span class="co">#&gt;       rail        </span></span>
+<span id="cb1-275"><a href="#cb1-275"></a><span class="co">#&gt;  Min.   :-0.3028  </span></span>
+<span id="cb1-276"><a href="#cb1-276"></a><span class="co">#&gt;  1st Qu.:-0.2060  </span></span>
+<span id="cb1-277"><a href="#cb1-277"></a><span class="co">#&gt;  Median :-0.1340  </span></span>
+<span id="cb1-278"><a href="#cb1-278"></a><span class="co">#&gt;  Mean   :-0.1434  </span></span>
+<span id="cb1-279"><a href="#cb1-279"></a><span class="co">#&gt;  3rd Qu.:-0.0723  </span></span>
+<span id="cb1-280"><a href="#cb1-280"></a><span class="co">#&gt;  Max.   :-0.0022  </span></span>
+<span id="cb1-281"><a href="#cb1-281"></a><span class="co">#&gt;  NA&#39;s   :882</span></span></code></pre></div>
 </div>
 <div id="mmnl-model-file-example" class="section level2">
 <h2>MMNL model file example</h2>
