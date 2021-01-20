@@ -33,7 +33,7 @@ apollo_lrTest = function(model1,model2){
       position=gregexpr(pattern=":",value)[[1]][1]
       modelNames[[i]]=(substr(value,position+2,nchar(value)))
       
-      id <- grepl(paste0("Number of observations"), lines)
+      id <- grepl(paste0("Number of modelled outcomes"), lines)
       if(any(id)){
         value=lines[which(id)] 
       } else {

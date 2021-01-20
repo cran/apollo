@@ -51,7 +51,8 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   if(functionality=="preprocess"){
     lc_settings <- list(componentName = lc_settings$componentName,
                         LCNObs        = max(sapply(lc_settings$inClassProb, function(m_settings) sum(m_settings$rows))), 
-                        LCCompNames   = names(lc_settings$inClassProb))
+                        LCCompNames   = names(lc_settings$inClassProb),
+                        modelType     = 'LC')
     return(lc_settings)
   }
   
@@ -65,7 +66,7 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   #### General checks ####
   # #################### #
   if(is.null(lc_settings[["componentName"]])){
-    modelType <- 'LatentClass'
+    modelType <- 'LC'
     lc_settings[["componentName"]] = ifelse(!is.null(lc_settings[['componentName2']]),
                                             lc_settings[['componentName2']], modelType)
     test <- functionality=="validate" && lc_settings[["componentName"]]!='model' && !apollo_inputs$silent

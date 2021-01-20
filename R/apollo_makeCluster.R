@@ -81,8 +81,9 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
   asLst <- c() # one element per individual
   byObs <- c() # one row per observation
   byInd <- c() # one row per individual
-  asIs  <- c() # none of the above
+  asIs  <- c('apollo_scaling') # none of the above
   for(e in ls(apollo_inputs)){ # e is name of element, E is the element
+    if(e %in% asIs) next
     E <- apollo_inputs[[e]]
     if(is.list(E) && length(E)==nIndiv) asLst <- c(asLst, e) else{
       if(is.list(E)) E <- E[[1]]

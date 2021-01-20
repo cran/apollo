@@ -73,6 +73,9 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   #### Loading Inputs ####
   # #################### #
   
+  test <- is.vector(apollo_beta) && is.function(apollo_probabilities) && is.list(apollo_inputs)
+  if(!test) stop('Arguments apollo_beta, apollo_fixed, apollo_probabilities and apollo_inputs must be provided.')
+  
   ### First checkpoint
   time1 <- Sys.time()
   
