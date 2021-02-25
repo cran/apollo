@@ -348,15 +348,15 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
                             })
     ### Format of tau
     test <- is.vector(inputs$tau) | is.matrix(inputs$tau) | is.list(inputs$tau)
-    if(!test) stop("Thresholds for Ordered Logit for model component \"",inputs$componentName,"\" need to be a vector, matrix, or list!")
+    if(!test) stop("Thresholds for Ordered Logit for model component \"",inputs$componentName,"\" need to be a list!")
     if(is.vector(inputs$tau)){
-      if(length(inputs$tau)==1) stop("If provided as scalars, need at least two thresholds for Ordered Logit for model component \"",inputs$componentName,"\"!")
+      #if(length(inputs$tau)==1) stop("If provided as scalars, need at least two thresholds for Ordered Logit for model component \"",inputs$componentName,"\"!")
       inputs$tau = as.list(inputs$tau)
     } else if(is.matrix(inputs$tau)){
       if(nrow(inputs$tau)!=inputs$nObs) stop("If provided as a matrix, need one value per observation in the data for each threshold for Ordered Logit for model component \"",inputs$componentName,"\"!")
       inputs$tau = split(inputs$tau, rep(1:ncol(inputs$tau), each=nrow(inputs$tau)))
     } else if(is.list(inputs$tau)){
-      if(length(inputs$tau)==1) stop("If provided as a list, the list of thresholds need at least two elements for Ordered Logit component \"",inputs$componentName,"\"!")
+      #if(length(inputs$tau)==1) stop("If provided as a list, the list of thresholds need at least two elements for Ordered Logit component \"",inputs$componentName,"\"!")
       if(any(sapply(inputs$tau,is.list))) stop("If provided as a list, elements in list of thresholds for Ordered Logit for model component \"",inputs$componentName,"\" cannot be lists themselves!")
       mixing <- tryCatch(apollo_inputs$apollo_control$mixing, error = function(e) return(NA))
       #if(any(sapply(inputs$tau, is.function))){
@@ -367,7 +367,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
                              apollo_inputs$apollo_draws$interNDraws,
                              apollo_inputs$apollo_draws$intraNDraws)
       #if(max_dim==3 && intraNDraws==0) stop("Some thresholds for Ordered Logit for model component \"", inputs$componentName, "\" are given as arrays despite the model not using intra-individual mixing!")
-      for(k in 1:length(inputs$tau)){ # expand if neccesary
+      for(k in 1:length(inputs$tau)){ # expand if necessary
         tt <- inputs$tau[[k]]
         if(is.function(tt)){ environment(tt) <- new.env(hash=TRUE, parent=parent.frame()); tt = tt() }
         if(is.vector(tt)){
@@ -386,15 +386,9 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
         } else stop("Some threshold has an unrecognised format for model component \"", inputs$componentName, "\".")
       }
     }
-    
-    if(is.null(inputs$coding)){
-      inputs$coding <- 1:(length(inputs$tau)+1)  
-      if(functionality=="validate"){
-        txt <- paste0('No coding provided for Ordered Logit for model component "', inputs$componentName,
-                      '", so assuming outcomeOrdered goes from 1 to ', max(inputs$coding))
-        apollo_print(txt)
-      }
-    }
+    test <- functionality=='validate' && length(inputs$tau)==1 && modelType=='ol' & !apollo_inputs$silent
+    if(test) apollo_print(paste0('OL model component "', inputs$componentName, '" has only two levels. ', 
+                                 'Binary choices such as this are better handled by apollo_mnl.'), highlight=TRUE)
     
     ### Format checks
     # outcomeOrdered
@@ -414,6 +408,17 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     # coding
     test <- is.null(inputs$coding) || is.vector(inputs$coding)
     if(!test) stop("Argument 'coding', if provided for model component \"",inputs$componentName,"\", must be a vector.")
+    if(is.null(inputs$coding)){
+      inputs$coding <- 1:(length(inputs$tau)+1)  
+      if(functionality=="validate" & !apollo_inputs$silent) apollo_print(paste0('No coding provided for Ordered Logit for ',
+                                                                                'model component "', inputs$componentName,
+                                                                                '", so assuming outcomeOrdered goes from ', 
+                                                                                '1 to ', max(inputs$coding)))
+    }
+    values_present = unique(inputs$outcomeOrdered)
+    if(!(all(values_present %in% inputs$coding ))) stop("Some levels in 'outcomeOrdered' do not exist in 'coding' for model component \"",inputs$componentName,"\" !")
+    if(!(all(inputs$coding %in% values_present ))) stop("Some levels in 'coding' do not exist in 'outcomeOrdered' for model component \"",inputs$componentName,"\"!")
+    rm(values_present)
     
     # Expand rows if necessary, and update nObs
     if(length(inputs$rows)==1 && inputs$rows=="all") inputs$rows <- rep(TRUE, inputs$nObs)
@@ -447,7 +452,9 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     # Check for optional inputs
     if(is.null(inputs[["minConsumption"]])) inputs[["minConsumption"]] = NA
     if(is.null(inputs[["rows"]])          ) inputs[["rows"]]           = "all"
-    if(is.null(inputs[["nRep"]])          ) inputs[["nRep"]]           = 100
+    if(is.null(inputs[["nRep"]])){
+      if(is.null(apollo_inputs$nRep)) inputs[["nRep"]] <- 100L else inputs[["nRep"]] <- apollo_inputs$nRep
+    }
     if(is.null(inputs[["outside"]])){
       if("outside" %in% inputs$alternatives) inputs$outside <- "outside" else inputs$outside <- NA
     } else if(!(inputs$outside %in% inputs$alternatives)) stop('Name provided for outside good for model component "',
@@ -462,6 +469,9 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
       inputs[['avail']]=1
       if(!apollo_inputs$silent && functionality=='validate') apollo_print('Setting "avail" is missing, so full availability is assumed.')
     }
+    # nRep
+    test <- length(inputs[["nRep"]])==1 && is.integer(inputs[["nRep"]]) && inputs[["nRep"]]>0
+    if(!test) stop('Argument "nRep" must be a positive integer.')
     
     # continuousChoice
     test <- is.list(inputs$continuousChoice) && all(sapply(inputs$continuousChoice, is.numeric))

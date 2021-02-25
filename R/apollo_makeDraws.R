@@ -93,7 +93,7 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   countHalton=0
   if(!is.na(d$interDrawsType)&&(tolower(d$interDrawsType)=='halton')) countHalton=countHalton+length(c(d$interUnifDraws, d$interNormDraws))
   if(!is.na(d$intraDrawsType)&&(tolower(d$intraDrawsType)=='halton')) countHalton=countHalton+length(c(d$intraUnifDraws, d$intraNormDraws))
-  if(countHalton>5) cat("\nYour model is using Halton draws in",countHalton,"dimensions. You should consider a different type of draws to avoid issues with collinearity!\n")
+  if(countHalton>5) apollo_print(paste("Your model is using Halton draws in", countHalton, "dimensions. You should consider a different type of draws to avoid issues with collinearity!"), highlight=TRUE)
   
   
   # ################################## #

@@ -35,7 +35,7 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
   alternatives = sharesTest_settings[["alternatives"]]
   choiceVar    = sharesTest_settings[["choiceVar"]] 
   subsamples   = sharesTest_settings[["subsamples"]]
-  newAlts      = sharesTest_settings[["newAlts"]]  ### 31 Oct
+  newAlts      = sharesTest_settings[["newAlts"]]      ### 31 Oct
   newAltsOnly  = sharesTest_settings[["newAltsOnly"]]  ### 31 Oct
   
   predictedShares = apollo_prediction(model, apollo_probabilities, apollo_inputs, 
@@ -43,14 +43,14 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
   
   ### 31 Oct
   if(!is.null(newAlts)){
-   nAlts=ncol(predictedShares)-3
-   nObs=nrow(predictedShares)
-   if(any(lapply(newAlts,nrow)!=nObs)) stop("Some components in sharesTestSettings$newAlts do not have number of rows equal to that in the database!")
+   nAlts = ncol(predictedShares) - 3
+   nObs  = nrow(predictedShares)
+   if(any(lapply(newAlts,nrow)!=nObs) ) stop("Some components in sharesTestSettings$newAlts do not have number of rows equal to that in the database!")
    if(any(lapply(newAlts,ncol)!=nAlts)) stop("Some components in sharesTestSettings$newAlts do not have number of columns equal to the number of alternatives in the model!")
   }
   
   #### predictedShares=predictedShares[,-ncol(predictedShares)] ### removed
-  predictedShares=predictedShares[,!colnames(predictedShares)%in%c("ID","Observation","chosen")]#### NEW
+  predictedShares = predictedShares[,!colnames(predictedShares)%in%c("ID","Observation","chosen")] #### NEW
   
   ### SH new lines 4/4. Sort out full sample here
   if(length(subsamples)==1 && is.na(subsamples)) subsamples=list("All data"=rep(1,length(choiceVar)))
@@ -65,9 +65,13 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
     apollo_print("Warning: Predicted values contain NA. This could be due to using the rows setting in the model. These observations will be ommited from the analysis.")
   }
   
-  xnames=colnames(predictedShares)
-  predictedShares=split(predictedShares, rep(1:ncol(predictedShares), each = nrow(predictedShares)))
-  names(predictedShares)=xnames
+  # 18/02/2021 Made this conditional, as it is no longer needed due to predictedShares being a data.frame
+  if(is.matrix(predictedShares)){
+    xnames = colnames(predictedShares)
+    predictedShares = split(predictedShares, rep(1:ncol(predictedShares), each = nrow(predictedShares)))
+    names(predictedShares) = xnames
+    rm(xnames)
+  }
   
   categories = subsamples
 
@@ -98,45 +102,50 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
     if(!any(lapply(categories,sum)==length(trueShares[[1]])) & !any(lapply(categories,length)==1)) categories[["All data"]]=rep(1,length(trueShares[[1]]))
   #}
   
+  out <- list()
+  
   cat("\nRunning share prediction tests\n")
   if(!newAltsOnly){  ## 31 Oct
     if(!is.null(newAlts)) cat("\nPart 1: alternatives as used in model")
-  iterations=length(categories)
-  for(j in 1:iterations){
-    output=matrix(0,nrow=6,ncol=length(trueShares)+1)  
-    colnames(output)=c(names(trueShares),"All")
-    rownames(output)=c("Times chosen (data)","Times chosen (prediction)","SD prediction","Diff (prediction-data)","t-ratio","p-val")
-    for(k in 1:length(trueShares)){
-      temp1=as.data.frame(cbind(trueShares[[k]],categories[[j]]))
-      temp2=as.data.frame(cbind(predictedShares[[k]],categories[[j]]))
-      output[1,k]=colSums(temp1[temp1$V2==1,])[1]
-      output[2,k]=colSums(temp2[temp2$V2==1,])[1]
-      output[3,k]=sqrt(sum(temp2[temp2$V2==1,1]*(1-temp2[temp2$V2==1,1])))
-      output[4,k]=output[2,k]-output[1,k]
-      if(output[1,k]==output[2,k]){
-        output[5,k]=NA
-        output[6,k]=NA
-      } else {
-        output[5,k]=(output[2,k]-output[1,k])/output[3,k]
-        output[6,k]=round(2*(1-stats::pnorm(abs(output[5,k]))),3)  
+    iterations=length(categories)
+    for(j in 1:iterations){
+      output = matrix(0,nrow=6,ncol=length(trueShares)+1)  
+      colnames(output) = c(names(trueShares),"All")
+      rownames(output) = c("Times chosen (data)","Times chosen (prediction)","SD prediction",
+                           "Diff (prediction-data)","t-ratio","p-val")
+      for(k in 1:length(trueShares)){
+        temp1 = as.data.frame(cbind(trueShares[[k]],categories[[j]]))
+        temp2 = as.data.frame(cbind(predictedShares[[k]],categories[[j]]))
+        output[1,k] = colSums(temp1[temp1$V2==1,])[1]
+        output[2,k] = colSums(temp2[temp2$V2==1,])[1]
+        output[3,k] = sqrt(sum(temp2[temp2$V2==1,1]*(1-temp2[temp2$V2==1,1])))
+        output[4,k] = output[2,k]-output[1,k]
+        if(output[1,k]==output[2,k]){
+          output[5,k]=NA
+          output[6,k]=NA
+        } else {
+          output[5,k]=(output[2,k]-output[1,k])/output[3,k]
+          output[6,k]=round(2*(1-stats::pnorm(abs(output[5,k]))),3)  
+        }
       }
+      output[1,(length(trueShares)+1)]=sum(output[1,(1:length(trueShares))])
+      output[2,(length(trueShares)+1)]=sum(output[2,(1:length(trueShares))])
+      output[3,(length(trueShares)+1)]=NA
+      output[4,(length(trueShares)+1)]=sum(output[4,(1:length(trueShares))])
+      output[5,(length(trueShares)+1)]=NA
+      output[6,(length(trueShares)+1)]=NA
+      cat("\nPrediction test for group: ",names(categories)[[j]]," (",sum(categories[[j]])," observations)",sep="")
+      cat("\n")
+      cat("\n")
+      output=output[-3,]
+      print(round(output,3))
+      if(output[1,k+1]!=sum(categories[[j]])){
+        cat("\nWarning: the totals in the final column are not equal to the number of observations!")
+        cat("\nThis is normal if you're working with only a subset of possible alternatives in the columns.\n")
+      }
+      out[[j]] <- output
     }
-    output[1,(length(trueShares)+1)]=sum(output[1,(1:length(trueShares))])
-    output[2,(length(trueShares)+1)]=sum(output[2,(1:length(trueShares))])
-    output[3,(length(trueShares)+1)]=NA
-    output[4,(length(trueShares)+1)]=sum(output[4,(1:length(trueShares))])
-    output[5,(length(trueShares)+1)]=NA
-    output[6,(length(trueShares)+1)]=NA
-    cat("\nPrediction test for group: ",names(categories)[[j]]," (",sum(categories[[j]])," observations)",sep="")
-    cat("\n")
-    cat("\n")
-    output=output[-3,]
-    print(round(output,3))
-    if(output[1,k+1]!=sum(categories[[j]])){
-      cat("\nWarning: the totals in the final column are not equal to the number of observations!")
-      cat("\nThis is normal if you're working with only a subset of possible alternatives in the columns.\n")
-    }
-  }}
+  }
   
   if(!is.null(newAlts)){
     if(!newAltsOnly) cat("\nPart 2: alternatives as defined in sharesTestSettings$newAlts")
@@ -194,7 +203,10 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
         cat("\nWarning: the totals in the final column are not equal to the number of observations!")
         cat("\nThis is normal if you're working with only a subset of possible alternatives in the columns.\n")
       }
+      out[[j]] <- output
     }
   
   }
+  
+  return(invisible(out))
 }

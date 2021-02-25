@@ -1,7 +1,7 @@
 Package: apollo
 Type: Package
 Title: Tools for Choice Model Estimation and Application
-Version: 0.2.3
+Version: 0.2.4
 Authors@R: c(
     person("Stephane", "Hess", email="S.Hess@leeds.ac.uk", role="aut"),
     person("David", "Palma", email="D.Palma@leeds.ac.uk", role=c("aut","cre")) )
@@ -24,7 +24,7 @@ Description: The Choice Modelling Centre (CMC) at the University of Leeds
     of the field.
 License: GPL-2
 URL: http://www.apolloChoiceModelling.com
-BugReports: http://www.apollochoicemodelling.com/forum/
+BugReports: http://www.apolloChoiceModelling.com/forum/
 Encoding: UTF-8
 LazyData: true
 Depends: R (>= 4.0.0), stats, utils
@@ -36,9 +36,9 @@ Suggests: knitr, rmarkdown, testthat
 VignetteBuilder: knitr
 RoxygenNote: 7.1.1
 NeedsCompilation: yes
-Packaged: 2021-01-20 13:09:59 UTC; david
+Packaged: 2021-02-25 14:42:19 UTC; david
 Author: Stephane Hess [aut],
   David Palma [aut, cre]
 Maintainer: David Palma <D.Palma@leeds.ac.uk>
 Repository: CRAN
-Date/Publication: 2021-01-20 16:10:06 UTC
+Date/Publication: 2021-02-25 15:30:05 UTC

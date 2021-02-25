@@ -21,7 +21,6 @@ apollo_fitsTest(model, apollo_probabilities, apollo_inputs, fitsTest_settings)
 \item{fitsTest_settings}{List of arguments. It must contain the following elements.
 \itemize{
      \item \strong{subsamples}: Named list of boolean vectors. Each element of the list defines whether a given observation belongs to a given subsample (e.g. by sociodemographics).
-     \item \strong{modelComponent}: Name of model component. Set to model by default.
 }}
 }
 \value{

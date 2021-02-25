@@ -323,6 +323,8 @@ apollo_mdcev <- function(mdcev_settings,functionality){
     Xv <- matrix(0, nrow=s$nObs, ncol=s$nAlt)
     Mm <- matrix(0, nrow=s$nObs, ncol=s$nAlt)
     Mv <- matrix(0, nrow=s$nObs, ncol=s$nAlt)
+    Em <- matrix(0, nrow=s$nObs, ncol=s$nAlt)
+    Ev <- matrix(0, nrow=s$nObs, ncol=s$nAlt)
     X  <- matrix(0, nrow=s$nObs, ncol=s$nAlt)
     
     # Tools to deal with draws
@@ -404,8 +406,10 @@ apollo_mdcev <- function(mdcev_settings,functionality){
         # Store prediction (maybe this needs to be nested in the for loops in a more clever way to address for draws)
         Xm <- Xm + X/s$nRep
         Mm <- Mm + (X>0)/s$nRep
+        Em <- Em + X*cost/s$nRep
         Xv <- Xv + apply(X  , MARGIN=2, function(v) (v-mean(v))^2)/s$nRep
         Mv <- Mv + apply(X>0, MARGIN=2, function(m) (m-mean(m))^2)/s$nRep
+        Ev <- Ev + apply(X*cost, MARGIN=2, function(e) (e-mean(e))^2)/s$nRep
         if(!silent){ if(r%%step2==0) cat(round(100*r/s$nRep,0), "%", sep="") else { if(r%%step1==0) cat(".") } }
       } # end of "for" loop over repetitions
     } else {
@@ -451,17 +455,20 @@ apollo_mdcev <- function(mdcev_settings,functionality){
         # Store prediction (maybe this needs to be nested in the for loops in a more clever way to address for draws)
         Xm <- Xm + X/s$nRep
         Mm <- Mm + (X>0)/s$nRep
+        Em <- Em + X*cost/s$nRep
         Xv <- Xv + apply(X  , MARGIN=2, function(v) (v-mean(v))^2)/s$nRep
         Mv <- Mv + apply(X>0, MARGIN=2, function(m) (m-mean(m))^2)/s$nRep
+        Ev <- Ev + apply(X*cost, MARGIN=2, function(e) (e-mean(e))^2)/s$nRep
         if(!silent){ if(r%%step2==0) cat(round(100*r/s$nRep,0), "%", sep="") else { if(r%%step1==0) cat(".") } }
       } # end of "for" loop over repetitions
     }
     if(!silent) cat("\n")
     
     ### Prepare output
-    out <- cbind(Xm, sqrt(Xv), Mm, sqrt(Mv))
+    out <- cbind(Xm, sqrt(Xv), Mm, sqrt(Mv), Em, sqrt(Ev))
     out <- apollo_insertRows(out, s$rows, NA)
-    colnames(out) <- paste( names(s$continuousChoice), rep(c("cont_mean", "cont_sd", "disc_mean", "disc_sd"), each=s$nAlt), sep="_")
+    colN <- c("cont_mean", "cont_sd", "disc_mean", "disc_sd", "expe_mean", "expe_sd")
+    colnames(out) <- paste( names(s$continuousChoice), rep(colN, each=s$nAlt), sep="_")
     return(out)
     
   }

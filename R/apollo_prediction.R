@@ -16,6 +16,7 @@
 #'                              \item \code{modelComponent} Character. Name of component of apollo_probabilities output to calculate predictions for. Default is "model", i.e. the whole model.
 #'                              \item \code{runs} Numeric. Number of runs to use for computing confidence intervals of predictions.
 #'                              \item \code{silent} Boolean. If TRUE, this function won't print any output to screen.
+#'                              \item \code{nRep} Scalar integer. Only used for models that require simulation for prediction (e.g. MDCEV). Number of draws used to calculate prediction. Default is 100.
 #'                            }
 #' @param modelComponent \strong{Deprecated}. Same as \code{modelComponent} inside \code{prediction_settings}.
 #' @return A list containing predictions for component \code{modelComponent} of the model described in \code{apollo_probabilities}.
@@ -42,8 +43,10 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   if(is.null(prediction_settings$silent)) prediction_settings$silent=FALSE
   silent=prediction_settings$silent
   if(!is.null(apollo_inputs$silent) && apollo_inputs$silent) silent=TRUE
+  if(is.null(prediction_settings$nRep)) prediction_settings$nRep <- 100L
   modelComponent = prediction_settings$modelComponent
   runs           = prediction_settings$runs
+  apollo_inputs$nRep <- prediction_settings$nRep # Copy nRep into apollo_inputs
   
   # Validate input
   if(!is.null(model$apollo_control$HB) && model$apollo_control$HB && runs>1) stop("The calculation of confidence intervals for \'apollo_prediction\' is not applicables for models estimated using HB!") 
@@ -84,19 +87,24 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
     predictions <- predictions[modelComponent]
   }
   
-  # Transform predictions into matrices
+  # Transform predictions into data.frame and drop components without predictions
+  noPred <- c()
   for(m in 1:length(predictions)){
     M <- predictions[[m]]
-    if(length(M)==1 && is.na(M)) apollo_print(paste0("Predictions do not exist for model component ", names(predictions)[m]))
+    if(length(M)==1 && is.na(M)){
+      apollo_print(paste0("Predictions do not exist for model component ", names(predictions)[m]))
+      noPred <- c(noPred, m)
+    } 
     if(is.list(M)){
-      predictions[[m]] <- cbind(ID = apollo_inputs$database[,apollo_inputs$apollo_control$indivID],
-                                Observation = apollo_inputs$database$apollo_sequence,
-                                do.call(cbind, M))
+      predictions[[m]] <- data.frame(ID = apollo_inputs$database[,apollo_inputs$apollo_control$indivID],
+                                     Observation = apollo_inputs$database$apollo_sequence,
+                                     do.call(cbind, M))
     } else {
-    if(is.matrix(M) | is.vector(M)) predictions[[m]] <- cbind(ID = apollo_inputs$database[,apollo_inputs$apollo_control$indivID],
-                                                              Observation = apollo_inputs$database$apollo_sequence, M)
+    if(is.matrix(M) | is.vector(M)) predictions[[m]] <- data.frame(ID = apollo_inputs$database[,apollo_inputs$apollo_control$indivID],
+                                                                   Observation = apollo_inputs$database$apollo_sequence, M)
     }
   }; rm(M)
+  if(length(noPred)>0) predictions <- predictions[-noPred]
   
   ### change 8 August
   if(!is.null(apollo_inputs$apollo_control$weights)){
@@ -111,12 +119,13 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         M <- predictions[[m]]
         if(!singleElement) apollo_print(paste0("Predicted aggregated demand at model estimates for model component: ", names(predictions)[m]))
         if(singleElement) apollo_print("Predicted aggregated demand at model estimates")
-        M <- M[,-(1:2)] # remove ID and Observation
-        if(modelComponentType%in%c('mdcev','mdcnev')){
-          K <- as.integer(ncol(M)/4)
+        M <- M[,-(1:2),drop=FALSE] # remove ID and Observation
+        if(modelComponentType %in% c('mdcev','mdcnev')){
+          K <- as.integer(ncol(M)/6)
           Kn <- colnames(M)[1:K]
           Kn <- substr(Kn, 1, nchar(Kn)-10)
-          M <- matrix(colSums(M), nrow=K, ncol=4, dimnames=list(Kn, c('cont.mean', 'cont.sd', 'disc.mean', 'disc.sd')))
+          M <- matrix(colSums(M), nrow=K, ncol=6, dimnames=list(Kn, c('cont_mean', 'cont_sd', 'disc_mean', 
+                                                                      'disc_sd', 'expe_mean', 'expe_sd')))
         } else {
           if(tolower(colnames(M)[ncol(M)])=='chosen') M <- M[,-ncol(M)]
           M <- t(colSums(M, na.rm=TRUE))
@@ -147,14 +156,19 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   
   
   # Create confidence intervals by drawing from parameters asymptotic distributions
+  if(anyNA(model$robvarcov)) stop('Cannot calculate confidence intervals if parameters covariance matrix contains NA values.')
   beta_draws = mvtnorm::rmvnorm(n     = runs, 
                                 mean  = apollo_beta[!(names(apollo_beta)%in%apollo_fixed)], 
                                 sigma = model$robvarcov)
   ans <- vector(mode="list", length=length(predictions))
   names(ans) <- names(predictions)
-  for(m in 1:length(predictions)) ans[[m]] <- list(at_estimates=predictions[[m]], 
-                                                   draws = array(NA, dim=c(dim(predictions[[m]]), runs),
-                                                                 dimnames=list(NULL, colnames(predictions[[m]]), NULL) ) )
+  for(m in 1:length(predictions)){
+    nObs <- nrow(predictions[[m]])
+    nCol <- ncol(predictions[[m]]) - 2
+    colN <- colnames(predictions[[m]])[-(1:2)]
+    ans[[m]] <- list(at_estimates = predictions[[m]], 
+                     draws = array(NA, dim=c(nObs, nCol, runs), dimnames=list(NULL, colN, NULL)) )
+  }
   if(!silent) apollo_print("Running predictions across draws from the asymptotic distribution for maximum likelihood estimates.")
   for(r in 1:runs){
     if(!silent) apollo_print(paste0("Predicting for set of draws ", r, "/", runs, "..."))
@@ -163,9 +177,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
     if(!is.list(Pr)) stop('apollo_probabilities(..., functionality="prediction") did not return a list, as expected')
     for(m in names(predictions)){
       if(is.list(Pr[[m]])) Pr[[m]] <- do.call(cbind, Pr[[m]])
-      ans[[m]]$draws[,,r] <- cbind(ID           = apollo_inputs$database[,apollo_inputs$apollo_control$indivID],
-                                   Observations = apollo_inputs$database$apollo_sequence,
-                                   Pr[[m]])
+      ans[[m]]$draws[,,r] <- Pr[[m]]
     }
   }; if(!silent) apollo_print("\n")
   
@@ -176,30 +188,27 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
       if(singleElement) apollo_print(paste0("Predicted aggregated demand"))
       if(modelComponentType%in%c('mdcev','mdcnev')){
         M <- ans[[m]]$at_estimates[,-(1:2)]
-        K <- as.integer(ncol(M)/4)
+        K <- as.integer(ncol(M)/6)
         Kn <- colnames(M)[1:K]
         Kn <- substr(Kn, 1, nchar(Kn)-10)
         M <- matrix(colSums(M), nrow=K, ncol=4, dimnames=list(Kn, c('Cont.mean', 'Cont.sd', 'Disc.mean', 'Disc.sd')))
-        agg <- apply(ans[[m]]$draws[,3:(K+2),], MARGIN=c(2,3), sum, na.rm=TRUE)
+        agg <- apply(ans[[m]]$draws, MARGIN=c(2,3), sum, na.rm=TRUE)[1:K,]
         cil <- apply(agg, MARGIN=1, quantile, probs=0.025)
         ciu <- apply(agg, MARGIN=1, quantile, probs=0.975)
         M <- cbind(M[,1], cil, ciu, M[,2:ncol(M)])
         colnames(M) <- c('Cont.mean', 'Quantile 0.025', 'Quantile 0.975', 'Cont.sd', 'Disc.mean', 'Disc.sd')
-        print(M, digit=4)
+        print(M, digits=4)
       } else {
         est <- colSums(ans[[m]]$at_estimates[,-(1:2)], na.rm=TRUE)
-        agg <- apply(ans[[m]]$draws[,-(1:2),], MARGIN=c(2,3), sum, na.rm=TRUE)
+        agg <- apply(ans[[m]]$draws, MARGIN=c(2,3), sum, na.rm=TRUE)
         std <- apply(agg, MARGIN=1, sd)
         cil <- apply(agg, MARGIN=1, quantile, probs=0.025)
         ciu <- apply(agg, MARGIN=1, quantile, probs=0.975)
         tmp <- cbind(est, std, cil, ciu)
         colnames(tmp) <- c("At estimates", "Std.dev.", "Quantile 0.025", "Quantile 0.975")
         rownames(tmp) <- colnames(ans[[m]]$at_estimates)[-(1:2)]
-        ### change 4 Oct
-        #print(tmp, digits=4)
-        #print(tmp[-nrow(tmp),], digits=4)
         if(tolower(rownames(tmp)[nrow(tmp)])=='chosen') tmp <- tmp[-nrow(tmp),]
-        print(round(tmp,2))
+        print(tmp, digits=4)
       }
       apollo_print("\n")
     }
@@ -208,14 +217,14 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
     if(length(ans)==1){
       ans=ans[[1]]
       txt <- paste0('The output from apollo_prediction is a list with two elements: ',
-                    'a matrix containing the predictions at the estimated values, and an array ', 
-                    'with predictions for different values of the parameters drawn from their ',
-                    'asymptotic distribution.')
+                    'a data.frame containing the predictions at the estimated values, ', 
+                    'and an array with predictions for different values of the parameters ',
+                    'drawn from their asymptotic distribution.')
     } else {
       txt <- paste0('The output from apollo_prediction is a list, with one element per model ', 
                     'component. If the user asks for confidence intervals, then, for each ', 
                     'model component, a list with two elements is returned: ',
-                    'a matrix containing the predictions at the estimated values, and an array ', 
+                    'a data.frame containing the predictions at the estimated values, and an array ', 
                     'with predictions for different values of the parameters drawn from their ',
                     'asymptotic distribution.')    }
     apollo_print(txt)

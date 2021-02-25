@@ -29,15 +29,6 @@ test_that("MNL works", {
                                          apollo_control, apollo_HB=NA, apollo_draws=NA,
                                          apollo_randCoeff=NA, apollo_lcPars=NA)
 
-  choiceAnalysis_settings <- list(
-    alternatives = c(car=1, bus=2, air=3, rail=4),
-    avail        = list(car=database$av_car, bus=database$av_bus, air=database$av_air, rail=database$av_rail),
-    choiceVar    = database$choice,
-    explanators  = database[,c("female","business","income")]
-  )
-
-  apollo_choiceAnalysis(choiceAnalysis_settings, apollo_control, database)
-
   apollo_probabilities=function(apollo_beta, apollo_inputs, functionality="estimate"){
     apollo_attach(apollo_beta, apollo_inputs)
     on.exit(apollo_detach(apollo_beta, apollo_inputs))
@@ -59,11 +50,8 @@ test_that("MNL works", {
     return(P)
   }
 
-  model = apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs)
-
-
+  model = apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, list(writeIter=FALSE))
   apollo_modelOutput(model)
-  apollo_saveOutput(model)
 
   expect_equal(model$maximum, -1025.756379 , tolerance=0.1, scale=1)
 })

@@ -30,6 +30,7 @@ If the bootstrap covariance matrix is available, it is used. If not, the robust 
 \describe{
   \item{sum}{Calculates the s.e. of \code{parName1} + \code{parName2}}
   \item{diff}{Calculates the s.e. of \code{parName1} - \code{parName2} and \code{parName2} - \code{parName1}}
+  \item{prod}{Calculates the s.e. of \code{parName1}*\code{parName2}}
   \item{ratio}{Calculates the s.e. of \code{parName1}/\code{parName2} and \code{parName2}/\code{parName1}}
   \item{exp}{Calculates the s.e. of \code{exp(parName1)}}
   \item{logistic}{If only \code{parName1} is provided, it calculates the s.e. of

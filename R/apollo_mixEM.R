@@ -97,6 +97,15 @@ apollo_mixEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_in
   if(apollo_inputs$apollo_draws$intraNDraws!=0) stop("The apollo_mixEM function cannot be used for models using intra-individual draws!")
   if(!is.null(apollo_inputs$apollo_draws$interUnifDraws)) stop("The apollo_mixEM function cannot be used for models using uniform draws!")
   if(!apollo_inputs$apollo_draws$interDrawsType%in%c("halton","mlhs","pmc","sobol","sobolOwen","sobolFaureTezuka","sobolOwenFaureTezuka")) stop("The apollo_mixEM function cannot be used for models importing user defined draws!")
+  if(!(length(transforms)==1 && is.na(transforms))){ # check that length of transforms matches apollo_randCoeff
+    rndCoeff <- apollo_inputs$apollo_randCoeff
+    environment(rndCoeff) <- list2env(c(as.list(apollo_beta), apollo_inputs$database, apollo_inputs$draws), 
+                                      parent=environment(), hash=TRUE)
+    rndCoeff <- rndCoeff(apollo_beta, apollo_inputs)
+    test <- length(rndCoeff)==length(transforms)
+    rm(rndCoeff)
+    if(!test) stop('The length of "transforms" needs to be the same as the number of random parameters')
+  }
   
   apollo_print("The use of apollo_mixEM has a number of requirements. No checks are run for these, so the user needs to ensure these conditions are met by their model:")
   apollo_print("1:This function is only suitable for single component models, i.e. no use of apollo_combineModels or manual multiplication of model components.")

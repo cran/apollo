@@ -62,6 +62,8 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   if(apollo_inputs$apollo_control$mixing && is.list(apollo_inputs$apollo_draws)){
     test <- apollo_inputs$apollo_draws$interNDraws>1
     test <- test & apollo_inputs$apollo_draws$intraNDraws>1
+    test <- test & !is.null(apollo_inputs$apollo_control$analyticGrad_manualSet) 
+    test <- test && !apollo_inputs$apollo_control$analyticGrad_manualSet
     if(test & debug) apollo_print("Analytic gradients will not be built because inter & intra draws are being used (to avoid excesive memory usage).")
     if(test) return(NULL)
   }
@@ -177,13 +179,16 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
       if(!is.null(gradNum)) names(gradNum) <- names(b0_disturbance)
       if(is.null(gradNum) && debug) apollo_print("Numeric gradient calculation failed.")
       
-      # If analytical and numeric gradient calculation was succesful
+      # If analytical and numeric gradient calculation was successful
       test <- !is.null(gradNum) && all(is.finite(gradNum))
-      dif  <- abs((abs(gradNum)-abs(gradAn))/abs(gradNum))
+      dif  <- abs( (abs(gradNum) - abs(gradAn))/abs(gradNum) )
       test <- test && any(dif[is.finite(dif)]>0.01) # diff should be <1% for all elements
       if(test){
-        if(debug) { apollo_print("Gradient pre optimisation : "); print(gradNum) }
-        if(debug) { apollo_print("Gradient post optimisation: "); print(gradAn ) }
+        if(debug){
+          tmp <- cbind(numeric=gradNum, analytic=gradAn, `%Diff`=100*abs(gradAn-gradNum)/abs(gradNum))
+          rownames(tmp) <- names(gradNum)
+          apollo_print(tmp)
+        }
         if(!silent) apollo_print("Analytical gradient is different to numerical one. Numerical gradients will be used.")
         return(NULL)
       }; rm(test)

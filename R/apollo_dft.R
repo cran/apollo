@@ -222,7 +222,7 @@ apollo_dft = function(dft_settings,functionality){
           } else {
             ## 2D
             if(dim(dft_settings$altStart[[i]])[1]==dft_settings$nObs){
-              altStartM<-c(altStartM,t(dft_settings$altStart[[i]])) 
+              altStartM<-c(altStartM,t(dft_settings$altStart[[i]]))
             } else {
               altStartM<-c(altStartM,rep(dft_settings$altStart[[i]],dft_settings$nObs))
             }
@@ -373,7 +373,7 @@ apollo_dft = function(dft_settings,functionality){
       
       if(dft_settings$Dims==3){
         
-        Dim2Length =  apollo_inputs$apollo_draws$interNDraws # CAN BE DONE AT THE BEGINNING
+        Dim2Length =  max(1,apollo_inputs$apollo_draws$interNDraws) #Max value required so that matrices cannot have Dim2Length = 0. 
         Dim3Length =  apollo_inputs$apollo_draws$intraNDraws  # CAN BE DONE AT THE BEGINNING
         
         #### dft_settings$attrValues (all will be 1D) # CAN BE DONE AT THE BEGINNING
@@ -398,7 +398,7 @@ apollo_dft = function(dft_settings,functionality){
             if (length(dim(dft_settings$altStart[[i]]))==2) {
               ### 2D
               if(dim(dft_settings$altStart[[i]])[1]==dft_settings$nObs){
-                altStartM<-c(altStartM,rep(t(dft_settings$altStart[[i]]),each=Dim3Length)) 
+                altStartM<-c(altStartM,rep(t(dft_settings$altStart[[i]]),each=Dim3Length))
               } else {
                 altStartM<-c(altStartM,rep(rep(dft_settings$altStart[[i]],dft_settings$nObs),each=Dim3Length))
               }
@@ -474,87 +474,108 @@ apollo_dft = function(dft_settings,functionality){
         ## then for each attribute:
         ## could be attribute specific -> not mixed, some mixed, all mixed (2 or 3 dim)
         ## could be general -> not mixed, some mixed, all mixed (2 or 3 dim)
-        ## 16 cases: attribute specific, choice specific, inter, intra...
+        ## 16 cases: attribute specific, alternative specific, inter, intra...
         ## for each attribute:
         if(sum(lengths(dft_settings$attrScalings))!=1){
           attrScalingsM<-c()
-          if(is.list(dft_settings$attrScalings)){
-            ## attribute specific
-            for(i in 1:dft_settings$nAttrs) {
-              if(is.null(dim(dft_settings$attrScalings[[i]]))) {
-                ### 1D, no mixing:
-                if(length(dft_settings$attrScalings[[i]])==dft_settings$nObs){
-                  ### diff value for different obs
-                  attrScalingsM<-c(attrScalingsM,rep(c(dft_settings$attrScalings[[i]]),each=Dim2Length*Dim3Length))
-                } else {
-                  attrScalingsM<-c(attrScalingsM,c(rep(c(dft_settings$attrScalings[[i]]),dft_settings$nObs*Dim2Length*Dim3Length)))
-                } 
-              } else {
-                ### check if 2D:
-                if (length(dim(dft_settings$attrScalings[[i]]))==2) {
-                  ### 2D
-                  if(dim(dft_settings$attrScalings[[i]])[1]==dft_settings$nObs){
-                    attrScalingsM<-c(attrScalingsM,rep(t(dft_settings$attrScalings[[i]]),each=Dim3Length)) 
+          for (i in 1:dft_settings$nAttrs) {
+            if (is.list(dft_settings$attrScalings[[i]])) {
+            ## attrScalings are alternative specific
+              for (j in 1:dft_settings$nAlt) {
+                if (is.null(dim(dft_settings$attrScalings[[i]][[j]]))) {
+                ## 1D, no mixing
+                  if (length(dft_settings$attrScalings[[i]][[j]]) == dft_settings$nObs) {
+                    ## diff value for diff obs
+                    attrScalingsM <- c(attrScalingsM, rep(c(dft_settings$attrScalings[[i]][[j]]), each = Dim2Length * Dim3Length))
                   } else {
-                    attrScalingsM<-c(attrScalingsM,rep(rep(dft_settings$attrScalings[[i]],dft_settings$nObs),each=Dim3Length))
+                    ## same value for diff obs
+                    attrScalingsM <- c(attrScalingsM, c(rep(c(dft_settings$attrScalings[[i]][[j]]), dft_settings$nObs * Dim2Length * Dim3Length)))
                   }
                 } else {
-                  ### 3D
-                  if(dim(dft_settings$attrScalings[[i]])[1]==dft_settings$nObs){
-                    ### may or may not have 2nd dim
-                    if(dim(dft_settings$attrScalings[[i]])[2]==Dim2Length){
-                      attrScalingsM<-c(attrScalingsM,c(aperm(dft_settings$attrScalings[[i]])))
+                  ## mixing used for scalings
+                  if(length(dim(dft_settings$attrScalings[[i]][[j]])) ==2) {
+                    ## 2D
+                    if (dim(dft_settings$attrScalings[[i]][[j]])[1] == dft_settings$nObs) {
+                      ## diff value for diff obs
+                      attrScalingsM <- c(attrScalingsM, rep(t(dft_settings$attrScalings[[i]][[j]]), each = Dim3Length))
                     } else {
-                      attrScalingsM<-c(attrScalingsM,c(t(matrix(rep(dft_settings$attrScalings[[i]],each=Dim2Length),ncol=Dim3Length))))
+                      ## same value for diff obs
+                      attrScalingsM <- c(attrScalingsM, rep(rep(dft_settings$attrScalings[[i]][[j]], dft_settings$nObs), each = Dim3Length))
                     }
                   } else {
-                    if(dim(dft_settings$attrScalings[[i]])[2]==Dim2Length){
-                      attrScalingsM<-c(attrScalingsM,rep(c(aperm(dft_settings$attrScalings[[i]])),dft_settings$nObs))
-                    } else{
-                      attrScalingsM<-c(attrScalingsM,rep(dft_settings$attrScalings[[i]],dft_settings$nObs*Dim2Length))
+                    ## 3D 
+                    if (dim(dft_settings$attrScalings[[i]][[j]])[1] == dft_settings$nObs) {
+                      ## diff value for diff obs
+                      if (dim(dft_settings$attrScalings[[i]][[j]])[2] == Dim2Length) {
+                        ## mixing also exists at inter level
+                        attrScalingsM <- c(attrScalingsM,c(aperm(dft_settings$attrScalings[[i]][[j]]))) 
+                      } else {
+                        ## mixing only exists at intra level
+                        attrScalingsM <- c(attrScalingsM,c(t(matrix(rep(dft_settings$attrScalings[[i]][[j]],each = Dim2Length), ncol = Dim3Length))))
+                      }
+                    } else {
+                      ## same value for diff obs
+                      if (dim(dft_settings$attrScalings[[i]][[j]])[2] == Dim2Length) {
+                        ## mixing also exists at inter level
+                        attrScalingsM <- c(attrScalingsM, rep(c(aperm(dft_settings$attrScalings[[i]][[j]])), dft_settings$nObs))
+                      }
+                      else {
+                        ## mixing only exists at intra level
+                        attrScalingsM <- c(attrScalingsM, rep(dft_settings$attrScalings[[i]][[j]], dft_settings$nObs * Dim2Length))
+                      }
                     }
                   }
                 }
               }
-            }
-          } else {
-            ## not attribute specific
-            if(is.null(dim(dft_settings$attrScalings))) {
-              ### 1D, no mixing:
-              if(length(dft_settings$attrScalings)==dft_settings$nObs){
-                ### diff value for different obs
-                attrScalingsM<-c(attrScalingsM,rep(rep(c(dft_settings$attrScalings),each=Dim2Length*Dim3Length),dft_settings$nAlt))
-              } else {
-                attrScalingsM<-c(attrScalingsM,rep(c(rep(c(dft_settings$attrScalings),dft_settings$nObs*Dim2Length*Dim3Length)),dft_settings$nAlt))
-              } 
             } else {
-              ### check if 2D:
-              if (length(dim(dft_settings$attrScalings))==2) {
-                ### 2D
-                if(dim(dft_settings$attrScalings)[1]==dft_settings$nObs){
-                  attrScalingsM<-c(attrScalingsM,rep(rep(t(dft_settings$attrScalings),each=Dim3Length),dft_settings$nAlt)) 
-                } else {
-                  attrScalingsM<-c(attrScalingsM,rep(rep(rep(dft_settings$attrScalings,dft_settings$nObs),each=Dim3Length),dft_settings$nAlt))
+              ## attrScalings are not alternative specific
+              if (is.null(dim(dft_settings$attrScalings[[i]]))) {
+                ## 1D, no mixing
+                if (length(dft_settings$attrScalings[[i]]) == dft_settings$nObs) {
+                  ## diff value for diff obs
+                  attrScalingsM <- c(attrScalingsM, rep(c(dft_settings$attrScalings[[i]]), each = Dim2Length * Dim3Length * dft_settings$nAlt))
+                }
+                else {
+                  ## same value for diff obs
+                  attrScalingsM <- c(attrScalingsM, c(rep(c(dft_settings$attrScalings[[i]]), dft_settings$nObs * Dim2Length * Dim3Length * dft_settings$nAlt)))
                 }
               } else {
-                ### 3D
-                if(dim(dft_settings$attrScalings)[1]==dft_settings$nObs){
-                  ### may or may not have 2nd dim
-                  if(dim(dft_settings$attrScalings)[2]==Dim2Length){
-                    attrScalingsM<-c(attrScalingsM,rep(c(aperm(dft_settings$attrScalings)),dft_settings$nAlt))
-                  } else {
-                    attrScalingsM<-c(attrScalingsM,c(rep(t(matrix(rep(dft_settings$attrScalings,each=Dim2Length),ncol=Dim3Length))),dft_settings$nAlt))
+                ## mixing is included for attrScalings
+                if (length(dim(dft_settings$attrScalings[[i]])) == 2) {
+                  ## 2D
+                  if (dim(dft_settings$attrScalings[[i]][[j]])[1] == dft_settings$nObs) {
+                    ## diff value for diff obs
+                    attrScalingsM <- c(attrScalingsM, rep(t(dft_settings$attrScalings[[i]]), each = Dim3Length * dft_settings$nAlt))
+                  }
+                  else {
+                    ## same value for diff obs
+                    attrScalingsM <- c(attrScalingsM, rep(rep(dft_settings$attrScalings[[i]], dft_settings$nObs), each = Dim3Length * dft_settings$nAlt))
                   }
                 } else {
-                  if(dim(dft_settings$attrScalings)[2]==Dim2Length){
-                    attrScalingsM<-c(attrScalingsM,rep(rep(c(aperm(dft_settings$attrScalings)),dft_settings$nObs),dft_settings$nAlt))
-                  } else{
-                    attrScalingsM<-c(attrScalingsM,rep(rep(dft_settings$attrScalings,dft_settings$nObs*Dim2Length),dft_settings$nAlt))
+                  ## 3D, intra level mixing included
+                  if (dim(dft_settings$attrScalings[[i]])[1] == dft_settings$nObs) {
+                    ## diff value for diff obs
+                    if (dim(dft_settings$attrScalings[[i]])[2] == Dim2Length) {
+                      ##  mixing also included for inter
+                      attrScalingsM <- c(attrScalingsM, rep(c(aperm(dft_settings$attrScalings[[i]])), dft_settings$nAlt))
+                    } else {
+                      ##  mixing not included for inter
+                      attrScalingsM <- c(attrScalingsM, c(t(matrix(rep(dft_settings$attrScalings[[i]], each = Dim2Length * dft_settings$nAlt), ncol = Dim3Length * dft_settings$nAlt))))
+                    }
+                  } else {
+                    ## same value for diff obs
+                    if (dim(dft_settings$attrScalings[[i]])[2] == Dim2Length) {
+                      ## mixing also included for inter
+                      attrScalingsM <- c(attrScalingsM, rep(c(aperm(dft_settings$attrScalings[[i]])), dft_settings$nObs * dft_settings$nAlt))
+                    } else {
+                      ## mixing not included for inter
+                      attrScalingsM <- c(attrScalingsM, rep(dft_settings$attrScalings[[i]], dft_settings$nObs * Dim2Length * dft_settings$nAlt))
+                    }
                   }
                 }
               }
             }
-          }
+          }    
           ### build matrix
           attrScalingsM<-array(attrScalingsM,c(dft_settings$nObs*Dim2Length*Dim3Length,dft_settings$nAttrs*dft_settings$nAlt))
         } else {
@@ -695,9 +716,9 @@ apollo_dft = function(dft_settings,functionality){
       if(all){
         # Get probabilities for all alternatives
         P = list()
-        if(dft_settings$Dims==1) tmp <- 1:dft_settings$nObs
-        if(dft_settings$Dims==2) tmp <- 1:dft_settings$nObs*Dim2Length
-        if(dft_settings$Dims==3) tmp <- 1:dft_settings$nObs*Dim2Length*Dim3Length
+        if(dft_settings$Dims==1) tmp <- 1:(dft_settings$nObs)
+        if(dft_settings$Dims==2) tmp <- 1:(dft_settings$nObs*Dim2Length)
+        if(dft_settings$Dims==3) tmp <- 1:(dft_settings$nObs*Dim2Length*Dim3Length)
         for (j in 1:dft_settings$nAlt){
           tmp2 <- sapply(tmp, function(i) calculateDFTProbs(j, 
                                                             c(attrValuesM[i,]), 
@@ -707,15 +728,15 @@ apollo_dft = function(dft_settings,functionality){
                                                             c(attrScalingsM[i,]), 
                                                             erv[i], ts[i], phi1[i], phi2[i], dft_settings$nAlt, dft_settings$nAttrs))
           if(dft_settings$Dims==1) P[[dft_settings$altnames[j]]] = tmp2
-          if(dft_settings$Dims==2) P[[dft_settings$altnames[j]]] = matrix(c(tmp2), dft_settings$nObs, Dim2Length, byrow=TRUE)
+          if(dft_settings$Dims==2) P[[dft_settings$altnames[j]]] = matrix(c(tmp2), dft_settings$nObs, Dim2Length)#, byrow=TRUE) # Removed byrow on 12/2/2021
           if(dft_settings$Dims==3) P[[dft_settings$altnames[j]]] = aperm(array(c(tmp2), c(Dim3Length, Dim2Length, dft_settings$nObs)))
         }
-        if(!dft_settings$choiceNA) P[["chosen"]] <- Reduce('+', mapply('*', dft_settings$Y, P, SIMPLIFY=FALSE))
+        if(!dft_settings$choiceNA) P[["chosen"]] <- Reduce('+', mapply('*', dft_settings$Y, P, SIMPLIFY=FALSE)) # not sure if right
       } else {
         # Get probability for chosen alternatives only
-        if(dft_settings$Dims==1) tmp <- 1:dft_settings$nObs
-        if(dft_settings$Dims==2) tmp <- 1:dft_settings$nObs*Dim2Length
-        if(dft_settings$Dims==3) tmp <- 1:dft_settings$nObs*Dim2Length*Dim3Length
+        if(dft_settings$Dims==1) tmp <- 1:(dft_settings$nObs)
+        if(dft_settings$Dims==2) tmp <- 1:(dft_settings$nObs*Dim2Length)
+        if(dft_settings$Dims==3) tmp <- 1:(dft_settings$nObs*Dim2Length*Dim3Length)
         tmp <- sapply(tmp, function(i) calculateDFTProbs(c(dft_settings$choiceVar[i]), 
                                                          c(attrValuesM[i,]), 
                                                          c(availM[i,]), 
@@ -724,8 +745,8 @@ apollo_dft = function(dft_settings,functionality){
                                                          c(attrScalingsM[i,]),
                                                          erv[i], ts[i], phi1[i], phi2[i], dft_settings$nAlt, dft_settings$nAttrs))
         if(dft_settings$Dims==1) P = tmp
-        if(dft_settings$Dims==2) P = matrix(c(tmp), dft_settings$nObs, Dim2Length, byrow=TRUE)
-        if(dft_settings$Dims==3) P = aperm(array(c(tmp),c(Dim3Length,Dim2Length,dft_settings$nObs)))
+        if(dft_settings$Dims==2) P = matrix(c(tmp), dft_settings$nObs, Dim2Length, byrow=TRUE) #This should actually be byrow
+        if(dft_settings$Dims==3) P = aperm(array(c(tmp),c(Dim3Length,Dim2Length,dft_settings$nObs))) # not sure if right
       }
       return(P)
     }
@@ -874,7 +895,7 @@ calculateDFTProbs<-function(choiceVar,attribs, avail, altStart, attrWeights, att
   if(is.infinite(erv))     {P=0;return(P)} 
   if(any(is.na(M)))        {P=0;return(P)} 
   if(any(is.infinite(M)))  {P=0;return(P)} 
-  if(phi2>=0.999)          {P=0;return(P)} 
+  if(abs(phi2)>=0.999)     {P=0;return(P)} 
   ### catch scenarios where M and altStart are basically zeros...
   ### check eigenvalues instead?.
   
@@ -882,8 +903,9 @@ calculateDFTProbs<-function(choiceVar,attribs, avail, altStart, attrWeights, att
   ### catch scenarios where phi2 is very close to zero- will break the function-> set to zero
   #### check that this is appropriate?...
   if(ts<1) ts=1
-  if (phi2<0.0000001) phi2=0
-  #if (phi1<0.0000001) phi1=0.0000001
+  #if (phi2<0.0000001) phi2=0
+  if(abs(phi2)<0.0000001) phi2=0
+  if (phi1<0.0000001) phi1=0.0000001  ### think it is best to keep this in
   
   ### remove unavailable alternatives
   kp=(avail)*c(1:nAlt)

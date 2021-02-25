@@ -121,8 +121,11 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   if(is.null(apollo_control$analyticGrad)){
     apollo_control$analyticGrad <- TRUE
     if(debug) apollo_print("Missing setting for analyticGrad in apollo_control, set to default of TRUE")
+    apollo_control$analyticGrad_manualSet <- FALSE
   } else {
-    if(!is.logical(apollo_control$analyticGrad) || !length(apollo_control$analyticGrad)==1) stop("Setting analyticGrad in apollo_control should be a single logical value")
+    test <- is.logical(apollo_control$analyticGrad) && length(apollo_control$analyticGrad)==1
+    if(!test) stop("Setting analyticGrad in apollo_control should be a single logical value")
+    apollo_control$analyticGrad_manualSet <- TRUE
   }
   
   if(apollo_control$HB){
@@ -147,7 +150,7 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   
   allVars <- c("modelName", "modelDescr", "indivID", "mixing", "nCores", "seed", "HB", 
                "noValidation", "noDiagnostics", "weights", "workInLogs", "panelData", 
-               "cpp","subMaxV", "analyticGrad", "matrixMult", "debug")
+               "cpp","subMaxV", "analyticGrad", "matrixMult", "debug", "analyticGrad_manualSet")
   unknownVars <- names(apollo_control)[!( names(apollo_control) %in% allVars )]
   if(length(unknownVars)>0){
     apollo_print(paste0("Variable(s) {", paste(unknownVars, collapse=", "), "} were not recognised in apollo_control and will be ignored. Check ?apollo_control for a list of valid control variables."))

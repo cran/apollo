@@ -75,11 +75,12 @@ apollo_conditionals=function(model, apollo_probabilities, apollo_inputs){
     
     bn=(rowSums(b*P))/rowSums(P)
     bns=sqrt(rowSums(P*(b-bn)^2)/(rowSums(P)))
-    conditionals[[names(randcoeff)[j]]]=cbind(unique(database[,apollo_control$indivID]),bn,bns)
-    colnames(conditionals[[names(randcoeff)[j]]])=c("ID","post. mean","post. sd")
+    conditionals[[names(randcoeff)[j]]]=data.frame(ID=unique(database[,apollo_control$indivID]),
+                                                   post.mean=bn,
+                                                   post.sd=bns)
     rownames(conditionals[[names(randcoeff)[j]]])=c()
   }
   
-  if(length(conditionals)==1) conditionals=as.matrix(conditionals[[1]])
+  if(length(conditionals)==1) conditionals=conditionals[[1]]
   return(conditionals)
 }

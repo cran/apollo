@@ -12,12 +12,16 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
   #### MNL, NL, CNL, DFT, EL ####
   if(modelType %in% c("mnl","nl","cnl","dft", "el")){
     
+    # Check there are repeated alternatives names
+    if(length(unique(inputs$altnames))!=length(inputs$altnames)) stop('Names of alternatives must be unique. Check definition of "alternatives".')
+    
     # Checks specific to CNL
     if(modelType=="cnl"){
       if("root" %in% names(inputs$cnlNests)) stop('The root should not be included in argument cnlNests for model component "', inputs$componentName,'".')
       test <- is.matrix(inputs$cnlStructure) && nrow(inputs$cnlStructure)==length(inputs$nestnames) && ncol(inputs$cnlStructure)==inputs$nAlt
       if(!test) stop('Argument "cnlStructure" for model component "', inputs$componentName, ' must be a matrix with one row per nest and one column per alternative.')
-      test <- 0.999<colSums(inputs$cnlStructure) && colSums(inputs$cnlStructure)<1.001
+      #test <- 0.999<colSums(inputs$cnlStructure) && colSums(inputs$cnlStructure)<1.001
+      test <- all((0.999<colSums(inputs$cnlStructure)) & (colSums(inputs$cnlStructure)<1.001))
       if(!test) stop("Allocation parameters (alpha) for some alternatives sum to values different than 1 for model component \"",inputs$componentName,"\"!")
     }
     
@@ -112,15 +116,17 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
   
   #### OL, OP ####
   if(modelType %in% c("ol", "op")){
-    values_present = unique(inputs$outcomeOrdered)
-    if(!(all(values_present %in% inputs$coding ))) stop("Some levels in 'outcomeOrdered' do not exist in 'coding' for model component \"",inputs$componentName,"\" !")
-    if(!(all(inputs$coding %in% values_present ))) stop("Some levels in 'coding' do not exist in 'outcomeOrdered' for model component \"",inputs$componentName,"\"!")
+    #values_present = unique(inputs$outcomeOrdered)
+    #if(!(all(values_present %in% inputs$coding ))) stop("Some levels in 'outcomeOrdered' do not exist in 'coding' for model component \"",inputs$componentName,"\" !")
+    #if(!(all(inputs$coding %in% values_present ))) stop("Some levels in 'coding' do not exist in 'outcomeOrdered' for model component \"",inputs$componentName,"\"!")
     if( (length(inputs$tau)+1) != length(inputs$coding) ) stop("Threshold vector length +1 does not match number of elements in argument 'coding' for model component \"",inputs$componentName,"\".")
     if(!all(is.finite(inputs$V))) stop('Some values inside V are not finite for model component "', inputs$componentName, '"')
   }
   
-  #### MDCEV ####
-  if(modelType %in% c("mdcev", "mdcnev")){ 
+  #### MDCEV, MDCNEV ####
+  if(modelType %in% c("mdcev", "mdcnev")){
+    # Check names of alternatives are unique
+    if(length(inputs$alternatives)!=length(unique(inputs$alternatives))) stop('Alternatives names must be unique. Check definition of "alternatives".')
     # Check that sigma is not random (actually, it could be, but it leads to weird results)
     if(!is.vector(inputs$sigma)) stop("Sigma for model component \"", inputs$componentName,"\" should not be random")
     if(!(length(inputs$sigma) %in% c(1,inputs$nObs))) stop("Sigma for model component \"",inputs$componentName,"\" should be either a scalar or a vector with as many elements as observations")
@@ -159,8 +165,19 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
                                    "\" for some rows in data is less than or equal to zero!")
     # check that full budget is consumed in each row, nothing more, nothing less
     expenditure <- Reduce("+", mapply("*", inputs$continuousChoice, inputs$cost, SIMPLIFY=FALSE))
-    if(any(abs(expenditure-inputs$budget)>10^-10)) stop("Expenditure for some observations for model component \"",
-                                                        inputs$componentName,"\" is either less or more than budget!")
+    test <- which(abs(expenditure/inputs$budget - 1) > 0.001)
+    if(length(test)>0){
+      df <- data.frame(ID     = apollo_inputs$database[test, apollo_inputs$apollo_control$indivID],
+                       budget = inputs$budget[test], 
+                       expend = expenditure[test],
+                       `%diff`= round((expenditure[test]/inputs$budget[test] - 1)*100, 2),
+                       check.names = FALSE)
+      rownames(df) <- test
+      df <- df[order(abs(df[,4]), decreasing=TRUE),]
+      print(df)
+      stop('Expenditure for some observations for model component "', inputs$componentName,
+           '" is either less or more than budget!')
+    }
     # turn scalar availabilities into vectors
     #for(i in 1:length(inputs$avail)) if(length(inputs$avail[[i]])==1) inputs$avail[[i]] <- rep(inputs$avail[[i]], inputs$nObs)
     # check that all availabilities are either 0 or 1

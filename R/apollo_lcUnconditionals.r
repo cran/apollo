@@ -35,7 +35,7 @@ apollo_lcUnconditionals <- function(model, apollo_probabilities, apollo_inputs){
   if(is.null(apollo_control$HB)) apollo_control$HB=FALSE
   if(apollo_control$HB) stop("The function \'apollo_lcUnconditionals\' is not applicables for models estimated using HB!") 
   
-  # Calculate randCoeff if neccesary
+  # Calculate randCoeff if necessary
   toAttach  <- c(as.list(apollo_beta), apollo_inputs$database)
   if(apollo_control$mixing){
     toAttach  <- c(as.list(apollo_beta), apollo_inputs$database, draws)

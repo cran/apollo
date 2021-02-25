@@ -9,7 +9,8 @@ test_that("mmnl works", {
     modelDescr ="Mixed logit model with inter and intra draws",
     indivID   ="ID",  # Name of column in the database with each individual's ID
     mixing    = TRUE, # TRUE for models that include random parameters
-    nCores    = 2
+    nCores    = 1,
+    analyticGrad = TRUE
   )
   data("apollo_modeChoiceData", package="apollo")
   database = apollo_modeChoiceData
@@ -71,9 +72,8 @@ test_that("mmnl works", {
 
 
   model = apollo_estimate(apollo_beta, apollo_fixed,
-                          apollo_probabilities, apollo_inputs)
+                          apollo_probabilities, apollo_inputs, list(writeIter=FALSE))
   apollo_modelOutput(model)
-  apollo_saveOutput(model)
 
   expect_equal(model$maximum, -1066.478941, tolerance=0.1, scale=1)
 })

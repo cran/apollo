@@ -23,8 +23,7 @@
 #'                                                          improvements in the log-likelihood fall below this value. 
 #'                                                          Default is 10^-5.
 #'                        \item \strong{EMmaxIterations}: Numeric. Maximum number of iterations of the EM algorithm before 
-#'                                                        stopping. Default is 100. Used only if \code{apollo_control$HB} 
-#'                                                        is FALSE. Default is 200.
+#'                                                        stopping. Default is 100. 
 #'                        \item \strong{postEM}: Numeric scalar. Determines the number of tasks performed by this function 
 #'                                               after the EM algorithm has converged. Can take values \code{0}, \code{1} 
 #'                                               or \code{2} only. If value is \code{0}, only the EM algorithm will be 

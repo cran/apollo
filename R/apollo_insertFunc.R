@@ -251,7 +251,7 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE){
     e <- body(f)
     if(is.val(e)) return(f)
     if(!is.call(e)) stop('The body of argument "f" is not a call')
-    # Search for name of return variable
+    ## Introduce 'function ()'
     for(i in 1:length(e)){
       test1 <- is.call(e[[i]]) && length(e[[i]])==2 && e[[i]][[1]]=="return"
       # If return is defined in place
@@ -266,17 +266,18 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE){
     } 
     body(f) <- e
     
+    ## Replace LVs by their definitions on other LVs
     # Run function (apollo_randCoeff) with dummy arguments to figure out names of LVs
     rndCoeff <- tryCatch(f(apollo_beta=c(b1=0, b2=0), apollo_inputs=list()), error=function() NULL)
-    test <- is.list(rndCoeff) && all(sapply(rndCoeff, is.function))
+    test <- is.list(rndCoeff) && all(sapply(rndCoeff, is.function)) && length(rndCoeff)>1
     if(!test) return(f)
-    ## replace LVs on the right side by their definitions
+    # This function replace LVs on the right side by their definitions
     replaceByDef <- function(e, defs, rightSide=FALSE){
-      if(is.function(e)){ f <- e; e <- body(e)} else f <- NULL
+      if(is.function(e)){ f <- e; e <- body(e)} else f <- -1L# f <- NULL
       # Case 1: LV1
       test1 <- rightSide && is.symbol(e) && (as.character(e) %in% names(defs))
       if(test1) e <- body(defs[[ which(names(defs)==as.character(e))[1] ]])
-      # Case 2: L$LV1
+      # Case 2: L$LV1 or L[['LV1']]
       test2 <- !test1 && rightSide && is.call(e) && length(e)==3 && is.symbol(e[[1]]) && (as.character(e[[1]]) %in% c('$','[['))
       test2 <- test2 && is.val(e[[3]]) && (as.character(e[[3]]) %in% names(defs))
       if(test2) e <- body(defs[[ which(names(defs)==as.character(e[[3]]))[1] ]])
@@ -286,9 +287,25 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE){
         for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- replaceByDef(e[[i]], defs, rightSide=(rightSide | (test0 & i==3)))
       } 
       # Return
-      if(is.null(f)) return(e) else {body(f) <- e; return(f)}
+      if(is.function(f)){body(f) <- e; return(f)} else return(e)
+      #if(is.null(f)) return(e) else {body(f) <- e; return(f)}
     }
+    # Replace calls in rndCoeff, to make sure I am replacing for definitions without references to other LVs
+    for(i in 2:length(rndCoeff)) rndCoeff[[i]] <- replaceByDef(rndCoeff[[i]], rndCoeff[1:(i-1)], rightSide=TRUE)
+    # Replace in function
     f <- replaceByDef(f, rndCoeff)
+    
+    ## Loop in case there are nested LV definitions, e.g. LV3=h(LV2), LV2=g(LV1), LV1=f(X)
+    #doReplace <- TRUE
+    #while(doReplace){
+    #  # Replace by definition
+    #  f <- replaceByDef(f, rndCoeff)
+    #  # Update rndCoeff
+    #  rndCoeff <- f(x,y)
+    #  # Check if there still are calls to other LVs: CHECK IS TOO SIMPLE, IT FAILS (e.g. b1_LV1*x1 will return TRUE)
+    #  lvDef <- sapply(rndCoeff, function(ff) paste0(capture.output(print(body(ff))), collapse=' '))
+    #  doReplace <- any(grepl(paste0(names(rndCoeff), collapse='|'), lvDef))
+    #}
     
     return(f)
   }

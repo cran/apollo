@@ -115,6 +115,7 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
     txt <- paste0("Some parameters included in 'apollo_fixed' (", txt, ") are not included in 'apollo_beta'.")
     stop(txt)
   }
+  if(all(names(apollo_beta) %in% apollo_fixed)) stop('All elements in apollo_beta are included in apollo_fixed, so there is nothing to estimate!')
   
   ### Validate apollo_control, database
   apollo_control <- apollo_validateControl(database, apollo_control, silent=silent)

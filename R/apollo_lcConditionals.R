@@ -58,9 +58,7 @@ apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
   ### Prepare output
   conditionals = matrix(unlist(post_pi), ncol = length(post_pi), byrow = FALSE)
   classnames   = paste("Class ",seq(1:classes),sep="")
-  #rownames(conditionals) = c(unique(database[,apollo_control$indivID]))
-  conditionals=cbind(unique(database[,apollo_control$indivID]),conditionals)
-  colnames(conditionals) = c("ID",classnames)
+  conditionals = data.frame(ID=unique(database[,apollo_control$indivID]), conditionals)
   
   return(conditionals)
 }

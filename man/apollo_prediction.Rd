@@ -29,6 +29,7 @@ apollo_prediction(
   \item \code{modelComponent} Character. Name of component of apollo_probabilities output to calculate predictions for. Default is "model", i.e. the whole model.
   \item \code{runs} Numeric. Number of runs to use for computing confidence intervals of predictions.
   \item \code{silent} Boolean. If TRUE, this function won't print any output to screen.
+  \item \code{nRep} Scalar integer. Only used for models that require simulation for prediction (e.g. MDCEV). Number of draws used to calculate prediction. Default is 100.
 }}
 
 \item{modelComponent}{\strong{Deprecated}. Same as \code{modelComponent} inside \code{prediction_settings}.}
