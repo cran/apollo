@@ -9,7 +9,7 @@
 #'               model in memory, as returned by \link{apollo_estimate}.
 #' @return LR-test p-value (invisibly)
 #' @export
-apollo_lrTest = function(model1,model2){
+apollo_lrTest = function(model1, model2){
   
   modelNames = list()
   LL         = list()
@@ -20,14 +20,35 @@ apollo_lrTest = function(model1,model2){
   for(i in 1:2){
     modeluse=inputs[[i]]
     if(is.character(modeluse)){
-      filename=paste(paste(modeluse,"_output.txt",sep=""))
-      if(!file.exists(filename)) stop("File ",filename," not found!") 
+      ### INPUT IS NAME OF MODEL ####
+      
+      ### Search for output directory
+      outputDirectory <- ''
+      tmp  <- get('apollo_control', envir=parent.frame(), inherits=FALSE)
+      test <- is.list(tmp) && !is.null(tmp$outputDirectory) && is.character(tmp$outputDirectory)
+      if(test) outputDirectory <- tmp$outputDirectory else {
+        tmp <- get('apollo_inputs', envir=parent.frame(), inherits=FALSE)
+        test <- is.list(tmp) && !is.null(tmp$apollo_control) && !is.null(tmp$apollo_control$outputDirectory)
+        test <- test && is.character(tmp$apollo_control$outputDirectory)
+        if(test) outputDirectory <- tmp$apollo_control$outputDirectory
+      }
+      test <- outputDirectory!=''
+      test <- test && !(substr(outputDirectory, nchar(outputDirectory), nchar(outputDirectory)) %in% c('/','\\'))
+      if(test) outputDirectory <- paste0(outputDirectory, '/')
+      
+      ### Try to read file
+      filename = paste0(outputDirectory, modeluse, "_output.txt", collapse='')
+      if(!file.exists(filename)) filename = paste0(modeluse,"_output.txt", collapse='')
+      if(!file.exists(filename)){
+        if(outputDirectory=='') stop('File ', filename, ' not found in working directory.') else 
+          stop('File ', filename, ' not found in working directory, nor in ', outputDirectory, '.') 
+      } 
       lines = tryCatch(readLines(filename), 
                        warning=function(w) x=FALSE,
                        error=function(e) x=FALSE)
-      
       if(is.logical(lines) && lines==FALSE) stop("Could not open file ",filename) 
       
+      ### Read model name
       id <- grepl(paste0("Model name"), lines)
       value=lines[which(id)] 
       position=gregexpr(pattern=":",value)[[1]][1]
@@ -64,6 +85,8 @@ apollo_lrTest = function(model1,model2){
       k[[i]]=as.double(substr(value,position+1,nchar(value)))
 
     } else {
+      ### INPUT IS MODEL OBJECT ####
+      
       modelNames[[i]]=modeluse$apollo_control$modelName
       if(is.null(modeluse$maximum)){
         stop("No LL found in ",paste0(modeluse))

@@ -20,6 +20,7 @@ apollo_validateControl(database, apollo_control, silent = FALSE)
   \item \code{HB}: Boolean. TRUE if using RSGHB for Bayesian estimation of model.
   \item \code{noValidation}: Boolean. TRUE if user does not wish model input to be validated before estimation - FALSE by default.
   \item \code{noDiagnostics}: Boolean. TRUE if user does not wish model diagnostics to be printed - FALSE by default.
+  \item \code{outputDirectory}: Character. Optional directory for outputs if different from working director - empty by default
   \item \code{weights}: Character. Name of column in database containing weights for estimation.
   \item \code{workInLogs}: Boolean. TRUE for increased numeric precision in models with panel data - FALSE by default.
   \item \code{panelData}: Boolean. TRUE if there are multiple obsrvations (i.e. rows) for each decision maker - Automatically set based on \code{indivID} by default.

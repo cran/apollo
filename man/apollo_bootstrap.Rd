@@ -12,8 +12,8 @@ apollo_bootstrap(
   estimate_settings = list(estimationRoutine = "bfgs", maxIterations = 200, writeIter =
     FALSE, hessianRoutine = "none", printLevel = 2L, silent = FALSE, maxLik_settings =
     list()),
-  bootstrap_settings = list(nRep = 30, samples = NA, seed = 24, calledByEstimate =
-    FALSE, recycle = TRUE)
+  bootstrap_settings = list(nRep = 30, samples = NA, calledByEstimate = FALSE, recycle
+    = TRUE)
 )
 }
 \arguments{
@@ -42,8 +42,9 @@ apollo_bootstrap(
                           that observation must be included in the sample. If this argument is provided, 
                           then \code{nRep} is ignored. Note that this allows sampling at the observation 
                           rather than the individual level, which is not recommended for panel data.
-  \item \strong{seed}: Numeric scalar (integer). Random number generator seed to generate the bootstrap samples.
-                       Only used if \code{samples} is \code{NA}. Default is 24.
+  \item \strong{seed}: \strong{DEPRECATED, \code{apollo_control$seed} is used since v0.2.5}. Numeric scalar (integer). 
+                       Random number generator seed to generate the bootstrap samples. Only used if \code{samples} 
+                       is \code{NA}. Default is 24.
   \item \strong{calledByEstimate}: Logical. TRUE if \code{apollo_bootstrap} is called by \code{apollo_estimate}. FALSE by default.
   \item \strong{recycle}: Logical. If TRUE, the function will look for old output files and append new repetitions to them. If FALSE, output files will be overwritten.
 }}

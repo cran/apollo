@@ -127,7 +127,7 @@ apollo_mnl <- function(mnl_settings, functionality){
         denom = Reduce('+',mnl_settings$V)
         P <- mnl_settings$chosenAvail/denom
       }
-      # insert excluded rows with value 1 if only teh chosen is requested, and 0 if all
+      # insert excluded rows with value 1 if only the chosen is requested, and 0 if all
       if(any(!mnl_settings$rows) & restoreRows){
         if(is.list(P)) P <- lapply(P, apollo_insertRows, r=mnl_settings$r, val=0) else P <- apollo_insertRows(P, mnl_settings$rows, 1)
       }
@@ -142,6 +142,7 @@ apollo_mnl <- function(mnl_settings, functionality){
     test <- test && apollo_inputs$apollo_control$analyticGrad
     mnl_settings$gradient <- FALSE
     if(test){
+      mnl_settings$V        <- mnl_settings$V[mnl_settings$altnames] # reorder V
       mnl_settings$dV       <- apollo_dVdB(apollo_beta, apollo_inputs, mnl_settings$V)
       mnl_settings$gradient <- !is.null(mnl_settings$dV)
     }; rm(test)
@@ -164,7 +165,7 @@ apollo_mnl <- function(mnl_settings, functionality){
   } 
   mnl_settings$V <- lapply(mnl_settings$V, function(v) if(is.matrix(v) && ncol(v)==1) as.vector(v) else v)
   
-  ### Reorder V and drop rows if neccesary
+  ### Reorder V and drop rows if necessary
   mnl_settings$V <- mnl_settings$V[mnl_settings$altnames]
   if(!all(mnl_settings$rows)) mnl_settings$V <- lapply(mnl_settings$V, apollo_keepRows, r=mnl_settings$rows)
   # No need to drop rows in avail, choiceVar nor Y, as these are
@@ -197,6 +198,29 @@ apollo_mnl <- function(mnl_settings, functionality){
     for(i in 1:length(mnl_settings$avail)) if(length(mnl_settings$avail[[i]])==1) mnl_settings$avail[[i]] <- rep(mnl_settings$avail[[i]], mnl_settings$nObs) # turn scalar availabilities into vectors
     nAvAlt <- rowSums(do.call(cbind, mnl_settings$avail)) # number of available alts in each observation
     P = 1/nAvAlt # likelihood at zero
+    if(any(!mnl_settings$rows)) P <- apollo_insertRows(P, mnl_settings$rows, 1)
+    return(P)
+  }
+
+  # ############################### #
+  #### functionality="shares_LL" ####
+  # ############################### #
+  
+  if(functionality=="shares_LL"){
+    for(i in 1:length(mnl_settings$avail)) if(length(mnl_settings$avail[[i]])==1) mnl_settings$avail[[i]] <- rep(mnl_settings$avail[[i]], mnl_settings$nObs) # turn scalar availabilities into vectors
+    nAvAlt <- rowSums(do.call(cbind, mnl_settings$avail)) # number of available alts in each observation
+    Y = do.call(cbind,mnl_settings$Y)
+    if(var(nAvAlt)==0){
+      Yshares = colSums(Y)/nrow(Y)
+      P = Y%*%Yshares
+    } else {
+      ## Estimate model with constants only
+      mnl_ll = function(b, A, Y) as.vector(Y%*%c(b,0) - log(rowSums( A%*%exp(c(b,0)) )))
+      A = do.call(cbind, mnl_settings$avail)
+      b = maxLik::maxLik(mnl_ll, start=rep(0, mnl_settings$nAlt - 1), 
+                         method='BFGS', finalHessian=FALSE, A=A, Y=Y)$estimate
+      P = exp(mnl_ll(b, A, Y))
+    }
     if(any(!mnl_settings$rows)) P <- apollo_insertRows(P, mnl_settings$rows, 1)
     return(P)
   }

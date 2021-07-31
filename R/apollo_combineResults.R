@@ -13,54 +13,84 @@
 #'                                  \item pDigits: Numeric scalar. Number of decimal places to print for p-values. Default is 2.
 #'                                  \item sortByDate: Boolean. If TRUE, models are ordered by date. Default is TRUE.
 #'                                }
-#' @return Nothing, but writes a file called 'model_comparison|_[date].csv' in the working directory.
+#' @return Nothing, but writes a file called 'model_comparison_[date].csv' in the working directory.
 #' @export
 apollo_combineResults = function(combineResults_settings=NULL){
-   if(is.null(combineResults_settings)) combineResults_settings=list()
-   if(is.null(combineResults_settings[["modelNames"]])){
-     apollo_print("The combineResults_settings does not include an object called \"modelNames\". The apollo_combineResults function will include all models for which results have been stored in the working directory. Note that this function is not applicable for models estimated using HB.")
-     combineResults_settings[["modelNames"]]=list.files(pattern="*estimates.csv")
-     for(j in 1:length(combineResults_settings[["modelNames"]])){
-       l=nchar(combineResults_settings[["modelNames"]][j])
-       l=l-14  
-       combineResults_settings[["modelNames"]][j]=substr(combineResults_settings[["modelNames"]][j],1,l)
-     } }
-   if(is.null(combineResults_settings[["printClassical"]])) combineResults_settings[["printClassical"]]=FALSE
-   if(is.null(combineResults_settings[["printPVal"]])) combineResults_settings[["printPVal"]]=FALSE
-   if(is.null(combineResults_settings[["printT1"]])) combineResults_settings[["printT1"]]=FALSE
-   if(is.null(combineResults_settings[["estimateDigits"]])) combineResults_settings[["estimateDigits"]]=4
-   if(is.null(combineResults_settings[["tDigits"]])) combineResults_settings[["tDigits"]]=2
-   if(is.null(combineResults_settings[["pDigits"]])) combineResults_settings[["pDigits"]]=2
-
-   modelNames=combineResults_settings[["modelNames"]]
-   printClassical=combineResults_settings[["printClassical"]]
-   printPVal=combineResults_settings[["printPVal"]]
-   printT1=combineResults_settings[["printT1"]]
-   estimateDigits=combineResults_settings[["estimateDigits"]]
-   tDigits=combineResults_settings[["tDigits"]]
-   pDigits=combineResults_settings[["pDigits"]]
-
-   if(is.null(combineResults_settings[["sortByDate"]])) combineResults_settings[["sortByDate"]]=TRUE
-   
-   if(combineResults_settings[["sortByDate"]]){
-     details = file.info(paste(modelNames,"_estimates.csv",sep=""))
-     rownames(details)=modelNames
-     details = details[with(details, order(as.POSIXct(mtime))), ]
-     modelNames = rownames(details)
-   }
-
-  Cfile_check=paste(modelNames,"_C.csv",sep="")
-  outputfile_check=paste(modelNames,"_output.txt",sep="")
-  estimatefile_check=paste(modelNames,"_estimates.csv",sep="")
-  files=list.files()
+  
+  ### Fetch outputDirectory
+  outputDirectory <- ''
+  # Try getting it from apollo_control
+  apollo_control <- tryCatch(get('apollo_control', envir=parent.frame(1), inherits=FALSE),
+                             error=function(e) NULL)
+  test <- !is.null(apollo_control) && is.list(apollo_control) && !is.null(apollo_control$outputDirectory)
+  test <- test && is.character(apollo_control$outputDirectory)
+  if(test) outputDirectory <- apollo_control$outputDirectory
+  rm(apollo_control)
+  # If apollo_control failed, try getting it from apollo_inputs
+  if(outputDirectory==''){
+    apollo_inputs <- tryCatch(get('apollo_inputs', envir=parent.frame(1), inherits=FALSE),
+                              error=function(e) NULL)
+    test <- !is.null(apollo_inputs) && is.list(apollo_inputs) && !is.null(apollo_inputs$apollo_control)
+    test <- test && is.list(apollo_inputs$apollo_control) && !is.null(apollo_inputs$apollo_control[['outputDirectory']])
+    test <- test && is.character(apollo_inputs$apollo_control$outputDirectory)
+    if(test) outputDirectory <- apollo_inputs$apollo_control$outputDirectory
+    rm(apollo_inputs)
+  } 
+  # Add / at the end if necessary
+  test <- outputDirectory!=''
+  test <- test && !(substr(outputDirectory, nchar(outputDirectory), nchar(outputDirectory)) %in% c('/', '\\'))
+  if(test) outputDirectory <- paste0(outputDirectory,'/')
+  
+  
+  
+  if(is.null(combineResults_settings)) combineResults_settings=list()
+  if(is.null(combineResults_settings[["modelNames"]])){
+    apollo_print("The combineResults_settings does not include an object called \"modelNames\". The apollo_combineResults function will include all models for which results have been stored in the working directory. Note that this function is not applicable for models estimated using HB.")
+    combineResults_settings[["modelNames"]]=list.files(pattern="*estimates.csv")
+    if(length(combineResults_settings[["modelNames"]])==0) stop('No model files found in the working directory!')
+    for(j in 1:length(combineResults_settings[["modelNames"]])){
+      l=nchar(combineResults_settings[["modelNames"]][j])
+      l=l-14  
+      combineResults_settings[["modelNames"]][j]=substr(combineResults_settings[["modelNames"]][j],1,l)
+    } }
+  if(is.null(combineResults_settings[["printClassical"]])) combineResults_settings[["printClassical"]]=FALSE
+  if(is.null(combineResults_settings[["printPVal"]])) combineResults_settings[["printPVal"]]=FALSE
+  if(is.null(combineResults_settings[["printT1"]])) combineResults_settings[["printT1"]]=FALSE
+  if(is.null(combineResults_settings[["estimateDigits"]])) combineResults_settings[["estimateDigits"]]=4
+  if(is.null(combineResults_settings[["tDigits"]])) combineResults_settings[["tDigits"]]=2
+  if(is.null(combineResults_settings[["pDigits"]])) combineResults_settings[["pDigits"]]=2
+  
+  modelNames     = combineResults_settings[["modelNames"]]
+  printClassical = combineResults_settings[["printClassical"]]
+  printPVal      = combineResults_settings[["printPVal"]]
+  printT1        = combineResults_settings[["printT1"]]
+  estimateDigits = combineResults_settings[["estimateDigits"]]
+  tDigits        = combineResults_settings[["tDigits"]]
+  pDigits        = combineResults_settings[["pDigits"]]
+  
+  if(is.null(combineResults_settings[["sortByDate"]])) combineResults_settings[["sortByDate"]]=TRUE
+  
+  if(combineResults_settings[["sortByDate"]]){
+    details = file.info(paste0(outputDirectory,modelNames,"_estimates.csv"))
+    rownames(details) = modelNames
+    details = details[with(details, order(as.POSIXct(mtime))), ]
+    modelNames = rownames(details)
+  }
+  
+  Cfile_check = paste0(modelNames, "_C.csv")
+  Ofile_check = paste0(modelNames, "_output.txt")
+  Efile_check = paste0(modelNames, "_estimates.csv")
+  files       = list.files(path=outputDirectory)
   if(any(Cfile_check%in%files)) stop("Your list of modelNames includes some models estimated using HB!")
-  if(!(all(outputfile_check%in%files))) {
-    cat("\nCould not find: ",outputfile_check[!outputfile_check%in%files],"\n")
-    stop("Model output files missing for some models!")}
-  if(!(all(estimatefile_check%in%files))){
-    cat("\nCould not find: ",estimatefile_check[!estimatefile_check%in%files],"\n")
-    stop("Files with estimates missing for some models!")}     
-
+  if(!(all(Ofile_check%in%files))){
+    txt <- paste0('Could not find file(s) ', paste0(Ofile_check[!Ofile_check%in%files], collapse=', '))
+    if(outputDirectory!='') txt <- paste0(txt, ' in folder ', outputDirectory)
+    stop(txt)}
+  if(!(all(Efile_check%in%files))){
+    txt <- paste0('Could not find file(s) ', paste0(Efile_check[!Efile_check%in%files], collapse=', '))
+    if(outputDirectory!='') txt <- paste0(txt, ' in folder ', outputDirectory)
+    stop(txt)}
+  
   estimateDigits = max(1,estimateDigits)
   tDigits        = max(1,tDigits)
   pDigits        = max(1,pDigits)
@@ -69,32 +99,32 @@ apollo_combineResults = function(combineResults_settings=NULL){
   
   estimates    = list()
   otheroutputs = data.frame(matrix(0,nrow=9,ncol=length(modelNames)))
-  rownames(otheroutputs) = c("Model name","Model description","Number of individuals","Number of observations","Estimated parameters","LL(final)","Adj.Rho-square (0)","AIC","BIC")
+  rownames(otheroutputs) = c("Model name","Model description","Number of individuals","Number of modelled outcomes","Estimated parameters","LL(final)","Adj.Rho-square (0)","AIC","BIC")
   values = 1 + ( 1 + printClassical ) * ( 1 + printT1) * ( 1 + printPVal )
   
   for(j in 1:length(modelNames)){
-    filename=paste(modelNames[[j]],"_estimates.csv",sep="")
+    filename=paste(outputDirectory,modelNames[[j]],"_estimates.csv",sep="")
     if(!file.exists(filename)) stop("File ",filename," not found!") 
     inputs = tryCatch(utils::read.csv(filename), 
-                                 warning=function(w) x=FALSE,
-                                 error=function(e) x=FALSE)
+                      warning=function(w) x=FALSE,
+                      error=function(e) x=FALSE)
     
     if(is.logical(inputs) && inputs==FALSE) stop("Could not open file ",filename) 
-
+    
     if(printClassical==TRUE){
       if(!("t.ratio.0." %in% colnames(inputs))){
-        cat("\nClassical t.ratios not available in ",paste(modelNames[[j]],"_estimates.csv",sep=""))
+        cat("\nClassical t.ratios not available in ",paste(outputDirectory,modelNames[[j]],"_estimates.csv",sep=""))
         inputs[,"t.ratio.0."]=NA
       }}
     if(printT1==TRUE){
       if(!("Rob.t.ratio.1." %in% colnames(inputs))){
-        cat("\nt.ratios against 1 not available in ",paste(modelNames[[j]],"_estimates.csv",sep=""))
+        cat("\nt.ratios against 1 not available in ",paste(outputDirectory,modelNames[[j]],"_estimates.csv",sep=""))
         inputs[,"Rob.t.ratio.1."]=NA
         if(printClassical==TRUE) inputs[,"t.ratio.1."]=NA
       }}
     if(printPVal==TRUE){
       if(!("Rob.p.val.0." %in% colnames(inputs))){
-        cat("\np-values not available in ",paste(modelNames[[j]],"_estimates.csv",sep=""))
+        cat("\np-values not available in ",paste(outputDirectory,modelNames[[j]],"_estimates.csv",sep=""))
         inputs[,"Rob.p.val.0."]=NA
         if(printT1==TRUE) inputs[,"Rob.p.val.1."]=NA
         if(printClassical==TRUE){
@@ -160,14 +190,14 @@ apollo_combineResults = function(combineResults_settings=NULL){
   
   for(j in 1:length(modelNames)){
     
-    filename=paste(modelNames[[j]],"_output.txt",sep="")
+    filename=paste(outputDirectory,modelNames[[j]],"_output.txt",sep="")
     if(!file.exists(filename)) stop("File ",filename," not found!") 
     lines = tryCatch(readLines(filename), 
-                      warning=function(w) x=FALSE,
-                      error=function(e) x=FALSE)
+                     warning=function(w) x=FALSE,
+                     error=function(e) x=FALSE)
     
     if(is.logical(lines) && lines==FALSE) stop("Could not open file ",filename) 
-
+    
     inputvar = grep("Model name", lines) 
     if(length(inputvar)!=0){
       inputvar = lines[inputvar]
@@ -194,6 +224,7 @@ apollo_combineResults = function(combineResults_settings=NULL){
     
     k=k+1
     inputvar = grep("Number of observations", lines) 
+    if(length(inputvar)==0) inputvar = grep("Number of modelled outcomes", lines) 
     if(length(inputvar)!=0){
       inputvar = lines[inputvar]
       position=gregexpr(pattern=":",inputvar)[[1]][1]
@@ -262,7 +293,7 @@ apollo_combineResults = function(combineResults_settings=NULL){
   }
   otherouputs_new=rbind(otherouputs_new,rep("",ncol(otherouputs_new)))
   rownames(otherouputs_new)[10]=""
-  filename=paste("model_comparison_",gsub("[: -]", "" , Sys.time(), perl=TRUE),".csv",sep="")
+  filename=paste0(outputDirectory, "model_comparison_", gsub("[: -]", "" , Sys.time(), perl=TRUE), ".csv")
   
   utils::write.table(otherouputs_new, filename, sep = ",", col.names = F, append = T)
   #utils::write.table("",filename, sep = ",", col.names = F, append = T)

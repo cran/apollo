@@ -92,26 +92,25 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
     if(!is.null(apollo_HB$gVarNamesNormal)){
       r <- ( names(apollo_beta) %in% names(apollo_inputs$apollo_scaling) ) & ( names(apollo_beta) %in% apollo_HB$gVarNamesNormal )
       r <- names(apollo_beta)[r]
-      hb<- apollo_HB
-      dists_normal= names(hb$gDIST[r][hb$gDIST[r]==1])
-      dists_lnp   = names(hb$gDIST[r][hb$gDIST[r]==2])
-      dists_lnn   = names(hb$gDIST[r][hb$gDIST[r]==3])
-      dists_cnp   = names(hb$gDIST[r][hb$gDIST[r]==4])
-      dists_cnn   = names(hb$gDIST[r][hb$gDIST[r]==5])
-      dists_sb    = names(hb$gDIST[r][hb$gDIST[r]==6])
+      dists_normal= names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==1])
+      dists_lnp   = names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==2])
+      dists_lnn   = names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==3])
+      dists_cnp   = names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==4])
+      dists_cnn   = names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==5])
+      dists_sb    = names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==6])
       s <- apollo_inputs$apollo_scaling
-      if(length(dists_normal)>0) apollo_HB$svN[dists_normal] <- 1/s[dists_normal]*hb$svN[dists_normal]
-      if(length(dists_lnp)>0) apollo_HB$svN[dists_lnp] <- -log(s[dists_lnp]) + hb$svN[dists_lnp]
-      if(length(dists_lnn)>0) apollo_HB$svN[dists_lnn] <- -log(s[dists_lnn]) + hb$svN[dists_lnn]
-      if(length(dists_cnp)>0) apollo_HB$svN[dists_cnp] <- 1/s[dists_cnp]*hb$svN[dists_cnp]
-      if(length(dists_cnn)>0) apollo_HB$svN[dists_cnn] <- 1/s[dists_cnn]*hb$svN[dists_cnn]
+      if(length(dists_normal)>0) apollo_HB$svN[dists_normal] <- 1/s[dists_normal]*apollo_HB$svN[dists_normal]
+      if(length(dists_lnp)>0) apollo_HB$svN[dists_lnp] <- -log(s[dists_lnp]) + apollo_HB$svN[dists_lnp]
+      if(length(dists_lnn)>0) apollo_HB$svN[dists_lnn] <- -log(s[dists_lnn]) + apollo_HB$svN[dists_lnn]
+      if(length(dists_cnp)>0) apollo_HB$svN[dists_cnp] <- 1/s[dists_cnp]*apollo_HB$svN[dists_cnp]
+      if(length(dists_cnn)>0) apollo_HB$svN[dists_cnn] <- 1/s[dists_cnn]*apollo_HB$svN[dists_cnn]
       if(length(dists_sb)>0){
-        names(apollo_HB$gMINCOEF)=names(hb$svN)
-        names(apollo_HB$gMAXCOEF)=names(hb$svN)
-        apollo_HB$gMINCOEF[dists_sb] <- 1/s[dists_sb]*hb$gMINCOEF[dists_sb]
-        apollo_HB$gMAXCOEF[dists_sb] <- 1/s[dists_sb]*hb$gMAXCOEF[dists_sb]
+        names(apollo_HB$gMINCOEF)=names(apollo_HB$svN)  
+        names(apollo_HB$gMAXCOEF)=names(apollo_HB$svN)
+        apollo_HB$gMINCOEF[dists_sb] <- 1/s[dists_sb]*apollo_HB$gMINCOEF[dists_sb]
+        apollo_HB$gMAXCOEF[dists_sb] <- 1/s[dists_sb]*apollo_HB$gMAXCOEF[dists_sb]
       }
-      rm(r, hb, dists_normal, dists_lnp, dists_lnn, dists_cnp, dists_cnn, dists_sb)
+      rm(r, dists_normal, dists_lnp, dists_lnn, dists_cnp, dists_cnn, dists_sb)
     }
   }
   
@@ -208,7 +207,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   
   ### Second checkpoint
   time2 <- Sys.time()
-
+  
   model <- RSGHB::doHB(apollo_HB_likelihood, database, apollo_HB)
   
   ### Third checkpoint

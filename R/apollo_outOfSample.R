@@ -100,6 +100,7 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   apollo_randCoeff <- apollo_inputs$apollo_randCoeff
   apollo_lcPars    <- apollo_inputs$apollo_lcPars
   workInLogs       <- apollo_inputs$apollo_control$workInLogs
+  if(!is.null(apollo_inputs$apollo_control$seed)) seed <- apollo_inputs$apollo_control$seed + 3 else seed <- 13 + 3
   
   # Extract values from estimate_settings and estimate_settings
   estimationRoutine <- estimate_settings$estimationRoutine
@@ -164,14 +165,14 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   nObsStack          <- rep(0,nRep)
   if(anyNA(samples)){
     samples <- matrix(0, nrow=nrow(database), ncol=nRep, dimnames=list(c(), paste0("sample_",1:nRep)))
-    set.seed(24)
+    set.seed(seed)
     for(i in 1:nRep) samples[,i] <- database[,apollo_control$indivID] %in% sample(indivs, size=validationSize)
   }
   rm(llComponents)
   
   # Check if there are previous results. If so, load them
-  fileNameParams <- paste(apollo_control$modelName, "outOfSample_params.csv", sep="_")
-  fileNameSample <- paste(apollo_control$modelName, "outOfSample_samples.csv", sep="_")
+  fileNameParams <- paste0(apollo_control$outputDirectory, apollo_control$modelName, "_outOfSample_params.csv")
+  fileNameSample <- paste0(apollo_control$outputDirectory, apollo_control$modelName, "_outOfSample_samples.csv")
   nRun <- 0
   if(file.exists(fileNameParams) & file.exists(fileNameSample)){
     apollo_print("Old output files found, they will be recycled.")
@@ -197,7 +198,7 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
       llInSampleStack    <- rbind(tmp2, llInSampleStack)
       llOutOfSampleStack <- rbind(tmp3, llOutOfSampleStack)
       samples            <- cbind(tmp4, samples); colnames(samples) <- paste0("sample_",1:nRep)
-      set.seed(24)
+      set.seed(seed)
       for(i in 1:nRep){
         tmp <- sample(indivs, size=validationSize)
         if(i>nRun) samples[,i] <- database[,apollo_control$indivID] %in% tmp

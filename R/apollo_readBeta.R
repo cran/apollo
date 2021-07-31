@@ -12,12 +12,30 @@
 #' @export
 apollo_readBeta=function(apollo_beta, apollo_fixed, inputModelName, overwriteFixed=FALSE){
   
-  filename <- paste0(inputModelName, "_estimates.csv")
-  if(!file.exists(filename)) stop("File ",filename," not found!") 
+  ### Search for output directory
+  outputDirectory <- ''
+  tmp  <- tryCatch(get('apollo_control', envir=parent.frame(), inherits=FALSE), error=function(e) FALSE)
+  test <- is.list(tmp) && !is.null(tmp$outputDirectory) && is.character(tmp$outputDirectory)
+  if(test) outputDirectory <- tmp$outputDirectory else {
+    tmp <- tryCatch(get('apollo_inputs', envir=parent.frame(), inherits=FALSE), error=function(e) FALSE)
+    test <- is.list(tmp) && !is.null(tmp$apollo_control) && !is.null(tmp$apollo_control$outputDirectory)
+    test <- test && is.character(tmp$apollo_control$outputDirectory)
+    if(test) outputDirectory <- tmp$apollo_control$outputDirectory
+  }
+  test <- outputDirectory!=''
+  test <- test && !(substr(outputDirectory, nchar(outputDirectory), nchar(outputDirectory)) %in% c('/','\\'))
+  if(test) outputDirectory <- paste0(outputDirectory, '/')
+  
+  ### Try to read from file
+  filename = paste0(outputDirectory, inputModelName, "_estimates.csv", collapse='')
+  if(!file.exists(filename)) filename = paste0(inputModelName,"_estimates.csv", collapse='')
+  if(!file.exists(filename)){
+    if(outputDirectory=='') stop('File ', filename, ' not found in working directory.') else 
+      stop('File ', filename, ' not found in working directory, nor in ', outputDirectory, '.') 
+  }
   input_apollo_beta = tryCatch(utils::read.csv(filename), 
                                warning=function(w) x=FALSE,
                                error=function(e) x=FALSE)
-  
   if(is.logical(input_apollo_beta) && input_apollo_beta==FALSE) stop("Could not open file ",filename) 
   
   if(overwriteFixed!=FALSE) overwriteFixed=TRUE

@@ -102,7 +102,7 @@ apollo_ol  <- function(ol_settings, functionality){
         for(j in 1:(length(ol_settings$tau)-1)) P2[[j]] = 
             1/(1 + exp(ol_settings$V-ol_settings$tau[[j+1]])) - 1/(1 + exp(ol_settings$V-ol_settings$tau[[j]]))
         names(P2) <- ol_settings$coding
-        if(restoreRows && any(!ol_settings$rows)) P2 <- lapply(P2, apollo_insertRows, r=ol_settings$rows, val=1)
+        if(restoreRows && any(!ol_settings$rows)) P2 <- lapply(P2, apollo_insertRows, r=ol_settings$rows, val=NA)
         if(!(length(ol_settings$outcomeOrdered)==1 && is.na(ol_settings$outcomeOrdered))) P2[["chosen"]] <- P
         P <- P2
       }

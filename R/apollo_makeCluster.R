@@ -169,7 +169,7 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
   }
   
   ### Load libraries in the cluster (same as in workspace)
-  if(debug) cat('Loading libraries...')  # do not change to apollo_print
+  if(debug) cat('Loading libraries and likelihood function...')  # do not change to apollo_print
   excludePackages<- c('parallel')
   loadedPackages <- search()
   loadedPackages <- loadedPackages[grepl("^(package:)", loadedPackages)]

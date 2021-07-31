@@ -104,7 +104,7 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   indivID   <- database[,apollo_control$indivID]
 
   if(is.null(apollo_control$seed)) apollo_control$seed=13
-  set.seed(apollo_control$seed)
+  set.seed(apollo_control$seed + 0)
 
   nObs <- length(indivID)
   if(!panelData) indivID <- 1:nObs
@@ -258,7 +258,7 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
     sobolNames <- c('sobol', 'sobolowen', 'sobolfauretezuka', 'sobolowenfauretezuka')
     sobolInter <- dimInter>0 && (d$interDrawsType %in% sobolNames)
     if(d$intraDrawsType %in% sobolNames){
-      sobolScrambling <- c(sobol=0, sobolOwen=1, sobolFaureTezuka=2, sobolOwenFaureTezuka=3)
+      sobolScrambling <- c(sobol=0, sobolowen=1, sobolfauretezuka=2, sobolowenfauretezuka=3)
       draws <- randtoolbox::sobol(nIntra*nObs, dimInter*sobolInter + dimIntra, 
                                   scrambling=sobolScrambling[d$intraDrawsType])
       if(sobolInter) draws <- draws[,(dimInter+1):(dimInter+dimIntra)]

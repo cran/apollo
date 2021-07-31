@@ -75,11 +75,11 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
     return(P)
   }
   
-  # ################################################################### #
-  #### functionality="estimate/conditionals/validate/output/zero_LL" ####
-  # ################################################################### #
+  # ####################################### #
+  #### functionality="zero_LL/shares_LL" ####
+  # ####################################### #
   
-  if(functionality=='zero_LL'){
+  if(functionality %in% c('zero_LL', 'shares_LL')){
     if(!inputIsList) P <- list(model=P)
     if(any(sapply(P, function(p) is.array(p) && length(dim(p)==3)))) stop('Need to average over intra-individual draws first before multiplying over choices!')
     for(j in 1:length(P)){
@@ -94,6 +94,10 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
     if(!inputIsList) P <- P[[1]]
     return(P)
   }
+  
+  # ########################################################### #
+  #### functionality="estimate/conditionals/validate/output" ####
+  # ########################################################### #
   
   if(functionality %in% c("estimate", "conditionals","output","validate")){
     if(inputIsList && is.null(P[["model"]])) stop("The list \"P\" should contain an element called \"model\"!")

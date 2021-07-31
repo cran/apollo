@@ -52,7 +52,9 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
     lc_settings <- list(componentName = lc_settings$componentName,
                         LCNObs        = max(sapply(lc_settings$inClassProb, function(m_settings) sum(m_settings$rows))), 
                         LCCompNames   = names(lc_settings$inClassProb),
-                        modelType     = 'LC')
+                        modelType     = 'LC',
+                        gradient      = TRUE,
+                        classAlloc_settings = lc_settings$classProb)
     return(lc_settings)
   }
   
@@ -116,6 +118,7 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   # ############## #
   if(functionality=="validate"){
     
+    # Validate inputs
     if(!apollo_inputs$apollo_control$noValidation){
       if(length(inClassProb)!=length(classProb)) stop("Arguments 'inClassProb' and 'classProb' for model component \"",
                                                       lc_settings$componentName,"\" must have the same length.")
@@ -128,7 +131,13 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
                                               lc_settings$componentName,"\" must sum to 1.")
     }
     
+    # Print diagnostics
     if(!apollo_inputs$apollo_control$noDiagnostics) apollo_diagnostics(lc_settings, modelType="LC", apollo_inputs)
+    
+    # Check if classProb needs to be averaged to match the dimensionality of inClassProb, warn if so
+    test <- nRowsInClassProb!=nRowsClassProb && nRowsClassProb!=1 && nRowsInClassProb < nRowsClassProb && !apollo_inputs$silent
+    if(test) apollo_print(paste0('Class probability for model component "', lc_settings$componentName, 
+                                 '" averaged across observations of each individual.'))
     
     testL = apollo_lc(lc_settings, apollo_inputs, functionality="estimate")
     return(testL)
@@ -148,9 +157,8 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
         # If classProb is calculated at the obs level while the inClassProb is at the indiv level
         classProb <- lapply(classProb, rowsum, group=indivID)
         classProb <- lapply(classProb, '/', nObsPerIndiv)
-        if(!apollo_inputs$silent) apollo_print(paste0('Class probability for model component "', 
-                                                      lc_settings$componentName, 
-                                                      '" averaged across observations of each individual.'))
+        #if(!apollo_inputs$silent) apollo_print(paste0('Class probability for model component "', lc_settings$componentName, 
+        #                                              '" averaged across observations of each individual.'))
       } else {
         # If inClassProb is calculated at the obs level while the classProb is at the indiv level
         classProb <- lapply(classProb, rep, nObsPerIndiv)
@@ -231,13 +239,14 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   # ############## #
   
   if(functionality==("gradient")){
+    # Initial checks
     if(any(sapply(inClassProb, function(p) is.null(p$like) || is.null(p$grad)))) stop("Some components in inClassProb are missing the 'like' and/or 'grad' elements")
     if(any(sapply(classProb, function(p) is.null(p$like) || is.null(p$grad)))) stop("Some components in classProb are missing the 'like' and/or 'grad' elements")
     if(apollo_inputs$apollo_control$workInLogs && apollo_inputs$apollo_control$analyticGrad) stop("workInLogs cannot be used in conjunction with analyticGrad")
     K <- length(inClassProb[[1]]$grad) # number of parameters
     if(K!=length(classProb[[1]]$grad)) stop("Dimensions of gradients not consistent between classProb and inClassProb")
-    if(any(sapply(inClassProb, function(p) length(inClassProb$grad))!=K)) stop("Dimensions of gradients from different components in inClassProb imply different number of parameters")
-    if(any(sapply(classProb, function(p) length(classProb$grad))!=K)) stop("Dimensions of gradients from different components in classProb imply different number of parameters")
+    if(any(sapply(inClassProb, function(p) length(p$grad))!=K)) stop("Dimensions of gradients from different components in inClassProb imply different number of parameters")
+    if(any(sapply(classProb, function(p) length(p$grad))!=K)) stop("Dimensions of gradients from different components in classProb imply different number of parameters")
     
     # Count number of rows in inClassProb
     nRowsInClassProb <- 0
@@ -245,6 +254,8 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
       nRowsInClassProb <- dim(inClassProb[[1]][["like"]])[1]
     }
     
+    # Count number of obs in class alloc probabilities
+    nRowsClassProb <- max(sapply(classProb, function(p) length(p$like)))
     # Match the number of rows in each list
     # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
     if( nRowsInClassProb!=nRowsClassProb & nRowsClassProb!=1 ){
@@ -252,28 +263,35 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
       nObsPerIndiv <- as.vector(table(indivID))
       if( nRowsInClassProb < nRowsClassProb ){
         # If classProb is calculated at the obs level while the inClassProb is at the indiv level
-        classProb$grad <- lapply(classProb$grad, rowsum, group=indivID)
-        classProb$grad <- lapply(classProb$grad, '/', nObsPerIndiv)
-        classProb$like <- lapply(classProb$like, rowsum, group=indivID)
-        classProb$like <- lapply(classProb$like, '/', nObsPerIndiv)
-        if(!apollo_inputs$silent) apollo_print(paste0('Class probability for model component "', 
-                                                      lc_settings$componentName, 
-                                                      '" averaged across observations of each individual.'))
+        for(i in 1:length(classProb)){
+          classProb[[i]]$grad <- lapply(classProb[[i]]$grad, rowsum, group=indivID)
+          classProb[[i]]$grad <- lapply(classProb[[i]]$grad, '/', nObsPerIndiv)
+          classProb[[i]]$like <- rowsum(classProb[[i]]$like, group=indivID)/nObsPerIndiv
+        }
+        #if(!apollo_inputs$silent) apollo_print(paste0('Class probability for model component "', lc_settings$componentName, 
+        #                                              '" averaged across observations of each individual.'))
       } else {
         # If inClassProb is calculated at the obs level while the classProb is at the indiv level
-        classProb$grad <- lapply(classProb$grad, rep, nObsPerIndiv)
-        classProb$like <- lapply(classProb$like, rep, nObsPerIndiv)
+        for(i in 1:length(classProb)){
+          classProb[[i]]$grad <- lapply(classProb[[i]]$grad, rep, nObsPerIndiv)
+          classProb[[i]]$like <- rep(classProb[[i]]$like, nObsPerIndiv)
+        }
         ### warning('Class probability repeated for all observations of the same individual.')
       }
     }
     
-    Pout = list()
-    Pout$like=Reduce('+',mapply(function(p,pi) pi*p, inClassProb$like, classProb$like, SIMPLIFY=FALSE))
-    Pout$like=Reduce('+',mapply(function(plike, pilike ,pgrad ,pigrad) pigrad*plike + pilike*pgrad, 
-                                inClassProb$like, classProb$like, inClassProb$grad, classProb$grad, SIMPLIFY=FALSE))
-
-    return(Pout)
+    ### Calculate actual likelihood and gradient
+    nClass <- length(classProb)
+    nParam <- length(inClassProb[[1]]$grad)
+    Pout = list(like=0, grad=list())
+    for(k in 1:nParam) Pout$grad[[k]] <- 0
+    for(i in 1:nClass){
+      Pout$like <- Pout$like + inClassProb[[i]]$like*classProb[[i]]$like
+      for(k in 1:nParam) Pout$grad[[k]] <- Pout$grad[[k]] + 
+          inClassProb[[i]]$grad[[k]]*classProb[[i]]$like + inClassProb[[i]]$like*classProb[[i]]$grad[[k]]
+    }
     
+    return(Pout)
   } 
   
   # ############ #

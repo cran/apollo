@@ -22,8 +22,8 @@ apollo_saveOutput(model, saveOutput_settings = NA)
    \item \code{printChange}: Boolean. TRUE for printing difference between starting values and estimates. TRUE by default.
    \item \code{printFunctions}: Boolean. TRUE for printing apollo_control, apollo_randCoeff (when available), apollo_lcPars (when available) and apollo_probabilities. TRUE by default.                               
    \item \code{saveEst}: Boolean. TRUE for saving estimated parameters and standard errors to a CSV file. TRUE by default.
-   \item \code{saveCov}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.
-   \item \code{saveCorr}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. TRUE by default.
+   \item \code{saveCov}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. FALSE by default.
+   \item \code{saveCorr}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. FALSE by default.
    \item \code{saveModelObject}: Boolean. TRUE to save the R model object to a file (use \link{apollo_loadModel} to load it to memory). TRUE by default.
    \item \code{writeF12}: Boolean. TRUE for writing results into an F12 file (ALOGIT format). FALSE by default.
 }}

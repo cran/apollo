@@ -111,7 +111,8 @@ apollo_probabilities=function(apollo_beta, apollo_inputs,
 
 model = apollo_estimate(apollo_beta, apollo_fixed, 
                         apollo_probabilities, 
-                        apollo_inputs)
+                        apollo_inputs,
+                        list(writeIter=FALSE))
 
 apollo_modelOutput(model)
 
@@ -205,11 +206,7 @@ summary(change)
 #    interDrawsType = "halton",
 #    interNDraws    = 500,
 #    interUnifDraws = c(),
-#    interNormDraws = c("draws_tt"),
-#    intraDrawsType = "halton",
-#    intraNDraws    = 0,
-#    intraUnifDraws = c(),
-#    intraNormDraws = c()
+#    interNormDraws = c("draws_tt")
 #  )
 #  
 #  ### Create random parameters
@@ -278,7 +275,8 @@ summary(change)
 #  
 #  model = apollo_estimate(apollo_beta, apollo_fixed,
 #                          apollo_probabilities,
-#                          apollo_inputs)
+#                          apollo_inputs,
+#                          list(writeIter=FALSE))
 #  
 #  apollo_modelOutput(model)
 #  

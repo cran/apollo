@@ -45,8 +45,9 @@
 #'                                                             that observation must be included in the sample. If this argument is provided, 
 #'                                                             then \code{nRep} is ignored. Note that this allows sampling at the observation 
 #'                                                             rather than the individual level, which is not recommended for panel data.
-#'                                     \item \strong{seed}: Numeric scalar (integer). Random number generator seed to generate the bootstrap samples.
-#'                                                          Only used if \code{samples} is \code{NA}. Default is 24.
+#'                                     \item \strong{seed}: \strong{DEPRECATED, \code{apollo_control$seed} is used since v0.2.5}. Numeric scalar (integer). 
+#'                                                          Random number generator seed to generate the bootstrap samples. Only used if \code{samples} 
+#'                                                          is \code{NA}. Default is 24.
 #'                                     \item \strong{calledByEstimate}: Logical. TRUE if \code{apollo_bootstrap} is called by \code{apollo_estimate}. FALSE by default.
 #'                                     \item \strong{recycle}: Logical. If TRUE, the function will look for old output files and append new repetitions to them. If FALSE, output files will be overwritten.
 #'                                   }
@@ -76,7 +77,6 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
                                                     maxLik_settings=list()),
                              bootstrap_settings=list(nRep=30,
                                                      samples=NA,
-                                                     seed=24,
                                                      calledByEstimate=FALSE,
                                                      recycle=TRUE)){
   
@@ -90,7 +90,7 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
                   hessianRoutine="none", printLevel=2L, silent=FALSE, maxLik_settings=list())
   tmp <- names(default)[!(names(default) %in% names(estimate_settings))] # options missing in estimate_settings
   for(i in tmp) estimate_settings[[i]] <- default[[i]]
-  default <- list(nRep=30, samples=NA, seed=24, calledByEstimate=FALSE, recycle=TRUE)
+  default <- list(nRep=30, samples=NA, calledByEstimate=FALSE, recycle=TRUE)
   tmp <- names(default)[!(names(default) %in% names(bootstrap_settings))] # options missing in bootstrap_settings
   for(i in tmp) bootstrap_settings[[i]] <- default[[i]]
   rm(tmp)
@@ -117,17 +117,18 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
   apollo_lcPars    <- apollo_inputs$apollo_lcPars
   workInLogs       <- apollo_inputs$apollo_control$workInLogs
   name             <- apollo_control$modelName
+  outputDirectory  <- apollo_inputs$apollo_control$outputDirectory
   id                     <- database[,apollo_control$indivID]
   if(!is.numeric(id)) id <- as.numeric(as.factor(id))
   database[,apollo_control$indivID] <- id
   rm(id)
+  if(!is.null(apollo_inputs$apollo_control$seed)) seed <- apollo_inputs$apollo_control$seed + 2 else seed <- 13 + 2
   
   ### Extract values from estimate_settings and estimate_settings
   estimationRoutine <- estimate_settings$estimationRoutine
   maxIterations     <- estimate_settings$maxIterations
   nRep              <- bootstrap_settings$nRep
   samples           <- bootstrap_settings$samples
-  seed              <- bootstrap_settings$seed
   silent            <- estimate_settings$silent
   calledByEstimate  <- bootstrap_settings$calledByEstimate
   recycle           <- bootstrap_settings$recycle
@@ -153,6 +154,10 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
     if(any(samples<0)) stop("The 'samples' matrix must only contain non-negative integers.")
     if(ncol(samples)<2) stop("The 'samples' matrix must have at least two columns.")
   }
+  test <- is.character(outputDirectory)
+  test <- test && substr(outputDirectory, nchar(outputDirectory), nchar(outputDirectory)) %in% c('/', '\\')
+  if(!test) outputDirectory <- ''
+  rm(test)
   
   ### Start clock
   starttime <- Sys.time()
@@ -186,7 +191,7 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
   rm(llComponents)
   
   # Check for previous bootstrap params & samples files
-  fileNameParams <- paste(name, "bootstrap_params.csv", sep="_")
+  fileNameParams <- paste0(outputDirectory, name, "_bootstrap_params.csv")
   if(file.exists(fileNameParams)) oldParams <- tryCatch(utils::read.csv(fileNameParams), error=function(e) return(NA)) else oldParams <- NA
   if(!anyNA(oldParams)){
     if(!silent) apollo_print(paste0("File ", fileNameParams, " found in the working directory."))
@@ -196,7 +201,7 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
       if(!silent) apollo_print("But will be ignored as its dimensions are incompatible with current model.")
     }
   }
-  fileNameSamples <- paste0(name, "_bootstrap_samples.csv")
+  fileNameSamples <- paste0(outputDirectory, name, "_bootstrap_samples.csv")
   if(file.exists(fileNameSamples)) oldSamples <- tryCatch(utils::read.csv(fileNameSamples), error=function(e) return(NA)) else oldSamples <- NA
   if(!anyNA(oldSamples)){
     if(!silent) apollo_print(paste0("File ", fileNameSamples, " found in the working directory."))
@@ -314,7 +319,7 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
   Sigma      <- Sigma[-which(colnames(Sigma) %in% apollo_fixed),-which(colnames(Sigma) %in% apollo_fixed)]
   if(is.null(rownames(Sigma)) && nrow(Sigma)==ncol(Sigma)) rownames(Sigma)=colnames(Sigma)
   }
-  fileName   <- paste0(name, "_bootstrap_vcov.csv")
+  fileName   <- paste0(outputDirectory, name, "_bootstrap_vcov.csv")
   tryCatch(utils::write.csv(Sigma, fileName, row.names=TRUE),
            error=function(e) apollo_print(paste0("Could not write to ", fileName)))
   

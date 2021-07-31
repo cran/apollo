@@ -17,6 +17,7 @@
 #'                              \item \code{runs} Numeric. Number of runs to use for computing confidence intervals of predictions.
 #'                              \item \code{silent} Boolean. If TRUE, this function won't print any output to screen.
 #'                              \item \code{nRep} Scalar integer. Only used for models that require simulation for prediction (e.g. MDCEV). Number of draws used to calculate prediction. Default is 100.
+#'                              \item \code{summary} Boolean. If TRUE, a summary of the prediction is printed to screen. TRUE by default.
 #'                            }
 #' @param modelComponent \strong{Deprecated}. Same as \code{modelComponent} inside \code{prediction_settings}.
 #' @return A list containing predictions for component \code{modelComponent} of the model described in \code{apollo_probabilities}.
@@ -44,6 +45,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   silent=prediction_settings$silent
   if(!is.null(apollo_inputs$silent) && apollo_inputs$silent) silent=TRUE
   if(is.null(prediction_settings$nRep)) prediction_settings$nRep <- 100L
+  if(is.null(prediction_settings$summary)) prediction_settings$summary <- TRUE
   modelComponent = prediction_settings$modelComponent
   runs           = prediction_settings$runs
   apollo_inputs$nRep <- prediction_settings$nRep # Copy nRep into apollo_inputs
@@ -105,6 +107,10 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
     }
   }; rm(M)
   if(length(noPred)>0) predictions <- predictions[-noPred]
+  if(length(predictions)==0){
+    apollo_print('Sorry, no predictions to return.')
+    return(NULL)
+  }
   
   ### change 8 August
   if(!is.null(apollo_inputs$apollo_control$weights)){
@@ -114,24 +120,44 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   
   # If there are no runs, print summary and return
   if(runs==1){
-    if(!silent){
+    if(!silent && prediction_settings$summary){
       for(m in 1:length(predictions)){
+        # Update modelComponentType
+        test <- !is.null(model$modelTypeList) && !is.null(names(model$modelTypeList)) && !is.null(names(predictions))
+        test <- test && names(predictions)[m] %in% names(model$modelTypeList)
+        if(test){
+          tmp <- which(names(model$modelTypeList)==names(predictions)[m])
+          if(length(tmp)>1) tmp <- tmp[1]
+          modelComponentType <- tolower( model$modelTypeList[tmp] )
+        } else modelComponentType <- 'default'
+        # Extract predictions
         M <- predictions[[m]]
-        if(!singleElement) apollo_print(paste0("Predicted aggregated demand at model estimates for model component: ", names(predictions)[m]))
-        if(singleElement) apollo_print("Predicted aggregated demand at model estimates")
         M <- M[,-(1:2),drop=FALSE] # remove ID and Observation
+        # Print it a format appropriate to the model type
         if(modelComponentType %in% c('mdcev','mdcnev')){
+          if(!singleElement) apollo_print(paste0("Predicted aggregated demand at model estimates for model component: ", names(predictions)[m]))
+          if(singleElement) apollo_print("Predicted aggregated demand at model estimates")
           K <- as.integer(ncol(M)/6)
           Kn <- colnames(M)[1:K]
           Kn <- substr(Kn, 1, nchar(Kn)-10)
-          M <- matrix(colSums(M), nrow=K, ncol=6, dimnames=list(Kn, c('cont_mean', 'cont_sd', 'disc_mean', 
+          M <- matrix(colSums(M, na.rm=TRUE), nrow=K, ncol=6, dimnames=list(Kn, c('cont_mean', 'cont_sd', 'disc_mean', 
                                                                       'disc_sd', 'expe_mean', 'expe_sd')))
-        } else {
+        }
+        if(modelComponentType=='normd'){
+          if(!singleElement) apollo_print(paste0("Summary of predicted demand at model estimates for model component: ", names(predictions)[m]))
+          if(singleElement) apollo_print("Summary of predicted demand at model estimates")
+          M <- unlist(M)
+          M <- matrix(c(quantile(M, probs=c(0, 0.25, 0.5), na.rm=TRUE), mean(M, na.rm=TRUE), 
+                        quantile(M, probs=c(0.75, 1), na.rm=TRUE), sum(M, na.rm=TRUE)),
+                      nrow=1, ncol=7, 
+                      dimnames=list(names(predictions)[m], c('min', '1stQ', 'median', 'mean', '3rdQ', 'max', 'aggregate')))
+        }
+        if(!(modelComponentType %in% c('mdcev', 'mdcnev', 'normd'))){
+          if(!singleElement) apollo_print(paste0("Predicted aggregated demand at model estimates for model component: ", names(predictions)[m]))
+          if(singleElement) apollo_print("Predicted aggregated demand at model estimates")
           if(tolower(colnames(M)[ncol(M)])=='chosen') M <- M[,-ncol(M)]
           M <- t(colSums(M, na.rm=TRUE))
-          ### new line 4 Oct
           rownames(M)="Demand"
-          ###
         }
         ##print(M, digits=4)
         print(round(M,2))
@@ -155,8 +181,11 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   }
   
   
+  #### PRDICTION WITH MULTIPLE RUNS ####
+  
   # Create confidence intervals by drawing from parameters asymptotic distributions
   if(anyNA(model$robvarcov)) stop('Cannot calculate confidence intervals if parameters covariance matrix contains NA values.')
+  if(is.null(apollo_inputs$apollo_control$seed)) set.seed(13 + 1) else set.seed(apollo_inputs$apollo_control$seed + 1)
   beta_draws = mvtnorm::rmvnorm(n     = runs, 
                                 mean  = apollo_beta[!(names(apollo_beta)%in%apollo_fixed)], 
                                 sigma = model$robvarcov)
@@ -182,23 +211,58 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   }; if(!silent) apollo_print("\n")
   
   # Print summary
-  if(!silent){
+  if(!silent && prediction_settings$summary){
     for(m in 1:length(ans)){
-      if(!singleElement) apollo_print(paste0("Predicted aggregated demand for model component: ", names(predictions)[m]))
-      if(singleElement) apollo_print(paste0("Predicted aggregated demand"))
-      if(modelComponentType%in%c('mdcev','mdcnev')){
+      # Update modelComponentType
+      test <- !is.null(model$modelTypeList) && !is.null(names(model$modelTypeList)) && !is.null(names(predictions))
+      test <- test && names(predictions)[m] %in% names(model$modelTypeList)
+      if(test){
+        tmp <- which(names(model$modelTypeList)==names(predictions)[m])
+        if(length(tmp)>1) tmp <- tmp[1]
+        modelComponentType <- tolower( model$modelTypeList[tmp] )
+      } else modelComponentType <- 'default'
+      # Print summary of prediction in appropriate format to each model type
+      if(modelComponentType %in% c('mdcev','mdcnev')){
+        if(!singleElement) apollo_print(paste0("Predicted aggregated demand for model component: ", names(predictions)[m]))
+        if(singleElement) apollo_print(paste0("Predicted aggregated demand"))
         M <- ans[[m]]$at_estimates[,-(1:2)]
         K <- as.integer(ncol(M)/6)
         Kn <- colnames(M)[1:K]
         Kn <- substr(Kn, 1, nchar(Kn)-10)
-        M <- matrix(colSums(M), nrow=K, ncol=4, dimnames=list(Kn, c('Cont.mean', 'Cont.sd', 'Disc.mean', 'Disc.sd')))
+        M <- matrix(colSums(M), nrow=K, ncol=6, dimnames=list(Kn, c('Cont.mean', 'Cont.sd', 
+                                                                    'Disc.mean', 'Disc.sd',
+                                                                    'Expend.mean', 'Expend.sd')))
         agg <- apply(ans[[m]]$draws, MARGIN=c(2,3), sum, na.rm=TRUE)[1:K,]
         cil <- apply(agg, MARGIN=1, quantile, probs=0.025)
         ciu <- apply(agg, MARGIN=1, quantile, probs=0.975)
         M <- cbind(M[,1], cil, ciu, M[,2:ncol(M)])
-        colnames(M) <- c('Cont.mean', 'Quantile 0.025', 'Quantile 0.975', 'Cont.sd', 'Disc.mean', 'Disc.sd')
+        colnames(M) <- c('Cont.mean', 'Quantile_0.025', 'Quantile_0.975', 'Cont.sd', 
+                         'Disc.mean', 'Disc.sd', 'Expend.mean', 'Expend.sd')
         print(M, digits=4)
-      } else {
+      }
+      if(modelComponentType=='normd'){
+        if(!singleElement) apollo_print(paste0("Summary of aggregated predicted demand for model component: ", names(predictions)[m]))
+        if(singleElement) apollo_print(paste0("Summary of aggregated predicted demand"))
+        # mean, median, aggregate \ at estimates, std.dev., quantile 0.025, quantile 0.975
+        M <- matrix(NA, nrow=3, ncol=4, dimnames=list(c('Mean', 'Median', 'Aggregate'), 
+                                                      c("At estimates", "Std.dev.", "Quantile 0.025", "Quantile 0.975")))
+        tmp <- ans[[m]]$at_estimates[,-(1:2)]
+        if(is.data.frame(tmp)) tmp <- unlist(M)
+        M[,'At estimates'] <- c(mean(tmp, na.rm=TRUE), quantile(tmp, probs=0.5, na.rm=TRUE), sum(tmp, na.rm=TRUE))
+        M[,'Std.dev.'] <- c( sd( apply(ans[[m]]$draws, MARGIN=c(2, 3), mean, na.rm=TRUE) ),
+                             sd( apply(ans[[m]]$draws, MARGIN=c(2, 3), quantile, probs=0.5, na.rm=TRUE) ), 
+                             sd( apply(ans[[m]]$draws, MARGIN=c(2, 3), sum, na.rm=TRUE) ) )
+        M[,'Quantile 0.025'] <- c( quantile( apply(ans[[m]]$draws, MARGIN=c(2, 3), mean, na.rm=TRUE), probs=0.025),
+                                   quantile( apply(ans[[m]]$draws, MARGIN=c(2, 3), quantile, probs=0.5, na.rm=TRUE), probs=0.025), 
+                                   quantile( apply(ans[[m]]$draws, MARGIN=c(2, 3), sum, na.rm=TRUE), probs=0.025) )
+        M[,'Quantile 0.975'] <- c( quantile( apply(ans[[m]]$draws, MARGIN=c(2, 3), mean, na.rm=TRUE), probs=0.975),
+                                   quantile( apply(ans[[m]]$draws, MARGIN=c(2, 3), quantile, probs=0.5, na.rm=TRUE), probs=0.975), 
+                                   quantile( apply(ans[[m]]$draws, MARGIN=c(2, 3), sum, na.rm=TRUE), probs=0.975) )
+        print(M, digits=4)
+      }
+      if(!(modelComponentType %in% c('mdcev', 'mdcnev', 'normd'))){
+        if(!singleElement) apollo_print(paste0("Predicted aggregated demand for model component: ", names(predictions)[m]))
+        if(singleElement) apollo_print(paste0("Predicted aggregated demand"))
         est <- colSums(ans[[m]]$at_estimates[,-(1:2)], na.rm=TRUE)
         agg <- apply(ans[[m]]$draws, MARGIN=c(2,3), sum, na.rm=TRUE)
         std <- apply(agg, MARGIN=1, sd)
@@ -215,7 +279,6 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
     
     # Final message explaining format of output
     if(length(ans)==1){
-      ans=ans[[1]]
       txt <- paste0('The output from apollo_prediction is a list with two elements: ',
                     'a data.frame containing the predictions at the estimated values, ', 
                     'and an array with predictions for different values of the parameters ',
@@ -229,6 +292,6 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
                     'asymptotic distribution.')    }
     apollo_print(txt)
   }
-  
+  if(length(ans)==1) ans=ans[[1]]
   return(ans)
 }

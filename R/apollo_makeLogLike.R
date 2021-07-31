@@ -21,7 +21,7 @@
 #' @return apollo_logLike function.
 #' @export
 apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, 
-                               apollo_estSet, cleanMemory=FALSE){
+                               apollo_estSet=list(estimationRoutine='BFGS'), cleanMemory=FALSE){
   
   if(!is.null(apollo_inputs$silent)) silent <- apollo_inputs$silent else silent <- FALSE
   if(!is.null(apollo_inputs$apollo_control$debug)) debug <- apollo_inputs$apollo_control$debug else debug <- FALSE
@@ -95,6 +95,16 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   #### Modify apollo_probabilities, apollo_randCoeff & apollo_lcPars ####
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
   
+  if(debug) apollo_print('Optimising functions...')
+  
+  ### Expand loops
+  if(apollo_inputs$apollo_control$analyticGrad){
+    tmp <- tryCatch(apollo_expandLoop(apollo_probabilities, apollo_inputs),
+                    error=function(e) -1)
+    if(is.function(tmp)) apollo_probabilities <- tmp
+    rm(tmp)
+  }
+  
   ### Checks for scaling and insert them inside apollo_probabilities
   scaling <- setNames(rep(1, length(apollo_beta)-length(apollo_fixed)), 
                       names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)])
@@ -114,8 +124,6 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   }
   apollo_inputs$apollo_scaling <- scaling
   rm(scaling)
-  
-  ### Insert scaling if needed
   apollo_probabilities <- apollo_insertScaling(apollo_probabilities, apollo_inputs$apollo_scaling)
   if(apollo_inputs$apollo_control$mixing && is.function(apollo_inputs$apollo_randCoeff)){
     apollo_inputs$apollo_randCoeff <- apollo_insertScaling(apollo_inputs$apollo_randCoeff, apollo_inputs$apollo_scaling)
@@ -128,21 +136,30 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   ### Insert componentName if missing
   apollo_probabilities <- apollo_insertComponentName(apollo_probabilities)
   
-  ### Insert "function ()" in apollo_probabilities and apollo_randCoeff (if needed)
+  ### Insert "function ()" in apollo_probabilities, apollo_randCoeff and apollo_lcPars (if needed)
   if(apollo_inputs$apollo_control$analyticGrad){
     tmp1 <- apollo_insertFunc(apollo_probabilities, like=TRUE)
     test <- !is.null(apollo_inputs$apollo_randCoeff) && is.function(apollo_inputs$apollo_randCoeff)
     if(test) tmp2 <- apollo_insertFunc(apollo_inputs$apollo_randCoeff, randCoeff=TRUE)
+    test <- !is.null(apollo_inputs$apollo_lcPars) && is.function(apollo_inputs$apollo_lcPars)
+    if(test) tmp3 <- apollo_insertFunc(apollo_inputs$apollo_lcPars, lcPars=TRUE)
     # Test that modified LL actually works
     ll <- tryCatch(tmp1(apollo_beta, apollo_inputs), error=function(e) NULL)
     if(is.null(ll)){
       if(debug) apollo_print('Modified apollo_probabilities did not work. Defaulting to original one (no analytic gradients possible)')
       apollo_inputs$apollo_control$analyticGrad <- FALSE
     } else {
-      apollo_probabilities <- tmp1
-      if(exists('tmp2', inherits=FALSE)) apollo_inputs$apollo_randCoeff <- tmp2
+      # Compare result of modified LL againts original LL
+      tmp4 <- tryCatch(apollo_probabilities(apollo_beta, apollo_inputs), error=function(e) NULL)
+      test <- !is.null(tmp4) && is.numeric(tmp4) && is.numeric(ll) && length(tmp4)==length(ll)
+      test <- test && abs(sum(tmp4, na.rm=TRUE) - sum(ll, na.rm=TRUE))/sum(tmp4, na.rm=TRUE) < 0.01
+      if(test){
+        apollo_probabilities <- tmp1
+        if(exists('tmp2', inherits=FALSE)) apollo_inputs$apollo_randCoeff <- tmp2
+        if(exists('tmp3', inherits=FALSE)) apollo_inputs$apollo_lcPars    <- tmp3
+      }
     }
-    rm(ll, tmp1, test); if(exists('tmp2', inherits=FALSE)) rm(tmp2)
+    rm(ll, test); for(i in paste0('tmp',1:4)) if(exists(i, inherits=FALSE)) rm(i)
   }
   
   ### Copy the modified apollo_probabilities inside apollo_inputs
@@ -153,6 +170,7 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   # # # # # # # # # # # # #
   
   if(apollo_inputs$apollo_control$nCores==1) cl <- NA else {
+    if(debug) apollo_print('Creating cluster...')
     # Creates cluster and also deletes database and draws from apollo_inputs in here and in .GlobalEnv
     cl <- apollo_makeCluster(apollo_probabilities, apollo_inputs, silent=silent, cleanMemory=cleanMemory)
     apollo_inputs$apollo_control$nCores <- length(cl)
@@ -161,6 +179,8 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   # # # # # # # # # # # # # # # #
   #### Create apollo_logLike ####
   # # # # # # # # # # # # # # # #
+  
+  if(debug) apollo_print('Creating apollo_logLike... ')
   
   ### Copying from apollo_inputs to current environment
   singleCore <- apollo_inputs$apollo_control$nCores==1
@@ -247,6 +267,7 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   # # # #  # # # # # # # # # # # # # # # # #
   
   ### Preprocess model (for optimisation)
+  if(debug) apollo_print('Pre-processing model...')
   if(singleCore){
     preprocess_outputs = tryCatch(apollo_probabilities(apollo_beta, apollo_inputs, functionality="preprocess"),
                                   error=function(e) NULL)
@@ -272,8 +293,9 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   
   #### Pre-processing report
   # fetch reports
+  if(debug) apollo_print('Preparing pre-processing report')
   f <- function(){
-    name <- grep("_settings$", ls(apollo_inputs), value=TRUE)
+    name <- grep("_settings$", names(apollo_inputs), value=TRUE)
     grad  <- c(); mType <- c()
     for(i in name){
       grad  <- c(grad , apollo_inputs[[i]]$gradient)
@@ -284,25 +306,28 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   }
   if(!anyNA(cl)) tmp <- parallel::clusterCall(cl, function(f) {environment(f) <- globalenv(); f()}, f)[[1]] else tmp <- f()
   if(length(tmp$name)>0 && length(tmp$name)==length(tmp$mType)) mType <- setNames(tmp$mType, tmp$name) else mType <- NULL
-  rm(f, tmp)
-  #if(debug){
-  #  if(length(tmp$name)==0) apollo_print("No pre-processing performed") else {
-  #    # Print report
-  #    cat("ComponentName  Type   Gradient Optimisation\n") # cat, as apollo_print messes up the alignment
-  #    for(i in 1:length(tmp$grad)){
-  #      txt <- 14 - nchar(tmp$name[i])
-  #      txt <- ifelse(txt>=0, paste0(tmp$name[i], paste0(rep(" ", txt), collapse="")), substr(tmp$name[i], 1, 14))
-  #      txt <- paste0(txt, " ", substr(paste0(tmp$mType[i], '      '), 1, 6))
-  #      txt <- paste0(txt, " ", ifelse(tmp$grad[i], "analytic\n", "numeric \n"))
-  #      cat(txt) # cat, as apollo_print messes up the alignment
-  #    }; rm(i, txt)
-  #    apollo_print(paste0("Whole model gradient function creation ", ifelse(is.null(grad), "failed.", "succeeded.")))
-  #  }
-  #}; rm(tmp)
+  rm(f)
+  if(debug){
+    if(length(tmp$name)==0) apollo_print("No pre-processing performed") else {
+      # Print report
+      cat("ComponentName  Type   Gradient Optimisation\n") # cat, as apollo_print messes up the alignment
+      for(i in 1:length(tmp$grad)){
+        txt <- 14 - nchar(tmp$name[i])
+        txt <- ifelse(txt>=0, paste0(tmp$name[i], paste0(rep(" ", txt), collapse="")), substr(tmp$name[i], 1, 14))
+        txt <- paste0(txt, " ", substr(paste0(tmp$mType[i], '      '), 1, 6))
+        txt <- paste0(txt, " ", ifelse(tmp$grad[i], "analytic\n", "numeric \n"))
+        cat(txt) # cat, as apollo_print messes up the alignment
+      }; rm(i, txt)
+      apollo_print(paste0("Whole model gradient function creation ", ifelse(is.null(grad), "failed.", "succeeded.")))
+    }
+    rm(tmp)
+  }
+  
   
   ### Count number of observations
+  if(debug) cat('Counting number of observations...')
   f <- function(){ # this function returns a vector c(component1Name=nObs1, component2Name=nObs2, ...) ignoring LC components
-    name    <- grep("_settings$", ls(apollo_inputs), value=TRUE)
+    name    <- grep("_settings$", names(apollo_inputs), value=TRUE)
     nObsTot <- setNames(rep(0, length(name)), name)
     discard <- c()
     for(i in name){
@@ -322,6 +347,7 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     nObsTot <- Reduce('+', nObsTot)
   } else nObsTot <- f()
   rm(f)
+  if(debug) cat(' Done.\n')
   
   return(apollo_logLike)
 }

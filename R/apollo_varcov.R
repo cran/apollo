@@ -6,7 +6,7 @@
 #' It calculates the Hessian, variance-covariance, and standard errors at \code{apollo_beta} values of an 
 #' estimated model. At least one of the following settings must be provided (ordered by speed): \code{apollo_grad}, 
 #' \code{apollo_logLike}, or (\code{apollo_probabilities} and \code{apollo_inputs}). If more than one is provided, 
-#' then the priority is: \code{apollo_inputs}, \code{apollo_logLike}, (\code{apollo_probabilities} and \code{apollo_inputs}).
+#' then the priority is: \code{apollo_grad}, \code{apollo_logLike}, (\code{apollo_probabilities} and \code{apollo_inputs}).
 #' 
 #' @param apollo_beta Named numeric vector. Names and values of parameters at which to calculate the covariance matrix.
 #'                    Values _must not be scaled_, and they must include any fixed parameter.
@@ -249,9 +249,15 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
     if(!invertible){
       if(!silent) apollo_print('ERROR: Singular Hessian, cannot calculate s.e.')
       tryCatch({
-        modelName <- environment(apollo_logLike)$modelName
-        utils::write.csv(H, paste(modelName, "hessian.csv", sep="_"))
-        if(!silent) apollo_print(paste0("Hessian written to ", modelName, "_hessian.csv"))
+        if(is.function(apollo_logLike)) e <- environment(apollo_logLike) else e <- new.env()
+        test <- !is.null(e$apollo_inputs) && is.list(e$apollo_inputs) && !is.null(e$apollo_inputs$apollo_control)
+        test <- test && is.list(e$apollo_inputs$apollo_control) && !is.null(e$apollo_inputs$apollo_control$outputDirectory)
+        if(test) outD <- e$apollo_inputs$apollo_control$outputDirectory else outD <- ''
+        if(outD!='' && !(substr(outD, nchar(outD), nchar(outD)) %in% c('/','\\'))) outD <- paste0(outD,'/')
+        fileName <- paste0(outD, environment(apollo_logLike)$modelName, '_hessian.csv')
+        utils::write.csv(H, fileName)
+        if(!silent) apollo_print(paste0("Hessian written to ", fileName))
+        rm(e, test, fileName)
       }, error=function(e) if(!silent) apollo_print("Could not write hessian to a file."))
     }
     # Calculate eigenvalues

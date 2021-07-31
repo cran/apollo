@@ -49,7 +49,8 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   ### Check that no models without analytical gradient are used in apollo_probabilities
   if(is.function(apollo_probabilities)){
     tmp <- as.character(body(apollo_probabilities))
-    txt <- c("apollo_lc|apollo_dft|apollo_mdcev|apollo_el|apollo_nl|apollo_cnl|apollo_mdcnev")
+    #txt <- c("apollo_lc|apollo_dft|apollo_mdcev|apollo_el|apollo_nl|apollo_cnl|apollo_mdcnev")
+    txt <- c("apollo_dft|apollo_mdcev|apollo_el|apollo_nl|apollo_cnl|apollo_mdcnev")
     tmp <- grep(txt, tmp)
     if(length(tmp)>0){
       if(debug) apollo_print("Analytic gradient cannot be built because models with undefined gradient are used inside apollo_probabilities.")
@@ -58,7 +59,7 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
     rm(txt, tmp)
   }
   
-  ### Turn off analytic gradient if using inter-intra
+  ### Turn off analytic gradient if using inter-intra, unless manually set to TRUE
   if(apollo_inputs$apollo_control$mixing && is.list(apollo_inputs$apollo_draws)){
     test <- apollo_inputs$apollo_draws$interNDraws>1
     test <- test & apollo_inputs$apollo_draws$intraNDraws>1
@@ -71,14 +72,14 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   ### Check that gradients are available for all components
   if(!singleCore){ # multi-core
     dVAvail <- parallel::clusterEvalQ(cl, {
-      compNames <- grep("_settings$", ls(apollo_inputs), value=TRUE)
+      compNames <- grep("_settings$", names(apollo_inputs), value=TRUE)
       dVAvail   <- c()
       for(i in compNames) dVAvail <- c(dVAvail, apollo_inputs[[i]]$gradient)
       compNames <- substr(compNames, 1, nchar(compNames)-nchar("_settings"))
       if(length(compNames)>0) setNames(dVAvail, compNames) else dVAvail
     })[[1]]
   } else { # single-core
-    compNames <- grep("_settings$", ls(apollo_inputs), value=TRUE)
+    compNames <- grep("_settings$", names(apollo_inputs), value=TRUE)
     dVAvail   <- c()
     for(i in compNames) dVAvail <- c(dVAvail, apollo_inputs[[i]]$gradient)
     compNames <- substr(compNames, 1, nchar(compNames)-nchar("_settings"))
@@ -87,9 +88,15 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   }
   compList <- apollo_inputs$apolloLog$listOfNames
   if( length(dVAvail)==0 || !all(compList %in% names(dVAvail)) ){
-    txt <- paste0("Some model components cannot be pre-processed. ",
-                  "Numeric gradients will be used")
-    if(debug) apollo_print(txt)
+    #txt <- paste0("Some model components cannot be pre-processed. ",
+    #              "Numeric gradients will be used")
+    txt <- paste('This model could potentially be estimated faster using', 
+                 'analytical gradients, yet some issue is preventing it',
+                 'from using them. You might want to ask for help in the',
+                 'Apollo forum (http://www.apollochoicemodelling.com/forum)',
+                 'on how to solve this issue. If you do, please post your',
+                 'code and data (if not confidential).')
+    if(!silent) apollo_print(txt, highlight=TRUE)
     return(NULL)
   } 
   if( !all(dVAvail) ) return(NULL)
@@ -142,7 +149,6 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   if(!is.null(grad) && (validateGrad || !is.null(apollo_logLike))){
     if(debug) apollo_print(c("\n", "Validating gradient function..."))
     b0_disturbance <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
-    
     # Calculate analytical gradient
     gradAn <- tryCatch(grad(b0_disturbance), error=function(e) return(NULL))
     if(is.null(gradAn) || anyNA(gradAn)){ # If analytical gradient failed
@@ -181,11 +187,11 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
       
       # If analytical and numeric gradient calculation was successful
       test <- !is.null(gradNum) && all(is.finite(gradNum))
-      dif  <- abs( (abs(gradNum) - abs(gradAn))/abs(gradNum) )
-      test <- test && any(dif[is.finite(dif)]>0.01) # diff should be <1% for all elements
+      dif  <- abs(gradNum - gradAn)
+      test <- test && any(dif[is.finite(dif)]>0.01) # diff should be <0.01 for all elements
       if(test){
         if(debug){
-          tmp <- cbind(numeric=gradNum, analytic=gradAn, `%Diff`=100*abs(gradAn-gradNum)/abs(gradNum))
+          tmp <- cbind(numeric=gradNum, analytic=gradAn, `Diff`=dif)
           rownames(tmp) <- names(gradNum)
           apollo_print(tmp)
         }

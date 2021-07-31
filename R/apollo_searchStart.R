@@ -68,6 +68,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
    llTest        = searchStart_settings[["llTest"]]
    bfgsIter      = searchStart_settings[["bfgsIter"]]
    if(!is.null(apollo_inputs$silent)) silent <- apollo_inputs$silent else silent <- FALSE
+   if(!is.null(apollo_inputs$apollo_control$seed)) seed <- apollo_inputs$apollo_control$seed + 4 else seed <- 13 + 4
    
    ### Checks
    if(nCandidates<2) stop("Argument 'nCandidates' should be at least 2.")
@@ -105,7 +106,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
    ### Only non-fixed parameters are considered.
    # Candidates AT THE START OF EACH ITERATION are stored in a list of matrices called 'candidates'. 
    # Each element of the list is a matrix where each row is a candidate
-   set.seed(2)
+   set.seed(seed)
    candidates <- list()
    apollo_print(paste("Creating initial set of",nCandidates,"candidate values."))
    if(smartStart){

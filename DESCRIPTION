@@ -1,10 +1,11 @@
 Package: apollo
 Type: Package
 Title: Tools for Choice Model Estimation and Application
-Version: 0.2.4
+Version: 0.2.5
 Authors@R: c(
     person("Stephane", "Hess", email="S.Hess@leeds.ac.uk", role="aut"),
-    person("David", "Palma", email="D.Palma@leeds.ac.uk", role=c("aut","cre")) )
+    person("David", "Palma", email="D.Palma@leeds.ac.uk", role=c("aut","cre")),
+    person("Thomas", "Hancock", email="T.O.Hancock@leeds.ac.uk", role="ctb"))
 Description: The Choice Modelling Centre (CMC) at the University of Leeds 
     has developed flexible code for the estimation and application 
     of choice models in R. Users are able to write their own 
@@ -30,15 +31,16 @@ LazyData: true
 Depends: R (>= 4.0.0), stats, utils
 Imports: Rcpp (>= 1.0.0), maxLik, mnormt, mvtnorm, graphics,
         randtoolbox, numDeriv, parallel, Deriv, matrixStats, RSGHB,
-        coda
+        coda, tibble
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen
 Suggests: knitr, rmarkdown, testthat
 VignetteBuilder: knitr
 RoxygenNote: 7.1.1
 NeedsCompilation: yes
-Packaged: 2021-02-25 14:42:19 UTC; david
+Packaged: 2021-07-30 19:37:42 UTC; david
 Author: Stephane Hess [aut],
-  David Palma [aut, cre]
+  David Palma [aut, cre],
+  Thomas Hancock [ctb]
 Maintainer: David Palma <D.Palma@leeds.ac.uk>
 Repository: CRAN
-Date/Publication: 2021-02-25 15:30:05 UTC
+Date/Publication: 2021-07-31 11:50:11 UTC

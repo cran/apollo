@@ -16,6 +16,7 @@
 #'                      \item \code{HB}: Boolean. TRUE if using RSGHB for Bayesian estimation of model.
 #'                      \item \code{noValidation}: Boolean. TRUE if user does not wish model input to be validated before estimation - FALSE by default.
 #'                      \item \code{noDiagnostics}: Boolean. TRUE if user does not wish model diagnostics to be printed - FALSE by default.
+#'                      \item \code{outputDirectory}: Character. Optional directory for outputs if different from working director - empty by default
 #'                      \item \code{weights}: Character. Name of column in database containing weights for estimation.
 #'                      \item \code{workInLogs}: Boolean. TRUE for increased numeric precision in models with panel data - FALSE by default.
 #'                      \item \code{panelData}: Boolean. TRUE if there are multiple obsrvations (i.e. rows) for each decision maker - Automatically set based on \code{indivID} by default.
@@ -82,6 +83,14 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   if(is.null(apollo_control$noDiagnostics)){
     apollo_control$noDiagnostics <- FALSE
   }  
+  
+  if(is.null(apollo_control$outputDirectory)){
+    apollo_control$outputDirectory <- ""
+  } else {
+    if(!dir.exists(apollo_control$outputDirectory)) stop("outputDirectory provided by user does not exist!")
+    tmp <- substr(apollo_control$outputDirectory,nchar(apollo_control$outputDirectory),nchar(apollo_control$outputDirectory))
+    if(tmp!="/") apollo_control$outputDirectory <- paste0(apollo_control$outputDirectory,"/")
+  }
   
   if(is.null(apollo_control$panelData)){
   if(length(unique(database[,apollo_control$indivID]))<nrow(database)){
@@ -150,7 +159,8 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   
   allVars <- c("modelName", "modelDescr", "indivID", "mixing", "nCores", "seed", "HB", 
                "noValidation", "noDiagnostics", "weights", "workInLogs", "panelData", 
-               "cpp","subMaxV", "analyticGrad", "matrixMult", "debug", "analyticGrad_manualSet")
+               "cpp","subMaxV", "analyticGrad", "matrixMult", "debug", "analyticGrad_manualSet",
+               "outputDirectory")
   unknownVars <- names(apollo_control)[!( names(apollo_control) %in% allVars )]
   if(length(unknownVars)>0){
     apollo_print(paste0("Variable(s) {", paste(unknownVars, collapse=", "), "} were not recognised in apollo_control and will be ignored. Check ?apollo_control for a list of valid control variables."))

@@ -14,7 +14,8 @@ apollo_compareInputs <- function(apollo_inputs){
   db <- tryCatch(get('database', envir=gEnv, inherits=FALSE), error=function(e) NULL)
   if(!is.null(db) && !is.null(apollo_inputs$database)){
     same <- is.data.frame(db) && is.data.frame(apollo_inputs$database)
-    tmp  <- which(names(apollo_inputs$database)=='apollo_sequence') # do not consider apollo_sequence
+    tmp  <- which(names(apollo_inputs$database)=='apollo_sequence') # do not consider apollo_sequence or ID (latter only if HB)
+    if(apollo_inputs$apollo_control$HB & all(names(db)!='ID') ) tmp <- c(tmp, which(names(apollo_inputs$database)=='ID'))
     if(length(tmp)>0) tmp <- -tmp else tmp <- 1:ncol(apollo_inputs$database)
     tmp2 <- which(names(db)=='apollo_sequence') # do not consider apollo_sequence
     if(length(tmp2)>0) tmp2 <- -tmp2 else tmp2 <- 1:ncol(db)
@@ -39,10 +40,13 @@ apollo_compareInputs <- function(apollo_inputs){
   
   # Compare apollo_control. Only checks elements that exist in globalenv()$apollo_control.
   x <- tryCatch(get('apollo_control', envir=gEnv, inherits=FALSE), error=function(e) NULL)
+  x$outputDirectory <- apollo_inputs$apollo_control$outputDirectory
   if(!is.null(x) && !is.null(apollo_inputs$apollo_control)){
     same <- is.list(x) && is.list(apollo_inputs$apollo_control)
     same <- same && !is.null(names(x)) && !is.null(apollo_inputs$apollo_control)
-    if(same) for(e in names(x)){
+    tmp  <- names(x)
+    if(any(tmp=='analyticGrad_manualSet')) tmp <- tmp[tmp!='analyticGrad_manualSet']
+    if(same) for(e in tmp){
       same <- same && !is.null(apollo_inputs$apollo_control[[e]])
       same <- same && identical(x[[e]], apollo_inputs$apollo_control[[e]])
     }

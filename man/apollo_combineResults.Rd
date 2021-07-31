@@ -20,7 +20,7 @@ apollo_combineResults(combineResults_settings = NULL)
 }}
 }
 \value{
-Nothing, but writes a file called 'model_comparison|_[date].csv' in the working directory.
+Nothing, but writes a file called 'model_comparison_[date].csv' in the working directory.
 }
 \description{
 Writes results from various models to a single CSV file.

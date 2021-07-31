@@ -64,6 +64,10 @@ apollo_estimate(
                                Only used if \code{bootstrapSE>0}. Default is 24.
  \item \strong{silent}: Logical. If TRUE, no information is printed to the console during estimation. Default is FALSE.
  \item \strong{scaleHessian}: Logical. If TRUE, parameters are scaled to 1 for Hessian estimation. Default is TRUE.
+ \item \strong{scaleAfterConvergence}: Logical. Used to increase numerical precision of convergence. If TRUE, parameters are 
+                                       scaled to 1 after convergence, and the estimation is repeated from this new starting
+                                       values. Results are reported scaled back, so it is a transparent process for the user.
+                                       Default is TRUE.
 }}
 }
 \value{

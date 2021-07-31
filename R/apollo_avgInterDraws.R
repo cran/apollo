@@ -75,11 +75,11 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
     return(P)
   }
   
-  # ############################## #
-  #### functionality=="zero_LL" ####
-  # ############################## #
+  # ######################################## #
+  #### functionality=="zero_LL/shares_LL" ####
+  # ######################################## #
   
-  if(functionality=="zero_LL"){
+  if(functionality %in% c("zero_LL", "shares_LL")){
     if(inputIsList && is.null(P[["model"]])) stop('Element called model is missing in list P!')
     if(is.list(P)){
       if(any(sapply(P, function(p) is.array(p) && length(dim(p))==3))) stop('Intra-individual draws still present to average over!')

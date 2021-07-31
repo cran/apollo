@@ -14,7 +14,8 @@
 #' @return Nothing.
 #' @export
 apollo_attach=function(apollo_beta, apollo_inputs){
-  
+  # Fetch functionality
+  functionality = tryCatch(get('functionality', parent.frame(), inherits=TRUE), error=function(e) return('estimate'))
   # ############################# #
   #### loads and checks inputs ####
   # ############################# #
@@ -43,8 +44,8 @@ apollo_attach=function(apollo_beta, apollo_inputs){
   #    apollo_beta[r] <- apollo_inputs$scaling[r]*apollo_beta[r]
   #  }
   #}
-  attach(as.list(apollo_beta))
-  attach(database)
+  attach(as.list(apollo_beta),warn.conflicts=FALSE)
+  attach(database,warn.conflicts=FALSE)
   
   # ################################ #
   #### Build and attach randcoeff ####
@@ -54,14 +55,14 @@ apollo_attach=function(apollo_beta, apollo_inputs){
     if(anyNA(draws)) stop("Random draws have not been specified despite setting apollo_control$mixing==TRUE!")
     if(!is.function(apollo_randCoeff)) stop("apollo_randCoeff function has not been defined despite setting apollo_control$mixing==TRUE!")
     if("draws" %in% search()) detach("draws")
-    attach(draws)
+    attach(draws,warn.conflicts=FALSE)
     randcoeff = apollo_randCoeff(apollo_beta, apollo_inputs)
     ### FOLLOWING LINE ADDED IN CASE apollo_randCoeff IS A LIST OF FUNCTIONS 8/05/2020
     if(is.list(randcoeff) && any(sapply(randcoeff, is.function)) && (is.null(apollo_inputs$cpp) || !apollo_inputs$cpp) ){
       randcoeff = lapply(randcoeff, function(f) if(is.function(f)){ return(f()) } else { return(f) })
     } 
     if("randcoeff" %in% search()) detach("randcoeff")
-    attach(randcoeff)
+    attach(randcoeff,warn.conflicts=FALSE)
   }
   
   # ############################# #
@@ -79,7 +80,7 @@ apollo_attach=function(apollo_beta, apollo_inputs){
       if(!all(sapply(lcpars,length)==nClass)) stop('"apollo_lcPars" should return a list, all of whose elements must be lists with the same length')
       for(i in 1:length(lcpars)) lcpars[[i]] <- lcpars[[i]][apollo_inputs$class_specific]
     }
-    attach(lcpars)
+    attach(lcpars,warn.conflicts=FALSE)
   }
   
 }

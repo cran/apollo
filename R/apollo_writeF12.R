@@ -90,9 +90,9 @@ apollo_writeF12 <- function(model, truncateCoeffNames=TRUE){
     if(i%%10==0 | i==length(corrV)) lineK7 <- paste(lineK7, '\n', sep='')
   }
   
-  fileConn <- file( paste(model$apollo_control$modelName,'.F12',sep='') )
+  fileConn <- file( paste(model$apollo_control$outputDirectory,model$apollo_control$modelName,'.F12',sep='') )
   writeLines(paste(line1,line2,line3,line4,lineK4,lineK5,lineK6,lineK7,sep=''),fileConn)
-  cat("F12 output saved to ",paste(model$apollo_control$modelName, ".F12", sep=""),"\n", sep="")
+  cat("F12 output saved to ",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, ".F12", sep=""),"\n", sep="")
   close(fileConn)
 }
 

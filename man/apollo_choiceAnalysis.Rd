@@ -13,6 +13,7 @@ apollo_choiceAnalysis(choiceAnalysis_settings, apollo_control, database)
   \item \strong{avail}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
   \item \strong{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
   \item \strong{explanators}: data.frame. Variables determining subsamples of the database. Values in each column must describe a group or groups of individuals (e.g. socio-demographics). Most usually a subset of columns from database.
+  \item \strong{printToScreen}: Logical. TRUE for returning output to screen as well as file. TRUE by default.
   \item \strong{rows}: Boolean vector. Consideration of rows to include, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
 }}
 

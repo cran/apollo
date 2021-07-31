@@ -9,6 +9,7 @@
 #'                                  \item \strong{avail}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
 #'                                  \item \strong{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
 #'                                  \item \strong{explanators}: data.frame. Variables determining subsamples of the database. Values in each column must describe a group or groups of individuals (e.g. socio-demographics). Most usually a subset of columns from database.
+#'                                  \item \strong{printToScreen}: Logical. TRUE for returning output to screen as well as file. TRUE by default.
 #'                                  \item \strong{rows}: Boolean vector. Consideration of rows to include, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
 #'                                }
 #' @param apollo_control List. Options controlling the running of the code. See \link{apollo_validateInputs}.
@@ -18,6 +19,7 @@
 #'         The table is also writen to a file called \code{modelName_choiceAnalysis.csv}.
 #' @export
 apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database){
+  if(is.null(choiceAnalysis_settings[["printToScreen"]])) choiceAnalysis_settings[["printToScreen"]]=TRUE
   if(is.null(choiceAnalysis_settings[["rows"]])) choiceAnalysis_settings[["rows"]]="all"
   tmp <- c("alternatives", "avail", "choiceVar", "explanators")
   for(i in tmp) if(is.null(choiceAnalysis_settings[[i]])) stop("The choiceAnalysis_settings list needs to include an object called \"",i,"\"!")
@@ -78,7 +80,7 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
         output[j,((s-1)*3+3)] = NA
       }else{
         if(length(subset(explanators_sub[,s], !chosen))>1 && length(subset(explanators_sub[,s], chosen))>1){
-          output[j,((s-1)*3+3)] = stats::t.test(subset(explanators_sub[,s], !chosen),subset(explanators_sub[,s], chosen))[["statistic"]]
+          output[j,((s-1)*3+3)] = stats::t.test(subset(explanators_sub[,s], chosen),subset(explanators_sub[,s], !chosen))[["statistic"]]
         } else {
           output[j,((s-1)*3+3)] = NA
         }
@@ -87,7 +89,17 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
     }
     }
   
+  ### Determine name of output file
   filename = paste(modelName,"_choiceAnalysis.csv",sep="")
+  test <- !is.null(apollo_control$outputDirectory) && is.character(apollo_control$outputDirectory)
+  test <- test && apollo_control$outputDirectory!=''
+  if(test){
+    n <- nchar(apollo_control$outputDirectory)
+    tmp <- ''
+    if(!(substr(apollo_control$outputDirectory, n, n) %in% c('/','\\'))) tmp <- '/'
+    filename <- paste0(apollo_control$outputDirectory, tmp, filename)
+    rm(n, tmp)
+  }; rm(test)
   
   output_new=c()
   for(s in 1:ncol(explanators)){
@@ -96,7 +108,16 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
     output_new=cbind(output_new,round(output[,((s-1)*3+3)],2))
   }
   
+  ### Print output to screen, if requested
   colnames(output_new)=colnames(output)
+  if(choiceAnalysis_settings$printToScreen){
+    for(s in 1:ncol(explanators)){
+      print(t(output_new[,(1+(s-1)*3):(s*3)]))
+      cat("\n")
+    } 
+  } 
+  
+  ### Write file
   utils::write.csv(output_new, filename)
   cat("Ouputs of apollo_choiceAnalysis saved to ",filename,"\n",sep="")
   invisible(output_new)

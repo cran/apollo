@@ -77,11 +77,11 @@ apollo_avgIntraDraws <- function(P, apollo_inputs, functionality){
     return(P)
   }
   
-  # ############################## #
-  #### functionality=="zero_LL" ####
-  # ############################## #
+  # ######################################## #
+  #### functionality=="zero_LL/shares_LL" ####
+  # ######################################## #
   
-  if(functionality=="zero_LL"){
+  if(functionality %in% c("zero_LL", "shares_LL")){
     if(is.list(P)) P <- lapply(P, function(p) if(isCube(p)) apply(p, MARGIN=c(1,2), sum)/dim(p)[3] else p)
     if(isCube(P)) P <- apply(P, MARGIN=c(1,2), sum)/dim(P)[3]
     return(P)

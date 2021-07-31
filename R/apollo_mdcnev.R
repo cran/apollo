@@ -333,7 +333,8 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
                                  s$componentName)
     
     # Generate draws for correlated gumbel error components
-    set.seed(99)
+    if(!is.null(apollo_inputs$apollo_control$seed)) seed <- apollo_inputs$apollo_control$seed + 6 else seed <- 13 + 6
+    set.seed(seed)
     corr_matrix = matrix(0, s$nAlt, s$nAlt)
     for(n in 1:s$nNests){
       alts <- which(s$mdcnevStructure[n,]==1)

@@ -51,11 +51,12 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   printFunctions   = modelOutput_settings[["printFunctions"]]
   printFixed       = modelOutput_settings[["printFixed"]]
   
-  if(length(model$scaling)>0 && !anyNA(model$scaling) && !all(model$scaling==1)){
-    scaling_used=TRUE
-  }else{
-    scaling_used=FALSE
+  test <- !is.null(model$manualScaling) && length(model$manualScaling)==1 && is.logical(model$manualScaling)
+  if(test) scaling_used <- model$manualScaling else {
+    test <- !is.null(model$scaling) && is.vector(model$scaling) && is.numeric(model$scaling) && !all(model$scaling==1)
+    if(test) scaling_used <- TRUE else scaling_used <- FALSE
   }
+  
   # ####################### #
   #### MODEL DESCRIPTION ####
   # ####################### #
@@ -87,7 +88,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     if(length(model$nObsTot)>1) for(i in names(model$nObsTot)){
       if(nchar(i)>26) txt <- substr(i, 1, 26) else txt <- i # max 26 characters for the component name
       if(nchar(txt)<26) txt <- paste0(c(rep(' ', 26 - nchar(txt)), txt), collapse='')
-      cat('       ', txt, ': ', model$nObsTot[i], '\n', sep='')
+      cat('      ', txt, ' : ', model$nObsTot[i], '\n', sep='')
     }; cat('\n')
   }
   cat("Number of cores used             : ",model$apollo_control$nCores,"\n")
@@ -284,9 +285,11 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   
   cat("LL(start)                        : ",model$LLStart,"\n", sep="")
   if(length(model$LLout)==1) cat("LL(0)                            : ",ifelse(!anyNA(model$LL0[1]),model$LL0[1],"Not applicable"),"\n", sep="")
-  if(length(model$LLout)>1)  cat("LL(0, whole model)               : ",ifelse(!anyNA(model$LL0[1]),model$LL0[1],"Not applicable"),"\n", sep="")
+  if(length(model$LLout)>1 ) cat("LL(0, whole model)               : ",ifelse(!anyNA(model$LL0[1]),model$LL0[1],"Not applicable"),"\n", sep="")
+  if(length(model$LLout)==1) cat("LL(C)                            : ",ifelse(!anyNA(model$LLC[1]),model$LLC[1],"Not applicable"),"\n", sep="")
+  if(length(model$LLout)>1 ) cat("LL(C, whole model)               : ",ifelse(!anyNA(model$LLC[1]),model$LLC[1],"Not applicable"),"\n", sep="")
   if(length(model$LLout)==1) cat("LL(final)                        : ",model$maximum,"\n",sep="")
-  if(length(model$LLout)>1)  cat("LL(final, whole model)           : ",model$maximum,"\n",sep="")
+  if(length(model$LLout)>1 ) cat("LL(final, whole model)           : ",model$maximum,"\n",sep="")
   test <- !is.null(model$modelTypeList) && all(tolower(model$modelTypeList) %in% c("mnl", "nl", "cnl", "el", "dft", "lc"))
   test <- test && !anyNA(model$LL0[1])
   if(test){
@@ -358,8 +361,8 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     if(test) for(j in r$data ) cat(j, '\n', sep='')
     if(test) cat('\n')
   }
-  if(exists('r')) rm(r)
-  if(exists('j')) rm(j)
+  #if(exists('r')) rm(r)
+  #if(exists('j')) rm(j)
   
   ### Fill shorter param names with spaces
   longNames <- names( model$estimate )

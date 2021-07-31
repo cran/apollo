@@ -42,7 +42,7 @@
 #'         }
 #' @importFrom utils capture.output
 #' @export
-apollo_mdcev <- function(mdcev_settings,functionality){
+apollo_mdcev2 <- function(mdcev_settings,functionality){
   ### Set or extract componentName
   modelType   = "MDCEV"
   if(is.null(mdcev_settings[["componentName"]])){
@@ -304,6 +304,7 @@ apollo_mdcev <- function(mdcev_settings,functionality){
   # #################################### #
   
   if(functionality %in% c("prediction","raw")){
+    cat("\n Running new version of code!\n")
     # Change name to mdcev_settings to "s"
     s <- mdcev_settings
     rm(mdcev_settings)
@@ -314,6 +315,7 @@ apollo_mdcev <- function(mdcev_settings,functionality){
     # Generate draws for Gumbel error components
     if(!is.null(apollo_inputs$apollo_control$seed)) seed <- apollo_inputs$apollo_control$seed + 5 else seed <- 13 + 5
     set.seed(seed)
+    if (apollo_inputs$apollo_draws$interNDraws!=s$nRep) stop("Need same number of inter-draws as nRep!")### SH
     tmp1 <- -log(-log(apollo_mlhs(s$nRep, s$nAlt, s$nObs)))
     epsL <- vector(mode="list", length=s$nRep)
     tmp2 <- (0:(s$nObs-1))*s$nRep
@@ -363,6 +365,7 @@ apollo_mdcev <- function(mdcev_settings,functionality){
     ### Simulate prediction
     if(!is.null(apollo_inputs$silent)) silent <- apollo_inputs$silent else silent <- FALSE
     if(!silent) cat("0%")
+    s$nRep=1 ### SH
     if(s$hasOutside){
       for(r in 1:s$nRep){
         X    <- 0*X
@@ -370,7 +373,8 @@ apollo_mdcev <- function(mdcev_settings,functionality){
           Xintra <- 0*X
           for(iIntra in 1:nIntra){
             # Extract appropiate values
-            phiP <- extractDraw(s$sigma, iInter, iIntra)*epsL[[r]]
+            ### phiP <- extractDraw(s$sigma, iInter, iIntra)*epsL[[r]] ### SH
+            phiP <- extractDraw(s$sigma, iInter, iIntra)*epsL[[iInter]]
             phiP <- exp(extractDraw(s$V, iInter, iIntra) + phiP)*avail/cost
             gamma<- extractDraw(s$gamma, iInter, iIntra)
             alpha<- extractDraw(s$alpha, iInter, iIntra)
@@ -427,7 +431,8 @@ apollo_mdcev <- function(mdcev_settings,functionality){
           Xintra <- 0*X
           for(iIntra in 1:nIntra){
             # Extract appropiate values
-            phiP <- extractDraw(s$sigma, iInter, iIntra)*epsL[[r]]
+            ### phiP <- extractDraw(s$sigma, iInter, iIntra)*epsL[[r]] ### SH
+            phiP <- extractDraw(s$sigma, iInter, iIntra)*epsL[[iInter]]
             phiP <- exp(extractDraw(s$V, iInter, iIntra) + phiP)*avail/cost
             gamma<- extractDraw(s$gamma, iInter, iIntra)
             alpha<- extractDraw(s$alpha, iInter, iIntra)

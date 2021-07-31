@@ -66,5 +66,5 @@ and apollo_inputs list of settings. Performs automatic scaling for increased num
 It calculates the Hessian, variance-covariance, and standard errors at \code{apollo_beta} values of an 
 estimated model. At least one of the following settings must be provided (ordered by speed): \code{apollo_grad}, 
 \code{apollo_logLike}, or (\code{apollo_probabilities} and \code{apollo_inputs}). If more than one is provided, 
-then the priority is: \code{apollo_inputs}, \code{apollo_logLike}, (\code{apollo_probabilities} and \code{apollo_inputs}).
+then the priority is: \code{apollo_grad}, \code{apollo_logLike}, (\code{apollo_probabilities} and \code{apollo_inputs}).
 }

@@ -10,9 +10,9 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
   modelType <- tolower(modelType)
   
   #### MNL, NL, CNL, DFT, EL ####
-  if(modelType %in% c("mnl","nl","cnl","dft", "el")){
+  if(modelType %in% c("mnl","fmnl","nl","cnl","dft", "el")){
     
-    # Check there are repeated alternatives names
+    # Check there are no repeated alternatives names
     if(length(unique(inputs$altnames))!=length(inputs$altnames)) stop('Names of alternatives must be unique. Check definition of "alternatives".')
     
     # Checks specific to CNL
@@ -30,30 +30,56 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     if(inputs$nAlt<minAlts) stop("Model component \"",inputs$componentName,"\"  requires at least ", minAlts, " alternatives")
     
     # Check that choice vector is not empty
-    if(modelType!="el") if(length(inputs$choiceVar)==0) stop("Choice vector is empty for model component \"",inputs$componentName,"\"")
-    if(modelType=="el") for(i in 1:length(inputs$choiceVars)){
-      if(length(inputs$choiceVars[[i]])==0) stop('Choice vector is empty for stage ',i,' in model component "',inputs$componentName,'"')
-    } 
+    if(modelType!="fmnl"){
+      if(modelType!="el") if(length(inputs$choiceVar)==0) stop("Choice vector is empty for model component \"",inputs$componentName,"\"")
+      if(modelType=="el") for(i in 1:length(inputs$choiceVars)){
+        if(length(inputs$choiceVars[[i]])==0) stop('Choice vector is empty for stage ',i,' in model component "',inputs$componentName,'"')
+      } 
+    } else {
+      for(i in 1:length(inputs$choiceShares)){
+        if(length(inputs$choiceShares[[i]])==0) stop('Choice shares vector is empty for alternative ',inputs$altnames[i],' in model component "',inputs$componentName,'"')}
+    }
     if(inputs$nObs==0) stop("No data for model component \"",inputs$componentName,"\"")
     
+    # Check that shares are all between 0 and 1, and sum to 1 for FMNL
+    if(modelType=="fmnl"){
+      test <- any(sapply(inputs$choiceShares,anyNA))
+      if(any(test)) stop('Choice shares for some observations for model component "', inputs$componentName,
+                         '" are NA!')
+      test <- any(sapply(inputs$choiceShares,">",1))
+      if(any(test)) stop('Choice shares for some observations for model component "', inputs$componentName,
+                         '" are greater than 1!')
+      test <- any(sapply(inputs$choiceShares,"<",0))
+      if(any(test)) stop('Choice shares for some observations for model component "', inputs$componentName,
+                         '" are less than 0!')
+      totalChoice <- Reduce("+",inputs$choiceShares)
+      test <- (abs(totalChoice - 1) > 0.001)
+      if(any(test)) stop('Choice shares for some observations for model component "', inputs$componentName,
+             '" do not sum to 1!')
+    }
+
     # Check V and avail elements are named correctly
     if(modelType!="dft" && !all(inputs$altnames %in% names(inputs$V))) stop("The names of the alternatives for model component \"",inputs$componentName,"\" do not match those in \"V\".")
     if(modelType!="el") if(!all(inputs$altnames %in% names(inputs$avail))) stop("The names of the alternatives for model component \"",inputs$componentName,"\" do not match those in \"avail\".")
     if(modelType=="el") for(s in 1:inputs$stages) if(!all(inputs$altnames %in% names(inputs$avail[[s]]))) stop('The names of the alternatives for model component "',inputs$componentName,'" do not match those in "avail" (in stage ',s,').')
     
     # Check that there are no values in the choice column for undefined alternatives
-    if(modelType!="el"){
-      inputs$choiceLabs <- unique(inputs$choiceVar)
-      if(!all(inputs$choiceLabs %in% inputs$altcodes)) stop("The data contains values for \"choiceVar\" for model component \"",inputs$componentName,"\" that are not included in \"alternatives\".")
-    } else {
-      choiceLabs <- unique(unlist(inputs$choiceVars))
-      if(!all(choiceLabs %in% c(inputs$altcodes,-1))) stop("The data contains values for \"choiceVar\" for model component \"",inputs$componentName,"\" that are not included in \"alternatives\".")
+    if(modelType!="fmnl"){
+      if(modelType!="el"){
+        inputs$choiceLabs <- unique(inputs$choiceVar)
+        if(!all(inputs$choiceLabs %in% inputs$altcodes)) stop("The data contains values for \"choiceVar\" for model component \"",inputs$componentName,"\" that are not included in \"alternatives\".")
+      } else {
+        choiceLabs <- unique(unlist(inputs$choiceVars))
+        if(!all(choiceLabs %in% c(inputs$altcodes,-1))) stop("The data contains values for \"choiceVar\" for model component \"",inputs$componentName,"\" that are not included in \"alternatives\".")
+      }
     }
     
     # Checks specific for Exploded Logit (EL)
     if(modelType=="el"){
       # check that all availabilities are either 0 or 1
       for(i in 1:length(inputs$avail)) if( !all(unlist(inputs$avail[[i]]) %in% 0:1) ) stop("Some availability values for model component \"",inputs$componentName,"\" are not 0 or 1.")
+      # check that at least 2 alternatives are available in at least one observation
+      for(i in 1:length(inputs$avail)) if(max(Reduce('+',inputs$avail[[i]]))==1) stop("Only one alternative is available for each observation for model component \"",inputs$componentName,"!")
       # check that nothing unavailable is chosen
       for(s in 1:inputs$stages) for(j in 1:inputs$nAlt){
         tmp <- !inputs$avail[[s]][[j]] & inputs$Y[[s]][[j]]
@@ -67,10 +93,32 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     } else {
       # check that all availabilities are either 0 or 1
       for(i in 1:length(inputs$avail)) if( !all(unique(inputs$avail[[i]]) %in% 0:1) ) stop("Some availability values for model component \"",inputs$componentName,"\" are not 0 or 1.")
+      # check that at least 2 alternatives are available in at least one observation
+      if(max(Reduce('+',inputs$avail))==1) stop("Only one alternative is available for each observation for model component \"",inputs$componentName,"!")
       # check that nothing unavailable is chosen
-      for(j in 1:inputs$nAlt) if(any(inputs$choiceVar==inputs$altcodes[j] & inputs$avail[[j]]==0)) stop("The data contains cases where alternative ",
-                                                                                                        inputs$altnames[j]," is chosen for model component \"",
-                                                                                                        inputs$componentName,"\" despite being listed as unavailable\n")
+      if(modelType!="fmnl"){
+        for(j in 1:inputs$nAlt) if(any(inputs$choiceVar==inputs$altcodes[j] & inputs$avail[[j]]==0)){
+          #stop("The data contains cases where alternative ",
+          #     inputs$altnames[j]," is chosen for model component \"",
+          #     inputs$componentName,"\" despite being listed as unavailable\n")
+          txt <-  paste0('WARNING: The data contains cases where alternative ', inputs$altnames[j], 
+                         ' is chosen for model component "',inputs$componentName, '" despite being', 
+                         ' listed as unavailable. This will cause the chosen probability to be', 
+                         ' zero, and potentially lead to an invalid LL.')
+          apollo_print(txt)
+        } 
+      } else {
+        for(j in 1:inputs$nAlt) if(any(inputs$choiceShares[[j]]>0 & inputs$avail[[j]]==0)){
+          #stop("The data contains cases where alternative ", inputs$altnames[j], 
+          #     " is chosen for model component \"", inputs$componentName, 
+          #     "\" despite being listed as unavailable\n")
+          txt <-  paste0('WARNING: The data contains cases where alternative ', inputs$altnames[j], 
+                         ' is chosen for model component "',inputs$componentName, '" despite being', 
+                         ' listed as unavailable. This will cause the chosen probability to be', 
+                         ' zero, and potentially lead to an invalid LL.')
+          apollo_print(txt)
+        }
+      }
     }
     
     # Check that no available alternative has utility = NA
@@ -84,7 +132,7 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     if(modelType=='nl'){
       allElements <- c("root", unlist(inputs$nlStructure))
       if(is.null(inputs$nlStructure[["root"]])) stop("Tree structure for model component \"",inputs$componentName,"\" is missing an element called root!")
-      if(inputs$nlNests["root"]!=1) stop("The root lambda parameter for model component \"",inputs$componentName,"\" should be equal to 1.")
+      #if(inputs$nlNests[["root"]]!=1) stop("The root lambda parameter for model component \"",inputs$componentName,"\" should be equal to 1.")
       if( !all(inputs$altnames %in% allElements) ) stop("All alternatives must be included in the tree structure for model component \"",inputs$componentName,"\".")
       if( !all(inputs$nestnames %in% allElements) ) stop("All nests must be included in the tree structure for model component \"",inputs$componentName,"\".")
       if( (length(inputs$nestnames)+length(inputs$altnames))!=length(allElements) ) stop("Tree structure for model component \"",inputs$componentName,"\" is inconsistent. Each element must appear only once.")
@@ -105,6 +153,18 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     
   }
   
+  #### classAlloc ####
+  if(modelType=='classAlloc'){
+    # Check there are at least 2 alternatives
+    if(inputs$nAlt<2) stop("Model component \"",inputs$componentName,"\"  requires at least 2 alternatives")
+    # Check availabilities are only 0 or 1
+    if(!all(sapply(inputs$avail, function(a) all(unique(a) %in% 0:1)))) stop("Some availability values for model component \"",inputs$componentName,"\" are not 0 or 1.")
+    # Check all available alternatives have finite V
+    inputs$V <- mapply(function(v,a) apollo_setRows(v, !a, 0), inputs$V, inputs$avail, SIMPLIFY=FALSE)
+    test     <- all(sapply(inputs$V, function(v) all(is.finite(v))))
+    if(!test) stop('Some utilities for model component "',inputs$componentName, '" contain values that are not finite numbers!')
+  }
+  
   #### NormD ####
   if(modelType=="normd"){
     if(is.vector(inputs$xNormal)) xlength=length(inputs$xNormal)
@@ -116,9 +176,16 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
   
   #### OL, OP ####
   if(modelType %in% c("ol", "op")){
-    #values_present = unique(inputs$outcomeOrdered)
-    #if(!(all(values_present %in% inputs$coding ))) stop("Some levels in 'outcomeOrdered' do not exist in 'coding' for model component \"",inputs$componentName,"\" !")
-    #if(!(all(inputs$coding %in% values_present ))) stop("Some levels in 'coding' do not exist in 'outcomeOrdered' for model component \"",inputs$componentName,"\"!")
+    values_present = unique(inputs$outcomeOrdered)
+    if(!(all(values_present %in% inputs$coding ))){
+      if(!inputs$coding_set) stop("The levels in 'outcomeOrdered' do not match up with the default coding or the number of thresholds defined for model component \"",inputs$componentName,"\" !")
+      if(inputs$coding_set) stop("Some levels in 'outcomeOrdered' do not exist in 'coding' for model component \"",inputs$componentName,"\" !")
+    } 
+    if(!(all(inputs$coding %in% values_present ))){
+      if(!inputs$coding_set) stop("The levels in 'outcomeOrdered' do not match up with the default coding for model component \"",inputs$componentName,"\" !")
+      if(inputs$coding_set) stop("Some levels in 'coding' do not exist in 'outcomeOrdered' for model component \"",inputs$componentName,"\"!")
+    } 
+    rm(values_present)
     if( (length(inputs$tau)+1) != length(inputs$coding) ) stop("Threshold vector length +1 does not match number of elements in argument 'coding' for model component \"",inputs$componentName,"\".")
     if(!all(is.finite(inputs$V))) stop('Some values inside V are not finite for model component "', inputs$componentName, '"')
   }
@@ -134,7 +201,9 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     if(inputs$nAlt<2) stop("Model component \"",inputs$componentName,"\" requires at least two products")
     # Check that choice vector is not empty
     if(inputs$nObs==0) stop("No data for model component \"",inputs$componentName,"\"")
-    # Check that first product is outside good
+    # Check that MDCNEV has outside good
+    if(!inputs$hasOutside && modelType=="mdcnev") stop("The MDCNEV structured used for model component \"",inputs$componentName,"\" requires an \"outside\" good, i.e. an alternative for which consumption is always non-zero!")
+    # Check that first product is outside good (if one is defined)
     if(inputs$hasOutside && inputs$alternatives[1]!="outside") stop("First product for model component \"",inputs$componentName,"\" must be called \"outside\"!")
     # Check labels
     namesinside=names(inputs$V)[names(inputs$V)!="outside"]

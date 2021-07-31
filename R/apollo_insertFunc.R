@@ -32,10 +32,11 @@
 #'          \code{apollo_randCoeff}.
 #' @param like Logical. Must be TRUE if \code{f} is \code{apollo_probabilities}. FALSE otherwise.
 #' @param randCoeff Logical. Must be TRUE if \code{f} is \code{apollo_randCoeff}. FALSE otherwise.
+#' @param lcPars Logical. Must be TRUE if \code{f} is \code{apollo_lcPars}. FALSE otherwise.
 #' @return Function \code{f} but with relevant expressions turned into function definitions.
 #' @importFrom utils capture.output
 #' @export
-apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE){
+apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
   # Validate inputs
   if(!is.function(f)) stop('Argument "f" should be a function.')
   
@@ -63,67 +64,144 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE){
     return(e)
   }
   
+  # This function replace expressions on the right side by their definitions
+  replaceByDef <- function(e, defs, rightSide=FALSE){
+    if(is.function(e)){ f <- e; e <- body(e)} else f <- -1L# f <- NULL
+    # Case 1: LV1
+    test1 <- rightSide && is.symbol(e) && (as.character(e) %in% names(defs))
+    if(test1) e <- defs[[ which(names(defs)==as.character(e))[1] ]]
+    # Case 2: L$LV1 or L[['LV1']]
+    test2 <- !test1 && rightSide && is.call(e) && length(e)==3 && is.symbol(e[[1]]) && (as.character(e[[1]]) %in% c('$','[['))
+    test2 <- test2 && is.val(e[[3]]) && is.symbol(e[[2]])
+    if(test2) tmp  <- paste0(as.character(e[[2]]), '$', as.character(e[[3]]))
+    test2 <- test2 && (tmp %in% names(defs))
+    if(test2) e <- defs[[tmp]]
+    # Case 3: expression
+    if(!test1 && !test2 && is.call(e)){
+      test0 <- length(e)==3 && is.symbol(e[[1]]) && (as.character(e[[1]]) %in% c('<-', '=')) # Is an assignment
+      for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- replaceByDef(e[[i]], defs, rightSide=(rightSide | (test0 & i==3)))
+    } 
+    # Return
+    if(is.function(f)){body(f) <- e; return(f)} else return(e)
+    #if(is.null(f)) return(e) else {body(f) <- e; return(f)}
+  }
+  
   ## Searches inside "e" for the definition of listNames, and turns its elements "elemNames" into
   ## functions, as well as all the elements inside elemListNames.
   ## If elemNames="*", then all elements of listNames are turned into functions.
   ## If an elemListNames is defined as another variable, then it adds it to the pendingVars vector
-  listElem2Func <- function(listNames, elemNames=NULL, elemListNames=NULL, e=NULL, from=1, to=Inf){
-    if(is.null(e)) stop('Argument "e" cannot be NULL.')
+  #listElem2Func <- function(listNames, elemNames=NULL, elemListNames=NULL, e=NULL, from=1, to=Inf){
+  #  if(is.null(e)) stop('Argument "e" cannot be NULL.')
+  #  if(is.function(e)) e <- body(e)
+  #  if(is.val(e) || from>length(e)) return(e)
+  #  if(!is.call(e)) stop('Argument "e" must be a call')
+  #  if(is.null(elemNames) && is.null(elemListNames)) stop('Arguments "elemNames" and "elemListNames" cannot be both NULL.')
+  #  if(!is.character(listNames)) stop('Argument "listNames" must be a character vector')
+  #  if(!is.null(elemNames) && !is.character(elemNames)) stop('Argument "elemNames", if provided, must be a character vector')
+  #  if(!is.null(elemListNames) && !is.character(elemListNames)) stop('Argument "elemListNames", if provided, must be a character vector')
+  #  to <- min(to, length(e))
+  #  for(i in from:to){
+  #    # Is an assignment
+  #    test0 <- length(e[[i]])>=3
+  #    test0 <- test0 && (e[[i]][[1]]=="=" || e[[i]][[1]]=="<-")
+  #    # Assignment of type L$x <- ...
+  #    test1 <- test0 && length(e[[i]][[2]])==3
+  #    test1 <- test1 && (e[[i]][[2]][[1]]=="[[" || e[[i]][[2]][[1]]=="$")
+  #    test1 <- test1 && as.character(e[[i]][[2]][[2]])[1] %in% listNames
+  #    # L$x <- ... where x is a single elements
+  #    test21 <- test1 && as.character(e[[i]][[2]][[3]])[1] %in% elemNames
+  #    test22 <- test1 && ("*" %in% elemNames) && !(as.character(e[[i]][[2]][[3]])[1] %in% elemListNames)
+  #    if(test21 || test22) e[[i]][[3]] <- asFunctionDef(e[[i]][[3]])
+  #    # L$x <- ... where x is a list defined somewhere else
+  #    test3 <- test1 && as.character(e[[i]][[2]][[3]])[1] %in% elemListNames
+  #    test31<- test3 && is.symbol(e[[i]][[3]])
+  #    if(test31) pendingVars <<- c(pendingVars, paste0(as.character(e[[i]][[3]]), "$*"))
+  #    # L$x <- ... where x is a list defined in place
+  #    test32 <- test3 && is.call(e[[i]][[3]]) && length(e[[i]][[3]])>=2 && e[[i]][[3]][[1]]=="list"
+  #    if(test32) e[[i]][[3]] <- asFunctionDef(e[[i]][[3]])
+  #    # Assignment of type L <- list(x=...)
+  #    test4 <- test0 && as.character(e[[i]][[2]])[1] %in% listNames
+  #    test4 <- test4 && !(is.call(e[[i]][[3]]) && e[[i]][[3]]=="list()") # not assigning empty list
+  #    test4 <- test4 && is.call(e[[i]][[3]]) && e[[i]][[3]][[1]]=="list" # creating a list
+  #    if(test4){
+  #      tmp <- names(e[[i]][[3]]) # names of elements in list definition (including "" at the beginning)
+  #      # L <- list(x=...) when x is a single element
+  #      if("*" %in% elemNames) tmp2 <- 2:length(tmp) else tmp2 <- which(tmp %in% elemNames)
+  #      if(length(tmp2)>0) for(j in tmp2) if(!(tmp[j] %in% elemListNames)) e[[i]][[3]][[j]] <- asFunctionDef(e[[i]][[3]][[j]])
+  #      # L <- list(x=...) when x is a list 
+  #      tmp2 <- which(tmp %in% elemListNames)
+  #      if(length(tmp2)>0) for(j in tmp2){
+  #        # L <- list(x=y) when x is a list and y is defined somewhere else
+  #        if(is.symbol(e[[i]][[3]][[j]])) pendingVars <<- c(pendingVars, paste0(as.character(e[[i]][[3]][[j]]), "$*"))
+  #        # L <- list(x=list(...)) when x is a list defined in place
+  #        test5 <- is.call(e[[i]][[3]][[j]]) && e[[i]][[3]][[j]]!="list()" && length(e[[i]][[3]][[j]])>=2
+  #        test5 <- test5 && e[[i]][[3]][[j]][[1]]=="list"
+  #        if(test5) e[[i]][[3]][[j]] <- asFunctionDef(e[[i]][[3]][[j]])
+  #      }
+  #    }
+  #    # Other situation: look one level deeper
+  #    if(!test1 && !test21 && !test22 && !test31 && !test32 && !test4 && is.call(e[[i]]) && length(e[[i]])>1){
+  #      #if(is.symbol(e[[i]][[1]]) && as.character(e[[i]][[1]])=='{')
+  #      for(j in 1:length(e[[i]])) if(!is.null(e[[i]][[j]])) e[[i]][[j]] <- listElem2Func(listNames, 
+  #                                                                                        elemNames, 
+  #                                                                                        elemListNames, 
+  #                                                                                        e=e[[i]][[j]])
+  #    }
+  #  }
+  #  return(e)
+  #}
+  
+  ## Searches inside "e" for the definition of listNames, and turns its elements "elemNames" into
+  ## functions, as well as all the elements inside elemListNames.
+  ## If elemNames="*", then all elements of listNames are turned into functions.
+  ## If an elemListNames is defined as another variable, then it adds it to the pendingVars vector
+  listElem2Func <- function(e, listNames, elemNames=NULL, elemListNames=NULL){
+    # Checks
     if(is.function(e)) e <- body(e)
-    if(is.val(e) || from>length(e)) return(e)
-    if(!is.call(e)) stop('Argument "e" must be a call')
     if(is.null(elemNames) && is.null(elemListNames)) stop('Arguments "elemNames" and "elemListNames" cannot be both NULL.')
     if(!is.character(listNames)) stop('Argument "listNames" must be a character vector')
     if(!is.null(elemNames) && !is.character(elemNames)) stop('Argument "elemNames", if provided, must be a character vector')
     if(!is.null(elemListNames) && !is.character(elemListNames)) stop('Argument "elemListNames", if provided, must be a character vector')
-    to <- min(to, length(e))
-    for(i in from:to){
-      # Is an assignment
-      test0 <- length(e[[i]])>=3
-      test0 <- test0 && (e[[i]][[1]]=="=" || e[[i]][[1]]=="<-")
-      # Assignment of type L$x <- ...
-      test1 <- test0 && length(e[[i]][[2]])==3
-      test1 <- test1 && (e[[i]][[2]][[1]]=="[[" || e[[i]][[2]][[1]]=="$")
-      test1 <- test1 && as.character(e[[i]][[2]][[2]])[1] %in% listNames
-      # L$x <- ... where x is a single elements
-      test21 <- test1 && as.character(e[[i]][[2]][[3]])[1] %in% elemNames
-      test22 <- test1 && ("*" %in% elemNames) && !(as.character(e[[i]][[2]][[3]])[1] %in% elemListNames)
-      if(test21 || test22) e[[i]][[3]] <- asFunctionDef(e[[i]][[3]])
-      # L$x <- ... where x is a list defined somewhere else
-      test3 <- test1 && as.character(e[[i]][[2]][[3]])[1] %in% elemListNames
-      test31<- test3 && is.symbol(e[[i]][[3]])
-      if(test31) pendingVars <<- c(pendingVars, paste0(as.character(e[[i]][[3]]), "$*"))
-      # L$x <- ... where x is a list defined in place
-      test32 <- test3 && is.call(e[[i]][[3]]) && length(e[[i]][[3]])>=2 && e[[i]][[3]][[1]]=="list"
-      if(test32) e[[i]][[3]] <- asFunctionDef(e[[i]][[3]])
-      # Assignment of type L <- list(x=...)
-      test4 <- test0 && as.character(e[[i]][[2]])[1] %in% listNames
-      test4 <- test4 && !(is.call(e[[i]][[3]]) && e[[i]][[3]]=="list()") # not assigning empty list
-      test4 <- test4 && is.call(e[[i]][[3]]) && e[[i]][[3]][[1]]=="list" # creating a list
-      if(test4){
-        tmp <- names(e[[i]][[3]]) # names of elements in list definition (including "" at the beginning)
-        # L <- list(x=...) when x is a single element
-        if("*" %in% elemNames) tmp2 <- 2:length(tmp) else tmp2 <- which(tmp %in% elemNames)
-        if(length(tmp2)>0) for(j in tmp2) if(!(tmp[j] %in% elemListNames)) e[[i]][[3]][[j]] <- asFunctionDef(e[[i]][[3]][[j]])
-        # L <- list(x=...) when x is a list 
-        tmp2 <- which(tmp %in% elemListNames)
-        if(length(tmp2)>0) for(j in tmp2){
-          # L <- list(x=y) when x is a list and y is defined somewhere else
-          if(is.symbol(e[[i]][[3]][[j]])) pendingVars <<- c(pendingVars, paste0(as.character(e[[i]][[3]][[j]]), "$*"))
-          # L <- list(x=list(...)) when x is a list defined in place
-          test5 <- is.call(e[[i]][[3]][[j]]) && e[[i]][[3]][[j]]!="list()" && length(e[[i]][[3]][[j]])>=2
-          test5 <- test5 && e[[i]][[3]][[j]][[1]]=="list"
-          if(test5) e[[i]][[3]][[j]] <- asFunctionDef(e[[i]][[3]][[j]])
-        }
-      }
-      # Other situation: look one level deeper
-      if(!test1 && !test21 && !test22 && !test31 && !test32 && !test4 && is.call(e[[i]]) && length(e[[i]])>1){
-        for(j in 1:length(e[[i]])) if(!is.null(e[[i]][[j]])) e[[i]][[j]] <- listElem2Func(listNames, 
-                                                                                          elemNames, 
-                                                                                          elemListNames, 
-                                                                                          e=e[[i]][[j]])
+    # Case 1: value
+    if(is.val(e)) return(e)
+    # Case 2: L$x <- ... with x a single element
+    isAssign <- length(e)>=3 && is.symbol(e[[1]]) && (as.character(e[[1]]) %in% c('=', '<-'))
+    lList <- isAssign && length(e[[2]])==3 && is.symbol(e[[2]][[1]]) && (as.character(e[[2]][[1]]) %in% c('[[', '$'))
+    lList <- lList && is.symbol(e[[2]][[2]]) && (as.character(e[[2]][[2]]) %in% listNames)
+    lListElem <- lList && is.symbol(e[[2]][[3]]) && (as.character(e[[2]][[3]]) %in% elemNames)
+    lListAll  <- lList && ("*" %in% elemNames) && !(is.symbol(e[[2]][[3]]) && (as.character(e[[2]][[3]]) %in% elemListNames))
+    if(lListElem || lListAll) e[[3]] <- asFunctionDef(e[[3]])
+    # Case 3: L$x <- ... with x a list
+    lListList <- lList && is.symbol(e[[2]][[3]]) && (as.character(e[[2]][[3]]) %in% elemListNames)
+    lListList1 <- lListList && is.symbol(e[[3]])
+    if(lListList1) pendingVars <<- c(pendingVars, paste0(as.character(e[[3]]), "$*")) # defined somewhere else
+    lListList2 <- lListList && is.call(e[[3]]) && length(e[[3]])>=2 && is.symbol(e[[3]][[1]]) && e[[3]][[1]]=="list"
+    if(lListList2) e[[3]] <- asFunctionDef(e[[3]]) # defined in place
+    # Case 4: L <- list(x=...)
+    lListOnly <- isAssign && is.symbol(e[[2]]) && (as.character(e[[2]]) %in% listNames)
+    lListOnly <- lListOnly && is.call(e[[3]]) && is.symbol(e[[3]][[1]]) && as.character(e[[3]][[1]])=='list'
+    lListOnly <- lListOnly && length(e[[3]])>1  # not assigning empty list
+    if(lListOnly){
+      tmp <- names(e[[3]]) # names of elements in list definition (including "" at the beginning)
+      # L <- list(x=...) when x is a single element
+      if("*" %in% elemNames) tmp2 <- 2:length(tmp) else tmp2 <- which(tmp %in% elemNames)
+      if(length(tmp2)>0) for(j in tmp2) if(!(tmp[j] %in% elemListNames)) e[[3]][[j]] <- asFunctionDef(e[[3]][[j]])
+      # L <- list(x=...) when x is a list 
+      tmp2 <- which(tmp %in% elemListNames)
+      if(length(tmp2)>0) for(j in tmp2){
+        # L <- list(x=y) when x is a list and y is defined somewhere else
+        if(is.symbol(e[[3]][[j]])) pendingVars <<- c(pendingVars, paste0(as.character(e[[3]][[j]]), "$*"))
+        # L <- list(x=list(...)) when x is a list defined in place
+        test <- is.call(e[[3]][[j]]) && length(e[[3]][[j]])>=2 
+        test <- test && is.symbol(e[[3]][[j]][[1]]) && as.character(e[[3]][[j]][[1]])=="list"
+        if(test) e[[3]][[j]] <- asFunctionDef(e[[3]][[j]])
       }
     }
+    # Other cases
+    if(!lListElem && !lListAll && !lListList1 && !lListList2 && !lListOnly && is.call(e)){
+      for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- listElem2Func(e[[i]], listNames, elemNames, elemListNames)
+    }
+    # Return
     return(e)
   }
   
@@ -238,7 +316,7 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE){
       nIter <- nIter + 1
     }
     
-    # If e was function, make itfunction again
+    # If e was function, make it a function again
     if(!is.null(eOrig)){
       body(eOrig) <- e
       e <- eOrig
@@ -271,50 +349,40 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE){
     rndCoeff <- tryCatch(f(apollo_beta=c(b1=0, b2=0), apollo_inputs=list()), error=function() NULL)
     test <- is.list(rndCoeff) && all(sapply(rndCoeff, is.function)) && length(rndCoeff)>1
     if(!test) return(f)
-    # This function replace LVs on the right side by their definitions
-    replaceByDef <- function(e, defs, rightSide=FALSE){
-      if(is.function(e)){ f <- e; e <- body(e)} else f <- -1L# f <- NULL
-      # Case 1: LV1
-      test1 <- rightSide && is.symbol(e) && (as.character(e) %in% names(defs))
-      if(test1) e <- body(defs[[ which(names(defs)==as.character(e))[1] ]])
-      # Case 2: L$LV1 or L[['LV1']]
-      test2 <- !test1 && rightSide && is.call(e) && length(e)==3 && is.symbol(e[[1]]) && (as.character(e[[1]]) %in% c('$','[['))
-      test2 <- test2 && is.val(e[[3]]) && (as.character(e[[3]]) %in% names(defs))
-      if(test2) e <- body(defs[[ which(names(defs)==as.character(e[[3]]))[1] ]])
-      # Case 3: expression
-      if(!test1 && !test2 && is.call(e)){
-        test0 <- length(e)==3 && is.symbol(e[[1]]) && (as.character(e[[1]]) %in% c('<-', '=')) # Is an assignment
-        for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- replaceByDef(e[[i]], defs, rightSide=(rightSide | (test0 & i==3)))
-      } 
-      # Return
-      if(is.function(f)){body(f) <- e; return(f)} else return(e)
-      #if(is.null(f)) return(e) else {body(f) <- e; return(f)}
-    }
     # Replace calls in rndCoeff, to make sure I am replacing for definitions without references to other LVs
     for(i in 2:length(rndCoeff)) rndCoeff[[i]] <- replaceByDef(rndCoeff[[i]], rndCoeff[1:(i-1)], rightSide=TRUE)
-    # Replace in function
+    # Replace in function and return
     f <- replaceByDef(f, rndCoeff)
-    
-    ## Loop in case there are nested LV definitions, e.g. LV3=h(LV2), LV2=g(LV1), LV1=f(X)
-    #doReplace <- TRUE
-    #while(doReplace){
-    #  # Replace by definition
-    #  f <- replaceByDef(f, rndCoeff)
-    #  # Update rndCoeff
-    #  rndCoeff <- f(x,y)
-    #  # Check if there still are calls to other LVs: CHECK IS TOO SIMPLE, IT FAILS (e.g. b1_LV1*x1 will return TRUE)
-    #  lvDef <- sapply(rndCoeff, function(ff) paste0(capture.output(print(body(ff))), collapse=' '))
-    #  doReplace <- any(grepl(paste0(names(rndCoeff), collapse='|'), lvDef))
-    #}
-    
+    return(f)
+  }
+  
+  if(lcPars){
+    f <- processModelDefinition(fName="apollo_classAlloc", elemNames=c(), listNames=c("V"), e=f)
+    # Replace elements that are functions
+    apollo_inputs <- tryCatch(get('apollo_inputs', envir=parent.frame()), 
+                              error=function() list(apollo_control=list(mixing=FALSE), apollo_randCoeff=NA, apollo_lcPars=NA))
+    defs <- apollo_varList(f, apollo_inputs)
+    if(length(defs)>0) f <- replaceByDef(f, defs)
     return(f)
   }
   
   if(like){
-    f <- processModelDefinition(fName="apollo_mnl", elemNames=c()   , listNames=c("V")  , e=f)
-    f <- processModelDefinition(fName="apollo_ol" , elemNames=c("V"), listNames=c("tau"), e=f)
-    f <- processModelDefinition(fName="apollo_op" , elemNames=c("V"), listNames=c("tau"), e=f)
+    f <- processModelDefinition(fName="apollo_mnl" , elemNames=c()   , listNames=c("V")  , e=f)
+    f <- processModelDefinition(fName="apollo_fmnl", elemNames=c()   , listNames=c("V")  , e=f)
+    f <- processModelDefinition(fName="apollo_ol"  , elemNames=c("V"), listNames=c("tau"), e=f)
+    f <- processModelDefinition(fName="apollo_op"  , elemNames=c("V"), listNames=c("tau"), e=f)
     f <- processModelDefinition(fName="apollo_normalDensity", elemNames=c("xNormal", "mu", "sigma"), listNames=c(), e=f)
+    # Replace elements that are functions
+    apollo_inputs <- tryCatch(get('apollo_inputs', envir=parent.frame()), 
+                              error=function() list(apollo_control=list(mixing=FALSE), apollo_randCoeff=NA, apollo_lcPars=NA))
+    defs <- apollo_varList(f, apollo_inputs)
+    #for(i in names(defs)){
+    #  isF <- is.expression(defs[[i]]) || is.call(defs[[i]])
+    #  isF <- isF && length(defs[[i]])>=1 && is.symbol(defs[[i]][[1]])
+    #  isF <- isF && as.character(defs[[i]][[1]])=='function'
+    #  if(!isF) defs[[i]] <- NULL else defs[[i]] <- defs[[i]][[3]]
+    #}
+    if(length(defs)>0) f <- replaceByDef(f, defs)
     return(f)
   }
   

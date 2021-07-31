@@ -74,9 +74,24 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
   # ########################################## #
   
   if(functionality=="preprocess"){
+    # If there are multiple pre-processing inside a single element of P, promote them to the upper level
+    # This can happen in latent class models with multiple components
+    isList <- rep(FALSE, length(P))
+    for(s in 1:length(P)){
+      isList[s] <- is.list(P[[s]]) && all(sapply(P[[s]], is.list)) && all(sapply(P[[s]], function(p) !is.null(p$componentName)))
+    }
+    if(any(isList)){
+      isList <- which(isList)
+      for(i in isList) P <- c(P, P[[i]])
+      P <- P[-isList]
+    }
+    
+    # Rename pre-processing elements
     for(s in 1:length(P)) if(is.list(P[[s]]) && !is.null(P[[s]]$componentName)){
       names(P)[s]=paste0(P[[s]]$componentName, "_settings")
     }
+    
+    # Return
     return(P)
   } 
 
@@ -88,6 +103,8 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
     if("model" %in% names(P)) P <- P$model
     if(is.null(P$like) || is.null(P$grad)) stop("Missing like and/or grad elements inside components!")
     if(apollo_inputs$apollo_control$workInLogs && apollo_inputs$apollo_control$analyticGrad) stop("workInLogs cannot be used in conjunction with analyticGrad!")
+    test <- is.array(P$like) && ncol(P$like)==1 && (length(dim(P$like))==2 || (length(dim(P$like))==3 && dim(P$like)[3]==1))
+    if(test) P$like <- as.vector(P$like)
     if(is.list(P)) P = do.call(cbind, P$grad)/P$like
     ### New 29 Sept
     #if(!is.null(apollo_inputs$scaling)){
@@ -122,11 +139,11 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
     return(P[["model"]])
   } 
   
-  # ######################################### #
-  #### functionality="output/zero_LL"      ####
-  # ######################################### #
+  # ############################################## #
+  #### functionality="output/zero_LL/shares_LL" ####
+  # ############################################## #
 
-  if(functionality%in%c("output","zero_LL")){
+  if(functionality%in%c("output","zero_LL","shares_LL")){
     # Give name to unnamed components
     origNames <- names(P)
     newNames  <- paste0("component_", 1:length(P))

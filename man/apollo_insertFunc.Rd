@@ -4,7 +4,7 @@
 \alias{apollo_insertFunc}
 \title{Modifies function to make it compatible with analytic gradients}
 \usage{
-apollo_insertFunc(f, like = TRUE, randCoeff = FALSE)
+apollo_insertFunc(f, like = TRUE, randCoeff = FALSE, lcPars = FALSE)
 }
 \arguments{
 \item{f}{Function. Expressions inside it will be turned into functions. Usually \code{apollo_probabilities} or 
@@ -13,6 +13,8 @@ apollo_insertFunc(f, like = TRUE, randCoeff = FALSE)
 \item{like}{Logical. Must be TRUE if \code{f} is \code{apollo_probabilities}. FALSE otherwise.}
 
 \item{randCoeff}{Logical. Must be TRUE if \code{f} is \code{apollo_randCoeff}. FALSE otherwise.}
+
+\item{lcPars}{Logical. Must be TRUE if \code{f} is \code{apollo_lcPars}. FALSE otherwise.}
 }
 \value{
 Function \code{f} but with relevant expressions turned into function definitions.

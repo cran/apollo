@@ -16,7 +16,7 @@
 #'                       \item \code{avail}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
 #'                       \item \code{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
 #'                       \item \code{V}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
-#'                       \item \code{nlNests}: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named with the nest name. The lambda at the root is fixed to 1 if excluded (recommended).
+#'                       \item \code{nlNests}: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named with the nest name. The lambda at the root is automatically fixed to 1 if not provided by the user.
 #'                       \item \code{nlStructure}: Named list of character vectors. As many elements as nests, it must include the "root". Each element contains the names of the nests or alternatives that belong to it. Element names must match those in \code{nlNests}.
 #'                       \item \code{rows}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
 #'                       \item \code{componentName}: Character. Name given to model component.
@@ -178,12 +178,14 @@ apollo_nl <- function(nl_settings, functionality){
   if(is.function(nl_settings$nlStructure)) nl_settings$nlStructure <- nl_settings$nlStructure()
   nl_settings$V <- lapply(nl_settings$V, function(v) if(is.matrix(v) && ncol(v)==1) as.vector(v) else v)
   
-  ### Reorder V if neccesary
+  ### Reorder V if necessary
   nl_settings$V        <- nl_settings$V[nl_settings$altnames]
   if(!all(nl_settings$rows)) nl_settings$V <- lapply(nl_settings$V, apollo_keepRows, r=nl_settings$rows)
   # No need to drop rows in avail, choiceVar nor Y, as these are
   # already filtered due to them not changing across iterations.
   
+#  if(nl_settings$root_set) nl_settings$nlNests$root=1
+
   # ############################## #
   #### functionality="validate" ####
   # ############################## #

@@ -154,7 +154,11 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
   #### functionality="prediction" ####
   # ################################ #
 
-  if(functionality=="prediction") return(NA)
+  if(functionality=="prediction"){
+    ans <- normalDensity_settings$mu + normalDensity_settings$xNormal
+    if(any(!normalDensity_settings$rows)) ans <- apollo_insertRows(ans, normalDensity_settings$rows, NA)
+    return(ans)
+  } 
 
   # ###################################################### #
   #### functionality="estimate/conditionals/raw/output" ####

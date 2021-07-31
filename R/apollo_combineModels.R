@@ -100,7 +100,7 @@ apollo_combineModels=function(P, apollo_inputs, functionality, components=NULL, 
   #### functionality=="conditionals/estimate/validate/zero_LL" ####
   # ############################################################# #
   
-  if(functionality %in% c("conditionals","estimate","validate","zero_LL", "output")){
+  if(functionality %in% c("conditionals","estimate","validate","zero_LL", "shares_LL", "output")){
     if(!apollo_inputs$apollo_control$workInLogs){
       P[["model"]] <- Reduce("*", P)
     } else {

@@ -61,6 +61,10 @@
 #'                                                                Only used if \code{bootstrapSE>0}. Default is 24.
 #'                                  \item \strong{silent}: Logical. If TRUE, no information is printed to the console during estimation. Default is FALSE.
 #'                                  \item \strong{scaleHessian}: Logical. If TRUE, parameters are scaled to 1 for Hessian estimation. Default is TRUE.
+#'                                  \item \strong{scaleAfterConvergence}: Logical. Used to increase numerical precision of convergence. If TRUE, parameters are 
+#'                                                                        scaled to 1 after convergence, and the estimation is repeated from this new starting
+#'                                                                        values. Results are reported scaled back, so it is a transparent process for the user.
+#'                                                                        Default is TRUE.
 #'                                 }
 #' @return model object
 #' @export
@@ -86,7 +90,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   default <- list(estimationRoutine="bfgs", maxIterations=200, writeIter=TRUE, 
                   hessianRoutine="analytic", printLevel=3L, constraints=NULL, maxLik_settings=NULL, 
                   numDeriv_settings=list(), scaling=NA, bootstrapSE=0, bootstrapSeed=24, silent=FALSE, 
-                  scaleHessian=TRUE)
+                  scaleHessian=TRUE, scaleAfterConvergence=TRUE)
   if(length(estimate_settings)==1 && is.na(estimate_settings)) estimate_settings <- default
   if(is.null(estimate_settings$maxLik_settings)){
     estimate_settings$maxLik_settings <- list(printLevel=3, iterlim=200)
@@ -122,10 +126,10 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   printLevel        = estimate_settings[["printLevel"]]
   silent            = estimate_settings[["silent"]]
   constraints       = estimate_settings[["constraints"]]
-  #scaling           = estimate_settings[["scaling"]]
   bootstrapSE       = estimate_settings[["bootstrapSE"]]
   bootstrapSeed     = estimate_settings[["bootstrapSeed"]]
   maxLik_settings   = estimate_settings[["maxLik_settings"]]
+  scaleAfterConvergence = estimate_settings[['scaleAfterConvergence']]
   
   if(maxIterations==0){
     apollo_control$noValidation=TRUE
@@ -228,33 +232,40 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                       names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)])
   test <- is.null(apollo_inputs$apollo_scaling)
   test <- test || (length(apollo_inputs$apollo_scaling)==1 && is.na(apollo_inputs$apollo_scaling))
-  if(test) apollo_inputs$apollo_scaling <- scaling else {
+  if(test){
+    apollo_inputs$apollo_scaling <- scaling
+    apollo_inputs$manualScaling  <- FALSE
+  } else {
     scaling[names(apollo_inputs$apollo_scaling)] <- apollo_inputs$apollo_scaling
     #if(any(!(names(scaling) %in% names(apollo_beta)))) stop("Some parameters included in 'scaling' are not included in 'apollo_beta'")
-      if(anyDuplicated(names(scaling))){
-        txt <- paste0(names(scaling)[duplicated(names(scaling))], collapse=", ")
-        txt <- paste0("The \"scaling\" setting contains duplicate elements (", txt, ").")
-        stop(txt)
-      }
-      if(!all(names(scaling) %in% names(apollo_beta))){
-        txt <- names(scaling)[!(names(scaling) %in% names(apollo_beta))]
-        txt <- paste0(txt, collapse=", ")
-        txt <- paste0("Some parameters included in 'scaling' (", txt, ") are not included in 'apollo_beta'.")
-        stop(txt)
-      }
-
+    # Check for duplicates
+    if(anyDuplicated(names(scaling))){
+      txt <- paste0(names(scaling)[duplicated(names(scaling))], collapse=", ")
+      txt <- paste0("The \"scaling\" setting contains duplicate elements (", txt, ").")
+      stop(txt)
+    }
+    # Check that all scaling correspond to existing parameters
+    if(!all(names(scaling) %in% names(apollo_beta))){
+      txt <- names(scaling)[!(names(scaling) %in% names(apollo_beta))]
+      txt <- paste0(txt, collapse=", ")
+      txt <- paste0("Some parameters included in 'scaling' (", txt, ") are not included in 'apollo_beta'.")
+      stop(txt)
+    }
+    # Check no fixed params are scaled
     if(any(names(scaling) %in% apollo_fixed)) stop("Parameters in 'apollo_fixed' should not be included in 'scaling'")
+    # Check there are no negative scaling values. If there are, take theis abs value.
     if(any(scaling<0)){
       scaling <- abs(scaling)
       txt <- 'Some negative values in "scaling" were replaced by their absolute value'
       if(!silent) apollo_print(paste0('WARNING: ', txt, '.')) else warning(txt)
-    }
-    if(any(scaling<=0)) stop('All terms in "scaling" should be strictly positive!')
+    }; if(any(scaling<=0)) stop('All terms in "scaling" should be strictly positive!')
     txt <- "During estimation, parameters will be scaled using the values in estimate_settings$scaling"
     if(!all(scaling==1)){ if(!silent) apollo_print(txt) else warning(txt)}
     rm(txt)
     apollo_inputs$apollo_scaling <- scaling
+    apollo_inputs$manualScaling  <- TRUE
   }
+  rm(scaling)
   
   ### Recommend using multi-core if appropriate
   if(!apollo_control$HB && apollo_inputs$apollo_control$mixing && apollo_inputs$apollo_control$nCores==1 && !silent){
@@ -378,7 +389,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   ### Create multi-core version of likelihood (if needed)
   apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, 
                                        apollo_probabilities, apollo_inputs, 
-                                       estimate_settings, cleanMemory=TRUE)
+                                       apollo_estSet=estimate_settings, cleanMemory=TRUE)
   on.exit({
     test <- apollo_control$nCores>1 && exists('apollo_logLike', inherits=FALSE)
     test <- test && !anyNA(environment(apollo_logLike)$cl)
@@ -420,16 +431,18 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     }
     base_LL = sum(base_LL)
     for(p in names(beta0)){
-      beta1p <- beta1 - (names(beta1)==p)*0.001
+      #beta1p <- beta1 - (names(beta1)==p)*0.001
       beta1m <- beta1 + (names(beta1)==p)*0.001
-      test1_LL = sum( apollo_logLike(beta1p) )
+      #test1_LL = sum( apollo_logLike(beta1p) )
       test2_LL = sum( apollo_logLike(beta1m) )
-      if(is.na(test1_LL)) test1_LL <- base_LL + 1 # Avoids errors if test1_LL is NA
+      #if(is.na(test1_LL)) test1_LL <- base_LL + 1 # Avoids errors if test1_LL is NA
       if(is.na(test2_LL)) test2_LL <- base_LL + 2 # Avoids errors if test2_LL is NA
-      if(base_LL==test1_LL & base_LL==test2_LL) stop("Parameter ",p," does not influence the log-likelihood of your model!")
+      #if(base_LL==test1_LL & base_LL==test2_LL) stop("Parameter ",p," does not influence the log-likelihood of your model!")
+      if(base_LL==test2_LL) stop("Parameter ",p," does not influence the log-likelihood of your model!")
       if(!silent) cat(".")
     }
-    rm(beta0, beta1, beta1p, beta1m, base_LL, test1_LL, test2_LL, p)
+    #rm(beta0, beta1, beta1p, beta1m, base_LL, test1_LL, test2_LL, p)
+    rm(beta0, beta1, beta1m, base_LL, test2_LL, p)
   }
   
   
@@ -447,7 +460,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   ### Preparations for iteration writing and counting
   if(estimate_settings$writeIter){
     # Remove modelName_iterations if it exists
-    tmp <- paste0(apollo_inputs$apollo_control$modelName, "_iterations.csv")
+    tmp <- paste0(apollo_inputs$apollo_control$outputDirectory,apollo_inputs$apollo_control$modelName, "_iterations.csv")
     txt <- paste0('Could not delete old ', tmp, ' file. New iterations will be written after old ones.')
     if(file.exists(tmp)) tryCatch(file.remove(tmp), error=function(e) apollo_print(txt))
     # Create modelName_iterations with starting values if using analytic gradient
@@ -477,6 +490,55 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     if(estimationRoutine=="nr" && model$code<=2) succesfulEstimation <- TRUE
   }
   
+  #### Repeat estimation if it reached the maximum number of iterations
+  #test <- estimationRoutine=='bfgs' && ( apollo_logLike(NA, getNIter=TRUE) > maxLik_settings$iterlim )
+  #test <- test || (estimationRoutine!='bfgs' && model$iterations>maxLik_settings$iterlim)
+  #test <- !succesfulEstimation & test
+  #if(test){
+  #  apollo_print(paste0('The estimation process seems to have reached the preset ',
+  #                      'maximum number of iterations without converging. If you ', 
+  #                      'want to continue estimating the model please input the ', 
+  #                      'number of additional iterations you want to allow. If ',
+  #                      'you would like to stop the estimation input 0.'))
+  #  # Ask for number of iterations with 20 sec time limit. DOESN'T WORK
+  #  setTimeLimit(cpu=20, elapsed=20, transient=TRUE)
+  #  # Optimisation with time limit
+  #  addIter <- tryCatch(readline(prompt="Number of additional iterations: "), 
+  #                      error=function(e) if(grepl("reached elapsed time limit|reached CPU time limit", e$message)) return(NULL) )
+  #  # Remove time limit
+  #  setTimeLimit(cpu=Inf, elapsed=Inf, transient=FALSE)
+  #}
+  
+  ### Estimation using scaling at final estimates (optional convergence test)
+  if(succesfulEstimation && scaleAfterConvergence && all(model$estimate!=0)){
+    if(!silent) apollo_print(paste0('Additional convergence test using scaled estimation. Parameters will be scaled by ', 
+                                    'their current estimates and additional iterations will be performed.'))
+    # De-scale non-fixed parameters in case they were scaled before
+    b <- model$estimate
+    b[names(apollo_inputs$apollo_scaling)] <- apollo_inputs$apollo_scaling*b[names(apollo_inputs$apollo_scaling)]
+    # Update scaling inside apollo_logLike and in this environment
+    apollo_inputs$apollo_scaling <- abs(b)
+    if(apollo_control$nCores==1) environment(apollo_logLike)$apollo_inputs$apollo_scaling <- abs(b) else {
+      ns <- abs(b)
+      parallel::clusterExport(environment(apollo_logLike)$cl, 'ns', envir=environment())
+      parallel::clusterEvalQ(environment(apollo_logLike)$cl, {apollo_inputs$apollo_scaling <- ns; rm(ns)})
+    }
+    # Estimate again
+    if(maxLik_settings$printLevel==3) maxLik_settings$printLevel <- 2
+    model <- maxLik::maxLik(apollo_logLike, grad=grad, start=b/abs(b),
+                            method=estimationRoutine, finalHessian=FALSE,
+                            control=maxLik_settings,
+                            constraints=constraints,
+                            countIter=TRUE, writeIter=writeIter, sumLL=FALSE, getNIter=FALSE)
+    # Checks if estimation with re-scaled parameters was successful
+    succesfulEstimation <- FALSE
+    if(exists("model")){
+      if(estimationRoutine=="bfgs" & model$code==0) succesfulEstimation <- TRUE
+      if(estimationRoutine=="bhhh" & (model$code %in% c(2,8)) ) succesfulEstimation <- TRUE
+      if(estimationRoutine=="nr" && model$code<=2) succesfulEstimation <- TRUE
+    }
+  }
+  
   # Print estimated parameters
   if(exists("model")& !silent){
     apollo_print("Estimated parameters:")
@@ -491,8 +553,6 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   if(!succesfulEstimation){
     if(exists("model")){
       if(!silent) apollo_print("Estimation failed. No covariance matrix to compute.", highlight=TRUE)
-      #if(length(scaling)>0 && !is.na(scaling)) model$scaling <- scaling
-      #return(model)
     } else stop("ERROR: Estimation failed, no estimated model to return.")
   }
   ### Stores number of iterations
@@ -544,6 +604,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   
   ### Restore apollo_inputs including database and draws
   if(apollo_control$nCores>1 & is.null(apollo_inputs$database)){
+    ns <- apollo_inputs$apollo_scaling
     if(debug) cat('Restoring data in main thread...')
     fileName <- paste0(tempdir(), "\\", apollo_inputs$apollo_control$modelName,"_inputs")
     apollo_inputs <- tryCatch(readRDS(file=fileName), error=function(e) NULL)
@@ -553,6 +614,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
       unlink(fileName); rm(fileName)
       if(debug) cat(' Done. ',sum(gc()[,2]),'MB of RAM in use\n',sep='') # do not change to apollo_print
     } else if(debug) cat(' Failed.\n')
+    apollo_inputs$apollo_scaling <- ns; rm(ns)
   }
   
   ### Calculate bootstrap s.e. if required
@@ -607,19 +669,45 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   model$estimate = temp[names(apollo_beta)]
   
   ### Save and print overview
-  model$componentReport <- apollo_probabilities(model$estimate, apollo_inputs, functionality="report")
-  if(!silent) for(r in model$componentReport) if(!is.null(r$param) && length(r$param)>0) for(j in r$param) cat(j, '\n', sep='')
-  if(exists('r')) rm(r); if(exists('j')){cat('\n'); rm(j)}
+  model$componentReport <- tryCatch(apollo_probabilities(model$estimate, apollo_inputs, functionality="report"), 
+                                    error=function(e) NULL)
+  test <- is.list(model$componentReport) && !is.null(names(model$componentReport)) && any(c('data', 'param') %in% names(model$componentReport))
+  if(test) model$componentReport <- list(model=model$componentReport)
+  if(!silent){
+    test <- FALSE
+    for(r in model$componentReport) if(!is.null(r$param) && length(r$param)>0){
+      test <- TRUE
+      for(j in r$param) cat(j, '\n', sep='')
+    }; rm(r)
+    if(test) cat('\n')
+  }
   
   ### Calculate Zero LL
-  if(!silent) apollo_print("Calculating LL(0)... ")
+  if(!silent) apollo_print("Calculating LL(0) for applicable models... ")
   model$LL0 <- tryCatch(apollo_probabilities(apollo_beta, apollo_inputs, functionality="zero_LL"),
                         error=function(e) return(NA))
-  if(is.list(model$LL0)) model$LL0=model$LL0[c("model",names(model$LL0)[names(model$LL0)!="model"])]
   if(is.list(model$LL0)){
+    model$LL0=model$LL0[c("model",names(model$LL0)[names(model$LL0)!="model"])]
+    for(s in 1:length(model$LL0)){
+      if(is.list(model$LL0[[s]])) model$LL0[[s]]=model$LL0[[s]][["model"]]
+    }
     if(!workInLogs) model$LL0=sapply(model$LL0,function(x) sum(log(x)))
     if(workInLogs) model$LL0=sapply(model$LL0,sum)
-  } else model$LL0 <- ifelse( workInLogs, sum(model$LL0), sum(log(model$LL0)) )
+  } else {
+    model$LL0 <- ifelse( workInLogs, sum(model$LL0), sum(log(model$LL0)) )
+  }
+  
+  ### Calculate shares LL (constants only)
+  if(!silent) apollo_print("Calculating LL(c) for applicable models... ")
+  model$LLC <- tryCatch(apollo_probabilities(apollo_beta, apollo_inputs, functionality="shares_LL"),
+                        error=function(e) return(NA))
+  if(is.list(model$LLC)){
+    model$LLC = model$LLC[c("model",names(model$LLC)[names(model$LLC)!="model"])]
+    for(s in 1:length(model$LLC)) if(is.list(model$LLC[[s]])) model$LLC[[s]] = model$LLC[[s]][["model"]]
+    if(workInLogs) model$LLC <- sapply(model$LLC,sum) else model$LLC <- sapply(model$LLC,function(x) sum(log(x)))
+  } else {
+    model$LLC <- ifelse(workInLogs, sum(model$LLC), sum(log(model$LLC)) )
+  }
   
   ### Get LL at optimum for each component
   if(!silent) apollo_print("Calculating LL of each model component... ")
@@ -628,6 +716,9 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   )
   if(!anyNA(LLout) && is.list(LLout)){
     LLout <- LLout[c("model",names(LLout)[names(LLout)!="model"])]
+    for(s in 1:length(LLout)){
+      if(is.list(LLout[[s]])) LLout[[s]]=LLout[[s]][["model"]]
+    }
     if(!workInLogs) LLout <- lapply(LLout, log)
     LLout <-lapply(LLout,sum)
     model$Pout  <- LLout
@@ -649,6 +740,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   model$apollo_draws         <- apollo_inputs$apollo_draws
   model$estimationRoutine    <- estimationRoutine
   model$scaling              <- apollo_inputs$apollo_scaling
+  model$manualScaling        <- apollo_inputs$manualScaling
   
   ### De-scale parameters
   model$estimate[names(model$scaling)] <- model$estimate[names(model$scaling)]*model$scaling
