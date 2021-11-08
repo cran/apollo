@@ -10,7 +10,7 @@
 #'                          \itemize{
 #'                            \item \code{apollo_beta}: Named numeric vector. Names and values of model parameters.
 #'                            \item \code{apollo_inputs}: List containing options of the model. See \link{apollo_validateInputs}.
-#'                            \item \code{functionality}: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
+#'                            \item \code{functionality}: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param sharesTest_settings List of arguments. It must include the following.
@@ -39,7 +39,7 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
   newAltsOnly  = sharesTest_settings[["newAltsOnly"]]  ### 31 Oct
   
   predictedShares = apollo_prediction(model, apollo_probabilities, apollo_inputs, 
-                                      prediction_settings=list(modelComponent=sharesTest_settings$modelComponent,silent=TRUE))[[1]]
+                                      prediction_settings=list(modelComponent=sharesTest_settings$modelComponent,silent=TRUE))
   
   ### 31 Oct
   if(!is.null(newAlts)){

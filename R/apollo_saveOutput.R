@@ -193,10 +193,12 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
     colnames(output) <- c("Estimate")
     if(printClassical){
       output <- cbind(output, Std.err.=model$se, `t-ratio(0)`=model$estimate/model$se)
-      if(printPVal) output <- cbind(output, `p-val(0)`=2*(1-stats::pnorm(abs(model$estimate/model$se))) )
+      if(printPVal==1) output <- cbind( output, `p(1-sided)`=printPVal*(1-stats::pnorm(abs(model$estimate/model$se))) )
+      if(printPVal==2) output <- cbind( output, `p(2-sided)`=printPVal*(1-stats::pnorm(abs(model$estimate/model$se))) )
       if(printT1){
         output <- cbind(output, `t-ratio(1)`=(model$estimate-1)/model$se)
-        if(printPVal) output <- cbind(output, `p-val(1)`=2*(1-stats::pnorm(abs((model$estimate-1)/model$se))) )
+        if(printPVal==1) output <- cbind( output, `p(1-sided)`=printPVal*(1-stats::pnorm(abs((model$estimate-1)/model$se))) )
+        if(printPVal==2) output <- cbind( output, `p(2-sided)`=printPVal*(1-stats::pnorm(abs((model$estimate-1)/model$se))) )
       }
     }
     output <- cbind(output, Rob.std.err.=model$robse, `Rob.t-ratio(0)`=model$estimate/model$robse)

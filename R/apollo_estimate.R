@@ -20,7 +20,7 @@
 #'                          \itemize{
 #'                            \item apollo_beta: Named numeric vector. Names and values of model parameters.
 #'                            \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-#'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
+#'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param estimate_settings List. Options controlling the estimation process.
@@ -38,12 +38,12 @@
 #'                                                                  estimating the Hessian and the covariance matrix. Only used if \code{apollo_control$HB=FALSE}.
 #'                                   \item \strong{printLevel}: Higher values render more verbous outputs. Can take values 0, 1, 2 or 3. 
 #'                                                              Ignored if apollo_control$HB is TRUE. Default is 3.
-#'                                   \item \strong{constraints}: Character vector. Constraints on parameters to estimate. For example \code{c('b1>0', 'b1 + b2>1')}.
-#'                                                               Only \code{>}, \code{>=} and \code{=} can be used. And they cannot be mixed (e.g. 
-#'                                                               \code{c(b1=b2, b2>0)} will fail). All parameter names must be on the left side. Fixed 
-#'                                                               parameters cannot go into constraints. Alternatively, constraints can be defined as in 
-#'                                                               \link[maxLik]{maxLik}. Constraints can only be used with maximum likelihood estimation, 
-#'                                                               and the BFGS routine in particular.
+#'                                   \item \strong{constraints}: Character vector. Linear constraints on parameters to estimate. For example 
+#'                                                               \code{c('b1>0', 'b1 + 2*b2>1')}. Only \code{>}, \code{<} and \code{=} can be used. 
+#'                                                               Inequalities cannot be mixed with equality constraints, e.g. \code{c(b1-b2=0, b2>0)} 
+#'                                                               will fail. All parameter names must be on the left side. Fixed parameters cannot 
+#'                                                               go into constraints. Alternatively, constraints can be defined as in \link[maxLik]{maxLik}. 
+#'                                                               Constraints can only be used with maximum likelihood estimation and the BFGS routine in particular.
 #'                                   \item \strong{scaling}: Named vector. Names of elements should match those in \code{apollo_beta}. Optional scaling for parameters. 
 #'                                                           If provided, for each parameter \code{i}, \code{(apollo_beta[i]/scaling[i])} is optimised, but 
 #'                                                           \code{scaling[i]*(apollo_beta[i]/scaling[i])} is used during estimation. For example, if parameter
@@ -175,54 +175,14 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   maxIterations     = round(maxIterations,0)
   estimate_settings$maxIterations = maxIterations
   
-  # Check constraints
-  if(!is.null(constraints) && apollo_control$HB) stop("Constraints cannot be used with Bayesian estimation.")
-  if(!is.null(constraints) && estimationRoutine!="bfgs"){
-    estimationRoutine               = "bfgs"
-    apollo_inputs$estimationRoutine = estimationRoutine
-    if(!silent) apollo_print("WARNING: Estimation routine changed to 'BFGS'. Only 'BFGS' supports constrained optimization.\n")
-  }
-  if(is.vector(constraints) && is.character(constraints)){
-    nCon <- length(constraints)
-    bVar <- names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)]
-    nVar <- length(bVar)
-    bVar <- list2env(setNames(split(diag(nVar), rep(1:nVar,each=nVar)), bVar))
-    bVal <- list2env(as.list(apollo_beta))
-    A <- matrix(0, nrow=nCon, ncol=nVar); b <- rep(0, nCon); mid0 <- ''
-    for(i in 1:nCon){
-      # turn constraint into expression, and split into left, right and middle
-      e <- tryCatch(str2lang(constraints[i]), error=function() NULL)
-      test <- is.null(e) || !is.call(e) || length(e)!=3
-      if(test) stop('Constraint "', constraints[i], '" is not a valid linear constraint expression.')
-      mid <- e[[1]]; lef <- e[[2]]; rig <- e[[3]]
-      # Checks
-      test <- is.symbol(mid) && (as.character(mid) %in% c('>=', '>', '='))
-      if(!test) stop('Constraint "', constraints[i], '" does not contain one (and only one) of the following: >=, >, or =.')
-      test <- mid0=='' | as.character(mid)==mid0; mid0 <- as.character(mid)
-      if(!test) stop('All constraints must involve the same operator >=, >, or =. Mixing is not allowed.')
-      test <- length(all.vars(rig))==0
-      if(!test) stop('The right side of constraint "', constraints[i],'" should only contain numeric values.')
-      test <- all(all.vars(lef) %in% ls(bVar))
-      if(!test) stop('All the variables in the left side of constraint "', constraints[i],
-                     '" should be in apollo_beta. Fixed parameters cannot go into constraints.')
-      test <- eval(e, envir=bVal)
-      if(!test) stop('Starting values of parameters do not satisfy constraint "', constraints[i],'".')
-      # Fill A & b
-      A[i,] <- eval(lef, envir=bVar)
-      b[i]  <- eval(rig)
-    }
-    if(mid0 %in% c('>', '>=')) constraints <- list(ineqA=A, ineqB=b) else constraints <- list(eqA=A, eqB=b)
-    rm(nCon, bVar, nVar, A, b, mid0, i, e, test, mid, lef, rig, bVal)
-  }
-  
-  # Check writeIter
-  if(estimationRoutine!="bfgs" & writeIter==TRUE){
-    writeIter                   = FALSE
-    estimate_settings$writeIter = writeIter
-    txt <- "witeIter set to FALSE. Writing parameters values at each iteration is only available for BFGS estimation method."
-    if(!silent) apollo_print(txt) else warning(txt)
-    rm(txt)
-  }
+  ## Check writeIter
+  #if(estimationRoutine!="bfgs" & writeIter==TRUE){
+  #  writeIter                   = FALSE
+  #  estimate_settings$writeIter = writeIter
+  #  txt <- "writeIter set to FALSE. Writing parameters values at each iteration is only available for BFGS estimation method."
+  #  if(!silent) apollo_print(txt) else warning(txt)
+  #  rm(txt)
+  #}
   
   # create temporary copy of starting values for use later
   temp_start = apollo_beta
@@ -266,6 +226,53 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     apollo_inputs$manualScaling  <- TRUE
   }
   rm(scaling)
+  
+  # Check constraints
+  if(!is.null(constraints) && apollo_control$HB) stop("Constraints cannot be used with Bayesian estimation.")
+  if(!is.null(constraints) && estimationRoutine!="bfgs"){
+    estimationRoutine               = "bfgs"
+    apollo_inputs$estimationRoutine = estimationRoutine
+    if(!silent) apollo_print("WARNING: Estimation routine changed to 'BFGS'. Only 'BFGS' supports constrained optimization.\n")
+  }
+  if(is.vector(constraints) && is.character(constraints)){
+    apollo_constraints <- constraints # copy them so that they can be stored in the model object later
+    nCon <- length(constraints)
+    bVar <- names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)]
+    nVar <- length(bVar)
+    bVar <- list2env(setNames(split(diag(nVar), rep(1:nVar,each=nVar)), bVar))
+    bVal <- list2env(as.list(apollo_beta))
+    A <- matrix(0, nrow=nCon, ncol=nVar, dimnames=list(NULL, names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)]))
+    b <- rep(0, nCon)
+    mid0 <- ''
+    for(i in 1:nCon){
+      # turn constraint into expression, and split into left, right and middle
+      e <- tryCatch(str2lang(constraints[i]), error=function(e) NULL)
+      test <- is.null(e) || !is.call(e) || length(e)!=3
+      if(test) stop('Constraint "', constraints[i], '" is not a valid linear constraint expression.')
+      mid <- e[[1]]; lef <- e[[2]]; rig <- e[[3]]
+      # Checks
+      test <- is.symbol(mid) && (as.character(mid) %in% c(">", "=", "<"))
+      if(!test) stop('Constraint "', constraints[i], '" does not contain one (and only one) of the following: >, <, or =.')
+      test <- c(mid0, as.character(mid)); test <- mid0=="" | all(test %in% c("<", ">")) | all(test=="=")
+      #test <- mid0=='' | as.character(mid)==mid0; mid0 <- as.character(mid)
+      if(!test) stop('All constraints must be either equalities or inequealities, but not a mix of them.')
+      mid0 <- as.character(mid)
+      test <- length(all.vars(rig))==0
+      if(!test) stop('The right side of constraint "', constraints[i],'" should only contain numeric values.')
+      test <- all(all.vars(lef) %in% ls(bVar))
+      if(!test) stop('All the variables in the left side of constraint "', constraints[i],
+                     '" should be in apollo_beta. Fixed parameters cannot go into constraints.')
+      if(as.character(mid)=='=') e[[1]] <- as.symbol('==')
+      test <- eval(e, envir=bVal)
+      if(!test) stop('Starting values of parameters do not satisfy constraint "', constraints[i],'".')
+      # Fill A & b
+      A[i,] <- eval(lef, envir=bVar)*ifelse(mid0=="<",-1, 1)
+      b[i]  <- -eval(rig)*ifelse(mid0=="<",-1, 1)
+    }
+    if(!all(apollo_inputs$apollo_scaling==1)) for(a in ls(bVar)) A[,a] <- A[,a]*apollo_inputs$apollo_scaling[a]
+    if(mid0 %in% c(">", "<")) constraints <- list(ineqA=A, ineqB=b) else constraints <- list(eqA=A, eqB=b)
+    rm(nCon, bVar, nVar, A, b, mid0, i, e, test, mid, lef, rig, bVal)
+  }
   
   ### Recommend using multi-core if appropriate
   if(!apollo_control$HB && apollo_inputs$apollo_control$mixing && apollo_inputs$apollo_control$nCores==1 && !silent){
@@ -360,6 +367,8 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   if(!silent) apollo_print(c("\n", "Testing likelihood function..."))
   #if(covarOnly){ silentOriginal = silent; apollo_inputs$silent = TRUE }
   testLL <- apollo_probabilities(apollo_beta, apollo_inputs, functionality="validate")
+  test <- is.list(testLL) && !is.null(names(testLL)) && 'model' %in% names(testLL) && is.numeric(testLL[['model']])
+  if(!test) stop('Log-likelihood calculation fails!')
   testLL <- testLL[["model"]]
   if(!apollo_inputs$apollo_control$workInLogs) testLL <- log(testLL)
   if(!silent & any(!is.finite(testLL))){
@@ -467,12 +476,12 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     if(is.function(grad)) apollo_writeTheta(beta_var_val, sum(testLL), apollo_inputs$apollo_control$modelName)
     rm(tmp, txt)
   }
-  # Reset lastFuncParam if it exists
-  if(exists("lastFuncParam")){
-    tmp <- globalenv()
-    assign("lastFuncParam", rep(0, length(beta_var_val)), envir=tmp)
-    rm(tmp)
-  }
+  ## Reset lastFuncParam if it exists
+  #if(exists("lastFuncParam")){
+  #  tmp <- globalenv()
+  #  assign("lastFuncParam", rep(0, length(beta_var_val)), envir=tmp)
+  #  rm(tmp)
+  #}
   
   ### Main (classical) estimation
   if(!silent) apollo_print(c("\n", "Starting main estimation")) else maxLik_settings$printLevel=0
@@ -516,6 +525,11 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     # De-scale non-fixed parameters in case they were scaled before
     b <- model$estimate
     b[names(apollo_inputs$apollo_scaling)] <- apollo_inputs$apollo_scaling*b[names(apollo_inputs$apollo_scaling)]
+    # De-scale constraints if defined
+    hasEqConst   <- length(constraints)==2 && all(names(constraints) %in% c('eqA', 'eqB'))
+    hasIneqConst <- length(constraints)==2 && all(names(constraints) %in% c('ineqA', 'ineqB'))
+    if(hasEqConst) for(a in colnames(constraints$eqA)) constraints$eqA[,a] <- constraints$eqA[,a]/apollo_inputs$apollo_scaling[a]
+    if(hasIneqConst) for(a in colnames(constraints$ineqA)) constraints$ineqA[,a] <- constraints$ineqA[,a]/apollo_inputs$apollo_scaling[a]
     # Update scaling inside apollo_logLike and in this environment
     apollo_inputs$apollo_scaling <- abs(b)
     if(apollo_control$nCores==1) environment(apollo_logLike)$apollo_inputs$apollo_scaling <- abs(b) else {
@@ -523,8 +537,11 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
       parallel::clusterExport(environment(apollo_logLike)$cl, 'ns', envir=environment())
       parallel::clusterEvalQ(environment(apollo_logLike)$cl, {apollo_inputs$apollo_scaling <- ns; rm(ns)})
     }
+    # Update scaling of constraints, if needed
+    if(hasEqConst) for(a in colnames(constraints$eqA)) constraints$eqA[,a] <- constraints$eqA[,a]*apollo_inputs$apollo_scaling[a]
+    if(hasIneqConst) for(a in colnames(constraints$ineqA)) constraints$ineqA[,a] <- constraints$ineqA[,a]*apollo_inputs$apollo_scaling[a]
     # Estimate again
-    if(maxLik_settings$printLevel==3) maxLik_settings$printLevel <- 2
+    if(!is.null(maxLik_settings$printLevel) && maxLik_settings$printLevel==3) maxLik_settings$printLevel <- 2
     model <- maxLik::maxLik(apollo_logLike, grad=grad, start=b/abs(b),
                             method=estimationRoutine, finalHessian=FALSE,
                             control=maxLik_settings,
@@ -623,12 +640,13 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     # If using multiple cores, save copy of apollo_inputs
     fileName <- paste0(tempdir(), "\\", apollo_inputs$apollo_control$modelName, "_inputs_extra")
     if(apollo_inputs$apollo_control$nCores>1) saveRDS(apollo_inputs, file=fileName)
-    # Call apollo_bootstrap
+    # Prepare inputs and call apollo_bootstrap
     tmp <- list(estimationRoutine=estimationRoutine, maxIterations=maxIterations,
                 writeIter=FALSE, hessianRoutine="none", printLevel=printLevel,
-                maxLik_settings=maxLik_settings, silent=silent)
-    tmpPar=c(model$estimate, apollo_beta[apollo_fixed])[names(apollo_beta)]
-    model$bootvarcov <- apollo_bootstrap(tmpPar, apollo_fixed,
+                maxLik_settings=maxLik_settings, silent=silent)#, scaling=apollo_inputs$apollo_scaling)
+    tmpPar <- model$estimate[names(apollo_inputs$apollo_scaling)]*apollo_inputs$apollo_scaling
+    tmpPar <- c(tmpPar, apollo_beta[apollo_fixed])[names(apollo_beta)]
+    model$bootvarcov <- apollo_bootstrap(apollo_beta=tmpPar, apollo_fixed,
                                          apollo_probabilities, apollo_inputs,
                                          estimate_settings=tmp,
                                          bootstrap_settings=list(nRep=bootstrapSE,
@@ -638,6 +656,12 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     bVar         <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
     dummyVCM     <- matrix(NA, nrow=length(bVar), ncol=length(bVar), dimnames=list(names(bVar), names(bVar)))
     model$bootcorrmat <- tryCatch(model$bootvarcov/(model$bootse%*%t(model$bootse)), error=function(e) return(dummyVCM))
+    # Restore apollo_probabilities
+    apollo_probabilities <- apollo_probabilities_ORIG
+    test <- apollo_inputs$apollo_control$mixing && is.function(apollo_inputs$apollo_randCoeff)
+    if(test) apollo_inputs$apollo_randCoeff <- apollo_randCoeff_ORIG
+    if(is.function(apollo_inputs$apollo_lcPars)) apollo_inputs$apollo_lcPars <- apollo_lcPars_ORIG
+    rm(test)
     # update number of bootstrap repetitions
     bootstrapSE <- tryCatch(nrow(read.csv(paste0(apollo_inputs$apollo_control$modelName, '_bootstrap_params.csv'))),
                             error=function(e) bootstrapSE)
@@ -698,15 +722,19 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   }
   
   ### Calculate shares LL (constants only)
-  if(!silent) apollo_print("Calculating LL(c) for applicable models... ")
-  model$LLC <- tryCatch(apollo_probabilities(apollo_beta, apollo_inputs, functionality="shares_LL"),
-                        error=function(e) return(NA))
-  if(is.list(model$LLC)){
-    model$LLC = model$LLC[c("model",names(model$LLC)[names(model$LLC)!="model"])]
-    for(s in 1:length(model$LLC)) if(is.list(model$LLC[[s]])) model$LLC[[s]] = model$LLC[[s]][["model"]]
-    if(workInLogs) model$LLC <- sapply(model$LLC,sum) else model$LLC <- sapply(model$LLC,function(x) sum(log(x)))
+  if(apollo_control$calculateLLC){
+    if(!silent) apollo_print("Calculating LL(c) for applicable models... ")
+    model$LLC <- tryCatch(apollo_probabilities(apollo_beta, apollo_inputs, functionality="shares_LL"),
+                          error=function(e) return(NA))
+    if(is.list(model$LLC)){
+      model$LLC = model$LLC[c("model",names(model$LLC)[names(model$LLC)!="model"])]
+      for(s in 1:length(model$LLC)) if(is.list(model$LLC[[s]])) model$LLC[[s]] = model$LLC[[s]][["model"]]
+      if(workInLogs) model$LLC <- sapply(model$LLC,sum) else model$LLC <- sapply(model$LLC,function(x) sum(log(x)))
+    } else {
+      model$LLC <- ifelse(workInLogs, sum(model$LLC), sum(log(model$LLC)) )
+    }
   } else {
-    model$LLC <- ifelse(workInLogs, sum(model$LLC), sum(log(model$LLC)) )
+    model$LLC=NA
   }
   
   ### Get LL at optimum for each component
@@ -741,6 +769,11 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   model$estimationRoutine    <- estimationRoutine
   model$scaling              <- apollo_inputs$apollo_scaling
   model$manualScaling        <- apollo_inputs$manualScaling
+  
+  ### Save constraints (NULL if none or given in maxLik format)
+  test <- exists("apollo_constraints", envir=environment(), inherits=FALSE)
+  if(test) model$apollo_constraints <- apollo_constraints else model$apollo_constraints <- NULL
+  rm(test)
   
   ### De-scale parameters
   model$estimate[names(model$scaling)] <- model$estimate[names(model$scaling)]*model$scaling

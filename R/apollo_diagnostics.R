@@ -58,13 +58,28 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
         apollo_print(paste0('Structure for ', toupper(modelType), ' model component ', 
                             ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
         apollo_print(out_tree)
+        for(a in 1:(ncol(out_tree)-1)){
+          if(sum(out_tree[,a])!=1) apollo_print(paste0("Allocation parameters for alternative \'",inputs$altnames[a],"\' do not sum to 1. You may want to impose a constraint using a logistic transform."))
+          if(any(out_tree[,a]<0)) apollo_print(paste0("Some allocation parameters for alternative \'",inputs$altnames[a],"\' are negative. You may want to impose a constraint using a logistic transform."))
+          if(any(out_tree[,a]>1)) apollo_print(paste0("Some allocation parameters for alternative \'",inputs$altnames[a],"\' are larger than 1. You may want to impose a constraint using a logistic transform."))
+        }
+        if(any(out_tree[,ncol(out_tree)]<0)) apollo_print("Some lambda parameters are negative. You may want to impose a constraint or reconsider your model structure.")
+        if(any(out_tree[,ncol(out_tree)]>1)) apollo_print("Some lambda parameters are larger than 1. You may want to impose a constraint or reconsider your model structure.")
       }
     }
     
     if(modelType=='nl' & param){
-      if(!apollo_inputs$silent & data) apollo_print('\n')
-      # Load function to print tree structure and print tree structure
-      print_tree=function(nlStructure, ancestors){
+      if(!apollo_inputs$silent & data) apollo_print('\n') # 
+      if(!apollo_inputs$silent){
+        # Warning for automatic setting of root nesting parameter
+        if(inputs$root_set) apollo_print("Notice: Root lambda parameter set to 1.")
+        # Identifying nest's parents
+        nestAbove <- unique(lapply(inputs$ancestors, '[', -1))
+        nestAbove <- setNames(sapply(nestAbove, function(x) if(length(x)==1) return('Inf') else x[2]) ,
+                              sapply(nestAbove, '[', 1))
+        # Printing graphical representation of the tree, using recursive function
+        apollo_print(paste0('Nesting structure for ', toupper(modelType), ' model component ', 
+                            ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
         print_tree_level = function(nlStructure, component, preceding_nest_layer, space){
           if(preceding_nest_layer!=0) space=c(space,"  |")
           for(j in 1:length(nlStructure[[component]])){
@@ -74,22 +89,30 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
               depth <- length(space)
               cat("\n",space,rep("-",3*(maxDepth-depth)),"-Alternative: ",nlStructure[[component]][j], sep="")
             } else {
-              cat("\n",space,"-Nest: ",nlStructure[[component]][j],
-                  " (",round(inputs$nlNests[[nlStructure[[component]][j]]],4), ")", sep="")
+              l  <- inputs$nlNests[[nlStructure[[component]][j]]]
+              #n0 <- nestAbove[nlStructure[[component]][j]]
+              #if(n0=='Inf') l0 <- 1 else l0 <- inputs$nlNests[[n0]]
+              cat("\n",space,"-Nest: ", nlStructure[[component]][j], " (",round(l,4), ")", sep="")
+              #if(any(l<0 | l0<l)) cat(' WARNING: nest param. should be between 0 and ', round(l0,4), '.', sep='')
               print_tree_level(nlStructure, nlStructure[[component]][j], preceding_nest_layer+1, space)
             }
           }
         } # end of print_tree_level function
-        maxDepth <- max(sapply(ancestors, length))-1
-        cat("Nest: ",names(nlStructure)[[1]]," (",round(inputs$nlNests[[names(nlStructure)[[1]]]],4),")", sep="")
-        print_tree_level(nlStructure, "root", preceding_nest_layer=0, space="|")
-      }# end of print_tree function
-      if(!apollo_inputs$silent){
-        if(inputs$root_set) apollo_print("Notice: Root lambda parameter set to 1.")
-        apollo_print(paste0('Nesting structure for ', toupper(modelType), ' model component ', 
-                            ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
-        print_tree(inputs$nlStructure, inputs$ancestors)
+        maxDepth <- max(sapply(inputs$ancestors, length))-1
+        cat("Nest: ",names(inputs$nlStructure)[[1]]," (",round(inputs$nlNests[[names(inputs$nlStructure)[[1]]]],4),")", sep="")
+        print_tree_level(inputs$nlStructure, "root", preceding_nest_layer=0, space="|")
         apollo_print('\n')
+        # Print warning if nesting parameters do not make sense
+        for(i in names(inputs$nlNests)){
+          l  <- inputs$nlNests[[i]]
+          if(i=='root') l0 <- 1 else l0 <- inputs$nlNests[[ nestAbove[i] ]]
+          if(any(l<0 | l0<l)){
+            txt <- paste0('WARNING: The nesting parameter for nest "', i, '" should be between 0 and ', round(l0,4))
+            if(i!='root') txt <- paste0(txt, ' (the nesting parameter for nest "', nestAbove[i], '")')
+            txt <- paste0(txt, ', yet its value is ', round(l, 4), '.')
+            cat('\n'); apollo_print(txt)
+          }
+        }
       }
     } # end of NL special checks
     

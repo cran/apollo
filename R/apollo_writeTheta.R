@@ -1,27 +1,35 @@
 #' Writes the vector [beta,ll] to a file called modelname_iterations.csv
-#' @param beta vector of parameters to be written.
+#' @param beta vector of parameters to be written (including fixed ones).
 #' @param ll scalar representing the loglikelihood of the whole model.
 #' @param modelName Character. Name of the model.
 #' @return Nothing.
 #' @export
 apollo_writeTheta <- function(beta, ll, modelName){
+  ### Fetch apollo_inputs
+  apollo_inputs <- tryCatch(get('apollo_inputs', envir=parent.frame(1), inherits=TRUE), error=function(e) NULL)
   
-  ### Fetch apollo_control
-  # Try geting it from apollo_inputs
-  apollo_inputs <- tryCatch(get('apollo_inputs', envir=parent.frame(1), inherits=FALSE),
-                            error=function(e) NULL)
-  test <- !is.null(apollo_inputs) && !is.null(apollo_inputs$apollo_control)
-  if(test) apollo_control <- apollo_inputs$apollo_control else apollo_control <- NULL
-  rm(apollo_inputs)
-  # If apollo_inputs failed, try getting it from the calling environment
-  if(is.null(apollo_control)) apollo_control <- tryCatch(get('apollo_control', envir=parent.frame(1), inherits=FALSE),
-                                                         error=function(e) NULL)
-  # If could not be fetched, set to working directory
-  apollo_control <- list(outputDirectory=paste0(getwd(),'/'))
+  ### Scale parameters
+  test <- !is.null(apollo_inputs) && is.list(apollo_inputs) && !is.null(apollo_inputs$apollo_scaling)
+  test <- test && is.numeric(apollo_inputs$apollo_scaling) && is.vector(apollo_inputs$apollo_scaling)
+  test <- test && !is.null(names(apollo_inputs$apollo_scaling))
+  if(test) beta[names(apollo_inputs$apollo_scaling)] <- beta[names(apollo_inputs$apollo_scaling)]*apollo_inputs$apollo_scaling
   
+  ### Set output directory
+  test <- !is.null(apollo_inputs) && is.list(apollo_inputs) && !is.null(apollo_inputs$apollo_control)
+  test <- test && is.list(apollo_inputs$apollo_control) && !is.null(apollo_inputs$apollo_control$outputDirectory)
+  test <- test && is.character(apollo_inputs$apollo_control$outputDirectory)
+  test <- test && length(apollo_inputs$apollo_control$outputDirectory)==1
+  if(test) outputDirectory <- apollo_inputs$apollo_control$outputDirectory else outputDirectory=paste0(getwd(),'/')
+  
+  ### Sort parameters in the same order than apollo_beta
+  test <- !is.null(apollo_inputs) && is.list(apollo_inputs)
+  test <- test && !is.null(apollo_inputs$apollo_beta_names) && is.vector(apollo_inputs$apollo_beta_names)
+  test <- test && is.character(apollo_inputs$apollo_beta_names) 
+  test <- test && all(apollo_inputs$apollo_beta_names %in% names(beta))
+  if(test) beta <- beta[apollo_inputs$apollo_beta_names]
   
   ### Initialise
-  fileName <- paste0(apollo_inputs$apollo_control$outputDirectory,modelName,"_iterations.csv")
+  fileName <- paste0(outputDirectory,modelName,"_iterations.csv")
   tmp <- matrix(c(beta,ll ),nrow=1)
   
   if(file.exists(fileName)){

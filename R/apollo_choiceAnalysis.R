@@ -47,15 +47,17 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
     explanators <- explanators[rows,] 
   }
   
+  ### Make sure there are no strange values in choiceVar
+  if(!all(choiceVar %in% alternatives)) stop('Some values in "choiceVar" are not defined in "alternatives".')
   
   ### Create and matrix of outputs and sets its col and row names
   output           = matrix(0,nrow=length(alternatives),ncol=ncol(explanators)*3)
   rownames(output) = names(alternatives)
   outputnames=c(rep(0,ncol(output)))
   for(s in 1:ncol(explanators)){
-    outputnames[(s-1)*3+1] = paste("Mean for",colnames(explanators)[s],"if chosen")
-    outputnames[(s-1)*3+2] = paste("Mean for",colnames(explanators)[s],"if not chosen")
-    outputnames[(s-1)*3+3] = paste("t-test for difference")
+    outputnames[(s-1)*3+1] = paste0("Explanator ",s," (",colnames(explanators)[s],"), mean when alt is chosen:")
+    outputnames[(s-1)*3+2] = paste0("Explanator ",s," (",colnames(explanators)[s],"), mean when alt is not chosen:")
+    outputnames[(s-1)*3+3] = paste0("Explanator ",s," (",colnames(explanators)[s],"), t-test (mean if chosen - mean if not chosen)")
   }
   colnames(output)=outputnames
   
@@ -87,7 +89,7 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
         
       }
     }
-    }
+  }
   
   ### Determine name of output file
   filename = paste(modelName,"_choiceAnalysis.csv",sep="")
@@ -118,9 +120,10 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
   } 
   
   ### Write file
-  utils::write.csv(output_new, filename)
+  utils::write.csv(t(output_new), filename)
   cat("Ouputs of apollo_choiceAnalysis saved to ",filename,"\n",sep="")
-  invisible(output_new)
+  invisible(t(output_new))
+  
 }
 
 

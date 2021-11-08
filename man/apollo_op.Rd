@@ -23,6 +23,7 @@ apollo_op(op_settings, functionality)
   \item \strong{"prediction"} Used for model predictions.
   \item \strong{"validate"} Used for validating input.
   \item \strong{"zero_LL"} Used for calculating null likelihood.n Not implemented for ordered probit.
+  \item \code{"shares_LL"}: Used for calculating likelihood with constants only.
   \item \strong{"conditionals"} Used for calculating conditionals.
   \item \strong{"output"} Used for preparing output after model estimation.
   \item \strong{"raw"} Used for debugging.
@@ -35,6 +36,7 @@ The returned object depends on the value of argument \code{functionality} as fol
           \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all possible levels, with an extra element for the probability of the chosen alternative.
           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
           \item \strong{\code{"zero_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
+          \item \strong{\code{"shares_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
           \item \strong{\code{"raw"}}: Same as \code{"prediction"}

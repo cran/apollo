@@ -32,6 +32,7 @@ apollo_mdcev2(mdcev_settings, functionality)
   \item \code{"prediction"} Used for model predictions.
   \item \code{"validate"} Used for validating input.
   \item \code{"zero_LL"} Used for calculating null likelihood.
+  \item \code{"shares_LL"}: Used for calculating likelihood with constants only.
   \item \code{"conditionals"} Used for calculating conditionals.
   \item \code{"output"} Used for preparing output after model estimation.
   \item \code{"raw"} Used for debugging.
@@ -44,6 +45,7 @@ The returned object depends on the value of argument \code{functionality} as fol
           \item \strong{\code{"prediction"}}: A matrix with one row per observation, and columns indicating means and s.d. of continuous and discrete predicted consumptions.
           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
           \item \strong{\code{"zero_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
+          \item \strong{\code{"shares_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
           \item \strong{\code{"raw"}}: Same as \code{"estimate"}

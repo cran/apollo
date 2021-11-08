@@ -10,7 +10,7 @@
 #'                          \itemize{
 #'                            \item apollo_beta: Named numeric vector. Names and values of model parameters.
 #'                            \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-#'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
+#'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param apollo_estSet List of estimation options. It must contain at least one element called
@@ -194,9 +194,14 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   ### Iterations count
   if(analyticGrad) nIter <- 1 else nIter <- -1
   preLL <- -Inf
+  tmp <- names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)]
+  lastB <- setNames(rnorm(length(tmp)), tmp)
+  rm(tmp)
 
-  ### SINGLE CORE
+  ### Create apollo_logLike
   if(singleCore){
+    ### SINGLE CORE
+    
     apollo_logLike <- function(bVar, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE){
       # Return iteration count, if requested
       if(getNIter) return(nIter)
@@ -206,16 +211,20 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
       if(!workInLogs) ll <- log(ll) # condition used to be workInLogs & panelData
       sumll <- sum(ll)
       # Keep count of iterations and write them to file, if requested
-      if(analyticGrad){
-        newIter <- is.finite(sumll) && (sumll > preLL)
-        if(countIter && newIter) nIter <<- nIter + 1
-        if(writeIter && newIter) apollo_writeTheta(bVar, sumll, modelName)
-        if(newIter) preLL <<- sumll
-      } else if(estAlg=="bfgs" && exists('lastFuncParam', envir=globalenv())) {
-        lastFuncParam <- get("lastFuncParam", envir=globalenv())
-        newIter       <- !anyNA(lastFuncParam) && length(lastFuncParam)==length(bVar) && all(lastFuncParam==bVar)
-        if(countIter && newIter) nIter <<- nIter + 1
-        if(writeIter && newIter) apollo_writeTheta(bVar, sumll, modelName)
+      if(countIter || writeIter){
+        if(analyticGrad){
+          # If using analytic gradient, assume a new iteration if the LL improved
+          newIter <- is.finite(sumll) && (sumll > preLL)
+          if(countIter && newIter) nIter <<- nIter + 1
+          if(writeIter && newIter) apollo_writeTheta(b, sumll, modelName)
+          if(newIter) preLL <<- sumll
+        } else {
+          # If using numeric gradient, assume new iteration if the parameters haven't changed since last call
+          newIter <- all(bVar==lastB)
+          if(countIter && newIter) nIter <<- nIter + 1
+          if(writeIter && newIter) apollo_writeTheta(b, sumll, modelName)
+          lastB <<- bVar
+        }
       }
       # Return LL
       if(sumLL) return(sumll) else return(ll)
@@ -245,16 +254,20 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
       if(!workInLogs) ll <- log(ll) # condition used to be workInLogs & panelData
       sumll <- sum(ll)
       # Keep count of iterations and write them to file, if requested
-      if(analyticGrad){
-        newIter <- is.finite(sumll) && (sumll > preLL)
-        if(countIter && newIter) nIter <<- nIter + 1
-        if(writeIter && newIter) apollo_writeTheta(bVar, sumll, modelName)
-        if(newIter) preLL <<- sumll
-      } else if(estAlg=="bfgs" && exists('lastFuncParam', envir=globalenv())) {
-        lastFuncParam <- get("lastFuncParam", envir=globalenv())
-        newIter       <- !anyNA(lastFuncParam) && length(lastFuncParam)==length(bVar) && all(lastFuncParam==bVar)
-        if(countIter && newIter) nIter <<- nIter + 1
-        if(writeIter && newIter) apollo_writeTheta(bVar, sumll, modelName)
+      if(countIter || writeIter){
+        if(analyticGrad){
+          # If using analytic gradient, assume a new iteration if the LL improved
+          newIter <- is.finite(sumll) && (sumll > preLL)
+          if(countIter && newIter) nIter <<- nIter + 1
+          if(writeIter && newIter) apollo_writeTheta(b, sumll, modelName)
+          if(newIter) preLL <<- sumll
+        } else {
+          # If using numeric gradient, assume new iteration if the parameters haven't changed since last call
+          newIter <- all(bVar==lastB)
+          if(countIter && newIter) nIter <<- nIter + 1
+          if(writeIter && newIter) apollo_writeTheta(b, sumll, modelName)
+          lastB <<- bVar
+        }
       }
       # Return LL
       if(sumLL) return(sumll) else return(ll)
@@ -318,7 +331,7 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
         txt <- paste0(txt, " ", ifelse(tmp$grad[i], "analytic\n", "numeric \n"))
         cat(txt) # cat, as apollo_print messes up the alignment
       }; rm(i, txt)
-      apollo_print(paste0("Whole model gradient function creation ", ifelse(is.null(grad), "failed.", "succeeded.")))
+      apollo_print(paste0("Whole model gradient function creation ", ifelse(is.null(tmp$grad), "failed.", "succeeded.")))
     }
     rm(tmp)
   }

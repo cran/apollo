@@ -4,7 +4,9 @@
 #' 
 #' For example, the expression
 #' \code{for(j in 1:3) V[[paste0('alt',j)]] = b1*get(paste0('x',j)) + b2*X[,j]}
-#' would be expanded into
+#' 
+#' would be expanded into:
+#' 
 #' \code{
 #' V[[alt1]] = b1*x1 + b2*X[,1]
 #' V[[alt2]] = b1*x2 + b2*X[,2]
@@ -152,7 +154,7 @@ apollo_expandLoop <- function(f, apollo_inputs){
     if(!isF) return(e) else {body(f) <- e; return(f)}
   }
   
-  isDef <- function(e){
+  isDef <- function(e, dollar=TRUE){
     # Check if it's a definition
     test1 <- is.call(e) || is.expression(e)
     test1 <- test1 && length(e)==3 && is.symbol(e[[1]]) && (as.character(e[[1]]) %in% c('=', '<-'))
@@ -162,7 +164,11 @@ apollo_expandLoop <- function(f, apollo_inputs){
       # assignment to a list element
       test2 <- is.call(e[[2]]) && length(e[[2]])==3 && is.symbol(e[[2]][[1]]) && (as.character(e[[2]][[1]]) %in% c('[[', '$'))
       test2 <- test2 && is.symbol(e[[2]][[2]]) && (is.symbol(e[[2]][[3]]) || is.val(e[[2]][[3]]))
-      if(test2) return( paste0(as.character(e[[2]][[2]]), '$', as.character(e[[2]][[3]])) )
+      if(test2 & dollar) return( paste0(as.character(e[[2]][[2]]), '$', as.character(e[[2]][[3]])) )
+      if(test2 & !dollar){
+        if(is.character(e[[2]][[3]])) tmp <- c('[["', '"]]') else tmp <- c('[[', ']]')
+        return( paste0(as.character(e[[2]][[2]]), tmp[1], as.character(e[[2]][[3]]), tmp[2]) )
+      } 
       return("")
     } else return("") # return empty character string
   }
@@ -181,7 +187,8 @@ apollo_expandLoop <- function(f, apollo_inputs){
       for(i in 2:length(e)) varNames[i-1] <- isDef(e[[i]])
       test2 <- all(varNames!="" & varNames==varNames[1]) && (varNames[1] %in% names(defs))
       if(test2){
-        ee <- str2lang(paste0(varNames[1], '<-', 0))
+        #ee <- str2lang(paste0(varNames[1], '<-', 0))
+        ee <- str2lang(paste0(isDef(e[[2]], dollar=FALSE), '<-', 0))
         ee[[3]] <- defs[[varNames[1]]]
         return(ee)
       }
@@ -191,6 +198,25 @@ apollo_expandLoop <- function(f, apollo_inputs){
     if(test2) for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- simplify(e[[i]], defs)
     if(!isF) return(e) else {body(f) <- e; return(f)}
   }
+  
+  #replaceDollar <- function(e){
+  #  # Chek if input is a function
+  #  if(is.function(e)){ eOrig <- e; e <- body(e)} else eOrig=NULL
+  #  # Case 1: just a value
+  #  if(is.val(e)) return(e)
+  #  # Case 2: L$x or L[['x']] or L[["x"]]
+  #  test2 <- is.call(e) && length(e)==3 && is.symbol(e[[1]]) && as.character(e[[1]])=='$'
+  #  test2 <- test2 && is.val(e[[3]]) && is.symbol(e[[2]])
+  #  if(test2) tmp  <- paste0(as.character(e[[2]]), '$', as.character(e[[3]]))
+  #  test2 <- test2 && (tmp %in% names(defs))
+  #  if(test2 && rightSide) e <- defs[[tmp]]
+  #  # Case 3: an expression
+  #  test2 <- (is.call(e) || is.expression(e)) && !test
+  #  if(test2) for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- evalIndex(e[[i]], env=env)
+  #  return(e)
+  #  # Return
+  #  if(!is.null(eOrig)){ body(eOrig) <- q; return(eOrig)} else return(e)
+  #}
   
   ### Fetch apollo_beta
   apollo_beta <- tryCatch(get('apollo_beta', envir=parent.frame(1), inherits=FALSE),

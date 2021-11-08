@@ -27,6 +27,7 @@
 #'                        \item \code{"prediction"}: Used for model predictions.
 #'                        \item \code{"validate"}: Used for validating input.
 #'                        \item \code{"zero_LL"}: Used for calculating null likelihood.
+#'                        \item \code{"shares_LL"}: Used for calculating likelihood with constants only.
 #'                        \item \code{"conditionals"}: Used for calculating conditionals.
 #'                        \item \code{"output"}: Used for preparing output after model estimation.
 #'                        \item \code{"raw"}: Used for debugging.
@@ -37,6 +38,7 @@
 #'           \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the probability of the chosen alternative.
 #'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
 #'           \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
+#'           \item \strong{\code{"shares_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when only constants are estimated.
 #'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
@@ -62,6 +64,9 @@ apollo_nl <- function(nl_settings, functionality){
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
+  
+  #### replace utilities by V if used
+  if(!is.null(nl_settings[["utilities"]])) names(nl_settings)[which(names(nl_settings)=="utilities")]="V"
   
   # ############################### #
   #### Load or do pre-processing ####
@@ -213,6 +218,29 @@ apollo_nl <- function(nl_settings, functionality){
     # number of available alts in each observation
     nAvAlt <- rowSums(matrix(unlist(nl_settings$avail), ncol=nl_settings$nAlt))
     P = 1/nAvAlt # likelihood at zero
+    if(any(!nl_settings$rows)) P <- apollo_insertRows(P, nl_settings$rows, 1)
+    return(P)
+  }
+  
+  # ############################### #
+  #### functionality="shares_LL" ####
+  # ############################### #
+  
+  if(functionality=="shares_LL"){
+    for(i in 1:length(nl_settings$avail)) if(length(nl_settings$avail[[i]])==1) nl_settings$avail[[i]] <- rep(nl_settings$avail[[i]], nl_settings$nObs) # turn scalar availabilities into vectors
+    nAvAlt <- rowSums(do.call(cbind, nl_settings$avail)) # number of available alts in each observation
+    Y = do.call(cbind,nl_settings$Y)
+    if(var(nAvAlt)==0){
+      Yshares = colSums(Y)/nrow(Y)
+      P = as.vector(Y%*%Yshares)
+    } else {
+      ## Estimate model with constants only
+      mnl_ll = function(b, A, Y) as.vector(Y%*%c(b,0) - log(rowSums( A%*%exp(c(b,0)) )))
+      A = do.call(cbind, nl_settings$avail)
+      b = maxLik::maxLik(mnl_ll, start=rep(0, nl_settings$nAlt - 1), 
+                         method='BFGS', finalHessian=FALSE, A=A, Y=Y)$estimate
+      P = exp(mnl_ll(b, A, Y))
+    }
     if(any(!nl_settings$rows)) P <- apollo_insertRows(P, nl_settings$rows, 1)
     return(P)
   }

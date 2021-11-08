@@ -249,15 +249,13 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
     if(!invertible){
       if(!silent) apollo_print('ERROR: Singular Hessian, cannot calculate s.e.')
       tryCatch({
-        if(is.function(apollo_logLike)) e <- environment(apollo_logLike) else e <- new.env()
-        test <- !is.null(e$apollo_inputs) && is.list(e$apollo_inputs) && !is.null(e$apollo_inputs$apollo_control)
-        test <- test && is.list(e$apollo_inputs$apollo_control) && !is.null(e$apollo_inputs$apollo_control$outputDirectory)
-        if(test) outD <- e$apollo_inputs$apollo_control$outputDirectory else outD <- ''
-        if(outD!='' && !(substr(outD, nchar(outD), nchar(outD)) %in% c('/','\\'))) outD <- paste0(outD,'/')
+        outD <- tryCatch(environment(apollo_logLike)$apollo_inputs$apollo_control$outputDirectory,
+                         error=function(e) ".")
+        if(!(substr(outD, nchar(outD), nchar(outD)) %in% c('/','\\'))) outD <- paste0(outD,'/')
         fileName <- paste0(outD, environment(apollo_logLike)$modelName, '_hessian.csv')
         utils::write.csv(H, fileName)
         if(!silent) apollo_print(paste0("Hessian written to ", fileName))
-        rm(e, test, fileName)
+        rm(test, fileName)
       }, error=function(e) if(!silent) apollo_print("Could not write hessian to a file."))
     }
     # Calculate eigenvalues

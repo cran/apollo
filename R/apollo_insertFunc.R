@@ -325,6 +325,19 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
     return(e)
   }
   
+  # Check for while loop. If there is one, return without changes.
+  containsWhileLoop <- function(e){
+    if(is.function(e)) e <- body(e)
+    if(is.symbol(e)){ if(as.character(e)=='while') return(TRUE) else return(FALSE) }
+    if(is.val(e)) return(FALSE)
+    if(!is.call(e)) stop('Argument "e" must be a language object')
+    if(is.call(e) && length(e)>0){
+      ans <- rep(FALSE, length(e))
+      for(i in 1:length(e)) if(!is.null(e[[i]])) ans[i] <- containsWhileLoop(e[[i]])
+      return( any(ans) )
+    }
+  }; if(containsWhileLoop(f)) return(f)
+  
   if(randCoeff){
     e <- body(f)
     if(is.val(e)) return(f)
@@ -367,10 +380,10 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
   }
   
   if(like){
-    f <- processModelDefinition(fName="apollo_mnl" , elemNames=c()   , listNames=c("V")  , e=f)
-    f <- processModelDefinition(fName="apollo_fmnl", elemNames=c()   , listNames=c("V")  , e=f)
-    f <- processModelDefinition(fName="apollo_ol"  , elemNames=c("V"), listNames=c("tau"), e=f)
-    f <- processModelDefinition(fName="apollo_op"  , elemNames=c("V"), listNames=c("tau"), e=f)
+    f <- processModelDefinition(fName="apollo_mnl" , elemNames=c()   , listNames=c("V", "utilities")  , e=f)
+    f <- processModelDefinition(fName="apollo_fmnl", elemNames=c()   , listNames=c("V", "utilities")  , e=f)
+    f <- processModelDefinition(fName="apollo_ol"  , elemNames=c("V", "utility"), listNames=c("tau"), e=f)
+    f <- processModelDefinition(fName="apollo_op"  , elemNames=c("V", "utility"), listNames=c("tau"), e=f)
     f <- processModelDefinition(fName="apollo_normalDensity", elemNames=c("xNormal", "mu", "sigma"), listNames=c(), e=f)
     # Replace elements that are functions
     apollo_inputs <- tryCatch(get('apollo_inputs', envir=parent.frame()), 

@@ -26,19 +26,20 @@ apollo_validateInputs(
 
 \item{apollo_control}{List. Options controlling the running of the code.
 \itemize{
-  \item \code{modelName}: Character. Name of the model. Used when saving the output to files. Avoid characters not allowed in file names, such as \code{\\}, \code{*}, \code{:}, etc.
+  \item \code{modelName}: Character. Name of the model. Used when saving the output to files.
   \item \code{modelDescr}: Character. Description of the model. Used in output files.
   \item \code{indivID}: Character. Name of column in the database with each decision maker's ID.
   \item \code{mixing}: Boolean. TRUE for models that include random parameters.
-  \item \code{nCores}: Numeric>0. Number of threads (processors) to use in estimation of the model.
-  \item \code{workInLogs}: Boolean. TRUE for higher numeric stability at the expense of computational time.
-                           Useful for panel models only. Default is FALSE.
+  \item \code{nCores}: Numeric>0. Number of cores to use in calculations of the model likelihood.
   \item \code{seed}: Numeric. Seed for random number generation.
   \item \code{HB}: Boolean. TRUE if using RSGHB for Bayesian estimation of model.
   \item \code{noValidation}: Boolean. TRUE if user does not wish model input to be validated before estimation - FALSE by default.
   \item \code{noDiagnostics}: Boolean. TRUE if user does not wish model diagnostics to be printed - FALSE by default.
-  \item \code{panelData}: Boolean. TRUE if using panelData data (created automatically by \code{apollo_validateControl}).
+  \item \code{outputDirectory}: Character. Optional directory for outputs if different from working director - empty by default
   \item \code{weights}: Character. Name of column in database containing weights for estimation.
+  \item \code{workInLogs}: Boolean. TRUE for increased numeric precision in models with panel data - FALSE by default.
+  \item \code{panelData}: Boolean. TRUE if there are multiple obsrvations (i.e. rows) for each decision maker - Automatically set based on \code{indivID} by default.
+  \item \code{calculateLLC}: Boolean. TRUE if user wants to calculate LL at constants (if applicable). - TRUE by default.
 }}
 
 \item{apollo_HB}{List. Contains options for bayesian estimation. See \code{?RSGHB::doHB} for details.

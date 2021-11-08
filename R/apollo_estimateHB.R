@@ -18,7 +18,7 @@
 #'                          \itemize{
 #'                            \item apollo_beta: Named numeric vector. Names and values of model parameters.
 #'                            \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-#'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
+#'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param estimate_settings List. Options controlling the estimation process.
@@ -124,6 +124,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   # ####################################### #
   #### Validation of likelihood function ####
   # ####################################### #
+  apollo_test_beta=apollo_beta
   if(!apollo_control$noValidation){
     ### Validation using HB estimation
     
@@ -177,8 +178,8 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
         test1_LL=sum(test1_LL)
         test2_LL=sum(test2_LL)
       } else{
-        test1_LL=sum(log(test1_LL))
-        test2_LL=sum(log(test2_LL))
+        test1_LL=sum(log( ifelse(!is.finite(test1_LL) | test1_LL<=0, .1, test1_LL) ))
+        test2_LL=sum(log( ifelse(!is.finite(test2_LL) | test2_LL<=0, .1, test2_LL) ))
       }
       if(is.na(test1_LL)) test1_LL <- base_LL + 1 # Avoids errors if test1_LL is NA
       if(is.na(test2_LL)) test2_LL <- base_LL + 2 # Avoids errors if test2_LL is NA

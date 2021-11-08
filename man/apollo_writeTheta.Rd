@@ -7,7 +7,7 @@
 apollo_writeTheta(beta, ll, modelName)
 }
 \arguments{
-\item{beta}{vector of parameters to be written.}
+\item{beta}{vector of parameters to be written (including fixed ones).}
 
 \item{ll}{scalar representing the loglikelihood of the whole model.}
 

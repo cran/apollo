@@ -31,7 +31,7 @@
 #'                          \itemize{
 #'                            \item apollo_beta: Named numeric vector. Names and values of model parameters.
 #'                            \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-#'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
+#'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param estimate_settings List. Options controlling the estimation process. See \link{apollo_estimate}.
@@ -257,15 +257,13 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
     apollo_inputs2$apollo_control$noDiagnostics <- TRUE
     apollo_inputs2$apollo_control$noValidation  <- TRUE
     apollo_inputs2$silent <- TRUE
-    if(apollo_control$mixing) draws <- apollo_makeDraws(apollo_inputs2, silent=TRUE)
+    #if(apollo_control$mixing) draws <- apollo_makeDraws(apollo_inputs2, silent=TRUE)
     
     # Estimate model
     nObsStack[i] <- nrow(database2)
     if(!silent) apollo_print(paste0("Estimation cycle ", i, " (", nObsStack[i], " obs)"))
     estimate_settings$hessianRoutine="none"
-    ### change 28 July
     estimate_settings$silent=TRUE
-    ### end change
     model <- apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities, 
                              apollo_inputs2, estimate_settings)
     

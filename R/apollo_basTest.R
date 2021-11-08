@@ -54,7 +54,7 @@ apollo_basTest = function(model1,model2){
       position=gregexpr(pattern=":",value)[[1]][1]
       modelNames[[i]]=(substr(value,position+2,nchar(value)))
       
-      id <- grepl("Adj.Rho", lines)
+      id <- grepl("Adj.Rho-square (0)", lines, fixed=TRUE)
       if(any(id)){
         value=lines[which(id)] 
       } else {

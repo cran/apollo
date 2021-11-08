@@ -295,6 +295,10 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   if(test){
     cat("Rho-square (0)                   : ",round(1-(model$maximum/model$LL0[1]),4),"\n")
     cat("Adj.Rho-square (0)               : ",round(1-((model$maximum-nFreeParams)/model$LL0[1]),4),"\n")
+    if(is.numeric(model$LLC) && !anyNA(model$LLC[1])){
+      cat("Rho-square (C)                   : ",round(1-(model$maximum/model$LLC[1]),4),"\n")
+      cat("Adj.Rho-square (C)               : ",round(1-((model$maximum-nFreeParams)/model$LLC[1]),4),"\n")
+    }
   } else {
     cat("Rho-square (0)                   : Not applicable\n")
     cat("Adj.Rho-square (0)               : Not applicable\n")
@@ -303,8 +307,8 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   if(!is.null(model$nObsTot)) tmp <- sum(model$nObsTot) else tmp <- model$nObs
   cat("BIC                              : ",round(-2*model$maximum + nFreeParams*log(tmp),2),"\n")
   
-  cat("\n")
   if(length(model$LLout)>1){
+    cat("\n")
     for(j in 2:length(model$LLout)){
       nam <- names(model$LLout)[j]
       sp1 <- ifelse(6+nchar(nam)<33, paste0(rep(" ",33-nchar(nam)-6), collapse=""), "")
@@ -336,6 +340,16 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     cat("Min abs eigenvalue of Hessian    : ",round(min(abs(model$eigValue)),6),"\n")
     if(any(model$eigValue>0)) apollo_print("Some eigenvalues of Hessian are positive, indicating potential problems!") 
   }
+  
+  # Printing of constraints, if used
+  cat('\n')
+  if(is.null(model$constraints)) cat("Unconstrained optimisation.\n") else {
+    cat("Constrained optimisation:\n")
+    if( is.null(model$apollo_constraints)) cat(" Please refer to original model script to see the constraints.")
+    if(!is.null(model$apollo_constraints)) cat(paste0(" ", model$apollo_constraints), sep="\n")
+    cat("\n")
+  }; rm(test)
+  
   cat("\n")
   
   if(!printClassical & anyNA(model$se[!(names(model$estimate) %in% model$apollo_fixed)]) ){
@@ -468,16 +482,19 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       cat("\n\napollo_randCoeff")
       cat("\n----------------\n")
       txt=capture.output(print(model$apollo_randCoeff))
-      cat(txt[1:(length(txt)-1)],sep="\n")}
+      #cat(txt[1:(length(txt)-1)],sep="\n")}
+      cat(txt, sep="\n")}
     if(is.function(model$apollo_lcPars)){
       cat("\n\napollo_lcPars")
       cat("\n-------------\n")
       txt=capture.output(print(model$apollo_lcPars))
-      cat(txt[1:(length(txt)-1)],sep="\n")}
+      #cat(txt[1:(length(txt)-1)],sep="\n")}
+      cat(txt, sep="\n")}
     cat("\n\napollo_probabilities")
     cat("\n--------------------\n")
     txt=capture.output(print(model$apollo_probabilities))
-    cat(txt[1:(length(txt)-1)],sep="\n")
+    #cat(txt[1:(length(txt)-1)],sep="\n")
+    cat(txt, sep="\n")
   }
   
   invisible(output)

@@ -17,6 +17,7 @@
 #'                        \item \code{"prediction"}: Used for model predictions.
 #'                        \item \code{"validate"}: Used for validating input.
 #'                        \item \code{"zero_LL"}: Used for calculating null likelihood.
+#'                        \item \code{"shares_LL"}: Used for calculating likelihood with constants only.
 #'                        \item \code{"conditionals"}: Used for calculating conditionals.
 #'                        \item \code{"output"}: Used for preparing output after model estimation.
 #'                        \item \code{"raw"}: Used for debugging.
@@ -27,6 +28,7 @@
 #'           \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the probability of the chosen alternative.
 #'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
 #'           \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
+#'           \item \strong{\code{"shares_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when only constants are estimated.
 #'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
@@ -55,6 +57,9 @@ apollo_mnl <- function(mnl_settings, functionality){
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
+  
+  #### replace utilities by V if used
+  if(!is.null(mnl_settings[["utilities"]])) names(mnl_settings)[which(names(mnl_settings)=="utilities")]="V"
   
   # ############################### #
   #### Load or do pre-processing ####
@@ -212,7 +217,7 @@ apollo_mnl <- function(mnl_settings, functionality){
     Y = do.call(cbind,mnl_settings$Y)
     if(var(nAvAlt)==0){
       Yshares = colSums(Y)/nrow(Y)
-      P = Y%*%Yshares
+      P = as.vector(Y%*%Yshares)
     } else {
       ## Estimate model with constants only
       mnl_ll = function(b, A, Y) as.vector(Y%*%c(b,0) - log(rowSums( A%*%exp(c(b,0)) )))

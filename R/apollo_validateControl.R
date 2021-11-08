@@ -20,6 +20,7 @@
 #'                      \item \code{weights}: Character. Name of column in database containing weights for estimation.
 #'                      \item \code{workInLogs}: Boolean. TRUE for increased numeric precision in models with panel data - FALSE by default.
 #'                      \item \code{panelData}: Boolean. TRUE if there are multiple obsrvations (i.e. rows) for each decision maker - Automatically set based on \code{indivID} by default.
+#'                      \item \code{calculateLLC}: Boolean. TRUE if user wants to calculate LL at constants (if applicable). - TRUE by default.
 #'                    }
 #' @param silent Boolean. If TRUE, no messages are printed to screen.
 #' @return Validated version of apollo_control, with additional element called panelData set to TRUE for repeated choice data.
@@ -84,13 +85,22 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
     apollo_control$noDiagnostics <- FALSE
   }  
   
-  if(is.null(apollo_control$outputDirectory)){
-    apollo_control$outputDirectory <- ""
-  } else {
-    if(!dir.exists(apollo_control$outputDirectory)) stop("outputDirectory provided by user does not exist!")
-    tmp <- substr(apollo_control$outputDirectory,nchar(apollo_control$outputDirectory),nchar(apollo_control$outputDirectory))
-    if(tmp!="/") apollo_control$outputDirectory <- paste0(apollo_control$outputDirectory,"/")
+  if(is.null(apollo_control$calculateLLC)){
+    apollo_control$calculateLLC <- TRUE
+  }  
+  
+  # Check that outputDirectory exists, or set it to working directory by default.
+  test <- is.null(apollo_control$outputDirectory) || apollo_control$outputDirectory==''
+  if(test){ apollo_control$outputDirectory <- getwd() } else {
+    if(!dir.exists(apollo_control$outputDirectory)){
+      cat("\noutputDirectory provided by user does not exist, so will be created.\n")
+      dir.create(apollo_control$outputDirectory)
+    } 
   }
+  tmp <- substr(apollo_control$outputDirectory,
+                nchar(apollo_control$outputDirectory),
+                nchar(apollo_control$outputDirectory))
+  if(tmp!="/") apollo_control$outputDirectory <- paste0(apollo_control$outputDirectory,"/")
   
   if(is.null(apollo_control$panelData)){
   if(length(unique(database[,apollo_control$indivID]))<nrow(database)){
@@ -160,7 +170,7 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   allVars <- c("modelName", "modelDescr", "indivID", "mixing", "nCores", "seed", "HB", 
                "noValidation", "noDiagnostics", "weights", "workInLogs", "panelData", 
                "cpp","subMaxV", "analyticGrad", "matrixMult", "debug", "analyticGrad_manualSet",
-               "outputDirectory")
+               "outputDirectory", "calculateLLC")
   unknownVars <- names(apollo_control)[!( names(apollo_control) %in% allVars )]
   if(length(unknownVars)>0){
     apollo_print(paste0("Variable(s) {", paste(unknownVars, collapse=", "), "} were not recognised in apollo_control and will be ignored. Check ?apollo_control for a list of valid control variables."))

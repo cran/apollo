@@ -18,7 +18,7 @@
 apollo_combineResults = function(combineResults_settings=NULL){
   
   ### Fetch outputDirectory
-  outputDirectory <- ''
+  outputDirectory <- ""
   # Try getting it from apollo_control
   apollo_control <- tryCatch(get('apollo_control', envir=parent.frame(1), inherits=FALSE),
                              error=function(e) NULL)
@@ -35,10 +35,11 @@ apollo_combineResults = function(combineResults_settings=NULL){
     test <- test && is.character(apollo_inputs$apollo_control$outputDirectory)
     if(test) outputDirectory <- apollo_inputs$apollo_control$outputDirectory
     rm(apollo_inputs)
-  } 
+  }
+  # If outputDirectory could not be fecthed, fall back to working directory
+  if(outputDirectory=="") outputDirectory <- "."
   # Add / at the end if necessary
-  test <- outputDirectory!=''
-  test <- test && !(substr(outputDirectory, nchar(outputDirectory), nchar(outputDirectory)) %in% c('/', '\\'))
+  test <- !(substr(outputDirectory, nchar(outputDirectory), nchar(outputDirectory)) %in% c('/', '\\'))
   if(test) outputDirectory <- paste0(outputDirectory,'/')
   
   
@@ -46,13 +47,14 @@ apollo_combineResults = function(combineResults_settings=NULL){
   if(is.null(combineResults_settings)) combineResults_settings=list()
   if(is.null(combineResults_settings[["modelNames"]])){
     apollo_print("The combineResults_settings does not include an object called \"modelNames\". The apollo_combineResults function will include all models for which results have been stored in the working directory. Note that this function is not applicable for models estimated using HB.")
-    combineResults_settings[["modelNames"]]=list.files(pattern="*estimates.csv")
+    combineResults_settings[["modelNames"]] = list.files(path=outputDirectory, pattern="*estimates.csv")
     if(length(combineResults_settings[["modelNames"]])==0) stop('No model files found in the working directory!')
     for(j in 1:length(combineResults_settings[["modelNames"]])){
-      l=nchar(combineResults_settings[["modelNames"]][j])
-      l=l-14  
+      l = nchar(combineResults_settings[["modelNames"]][j])
+      l = l-14  
       combineResults_settings[["modelNames"]][j]=substr(combineResults_settings[["modelNames"]][j],1,l)
-    } }
+    }
+  }
   if(is.null(combineResults_settings[["printClassical"]])) combineResults_settings[["printClassical"]]=FALSE
   if(is.null(combineResults_settings[["printPVal"]])) combineResults_settings[["printPVal"]]=FALSE
   if(is.null(combineResults_settings[["printT1"]])) combineResults_settings[["printT1"]]=FALSE
@@ -77,19 +79,35 @@ apollo_combineResults = function(combineResults_settings=NULL){
     modelNames = rownames(details)
   }
   
-  Cfile_check = paste0(modelNames, "_C.csv")
-  Ofile_check = paste0(modelNames, "_output.txt")
-  Efile_check = paste0(modelNames, "_estimates.csv")
-  files       = list.files(path=outputDirectory)
-  if(any(Cfile_check%in%files)) stop("Your list of modelNames includes some models estimated using HB!")
-  if(!(all(Ofile_check%in%files))){
-    txt <- paste0('Could not find file(s) ', paste0(Ofile_check[!Ofile_check%in%files], collapse=', '))
-    if(outputDirectory!='') txt <- paste0(txt, ' in folder ', outputDirectory)
-    stop(txt)}
-  if(!(all(Efile_check%in%files))){
-    txt <- paste0('Could not find file(s) ', paste0(Efile_check[!Efile_check%in%files], collapse=', '))
-    if(outputDirectory!='') txt <- paste0(txt, ' in folder ', outputDirectory)
-    stop(txt)}
+  # Check that necessary files exists, either in outputDirectory or the working directory
+  for(f in paste0(modelNames, "_C.csv")){
+    test <- file.exists(paste0(outputDirectory, f)) | file.exists(f)
+    if(test) stop("Your list of modelNames includes some models estimated using HB, which are not supported!")
+  }
+  for(f in paste0(modelNames, "_output.txt")){
+    test <- file.exists(paste0(outputDirectory, f)) | file.exists(f)
+    if(!test) stop(paste0("Could not find file ", f))
+  }
+  for(f in paste0(modelNames, "_estimates.csv")){
+    test <- file.exists(paste0(outputDirectory, f)) | file.exists(f) #| file.exists(paste0('./', f))
+    if(!test) stop(paste0("Could not find file ", f))
+  }; rm(test)
+  
+  #Cfile_check = paste0(modelNames, "_C.csv")
+  #Ofile_check = paste0(modelNames, "_output.txt")
+  #Efile_check = paste0(modelNames, "_estimates.csv")
+  #filesOD     = list.files(path=outputDirectory)
+  #filesWD     = list.files(path=getwd())
+  #files       = c(filesOD, filesWD)
+  #if(any(Cfile_check %in% files)) stop("Your list of modelNames includes some models estimated using HB!")
+  #if(!(all(Ofile_check%in%files))){
+  #  txt <- paste0('Could not find file(s) ', paste0(Ofile_check[!Ofile_check%in%files], collapse=', '))
+  #  if(outputDirectory!='') txt <- paste0(txt, ' in folder ', outputDirectory)
+  #  stop(txt)}
+  #if(!(all(Efile_check%in%files))){
+  #  txt <- paste0('Could not find file(s) ', paste0(Efile_check[!Efile_check%in%files], collapse=', '))
+  #  if(outputDirectory!='') txt <- paste0(txt, ' in folder ', outputDirectory)
+  #  stop(txt)}
   
   estimateDigits = max(1,estimateDigits)
   tDigits        = max(1,tDigits)
@@ -98,12 +116,13 @@ apollo_combineResults = function(combineResults_settings=NULL){
   if(!is.character(modelNames)) stop("Argument 'modelNames' must be a character vector.")
   
   estimates    = list()
-  otheroutputs = data.frame(matrix(0,nrow=9,ncol=length(modelNames)))
-  rownames(otheroutputs) = c("Model name","Model description","Number of individuals","Number of modelled outcomes","Estimated parameters","LL(final)","Adj.Rho-square (0)","AIC","BIC")
+  otheroutputs = data.frame(matrix(0,nrow=10,ncol=length(modelNames)))
+  rownames(otheroutputs) = c("Model name","Model description","Number of individuals","Number of modelled outcomes","Estimated parameters","LL(final)","Adj.Rho-square (0)","Adj.Rho-square (C)","AIC","BIC")
   values = 1 + ( 1 + printClassical ) * ( 1 + printT1) * ( 1 + printPVal )
   
   for(j in 1:length(modelNames)){
     filename=paste(outputDirectory,modelNames[[j]],"_estimates.csv",sep="")
+    if(!file.exists(filename)) filename = paste0(modelNames[[j]], "_estimates.csv")
     if(!file.exists(filename)) stop("File ",filename," not found!") 
     inputs = tryCatch(utils::read.csv(filename), 
                       warning=function(w) x=FALSE,
@@ -189,12 +208,17 @@ apollo_combineResults = function(combineResults_settings=NULL){
   }
   
   for(j in 1:length(modelNames)){
-    
     filename=paste(outputDirectory,modelNames[[j]],"_output.txt",sep="")
+    if(!file.exists(filename)) filename = paste0(modelNames[[j]], "_output.txt")
     if(!file.exists(filename)) stop("File ",filename," not found!") 
     lines = tryCatch(readLines(filename), 
-                     warning=function(w) x=FALSE,
-                     error=function(e) x=FALSE)
+                      warning=function(w) x=FALSE,
+                      error=function(e) x=FALSE)
+    #filename=paste(outputDirectory,modelNames[[j]],"_output.txt",sep="")
+    #if(!file.exists(filename)) stop("File ",filename," not found!") 
+    #lines = tryCatch(readLines(filename), 
+    #                 warning=function(w) x=FALSE,
+    #                 error=function(e) x=FALSE)
     
     if(is.logical(lines) && lines==FALSE) stop("Could not open file ",filename) 
     
@@ -262,6 +286,19 @@ apollo_combineResults = function(combineResults_settings=NULL){
     } else otheroutputs[k,j] = NA
     
     k=k+1
+    inputvar = grep("Adj.Rho-square \\(C\\)", lines) 
+    if(length(inputvar)!=0){
+      inputvar = lines[inputvar]
+      position=gregexpr(pattern=":",inputvar)[[1]][1]
+      tmp=substr(inputvar,position+1,nchar(inputvar))
+      if(tmp==" Not applicable"){
+        otheroutputs[k,j]=NA
+      } else {
+        otheroutputs[k,j]=as.double(tmp)
+      }
+    } else otheroutputs[k,j] = NA
+    
+    k=k+1
     inputvar = grep("AIC", lines) 
     if(length(inputvar)!=0){
       inputvar = lines[inputvar]
@@ -281,7 +318,7 @@ apollo_combineResults = function(combineResults_settings=NULL){
   }
   
   
-  otherouputs_new=data.frame(matrix("",nrow=9,ncol=values*length(modelNames)))
+  otherouputs_new=data.frame(matrix("",nrow=10,ncol=values*length(modelNames)))
   rownames(otherouputs_new)=rownames(otheroutputs)
   for(j in 1:length(modelNames)){
     otherouputs_new[,((j-1)*values+1)]=otheroutputs[,j]  
@@ -292,7 +329,7 @@ apollo_combineResults = function(combineResults_settings=NULL){
     }
   }
   otherouputs_new=rbind(otherouputs_new,rep("",ncol(otherouputs_new)))
-  rownames(otherouputs_new)[10]=""
+  rownames(otherouputs_new)[11]=""
   filename=paste0(outputDirectory, "model_comparison_", gsub("[: -]", "" , Sys.time(), perl=TRUE), ".csv")
   
   utils::write.table(otherouputs_new, filename, sep = ",", col.names = F, append = T)

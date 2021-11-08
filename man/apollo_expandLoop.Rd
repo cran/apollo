@@ -20,7 +20,9 @@ Expands loops replacing the index by its value. It also evaluates \code{paste} a
 \details{
 For example, the expression
 \code{for(j in 1:3) V[[paste0('alt',j)]] = b1*get(paste0('x',j)) + b2*X[,j]}
-would be expanded into
+
+would be expanded into:
+
 \code{
 V[[alt1]] = b1*x1 + b2*X[,1]
 V[[alt2]] = b1*x2 + b2*X[,2]

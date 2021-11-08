@@ -15,6 +15,11 @@
 #'         is a cube, then only the first dimension's length is changed, preserving the others.
 #' @export
 apollo_firstRow=function(P, apollo_inputs){
+  ### Fetch functionality
+  functionality <- tryCatch(get('functionality', envir=parent.frame(), inherits=FALSE),
+                            error=function(e) NULL)
+  if(!is.null(functionality) && functionality %in% c('preprocess', 'report')) return(P)
+  
   apollo_sequence <- apollo_inputs$database$apollo_sequence
   
   ### If P is a list

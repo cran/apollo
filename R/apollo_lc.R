@@ -15,6 +15,7 @@
 #'                        \item "prediction" Used for model predictions.
 #'                        \item "validate" Used for validating input.
 #'                        \item "zero_LL" Used for calculating null likelihood.
+#'                        \item "shares_LL": Used for calculating likelihood with constants only.
 #'                        \item "conditionals" Used for calculating conditionals.
 #'                        \item "output" Used for preparing output after model estimation.
 #'                        \item "raw" Used for debugging.
@@ -26,6 +27,7 @@
 #'           \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all models components, for each class.
 #'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but also runs a set of tests on the given arguments.
 #'           \item \strong{\code{"zero_LL"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"shares_LL"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
@@ -88,7 +90,7 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   
   # Check that inClassProb is not a list of lists (if its is, use 'model' component or fail)
   if(!is.list(inClassProb)) stop('Setting "inClassProb" inside "lc_settings" must be a list.')
-  for(i in 1:length(inClassProb)) if(is.list(inClassProb[[i]]) && functionality %in% c("conditionals","estimate","validate","zero_LL", "output")){
+  for(i in 1:length(inClassProb)) if(is.list(inClassProb[[i]]) && functionality %in% c("conditionals","estimate","validate","zero_LL", "shares_LL", "output")){
     test <- is.null(inClassProb[[i]]$model)
     if(test) stop(paste0('At least one element inside "inClassProb" setting is a list. It should be a numeric vector, matrix',
                          ' or array. If you are using apollo_combineModels inside each class, try using it with the argument', 
@@ -109,9 +111,14 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   #if(is.vector(inClassProb[[1]])) nRowsInClassProb <- length(inClassProb[[1]]) else {
   #  nRowsInClassProb <- dim(inClassProb[[1]])[1]
   #}
-  if(is.list(inClassProb[[1]])){
-    nRowsInClassProb <- length(inClassProb[[1]][[1]])
-  } else if(is.vector(inClassProb[[1]])) nRowsInClassProb <- length(inClassProb[[1]])
+  ### DP bug fix 13 Aug 2021
+  #if(is.list(inClassProb[[1]])){
+  #  nRowsInClassProb <- length(inClassProb[[1]][[1]])
+  #} else if(is.vector(inClassProb[[1]])) nRowsInClassProb <- length(inClassProb[[1]])
+  if(is.list(inClassProb[[1]])) tmp <- inClassProb[[1]][[1]] else tmp <- inClassProb[[1]]
+  if(is.array(tmp)) nRowsInClassProb <- dim(tmp)[1] else nRowsInClassProb <- length(tmp)
+  rm(tmp)
+  
   
   # ############## #
   #### Validate ####
@@ -144,10 +151,10 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   } 
   
   
-  # ############################################# #
-  #### Estimate, conditionals, output, zero_LL ####
-  # ############################################# #
-  if(functionality %in% c("estimate", "conditionals", "output", "zero_LL")){
+  # ######################################################## #
+  #### Estimate, conditionals, output, zero_LL, shares_LL ####
+  # ######################################################## #
+  if(functionality %in% c("estimate", "conditionals", "output", "zero_LL", "shares_LL")){
     # Match the number of rows in each list
     # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
     if( nRowsInClassProb!=nRowsClassProb & nRowsClassProb!=1 ){
@@ -167,10 +174,11 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
     }
     
     # Calculate inClassProb*classProb
-    nIndiv <- length(unique(get(apollo_control$indivID)))                                  ## FIX DP 18/05/2020
-    panelProdApplied <- sapply(inClassProb, function(v) is.vector(v) && length(v)==nIndiv) ## FIX DP 18/05/2020
-    if(apollo_control$workInLogs && all(panelProdApplied)){                                ## FIX DP 18/05/2020
-      # Assuming panelProd was applied inside each class, inClasProb is log(P[ns])         ## FIX DP 18/05/2020
+    nIndiv <- length(unique(get(apollo_control$indivID)))                                      ## FIX DP 18/05/2020
+    f <- function(x) (is.vector(x) && length(x)==nIndiv) || (is.array(x) && dim(x)[1]==nIndiv) ## FIX DP 13/08/2021
+    panelProdApplied <- sapply(inClassProb, f)                                                 ## FIX DP 13/08/2021
+    if(apollo_control$workInLogs && all(panelProdApplied)){                                    ## FIX DP 18/05/2020
+      # Assuming panelProd was applied inside each class, inClassProb is log(P[ns])            ## FIX DP 18/05/2020
       Bbar <- Reduce("+", inClassProb)/length(inClassProb)
       Pout <- mapply(function(pi, lnP) pi*exp(lnP - Bbar), classProb, inClassProb, SIMPLIFY=FALSE)
       Pout <- Bbar + log( Reduce("+", Pout) )

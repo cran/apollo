@@ -24,6 +24,7 @@ apollo_validateControl(database, apollo_control, silent = FALSE)
   \item \code{weights}: Character. Name of column in database containing weights for estimation.
   \item \code{workInLogs}: Boolean. TRUE for increased numeric precision in models with panel data - FALSE by default.
   \item \code{panelData}: Boolean. TRUE if there are multiple obsrvations (i.e. rows) for each decision maker - Automatically set based on \code{indivID} by default.
+  \item \code{calculateLLC}: Boolean. TRUE if user wants to calculate LL at constants (if applicable). - TRUE by default.
 }}
 
 \item{silent}{Boolean. If TRUE, no messages are printed to screen.}

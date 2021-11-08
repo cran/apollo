@@ -9,8 +9,8 @@ apollo_classAlloc(classAlloc_settings)
 \arguments{
 \item{classAlloc_settings}{List of inputs of the MNL model. It should contain the following.
 \itemize{
-  \item \strong{\code{V}}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{avail}, if provided.
-  \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{V}. Values can be 0 or 1.
+  \item \strong{\code{V}}: Named list of deterministic utilities . Utilities of the classes in class allocation model. Names of elements must match those in \code{avail}, if provided.
+  \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of classes in class allocation model, one element per class Names of elements must match those in \code{V}. Values can be 0 or 1.
   \item \strong{\code{rows}}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
   \item \strong{\code{componentName}}: Character. Name given to model component.
 }}
@@ -19,7 +19,7 @@ apollo_classAlloc(classAlloc_settings)
 The returned object depends on the value of argument \code{functionality}, which it fetches from the calling stack.
         \itemize{
         "estimate","conditionals", "components", "output", "prediction", "raw", "report"
-          \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for all alternatives.
+          \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for all classes
           \item \strong{\code{"prediction"}}: Same as \code{"estimate"}.
           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
           \item \strong{\code{"zero_LL"}}: Returns a scalar NA.

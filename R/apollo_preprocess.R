@@ -401,9 +401,10 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     if(is.null(inputs$mu)           ) stop("The normalDensity_settings list for model component \"",inputs$componentName,"\" needs to include an object called \"mu\"!")
     if(is.null(inputs$sigma)        ) stop("The normalDensity_settings list for model component \"",inputs$componentName,"\" needs to include an object called \"sigma\"!")
     if(is.null(inputs$rows)         ) inputs[["rows"]] <- "all"
-    
     # Expand rows if necessary
-    if(length(inputs$rows)==1 && inputs$rows=="all") inputs$rows <- rep(TRUE, length(inputs$outcomeNormal))
+    inputs$nObs <- max(length(inputs$outcomeNormal), ifelse(is.array(inputs$xNormal), dim(inputs$xNormal)[1], length(inputs$xNormal)))
+    if(length(inputs$rows)==1 && inputs$rows=="all") inputs$rows <- rep(TRUE, inputs$nObs)
+    inputs$nObs <- min(inputs$nObs, sum(inputs$rows))
   }
   
   #### OL, OP ####

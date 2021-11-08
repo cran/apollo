@@ -22,6 +22,7 @@ apollo_lc(lc_settings, apollo_inputs, functionality)
   \item "prediction" Used for model predictions.
   \item "validate" Used for validating input.
   \item "zero_LL" Used for calculating null likelihood.
+  \item "shares_LL": Used for calculating likelihood with constants only.
   \item "conditionals" Used for calculating conditionals.
   \item "output" Used for preparing output after model estimation.
   \item "raw" Used for debugging.
@@ -35,6 +36,7 @@ The returned object depends on the value of argument \code{functionality} as fol
           \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all models components, for each class.
           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but also runs a set of tests on the given arguments.
           \item \strong{\code{"zero_LL"}}: Same as \code{"estimate"}
+          \item \strong{\code{"shares_LL"}}: Same as \code{"estimate"}
           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
           \item \strong{\code{"raw"}}: Same as \code{"prediction"}

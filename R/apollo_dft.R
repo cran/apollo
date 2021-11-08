@@ -54,6 +54,7 @@
 #'                        \item \code{"prediction"}: Used for model predictions.
 #'                        \item \code{"validate"}: Used for validating input.
 #'                        \item \code{"zero_LL"}: Used for calculating null likelihood.
+#'                        \item \code{"shares_LL"}: Used for calculating likelihood with constants only.
 #'                        \item \code{"conditionals"}: Used for calculating conditionals.
 #'                        \item \code{"output"}: Used for preparing output after model estimation.
 #'                        \item \code{"raw"}: Used for debugging.
@@ -64,6 +65,7 @@
 #'           \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
 #'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
+#'           \item \strong{\code{"shares_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
 #'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
@@ -846,6 +848,15 @@ apollo_dft = function(dft_settings,functionality){
     return(P)
   }
   
+  # ############################### #
+  #### functionality="shares_LL" ####
+  # ############################### #
+  
+  if(functionality %in% c("shares_LL")){
+    P <- rep(NA, dft_settings$nObs)
+    if(any(!dft_settings$rows)) P <- apollo_insertRows(P, dft_settings$rows, 1)
+    return(P)
+  }
   
   # ############################################################ #
   #### functionality="estimate/prediction/conditionals/raw" ####

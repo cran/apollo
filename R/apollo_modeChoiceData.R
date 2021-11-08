@@ -32,8 +32,8 @@
 #'   \item{cost_rail}{Numeric. Cost (in GBP) of mode rail.}
 #'   \item{female}{Numeric. Sex of individual. 1 for female, 0 for male.}
 #'   \item{income}{Numeric. Income (in GBP per annum) of the individual.}
-#'   \item{service_air}{Numeric. Additional services in the air mode. 0 for none, 1 for a meal, 2 for wifi, 3 for meal and wifi.}
-#'   \item{service_rail}{Numeric. Additional services in the rail mode. 0 for none, 1 for a meal, 2 for wifi, 3 for meal and wifi.}
+#'   \item{service_air}{Numeric. Additional services for the air alternative. 1 for no-frills, 2 for wifi, 3 for food. This is not used in the RP data, where it is set to 0.}
+#'   \item{service_rail}{Numeric. Additional services for the rail alternative. 1 for no-frills, 2 for wifi, 3 for food. This is not used in the RP data, where it is set to 0.}
 #'   \item{time_air}{Numeric. Travel time (in minutes) of mode air.}
 #'   \item{time_bus}{Numeric. Travel time (in minutes) of mode bus.}
 #'   \item{time_car}{Numeric. Travel time (in minutes) of mode car.}

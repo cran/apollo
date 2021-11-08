@@ -23,6 +23,7 @@
 #'                        \item "prediction": Used for model predictions.
 #'                        \item "validate": Used for validating input.
 #'                        \item "zero_LL": Used for calculating null likelihood.
+#'                        \item "shares_LL": Used for calculating likelihood with constants only.
 #'                        \item "conditionals": Used for calculating conditionals.
 #'                        \item "output": Used for preparing output after model estimation.
 #'                        \item "raw": Used for debugging.
@@ -32,7 +33,8 @@
 #'           \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the likelihood for each observation.
 #'           \item \strong{\code{"prediction"}}: Not implemented. Returns NA.
 #'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
-#'           \item \strong{\code{"zero_LL"}}: Not implemented. Returns NA.
+#'           \item \strong{\code{"zero_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
+#'           \item \strong{\code{"shares_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
 #'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
 #'           \item \strong{\code{"raw"}}: Same as \code{"estimate"}
@@ -144,12 +146,16 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
     return(invisible(testL))
   }
 
-  # ############################## #
-  #### functionality="zero_LL" ####
-  # ############################## #
-
-  if(functionality=="zero_LL") return(NA)
-
+  # ####################################### #
+  #### functionality="zero_LL/shares_LL" ####
+  # ####################################### #
+  
+  if(functionality %in% c("zero_LL","shares_LL")){
+    P <- rep(NA, normalDensity_settings$nObs)
+    if(any(!normalDensity_settings$rows)) P <- apollo_insertRows(P, normalDensity_settings$rows, 1)
+    return(P)
+  }
+  
   # ################################ #
   #### functionality="prediction" ####
   # ################################ #

@@ -21,7 +21,7 @@ apollo_speedTest(
 \itemize{
   \item \code{apollo_beta}: Named numeric vector. Names and values of model parameters.
   \item \code{apollo_inputs}: List containing options of the model. See \link{apollo_validateInputs}.
-  \item \code{functionality}: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", or "raw".
+  \item \code{functionality}: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}

@@ -154,7 +154,7 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
   }
   
   #### classAlloc ####
-  if(modelType=='classAlloc'){
+  if(modelType=='classalloc'){
     # Check there are at least 2 alternatives
     if(inputs$nAlt<2) stop("Model component \"",inputs$componentName,"\"  requires at least 2 alternatives")
     # Check availabilities are only 0 or 1

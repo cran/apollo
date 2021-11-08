@@ -18,6 +18,7 @@
 #'                        \item \code{"prediction"}: Used for model predictions.
 #'                        \item \code{"validate"}: Used for validating input.
 #'                        \item \code{"zero_LL"}: Used for calculating null likelihood.
+#'                        \item \code{"shares_LL"}: Used for calculating likelihood with constants only.
 #'                        \item \code{"conditionals"}: Used for calculating conditionals.
 #'                        \item \code{"output"}: Used for preparing output after model estimation.
 #'                        \item \code{"raw"}: Used for debugging.
@@ -28,6 +29,7 @@
 #'           \item \strong{\code{"prediction"}}: Not applicable (\code{NA}).
 #'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
+#'           \item \strong{\code{"shares_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
 #'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
 #'           \item \strong{\code{"raw"}}: Same as \code{"estimate"}
@@ -56,6 +58,9 @@ apollo_el <- function(el_settings, functionality){
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
   
+  #### replace utilities by V if used
+  if(!is.null(el_settings[["utilities"]])) names(el_settings)[which(names(el_settings)=="utilities")]="V"
+
   # ############################################### #
   #### Load pre-processing or do it if necessary ####
   # ############################################### #
@@ -172,6 +177,16 @@ apollo_el <- function(el_settings, functionality){
       if(length(nAvail)>1) nAvail[el_settings$choiceVars[[s]]==-1 | nAvail==0] <- 1
       P <- P*1/nAvail
     }
+    if(any(!el_settings$rows)) P <- apollo_insertRows(P, el_settings$rows, 1)
+    return(P)
+  }
+  
+  # ############################### #
+  #### functionality="shares_LL" ####
+  # ############################### #
+  
+  if(functionality %in% c("shares_LL")){
+    P <- rep(NA, el_settings$nObs)
     if(any(!el_settings$rows)) P <- apollo_insertRows(P, el_settings$rows, 1)
     return(P)
   }
