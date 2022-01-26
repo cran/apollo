@@ -7,21 +7,21 @@
 apollo_combineResults(combineResults_settings = NULL)
 }
 \arguments{
-\item{combineResults_settings}{List of options. It can include the following.
+\item{combineResults_settings}{List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
-  \item modelNames: Character vector. List of names of models to combine. Use an empty vector to combine results from all models in the directory.
-  \item printClassical: Boolean. TRUE for printing classical standard errors. FALSE by default.
-  \item printPVal: Boolean. TRUE for printing p-values. FALSE by default.
-  \item printT1: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
-  \item estimateDigits: Numeric scalar. Number of decimal places to print for estimates. Default is 4.
-  \item tDigits: Numeric scalar. Number of decimal places to print for t-ratios values. Default is 2.
-  \item pDigits: Numeric scalar. Number of decimal places to print for p-values. Default is 2.
-  \item sortByDate: Boolean. If TRUE, models are ordered by date. Default is TRUE.
+  \item \strong{\code{modelNames}}: Character vector. Optional names of models to combine. Omit or use an empty vector to combine results from all models in the working/output directory.
+  \item \strong{\code{printClassical}}: Boolean. TRUE for printing classical standard errors. FALSE by default.
+  \item \strong{\code{printPVal}}: Boolean. TRUE for printing p-values. FALSE by default.
+  \item \strong{\code{printT1}}: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
+  \item \strong{\code{estimateDigits}}: Numeric scalar. Number of decimal places to print for estimates. Default is 4.
+  \item \strong{\code{tDigits}}: Numeric scalar. Number of decimal places to print for t-ratios values. Default is 2.
+  \item \strong{\code{pDigits}}: Numeric scalar. Number of decimal places to print for p-values. Default is 2.
+  \item \strong{\code{sortByDate}}: Boolean. If TRUE, models are ordered by date. Default is TRUE.
 }}
 }
 \value{
-Nothing, but writes a file called 'model_comparison_[date].csv' in the working directory.
+Nothing, but writes a file called 'model_comparison_[date].csv' in the working/output directory.
 }
 \description{
-Writes results from various models to a single CSV file.
+Writes results from various models to a single csv file.
 }

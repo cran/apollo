@@ -1,23 +1,23 @@
 #' Predicts using an estimated model
 #' 
-#' Calculates apollo_probabilities with functionality="prediction" and extracts one element from the returned list.
+#' Calculates \code{apollo_probabilities} with functionality="prediction".
 #' 
 #' Structure of predictions are simplified before returning, e.g. list of vectors are turned into a matrix.
 #' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}.
 #' @param apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 #'                          \itemize{
-#'                            \item apollo_beta: Named numeric vector. Names and values of model parameters.
-#'                            \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-#'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
+#'                            \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
+#'                            \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
+#'                            \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
-#' @param prediction_settings List of settings. It can have the following elements.
+#' @param prediction_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 #'                            \itemize{
-#'                              \item \code{modelComponent} Character. Name of component of apollo_probabilities output to calculate predictions for. Default is "model", i.e. the whole model.
-#'                              \item \code{runs} Numeric. Number of runs to use for computing confidence intervals of predictions.
-#'                              \item \code{silent} Boolean. If TRUE, this function won't print any output to screen.
-#'                              \item \code{nRep} Scalar integer. Only used for models that require simulation for prediction (e.g. MDCEV). Number of draws used to calculate prediction. Default is 100.
-#'                              \item \code{summary} Boolean. If TRUE, a summary of the prediction is printed to screen. TRUE by default.
+#'                              \item \strong{\code{modelComponent}}: Character. Name of component of apollo_probabilities output to calculate predictions for. Default is to predict for all components.
+#'                              \item \strong{\code{nRep}}: Scalar integer. Only used for models that require simulation for prediction (e.g. MDCEV). Number of draws used to calculate prediction. Default is 100.
+#'                              \item \strong{\code{runs}}: Numeric. Number of runs to use for computing confidence intervals of predictions.
+#'                              \item \strong{\code{silent}}: Boolean. If TRUE, this function won't print any output to screen.
+#'                              \item \strong{\code{summary}}: Boolean. If TRUE, a summary of the prediction is printed to screen. TRUE by default.
 #'                            }
 #' @param modelComponent \strong{Deprecated}. Same as \code{modelComponent} inside \code{prediction_settings}.
 #' @return A list containing predictions for component \code{modelComponent} of the model described in \code{apollo_probabilities}.
@@ -136,16 +136,16 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         M <- predictions[[m]]
         M <- M[,-(1:2),drop=FALSE] # remove ID and Observation
         # Print it a format appropriate to the model type
-        if(modelComponentType %in% c('mdcev','mdcnev')){
+        if(modelComponentType %in% c('mdcev','mdcnev')){ # MDCEV
           if(!singleElement) apollo_print(paste0("Aggregated predictions (continuous consumption, discrete choices, and expenditure) at model estimates for model component: ", names(predictions)[m]))
           if(singleElement) apollo_print("Aggregated predictions (continuous consumption, discrete choices, and expenditure) at model estimates")
-          K <- as.integer(ncol(M)/6)
+          K  <- as.integer(ncol(M)/6)
           Kn <- colnames(M)[1:K]
           Kn <- substr(Kn, 1, nchar(Kn)-10)
           M <- matrix(colSums(M, na.rm=TRUE), nrow=K, ncol=6, dimnames=list(Kn, c('cont_mean', 'cont_sd', 'disc_mean', 
                                                                       'disc_sd', 'expe_mean', 'expe_sd')))
         }
-        if(modelComponentType=='normd'){
+        if(modelComponentType=='normd'){ # Normal density
           if(!singleElement) apollo_print(paste0("Summary of predicted demand at model estimates for model component: ", names(predictions)[m]))
           if(singleElement) apollo_print("Summary of predicted demand at model estimates")
           M <- unlist(M)
@@ -154,7 +154,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
                       nrow=1, ncol=7, 
                       dimnames=list(names(predictions)[m], c('min', '1stQ', 'median', 'mean', '3rdQ', 'max', 'aggregate')))
         }
-        if(!(modelComponentType %in% c('mdcev', 'mdcnev', 'normd'))){
+        if(!(modelComponentType %in% c('mdcev', 'mdcnev', 'normd'))){ # Discrete choice
           if(!singleElement) apollo_print(paste0("Prediction at model estimates for model component: ", names(predictions)[m]))
           if(singleElement) apollo_print("Prediction at model estimates")
           if(tolower(colnames(M)[ncol(M)])=='chosen') M <- M[,-ncol(M)]
@@ -263,9 +263,9 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         if(singleElement) apollo_print(paste0("Aggregated prediction"))
         est <- colSums(ans[[m]]$at_estimates[,-(1:2)], na.rm=TRUE)
         agg <- apply(ans[[m]]$draws, MARGIN=c(2,3), sum, na.rm=TRUE)
-        std <- apply(agg, MARGIN=1, sd)
-        cil <- apply(agg, MARGIN=1, quantile, probs=0.025)
-        ciu <- apply(agg, MARGIN=1, quantile, probs=0.975)
+        std <- apply(agg, MARGIN=1, sd, na.rm=TRUE)
+        cil <- apply(agg, MARGIN=1, quantile, probs=0.025, na.rm=TRUE)
+        ciu <- apply(agg, MARGIN=1, quantile, probs=0.975, na.rm=TRUE)
         tmp <- cbind(est, rowMeans(agg), std, cil, ciu)
         colnames(tmp) <- c("at MLE", 'Sampled mean', "Sampled std.dev.", "Quantile 0.025", "Quantile 0.975")
         rownames(tmp) <- colnames(ans[[m]]$at_estimates)[-(1:2)]
@@ -277,9 +277,9 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         if(singleElement) apollo_print(paste0("Average prediction"))
         est <- colMeans(ans[[m]]$at_estimates[,-(1:2)], na.rm=TRUE)
         avg <- apply(ans[[m]]$draws, MARGIN=c(2,3), mean, na.rm=TRUE)
-        std <- apply(avg, MARGIN=1, sd)
-        cil <- apply(avg, MARGIN=1, quantile, probs=0.025)
-        ciu <- apply(avg, MARGIN=1, quantile, probs=0.975)
+        std <- apply(avg, MARGIN=1, sd, na.rm=TRUE)
+        cil <- apply(avg, MARGIN=1, quantile, probs=0.025, na.rm=TRUE)
+        ciu <- apply(avg, MARGIN=1, quantile, probs=0.975, na.rm=TRUE)
         tmp <- cbind(est, rowMeans(avg), std, cil, ciu)
         colnames(tmp) <- c("at MLE", 'Sampled mean', "Sampled std.dev.", "Quantile 0.025", "Quantile 0.975")
         rownames(tmp) <- colnames(ans[[m]]$at_estimates)[-(1:2)]

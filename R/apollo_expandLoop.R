@@ -14,13 +14,13 @@
 #' }
 #' 
 #' @param f function (usually \code{apollo_probabilities}) inside which the name of the components are inserted.
-#' @param apollo_inputs List. Main inputs necessary for model estimation. See \link{apollo_validateInputs}.
+#' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @return A function or an expression (same type as input \code{f})
 #' @export
 apollo_expandLoop <- function(f, apollo_inputs){
   #### Utilities ####
   
-  is.val <- function(e) if(is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) ) return(TRUE) else return(FALSE)
+  is.val <- function(e) if(is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) || is.complex(e)) return(TRUE) else return(FALSE)
   
   replaceByDef <- function(e, defs, rightSide=FALSE){
     isFunction <- is.function(e)
@@ -37,7 +37,10 @@ apollo_expandLoop <- function(f, apollo_inputs){
     # Case 3: expression
     if( !test1 && !test2 && (is.call(e) || is.expression(e)) ){
       isAssign <- length(e)==3 && is.symbol(e[[1]]) && (as.character(e[[1]]) %in% c('<-', '='))
-      for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- replaceByDef(e[[i]], defs, rightSide=(rightSide | (isAssign & i==3)))
+      for(i in 1:length(e)) if(!is.null(e[[i]])){
+        isFuncArg <- i==2 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
+        if(!isFuncArg) e[[i]] <- replaceByDef(e[[i]], defs, rightSide=(rightSide | (isAssign & i==3)))
+      }
     } 
     # Return
     if(isFunction){body(f) <- e; e <- f}
@@ -50,7 +53,10 @@ apollo_expandLoop <- function(f, apollo_inputs){
     # Case 2: is a value but not j
     if(is.val(e)) return(e)
     # Case 3: is an expression
-    if(is.expression(e) || is.call(e)) for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- replaceIndex(e[[i]], jNam, jVal)
+    if(is.expression(e) || is.call(e)) for(i in 1:length(e)) if(!is.null(e[[i]])){
+      isFuncArg <- i==2 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
+      if(!isFuncArg) e[[i]] <- replaceIndex(e[[i]], jNam, jVal)
+    }
     return(e)
   }
   
@@ -67,7 +73,10 @@ apollo_expandLoop <- function(f, apollo_inputs){
     }
     # Case 3: an expression
     test2 <- (is.call(e) || is.expression(e)) && !test1
-    if(test2) for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- runPaste(e[[i]], env)
+    if(test2) for(i in 1:length(e)) if(!is.null(e[[i]])){
+      isFuncArg <- i==2 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
+      if(!isFuncArg) e[[i]] <- runPaste(e[[i]], env)
+    }
     return(e)
   }
   
@@ -86,7 +95,10 @@ apollo_expandLoop <- function(f, apollo_inputs){
     }
     # Case 3: an expression
     test2 <- (is.call(e) || is.expression(e)) && !test1
-    if(test2) for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- rmGet(e[[i]], env)
+    if(test2) for(i in 1:length(e)) if(!is.null(e[[i]])){
+      isFuncArg <- i==2 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
+      if(!isFuncArg) e[[i]] <- rmGet(e[[i]], env)
+    }
     return(e)
   }
   
@@ -114,7 +126,10 @@ apollo_expandLoop <- function(f, apollo_inputs){
     }
     # Case 3: an expression
     test2 <- (is.call(e) || is.expression(e)) && !test
-    if(test2) for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- evalIndex(e[[i]], env=env)
+    if(test2) for(i in 1:length(e)) if(!is.null(e[[i]])){
+      isFuncArg <- i==2 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
+      if(!isFuncArg) e[[i]] <- evalIndex(e[[i]], env=env)
+    }
     return(e)
   }
   
@@ -133,24 +148,27 @@ apollo_expandLoop <- function(f, apollo_inputs){
       if(!is.null(defs)) e[[3]] <- replaceByDef(e[[3]], defs, rightSide=TRUE)
       jValues <- tryCatch(eval(e[[3]], envir=env), # all values that j needs to take
                           error=function(e) stop('Could not evaluate all possible values for index ', jSym, '.'))
-      if(!is.null(defs)){ # replace definitions in expression inside loop, except for the index
-        tmp <- which(names(defs)==as.character(jSym))
-        if(any(tmp)) e[[4]] <- replaceByDef(e[[4]], defs[-tmp]) else e[[4]] <- replaceByDef(e[[4]], defs)
-      } 
+      #if(!is.null(defs)){ # replace definitions in expression inside loop, except for the index
+      #  tmp <- which(names(defs)==as.character(jSym))
+      #  if(any(tmp)) e[[4]] <- replaceByDef(e[[4]], defs[-tmp]) else e[[4]] <- replaceByDef(e[[4]], defs)
+      #} 
       ee <- str2lang(paste0('{', paste0(jValues, collapse='; '), '}'))
-      for(j in jValues){
-        ee[[1+j]] <- replaceIndex(e[[4]], jSym, j)
+      for(j in 1:length(jValues)){ # jValues can be numeric or not
+        ee[[1+j]] <- replaceIndex(e[[4]], jSym, jValues[j])
         ee[[1+j]] <- expandLoop(ee[[1+j]], defs, env) # in case there are nested loops
         ee[[1+j]] <- runPaste(ee[[1+j]], env)
         ee[[1+j]] <- rmGet(ee[[1+j]])
         ee[[1+j]] <- evalIndex(ee[[1+j]], env)
       }
-      if(!is.null(defs)) ee <- replaceByDef(ee, defs)
+      #if(!is.null(defs)) ee <- replaceByDef(ee, defs)
       return(ee)
     }
     # Case 3: It is a call but not a for
     test2 <- (is.call(e) || is.expression(e)) && !test1
-    if(test2) for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- expandLoop(e[[i]], defs, env)
+    if(test2) for(i in 1:length(e)) if(!is.null(e[[i]])){
+      isFuncArg <- i==2 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
+      if(!isFuncArg) e[[i]] <- expandLoop(e[[i]], defs, env)
+    }
     if(!isF) return(e) else {body(f) <- e; return(f)}
   }
   
@@ -195,7 +213,10 @@ apollo_expandLoop <- function(f, apollo_inputs){
     }
     # Case 3: It is a call but not as in case 2
     test2 <- (is.call(e) || is.expression(e))
-    if(test2) for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- simplify(e[[i]], defs)
+    if(test2) for(i in 1:length(e)) if(!is.null(e[[i]])){
+      isFuncArg <- i==2 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
+      if(!isFuncArg) e[[i]] <- simplify(e[[i]], defs)
+    }
     if(!isF) return(e) else {body(f) <- e; return(f)}
   }
   
@@ -236,6 +257,7 @@ apollo_expandLoop <- function(f, apollo_inputs){
   env$apollo_inputs <- apollo_inputs
   fNew  <- expandLoop(f, defs, env)
   defs  <- apollo_varList(fNew, apollo_inputs)
+  fNew  <- replaceByDef(fNew, defs)
   fNew  <- simplify(fNew, defs)
   fNew  <- simplify(fNew, defs) # up to two levels of loops. Maybe I can add a third, but doesn't make much sense
   return(fNew)

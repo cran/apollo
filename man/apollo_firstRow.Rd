@@ -23,6 +23,6 @@ If \code{P} is a list, then it returns a list where each element has only the fi
 Given a multi-row input, keeps only the first row for each individual.
 }
 \details{
-This a function to keep only the first row of an object per indidividual. It can handle multiple components, scalars, vectors and three-dimensional arrays (cubes).
+This a function to keep only the first row of an object per indidividual. It can handle multiple types of components, including scalars, vectors and three-dimensional arrays (cubes).
 The argument database MUST contain a column called 'apollo_sequence', which is created by \link{apollo_validateData}.
 }

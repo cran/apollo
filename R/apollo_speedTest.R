@@ -3,11 +3,11 @@
 #' Measures the evaluation time of a model for different number of cores and draws.
 #'
 #' This function evaluates the function \code{apollo_probabilities} several times using different number of threads (a.k.a. processor cores),
-#' and draws (if the model uses mixing). Then it plots the estimation time for each combination.
-#' Estimation time grows at least linearly with number of draws, while time savings are decreasing with the number of threads.
+#' and draws (if the model uses mixing). It then plots the estimation time for each combination.
+#' Estimation time grows at least linearly with number of draws, while time savings decrease with the number of threads.
 #' This function can help decide what number of draws and cores to use for estimation, though a high number of draws is always
 #' recommended. If the computer will be used for additional activities during estimation, no more than (machine number of cores - 1) should be used.
-#' Using more threads than cores available in the machine will lead to reduce performance.
+#' Using more threads than cores available in the machine will lead to reduce dperformance.
 #' The use of additional cores come at the expense of additional memory usage. If R uses more memory than the physical RAM available,
 #' then significant slow-downs in processing time can be expected. This function can help avoiding such pitfalls.
 #'
@@ -15,16 +15,16 @@
 #' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
 #' @param apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 #'                          \itemize{
-#'                            \item \code{apollo_beta}: Named numeric vector. Names and values of model parameters.
-#'                            \item \code{apollo_inputs}: List containing options of the model. See \link{apollo_validateInputs}.
-#'                            \item \code{functionality}: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
+#'                            \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
+#'                            \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
+#'                            \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
-#' @param speedTest_settings List containing options for the speed test. The following are valid options.
+#' @param speedTest_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 #'                                   \itemize{
-#'                                     \item \code{nDrawsTry}: Numeric vector. Number of inter and intra-person draws to try. Default value is c(50, 100, 200).
-#'                                     \item \code{nCoresTry}: Numeric vector. Number of threads to try. Default is from 1 to the detected number of cores.
-#'                                     \item \code{nRep}: Numeric scalar. Number of times the likelihood is evaluated for each combination of threads and draws. Default is 10.
+#'                                     \item \strong{\code{nCoresTry}}: Numeric vector. Number of threads to try. Default is from 1 to the detected number of cores.
+#'                                     \item \strong{\code{nDrawsTry}}: Numeric vector. Number of inter and intra-person draws to try. Default value is c(50, 100, 200).
+#'                                     \item \strong{\code{nRep}}: Numeric scalar. Number of times the likelihood is evaluated for each combination of threads and draws. Default is 10.
 #'                                   }
 #' @return A matrix with the average time per evaluation for each number of threads and draws combination. A graph is also plotted.
 #' @importFrom graphics matplot title legend

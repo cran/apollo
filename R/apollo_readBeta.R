@@ -1,6 +1,6 @@
 #' Reads parameters from file
 #'
-#' Reads in parameters from a previously estimated model and copies the values to the given apollo_beta vector, only for those parameters whose name matches.
+#' Reads in parameters from a previously estimated model and copies the values to the given \code{apollo_beta} vector, only for those parameters whose name matches.
 #'
 #' This function will update the values of the parameters in its argument \code{apollo_beta} with the matching values in the file
 #' \code{(inputModelName)_estimates.csv}. If there is no match for a given parameter in \code{apollo_beta}, its value will not be updated.

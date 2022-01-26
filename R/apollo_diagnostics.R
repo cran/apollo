@@ -1,9 +1,9 @@
-#' Pre-process input for multiple models
+#' Pre-process input for common models
 #' return
 #' @param inputs List of settings
 #' @param modelType Character. Type of model, e.g. "mnl", "nl", "cnl", etc.
 #' @param apollo_inputs List of main inputs to the model estimation process. See \link{apollo_validateInputs}.
-#' @param data Boolean. TRUE for printing report related to dependant and independant variables. FALSE for not printing it. Default is TRUE.
+#' @param data Boolean. TRUE for printing report related to dependent and independent variables. FALSE for not printing it. Default is TRUE.
 #' @param param Boolean. TRUE for printing report related to estimated parameters (e.g. model structure). FALSE for not printing it. Default is TRUE.
 #' @return (invisibly) TRUE if no error happend during execution.
 #' @export
@@ -28,7 +28,7 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
     if(!apollo_inputs$silent & data){
       if(any(choicematrix[4,]==0)) apollo_print("WARNING: some alternatives are never chosen in your data!")
       if(any(choicematrix[4,]==1)) apollo_print("WARNING: some alternatives are always chosen when available!")
-      if(inputs$avail_set) apollo_print(paste0("WARNING: Availability not provided (or some elements are NA). Full availability assumed."))
+      #if(inputs$avail_set) apollo_print(paste0("WARNING: Availability not provided (or some elements are NA). Full availability assumed."))
       apollo_print("\n")
       apollo_print(paste0('Overview of choices for ', toupper(modelType), ' model component ', 
                           ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
@@ -159,9 +159,40 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
       if(sum(choicematrix[4,a,])==0) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'))
       if(choicematrix[4,a,1]==1) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'))
     }
-    if(inputs$avail_set==TRUE & !apollo_inputs$silent & data) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'))
+    #if(inputs$avail_set==TRUE & !apollo_inputs$silent & data) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'))
   }
   
+  #### EL ####
+  if(modelType=="fmnl"){
+    # Table describing dependent variable
+    choicematrix <- matrix(0, nrow=4, ncol=inputs$nAlt, 
+                           dimnames=list(c("Times available",
+                                           "Observations with non-zero share",
+                                           "Average share overall",
+                                           "Average share when available"),
+                                         inputs$altnames))
+    for(a in 1:inputs$nAlt){
+      choicematrix[1,a] <- ifelse(length(inputs$avail[[a]])==1 && inputs$avail[[a]]==1, 
+                                  inputs$nObs, sum(inputs$avail[[a]]) )
+      choicematrix[2,a] <- sum(inputs$choiceShares[[a]]>0)
+      choicematrix[3,a] <- ifelse(choicematrix[1,a]>0, mean(inputs$choiceShares[[a]]), 0)
+      choicematrix[4,a] <- ifelse(choicematrix[1,a]>0, sum(inputs$choiceShares[[a]])/choicematrix[1,a], 0)
+    }
+    # Print table
+    if(!apollo_inputs$silent & data){
+      apollo_print("\n")
+      apollo_print(paste0('Overview of choices for ', toupper(modelType), ' model component ', 
+                          ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
+      print(round(choicematrix,2))
+      
+      # Print warnings
+      for(a in 1:inputs$nAlt){
+        if(choicematrix[2,a]==0) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'))
+        if(choicematrix[4,a]==1) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is always given the full choice share when available in model component "', inputs$componentName, '".'))
+      }
+      #if(inputs$avail_set==TRUE & !apollo_inputs$silent) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'))
+    }
+  }
   
   #### NormD ####
   if(modelType=="normd"){
@@ -190,7 +221,7 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
   
   #### MDCEV, MDCNEV ####
   if(modelType %in% c("mdcev", "mdcnev")){
-    # Table describing dependant variable
+    # Table describing dependent variable
     choicematrix <- matrix(0, nrow=4, ncol=inputs$nAlt, 
                           dimnames=list(c("Times available","Observations in which chosen",
                                           "Average consumption when available",
@@ -213,9 +244,9 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
       # Print warnings
       for(a in 1:inputs$nAlt){
         if(choicematrix[2,a]==0) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'))
-        if(choicematrix[2,a]==inputs$nObs && a>1) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'))
+        if(choicematrix[2,a]==choicematrix[1,a] && inputs$altnames[a]!=inputs$outside) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'))
       }
-      if(inputs$avail_set==TRUE & !apollo_inputs$silent) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'))
+      #if(inputs$avail_set==TRUE & !apollo_inputs$silent) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'))
     }
     
     if(modelType=="mdcnev" && !apollo_inputs$silent & param){

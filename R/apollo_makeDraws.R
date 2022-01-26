@@ -3,11 +3,11 @@
 #' Creates a list containing all draws necessary to estimate a model with mixing.
 #'
 #' Internal use only. Called by \code{apollo_validateInputs}.
-#' #' This function creates a list whose elements are the sets of draws requested by the user for use in a model with mixing.
+#' This function creates a list whose elements are the sets of draws requested by the user for use in a model with mixing.
 #' If the model does not include mixing, then it is not necessary to run this function.
-#' The number of draws have a massive impact on memory usage and estimation time. Memory usage and number of computations
+#' The number of draws has a massive impact on memory usage and estimation time. Memory usage and number of computations
 #' scale geometrically as N*interNDraws*intraNDraws (where N is the number of observations). Special care should be taken
-#' when using both inter and intra draws, as memory usage can easily reach the GB order of magnitude. Also, keep in
+#' when using both inter and intra-individual draws, as memory usage can easily reach the GB order of magnitude. Also, keep in
 #' mind that using several threads (i.e. multicore) at least doubles the memory usage.
 #' This function returns a list, with each element representing a random component of the mixing model. The dimensions 
 #' of the array depend on the type of draws used.

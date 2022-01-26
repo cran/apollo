@@ -4,10 +4,10 @@
 #' 
 #' It modifies the definition of the following models.
 #' \itemize{
-#'   \item \code{apollo_mnl}: Turns all elements inside \code{mnl_settings$V} into functions.
-#'   \item \code{apollo_ol}: Turns \code{ol_settings$V} and all elements inside \code{ol_settings$tau} into functions.
-#'   \item \code{apollo_op}: Turns \code{op_settings$V} and all elements inside \code{op_settings$tau} into functions.
-#'   \item \code{apollo_normalDensity}: Turns \code{normalDensity_settings$xNormal}, \code{normalDensity_settings$mu} and \code{normalDensity_settings$sigma} into functions.
+#'   \item \strong{\code{apollo_mnl}}: Turns all elements inside \code{mnl_settings$V} into functions.
+#'   \item \strong{\code{apollo_ol}}: Turns \code{ol_settings$V} and all elements inside \code{ol_settings$tau} into functions.
+#'   \item \strong{\code{apollo_op}}: Turns \code{op_settings$V} and all elements inside \code{op_settings$tau} into functions.
+#'   \item \strong{\code{apollo_normalDensity}}: Turns \code{normalDensity_settings$xNormal}, \code{normalDensity_settings$mu} and \code{normalDensity_settings$sigma} into functions.
 #' }
 #' It can only track a maximum of 3 levels of depth in definitions. For example:
 #' \code{
@@ -41,7 +41,7 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
   if(!is.function(f)) stop('Argument "f" should be a function.')
   
   ## Check if input is a single value
-  is.val <- function(e) if(is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) ) return(TRUE) else return(FALSE)
+  is.val <- function(e) if(is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) || is.complex(e)) return(TRUE) else return(FALSE)
   
   # Vector to store the elements that are yet to be turned into functions
   pendingVars <- c()
@@ -79,7 +79,10 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
     # Case 3: expression
     if(!test1 && !test2 && is.call(e)){
       test0 <- length(e)==3 && is.symbol(e[[1]]) && (as.character(e[[1]]) %in% c('<-', '=')) # Is an assignment
-      for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- replaceByDef(e[[i]], defs, rightSide=(rightSide | (test0 & i==3)))
+      for(i in 1:length(e)) if(!is.null(e[[i]])){
+        isFuncArg <- i==2 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
+        if(!isFuncArg) e[[i]] <- replaceByDef(e[[i]], defs, rightSide=(rightSide | (test0 & i==3)))
+      }
     } 
     # Return
     if(is.function(f)){body(f) <- e; return(f)} else return(e)
@@ -199,7 +202,10 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
     }
     # Other cases
     if(!lListElem && !lListAll && !lListList1 && !lListList2 && !lListOnly && is.call(e)){
-      for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- listElem2Func(e[[i]], listNames, elemNames, elemListNames)
+      for(i in 1:length(e)) if(!is.null(e[[i]])){
+        isFuncArg <- i==2 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
+        if(!isFuncArg) e[[i]] <- listElem2Func(e[[i]], listNames, elemNames, elemListNames)
+      }
     }
     # Return
     return(e)
@@ -258,7 +264,10 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
       }
     }
     # If 'e' is not a call to 'fName', look one lever deeper
-    for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- replaceInModelCall(fName, elemNames, listNames, e[[i]])
+    for(i in 1:length(e)) if(!is.null(e[[i]])){
+      isFuncArg <- i==2 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
+      if(!isFuncArg) e[[i]] <- replaceInModelCall(fName, elemNames, listNames, e[[i]])
+    }
     return(e)
   }
   
@@ -333,7 +342,10 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
     if(!is.call(e)) stop('Argument "e" must be a language object')
     if(is.call(e) && length(e)>0){
       ans <- rep(FALSE, length(e))
-      for(i in 1:length(e)) if(!is.null(e[[i]])) ans[i] <- containsWhileLoop(e[[i]])
+      for(i in 1:length(e)) if(!is.null(e[[i]])){
+        isFuncArg <- i==2 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
+        if(!isFuncArg) ans[i] <- containsWhileLoop(e[[i]])
+      }
       return( any(ans) )
     }
   }; if(containsWhileLoop(f)) return(f)
@@ -370,7 +382,7 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
   }
   
   if(lcPars){
-    f <- processModelDefinition(fName="apollo_classAlloc", elemNames=c(), listNames=c("V"), e=f)
+    f <- processModelDefinition(fName="apollo_classAlloc", elemNames=c(), listNames=c("V", "utilities"), e=f)
     # Replace elements that are functions
     apollo_inputs <- tryCatch(get('apollo_inputs', envir=parent.frame()), 
                               error=function() list(apollo_control=list(mixing=FALSE), apollo_randCoeff=NA, apollo_lcPars=NA))

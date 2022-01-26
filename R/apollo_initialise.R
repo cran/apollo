@@ -1,7 +1,7 @@
 #' Prepares environment
 #' 
 #' Prepares environment (the global environment if called by the user) for model definition and estimation.
-#' 
+#'
 #' This function detaches variables and makes sure that output is directed to console. It does not delete variables from the working environment.
 #' 
 #' @return Nothing.

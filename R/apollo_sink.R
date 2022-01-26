@@ -1,4 +1,4 @@
-#' Writes or stops writing output to a text file
+#' Starts or stops writing output to a text file.
 #'
 #' Starts or stops writing the output shown in the console to a file named "modelName_additional_output.txt".
 #'

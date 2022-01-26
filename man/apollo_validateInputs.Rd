@@ -24,81 +24,84 @@ apollo_validateInputs(
 
 \item{database}{data.frame. Data used by model.}
 
-\item{apollo_control}{List. Options controlling the running of the code.
+\item{apollo_control}{List. Options controlling the running of the code. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
-  \item \code{modelName}: Character. Name of the model. Used when saving the output to files.
-  \item \code{modelDescr}: Character. Description of the model. Used in output files.
-  \item \code{indivID}: Character. Name of column in the database with each decision maker's ID.
-  \item \code{mixing}: Boolean. TRUE for models that include random parameters.
-  \item \code{nCores}: Numeric>0. Number of cores to use in calculations of the model likelihood.
-  \item \code{seed}: Numeric. Seed for random number generation.
-  \item \code{HB}: Boolean. TRUE if using RSGHB for Bayesian estimation of model.
-  \item \code{noValidation}: Boolean. TRUE if user does not wish model input to be validated before estimation - FALSE by default.
-  \item \code{noDiagnostics}: Boolean. TRUE if user does not wish model diagnostics to be printed - FALSE by default.
-  \item \code{outputDirectory}: Character. Optional directory for outputs if different from working director - empty by default
-  \item \code{weights}: Character. Name of column in database containing weights for estimation.
-  \item \code{workInLogs}: Boolean. TRUE for increased numeric precision in models with panel data - FALSE by default.
-  \item \code{panelData}: Boolean. TRUE if there are multiple obsrvations (i.e. rows) for each decision maker - Automatically set based on \code{indivID} by default.
-  \item \code{calculateLLC}: Boolean. TRUE if user wants to calculate LL at constants (if applicable). - TRUE by default.
+  \item \strong{\code{calculateLLC}}: Boolean. TRUE if user wants to calculate LL at constants (if applicable). - TRUE by default.
+  \item \strong{\code{HB}}: Boolean. TRUE if using RSGHB for Bayesian estimation of model.
+  \item \strong{\code{indivID}}: Character. Name of column in the database with each decision maker's ID.
+  \item \strong{\code{mixing}}: Boolean. TRUE for models that include random parameters.
+  \item \strong{\code{modelDescr}}: Character. Description of the model. Used in output files.
+  \item \strong{\code{modelName}}: Character. Name of the model. Used when saving the output to files.
+  \item \strong{\code{nCores}}: Numeric>0. Number of cores to use in calculations of the model likelihood.
+  \item \strong{\code{noDiagnostics}}: Boolean. TRUE if user does not wish model diagnostics to be printed - FALSE by default.
+  \item \strong{\code{noValidation}}: Boolean. TRUE if user does not wish model input to be validated before estimation - FALSE by default.
+  \item \strong{\code{outputDirectory}}: Character. Optional directory for outputs if different from working director - empty by default
+  \item \strong{\code{panelData}}: Boolean. TRUE if there are multiple observations (i.e. rows) for each decision maker - Automatically set based on \code{indivID} by default.
+  \item \strong{\code{seed}}: Numeric. Seed for random number generation.
+  \item \strong{\code{weights}}: Character. Name of column in database containing weights for estimation.
+  \item \strong{\code{workInLogs}}: Boolean. TRUE for increased numeric precision in models with panel data - FALSE by default.
 }}
 
-\item{apollo_HB}{List. Contains options for bayesian estimation. See \code{?RSGHB::doHB} for details.
+\item{apollo_HB}{List. Contains options for Bayesian estimation. See \code{?RSGHB::doHB} for details.
 Parameters \code{modelname}, \code{gVarNamesFixed}, \code{gVarNamesNormal},
 \code{gDIST}, \code{svN} and \code{FC} are automatically set based on the
 other arguments of this function.
 Other settings to include are the following.
 \itemize{
-  \item \strong{\code{hbDist}} \emph{Mandatory} setting. A named character vector determining
+  \item \strong{\code{constraintNorm}}: Character vector. Constraints for \emph{random} coefficients 
+                                       in bayesian estimation. Constraints can be written as 
+                                       "b1>b2", "b1<b2", "b1>0", or "b1<0".
+  \item \strong{\code{fixedA}}: Named numeric vector. Contains the names and fixed mean values of 
+                               random parameters. For example, c(b1=0) fixes the mean of b1 to zero.
+  \item \strong{\code{fixedD}}: Named numeric vector. Contains the names and fixed variance of 
+                               random parameters. For example, c(b1=1) fixes the variance of b1 to zero.
+  \item \strong{\code{gNCREP}}: Numeric. Number of burn-in iterations to use prior to convergence (default=10^5).
+  \item \strong{\code{gNEREP}}: Numeric. Number of iterations to keep for averaging after convergence has been reached (default=10^5).
+  \item \strong{\code{gINFOSKIP}}: Numeric. Number of iterations between printing/plotting information about the iteration process (default=250).
+  \item \strong{\code{hbDist}}: \emph{Mandatory} setting. A named character vector determining
                                the distribution of each parameter to be estimated. Possible 
                                values are as follows.
                                \itemize{
-                                 \item \code{"DNE"}: Parameter kept at its starting value (not estimated).
-                                 \item \code{"F"}: Fixed (as in non-random) parameter.
-                                 \item \code{"N"}: Normal.
-                                 \item \code{"LN+"}: Positive log-normal.
-                                 \item \code{"LN-"}: Negative log-normal.
-                                 \item \code{"CN+"}: Positive censored normal.
-                                 \item \code{"CN-"}: Negative censored normal.
-                                 \item \code{"JSB"}: Johnson SB.
+                                 \item \strong{\code{"CN+"}}: Positive censored normal.
+                                 \item \strong{\code{"CN-"}}: Negative censored normal.
+                                 \item \strong{\code{"DNE"}}: Parameter kept at its starting value (not estimated).
+                                 \item \strong{\code{"JSB"}}: Johnson SB.
+                                 \item \strong{\code{"LN+"}}: Positive log-normal.
+                                 \item \strong{\code{"LN-"}}: Negative log-normal.
+                                 \item \strong{\code{"N"}}: Normal.
+                                 \item \strong{\code{"NR"}}: Fixed (as in non-random) parameter.
                                }
-  \item \strong{\code{constraintNorm}} Character vector. Constraints for \emph{random} coefficients 
-                                       in bayesian estimation. Constraints can be written as 
-                                       "b1>b2", "b1<b2", "b1>0", or "b1<0".
-  \item \strong{\code{fixedA}} Named numeric vector. Contains the names and fixed mean values of 
-                               random parameters. For example, c(b1=0) fixes the mean of b1 to zero.
-  \item \strong{\code{fixedD}} Named numeric vector. Contains the names and fixed variance of 
-                               random parameters. For example, c(b1=1) fixes the variance of b1 to zero.
 }}
 
 \item{apollo_draws}{List of arguments describing the inter and intra individual draws. Required only if \code{apollo_control$mixing = TRUE}. Unused elements can be ommited.
 \itemize{
-  \item \code{interDrawsType}: Character. Type of inter-individual draws ('halton','mlhs','pmc','sobol','sobolOwen',
+  \item \strong{\code{interDrawsType}}: Character. Type of inter-individual draws ('halton','mlhs','pmc','sobol','sobolOwen',
                                'sobolFaureTezuka', 'sobolOwenFaureTezuka' or the name of an object loaded in memory,
-                               see manual in www.ApolloChoiceModelling.com for details).
-  \item \code{interNDraws}: Numeric scalar (>=0). Number of inter-individual draws per individual. Should be set to 0 if not using them.
-  \item \code{interUnifDraws}: Character vector. Names of uniform-distributed inter-individual draws.
-  \item \code{interNormDraws}: Character vector. Names of normaly distributed inter-individual draws.
-  \item \code{intraDrawsType}: Character. Type of intra-individual draws ('halton','mlhs','pmc','sobol','sobolOwen','sobolFaureTezuka', 'sobolOwenFaureTezuka' or the name of an object loaded in memory).
-  \item \code{intraNDraws}: Numeric scalar (>=0). Number of intra-individual draws per individual. Should be set to 0 if not using them.
-  \item \code{intraUnifDraws}: Character vector. Names of uniform-distributed intra-individual draws.
-  \item \code{intraNormDraws}: Character vector. Names of normaly distributed intra-individual draws.
+                               see manual in \url{http://www.ApolloChoiceModelling.com} for details).
+  \item \strong{\code{interNDraws}}: Numeric scalar (>=0). Number of inter-individual draws per individual. Should be set to 0 if not using them.
+  \item \strong{\code{interNormDraws}}: Character vector. Names of normaly distributed inter-individual draws.
+  \item \strong{\code{interUnifDraws}}: Character vector. Names of uniform-distributed inter-individual draws.
+  \item \strong{\code{intraDrawsType}}: Character. Type of intra-individual draws ('halton','mlhs','pmc','sobol','sobolOwen','sobolFaureTezuka', 'sobolOwenFaureTezuka' or the name of an object loaded in memory).
+  \item \strong{\code{intraNDraws}}: Numeric scalar (>=0). Number of intra-individual draws per individual. Should be set to 0 if not using them.
+  \item \strong{\code{intraUnifDraws}}: Character vector. Names of uniform-distributed intra-individual draws.
+  \item \strong{\code{intraNormDraws}}: Character vector. Names of normaly distributed intra-individual draws.
 }}
 
 \item{apollo_randCoeff}{Function. Used with mixing models. Constructs the random parameters of a mixing model. Receives two arguments:
 \itemize{
-  \item \code{apollo_beta}: Named numeric vector. Names and values of model parameters. 
-  \item \code{apollo_inputs}: The output of this function (\code{apollo_validateInputs}).
+  \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters. 
+  \item \strong{\code{apollo_inputs}}: The output of this function (\code{apollo_validateInputs}).
 }}
 
 \item{apollo_lcPars}{Function. Used with latent class models. Constructs a list of parameters for each latent class. Receives two arguments:
 \itemize{
-  \item \code{apollo_beta}: Named numeric vector. Names and values of model parameters. 
-  \item \code{apollo_inputs}: The output of this function (\code{apollo_validateInputs}).
+  \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters. 
+  \item \strong{\code{apollo_inputs}}: The output of this function (\code{apollo_validateInputs}).
 }}
 
-\item{recycle}{Logical. If TRUE, an older version of apollo_inputs is looked for in the calling environment (parent frame), and any
-element in that old version created by the user is copied into the new apollo_inputs returned by this function.
-For \code{recycle=TRUE} to work, the old version of apollo_inputs \strong{must} be named "apollo_inputs".
+\item{recycle}{Logical. If TRUE, an older version of \code{apollo_inputs} is looked for in the calling environment (parent frame), and any
+element in that old version created by the user is copied into the new \code{apollo_inputs} returned by this function.
+For \code{recycle=TRUE} to work, the old version of \code{apollo_inputs} \strong{must} be named "apollo_inputs".
 If FALSE, nothing is copied from any older version of apollo_inputs. FALSE is the default.}
 
 \item{silent}{Logical. TRUE to keep the function from printing to the console. Default is FALSE.}
@@ -111,7 +114,7 @@ Searches the user work space (.GlobalEnv) for all necessary input to run \code{a
 }
 \details{
 All arguments to this function are optional. If the function is called without arguments, then it it will look in
-the user workspace (i.e. the global environment) for variables with the same name as its ommited arguments.
-We strongly recommend users to visit www.ApolloChoiceModelling.com for examples on how to use Apollo.
+the user workspace (i.e. the global environment) for variables with the same name as its omitted arguments.
+We strongly recommend users to visit \url{http://www.ApolloChoiceModelling.com} for examples on how to use Apollo.
 In the website, users will also find a detailed manual and a user-group for help and further reference.
 }

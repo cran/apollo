@@ -8,9 +8,9 @@
 #' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
 #' @param apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 #'                          \itemize{
-#'                            \item apollo_beta: Named numeric vector. Names and values of model parameters.
-#'                            \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-#'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
+#'                            \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
+#'                            \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
+#'                            \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param apollo_estSet List of estimation options. It must contain at least one element called
@@ -95,46 +95,7 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   #### Modify apollo_probabilities, apollo_randCoeff & apollo_lcPars ####
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
   
-  if(debug) apollo_print('Optimising functions...')
-  
-  ### Expand loops
-  if(apollo_inputs$apollo_control$analyticGrad){
-    tmp <- tryCatch(apollo_expandLoop(apollo_probabilities, apollo_inputs),
-                    error=function(e) -1)
-    if(is.function(tmp)) apollo_probabilities <- tmp
-    rm(tmp)
-  }
-  
-  ### Checks for scaling and insert them inside apollo_probabilities
-  scaling <- setNames(rep(1, length(apollo_beta)-length(apollo_fixed)), 
-                      names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)])
-  test <- is.null(apollo_inputs$apollo_scaling)
-  test <- test || (length(apollo_inputs$apollo_scaling)==1 && is.na(apollo_inputs$apollo_scaling))
-  if(!test){
-    scaling[names(apollo_inputs$apollo_scaling)] <- apollo_inputs$apollo_scaling
-    if(any(!(names(scaling) %in% names(apollo_beta)))) stop("Some parameters included in 'scaling' are not included in 'apollo_beta'")
-    if(any(names(scaling) %in% apollo_fixed)) stop("Parameters in 'apollo_fixed' should not be included in 'scaling'")
-    if(any(scaling<0)){
-      scaling <- abs(scaling)
-      txt <- 'Some negative values in "scaling" were replaced by their absolute value'
-      if(!silent) apollo_print(paste0('WARNING: ', txt, '.')) else warning(txt)
-      rm(txt)
-    }
-    if(any(scaling<=0)) stop('All terms in "scaling" should be strictly positive!')
-  }
-  apollo_inputs$apollo_scaling <- scaling
-  rm(scaling)
-  apollo_probabilities <- apollo_insertScaling(apollo_probabilities, apollo_inputs$apollo_scaling)
-  if(apollo_inputs$apollo_control$mixing && is.function(apollo_inputs$apollo_randCoeff)){
-    apollo_inputs$apollo_randCoeff <- apollo_insertScaling(apollo_inputs$apollo_randCoeff, apollo_inputs$apollo_scaling)
-  }
-  if(is.function(apollo_inputs$apollo_lcPars)){
-    apollo_inputs$apollo_lcPars <- apollo_insertScaling(apollo_inputs$apollo_lcPars, apollo_inputs$apollo_scaling)
-  }
-  if(exists('txt', inherits=FALSE)) rm(txt)
-  
-  ### Insert componentName if missing
-  apollo_probabilities <- apollo_insertComponentName(apollo_probabilities)
+  if(debug) apollo_print('Inserting function() in user-defined functions')
   
   ### Insert "function ()" in apollo_probabilities, apollo_randCoeff and apollo_lcPars (if needed)
   if(apollo_inputs$apollo_control$analyticGrad){
@@ -146,10 +107,10 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     # Test that modified LL actually works
     ll <- tryCatch(tmp1(apollo_beta, apollo_inputs), error=function(e) NULL)
     if(is.null(ll)){
-      if(debug) apollo_print('Modified apollo_probabilities did not work. Defaulting to original one (no analytic gradients possible)')
+      if(debug) apollo_print('function() could not be inserted correctly in user-defined functions. No analytic gradients possible')
       apollo_inputs$apollo_control$analyticGrad <- FALSE
     } else {
-      # Compare result of modified LL againts original LL
+      # Compare result of modified LL against original LL
       tmp4 <- tryCatch(apollo_probabilities(apollo_beta, apollo_inputs), error=function(e) NULL)
       test <- !is.null(tmp4) && is.numeric(tmp4) && is.numeric(ll) && length(tmp4)==length(ll)
       test <- test && abs(sum(tmp4, na.rm=TRUE) - sum(ll, na.rm=TRUE))/sum(tmp4, na.rm=TRUE) < 0.01

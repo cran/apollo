@@ -5,7 +5,7 @@
 #'
 #' @param P List of vectors, matrices or 3-dim arrays. Likelihood of the model components.
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
-#' @param functionality Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call apollo_probabilities, though the user can also call apollo_probabilities manually with a given functionality for testing/debugging. Possible values are:
+#' @param functionality Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
 #'                      \itemize{
 #'                        \item \strong{\code{"components"}}: For further processing/debugging, produces likelihood for each model component (if multiple components are present), at the level of individual draws and observations.
 #'                        \item \strong{\code{"conditionals"}}: For conditionals, produces likelihood of the full model, at the level of individual inter-individual draws.
@@ -15,6 +15,8 @@
 #'                        \item \strong{\code{"prediction"}}: For model prediction, produces probabilities for individual alternatives and individual model components (if multiple components are present) at the level of an observation, after averaging across draws.
 #'                        \item \strong{\code{"preprocess"}}: Prepares likelihood functions for use in estimation.
 #'                        \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
+#'                        \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
+#'                        \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
 #'                        \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
 #'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 #'                      }
@@ -28,6 +30,8 @@
 #'           \item \strong{\code{"prediction"}}: Returns \code{P} containing the probabilities/likelihoods of all alternatives for all model components averaged across inter-individual draws.
 #'           \item \strong{\code{"preprocess"}}: Returns \code{P} without changes.           
 #'           \item \strong{\code{"raw"}}: Returns \code{P} without changes.
+#'           \item \strong{\code{"report"}}: Returns \code{P} without changes.
+#'           \item \strong{\code{"shares_LL"}}: Returns \code{P} without changes.
 #'           \item \strong{\code{"validate"}}: Returns \code{P} containing the likelihood of the model averaged across inter-individual draws. Drops all components except \code{"model"}.
 #'           \item \strong{\code{"zero_LL"}}: Returns \code{P} without changes.
 #'         }
@@ -127,8 +131,8 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   if(functionality=="prediction"){
     nInter <- apollo_inputs$apollo_draws$interNDraws
     if(!inputIsList){
-      if(is.matrix(P) & ncol(P)==nInter) output=rowMeans(P)
-      if(is.array(P) & length(dim(P))==3) stop('Intra-individual draws still present to average over!')
+      if(is.matrix(P) && ncol(P)==nInter) output=rowMeans(P)
+      if(is.array(P) && length(dim(P))==3) stop('Intra-individual draws still present to average over!')
       return(output)
     } else {
       #output_list=P
@@ -136,7 +140,7 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
         if(is.list(P[[j]])){
           for(k in 1:length(P[[j]])){
             if(is.array(P[[j]][[k]]) && length(dim(P[[j]][[k]]))==3) stop('Intra-individual draws still present to average over!')
-            if(is.matrix(P[[j]][[k]]) & ncol(P[[j]][[k]])==nInter) P[[j]][[k]]=rowMeans(P[[j]][[k]])
+            if(is.matrix(P[[j]][[k]]) && ncol(P[[j]][[k]])==nInter) P[[j]][[k]]=rowMeans(P[[j]][[k]])
           }}else{
             if(is.array(P[[j]]) && length(dim(P[[j]]))==3) stop('Intra-individual draws still present to average over!')
             if(is.matrix(P[[j]]) && ncol(P[[j]])==nInter) P[[j]]=rowMeans(P[[j]])

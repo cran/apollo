@@ -1,4 +1,7 @@
-#' Writes an F12 file with the results of a model estimation.
+#' Writes an F12 file
+#' 
+#' Writes an F12 file (ALogit format) with the results of a model estimation.
+#' 
 #' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}.
 #' @param truncateCoeffNames Boolean. TRUE to truncate parameter names to 10 characters.
 #'                           FALSE by default.

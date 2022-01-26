@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_unconditionals.R
 \name{apollo_unconditionals}
 \alias{apollo_unconditionals}
-\title{Returns draws for random parameters in a latent class model model}
+\title{Returns draws for continuously distributed random parameters in mixture model}
 \usage{
 apollo_unconditionals(model, apollo_probabilities, apollo_inputs)
 }
@@ -11,9 +11,9 @@ apollo_unconditionals(model, apollo_probabilities, apollo_inputs)
 
 \item{apollo_probabilities}{Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 \itemize{
-  \item apollo_beta: Named numeric vector. Names and values of model parameters.
-  \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-  \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
+  \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
+  \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
+  \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
@@ -24,7 +24,7 @@ List of object, one per random coefficient.
         With intra-individual draws, this will be a three-dimensional array, with one row per observation, inter-individual draws in the second dimension, and intra-individual draws in the third dimension.
 }
 \description{
-Returns draws (unconditionals) for random parameters in model, including interactions with deterministic covariates
+Returns draws (unconditionals) for random parameters in model, including interactions with deterministic covariates.
 }
 \details{
 This functions is only meant for use with continuous distributions

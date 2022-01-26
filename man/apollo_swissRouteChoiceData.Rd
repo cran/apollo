@@ -8,7 +8,7 @@
 A data frame with 3,492 rows and 16 variables:
 \describe{
   \item{ID}{Numeric. Identification number of the individual.}
-  \item{choice}{Numeric. 1 for alternative 1, and 2 for alternative 2.}
+  \item{choice}{Numeric. Choice indicator, 1 for alternative 1, and 2 for alternative 2.}
   \item{tt1}{Numeric. Travel time (in minutes) for alternative 1.}
   \item{tc1}{Numeric. Travel cost (in CHF) for alternative 1.}
   \item{hw1}{Numeric. Headway time (in minutes) for alternative 1.}
@@ -36,13 +36,13 @@ A Stated Preference dataset containing 3,492 route choices among two alternative
 }
 \details{
 This dataset is to be used for discrete choice modelling.
-Data comes from 388 individuals who participated on a Stated
-Choice experiment (SC), providing a total of 3,492 observations.
+Data comes from 388 individuals who participated in a Stated
+Choice (SC) survey, providing a total of 3,492 observations.
 Each choice scenario includes two alternatives described in
 terms of travel time, cost, headway and interchanges. Additional
 information on respondents is available.
 This dataset comes from the following publication.
-Vrtic, Axhausen 2003, The impact of tilting trains in 
+Vrtic, M. & Axhausen, K.W. (2003), The impact of tilting trains in 
 Switzerland: A route choice model of regional and long
 distance public transport trips. 82nd annual meeting of 
 the transportation research board, Washington, DC.

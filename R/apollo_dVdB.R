@@ -1,9 +1,9 @@
 #' Calculates gradients of utility functions
 #' 
-#' Calculates gradients (derivatives) of utility functions, considering definitions in apollo_randCoeff.
+#' Calculates gradients (derivatives) of utility functions.
 #' 
 #' @param apollo_beta Named numeric vector of parameters.
-#' @param apollo_inputs List of Apollo main settings.
+#' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param V List of functions
 #' @return Named list. Each element is itself a list of functions: the partial derivatives of the elements of V.
 #' 

@@ -1,11 +1,12 @@
 #' Ben-Akiva & Swait test
 #' 
-#' Calculates the p-value for the Ben-Akiva & Swait test for non-nested models. 
-#' The two models need to both be discrete choice, and estimated on the same data.
+#' Carries out the Ben-Akiva & Swait test for non-nested models and reports the corresponding p-value. 
 #' 
-#' @param model1 Either a character variable with the name of a previously estimated model, or an estimated 
+#' The two models need to both be discrete choice, and need to have been estimated on the same data.
+#' 
+#' @param model1 Either a character variable with the name (and possibly path) of a previously estimated model, or an estimated 
 #'               model in memory, as returned by \link{apollo_estimate}.
-#' @param model2 Either a character variable with the name of a previously estimated model, or an estimated 
+#' @param model2 Either a character variable with the name (and possibly path) of a previously estimated model, or an estimated 
 #'               model in memory, as returned by \link{apollo_estimate}.
 #' @return Ben-Akiva & Swait test p-value (invisibly)
 #' @export

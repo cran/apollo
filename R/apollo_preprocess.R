@@ -2,9 +2,23 @@
 #' return
 #' @param inputs List of settings
 #' @param modelType Character. Type of model, e.g. "mnl", "nl", "cnl", etc.
-#' @param functionality Character. Either "estimate","prediction","validate","zero_LL","conditionals","output","raw", or "preprocess". Only used for validation, it does not influence the return values.
-#' @param apollo_inputs List of main inputs to the model estimation process. See \link{apollo_validateInputs}.
-#' @return The returned object depends on the value of argument operation
+#' @param functionality Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
+#'                      \itemize{
+#'                        \item \strong{\code{"components"}}: For further processing/debugging, produces likelihood for each model component (if multiple components are present), at the level of individual draws and observations.
+#'                        \item \strong{\code{"conditionals"}}: For conditionals, produces likelihood of the full model, at the level of individual inter-individual draws.
+#'                        \item \strong{\code{"estimate"}}: For model estimation, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"gradient"}}: For model estimation, produces analytical gradients of the likelihood, where possible.
+#'                        \item \strong{\code{"output"}}: Prepares output for post-estimation reporting.
+#'                        \item \strong{\code{"prediction"}}: For model prediction, produces probabilities for individual alternatives and individual model components (if multiple components are present) at the level of an observation, after averaging across draws.
+#'                        \item \strong{\code{"preprocess"}}: Prepares likelihood functions for use in estimation.
+#'                        \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
+#'                        \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
+#'                        \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
+#'                        \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
+#'                      }
+#' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
+#' @return The returned object is a pre-processed version of the model settings. This is independent of \code{functionality}, but the function is only called during preprocessing.
 #' @export
 apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
   inputs$modelType <- modelType
@@ -86,10 +100,10 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     
     if(modelType!="dft"){
       # V
-      if(!is.list(inputs$V)) stop("The \"V\" argument for model component \"",inputs$componentName,"\" needs to be a list")
+      if(!is.list(inputs$V)) stop("The \"utilities\" argument for model component \"",inputs$componentName,"\" needs to be a list")
       lenV <- sapply(inputs$V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
       test <- all(lenV==inputs$nObs | lenV==1)
-      if(!test) stop("Each element of \"V\" for model component \"",inputs$componentName,"\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")  
+      if(!test) stop("Each element of \"utilities\" for model component \"",inputs$componentName,"\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")  
     }
     # rows
     test <- is.vector(inputs$rows)
@@ -160,7 +174,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     }
     
     ### Check that avail and V are available for all alternatives
-    if(modelType!="dft" && !all(inputs$altnames %in% names(inputs$V))) stop("The names of the alternatives for model component \"", inputs$componentName,"\" do not match those in \"V\".")
+    if(modelType!="dft" && !all(inputs$altnames %in% names(inputs$V))) stop("The names of the alternatives for model component \"", inputs$componentName,"\" do not match those in \"utilities\".")
     if(!all(inputs$altnames %in% names(inputs$avail))) stop("The names of the alternatives for model component \"", inputs$componentName,"\" do not match those in \"avail\".")
     
     ### Reorder availabilities
@@ -218,7 +232,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     if(modelType!="fmnl"){
       ### Create Y
       inputs$Y <- lapply(as.list(inputs$alternatives), function(i) inputs$choiceVar==i)
-  
+      
       # Record availability of chosen alternative
       inputs$chosenAvail <- Reduce('+', mapply('*', inputs$Y, inputs$avail, SIMPLIFY=FALSE))
     } else {
@@ -249,11 +263,11 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
                             })
     ### Format checks
     # V
-    if(!is.list(inputs$V)) stop("The \"V\" argument for model component \"",inputs$componentName,"\" needs to be a list")
+    if(!is.list(inputs$V)) stop("The \"utilities\" argument for model component \"",inputs$componentName,"\" needs to be a list")
     lenV <- sapply(inputs$V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
     test <- all(lenV==inputs$nObs | lenV==1)
     inputs$nAlt     = length(inputs$V)
-    if(!test) stop("Each element of \"V\" for model component \"",inputs$componentName,"\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")  
+    if(!test) stop("Each element of \"utilities\" for model component \"",inputs$componentName,"\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")  
     # avail
     test <- is.list(inputs$avail) || (length(inputs$avail)==1 && inputs$avail==1)
     if(!test) stop("The \"avail\" argument for model component \"",inputs$componentName,"\" needs to be a list or set to 1")
@@ -265,7 +279,9 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     if(length(inputs$avail)==1 && inputs$avail==1){
       inputs$avail <- as.list(rep(1,inputs$nAlt))
       if(!is.null(names(inputs$V))) names(inputs$avail) <- names(inputs$V)
-    } 
+    }
+    # classes
+    if(is.null(inputs$classes)) inputs$classes <- names(inputs$V)
     # rows
     test <- is.vector(inputs$rows)
     test <- test && ( (is.logical(inputs$rows) && length(inputs$rows)==inputs$nObs) || (length(inputs$rows)==1 && inputs$rows=="all") )
@@ -274,7 +290,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     inputs$nObs <- sum(inputs$rows)
     ### Check that avail and V are available for all alternatives
     test <- length(inputs$V)==length(inputs$avail)
-    if(!test) stop("Arguments 'avail' and 'V' for model component \"", inputs$componentName,"\" must have the same number of elements.")
+    if(!test) stop("Arguments 'avail' and 'utilities' for model component \"", inputs$componentName,"\" must have the same number of elements.")
     if(!is.null(names(inputs$V)) && is.null(names(inputs$avail))){
       test <- all(names(inputs$V) %in% names(inputs$avail))
       if(!test) stop("The names of the alternatives for model component \"", inputs$componentName,"\" do not match those in \"avail\".")
@@ -356,7 +372,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     if(!is.list(inputs$V) || is.null(names(inputs$V))) stop('The "V" argument for model component "', inputs$componentName, '" needs to be a named list.')
     lenV <- sapply(inputs$V, function(v) if(is.array(v)) dim(v)[1] else length(v) )
     test <- all(lenV==inputs$nObs | lenV==1)
-    if(!test) stop("Each element of \"V\" for model component \"",inputs$componentName,"\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")
+    if(!test) stop("Each element of \"utilities\" for model component \"",inputs$componentName,"\" needs to be a scalar or a vector/matrix/cube with one row per observation in the \"database\"")
     if(!all(inputs$altnames %in% names(inputs$V))) stop('The names of the alternatives for model component "',inputs$componentName,'" do not match those in "V".')
     
     # rows
@@ -410,7 +426,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
   #### OL, OP ####
   if(modelType %in% c("ol", "op")){
     if(is.null(inputs[["outcomeOrdered"]])) stop("The ol_settings list for model component \"",inputs$componentName,"\" needs to include an object called \"outcomeOrdered\"!")
-    if(is.null(inputs[["V"]])             ) stop("The ol_settings list for model component \"",inputs$componentName,"\" needs to include an object called \"V\"!")
+    if(is.null(inputs[["V"]])             ) stop("The ol_settings list for model component \"",inputs$componentName,"\" needs to include an object called \"utility\"!")
     if(is.null(inputs[["tau"]])           ) stop("The ol_settings list for model component \"",inputs$componentName,"\" needs to include an object called \"tau\"!")
     ### if(is.null(inputs[["coding"]])        ) inputs[["coding"]] = NULL  ### doesn't do anything
     if(is.null(inputs[["rows"]])          ) inputs[["rows"]]   = "all"
@@ -475,7 +491,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
       lenV <- ifelse(is.array(inputs$V), dim(inputs$V)[1], length(inputs$V))
       test <- test && (lenV==inputs$nObs | lenV==1)
     } 
-    if(!test) stop("\"V\" for model component \"",inputs$componentName,"\" needs to be a function, a scalar, or a vector/matrix/cube with one row per observation in the \"database\"")  
+    if(!test) stop("\"utility\" for model component \"",inputs$componentName,"\" needs to be a function, a scalar, or a vector/matrix/cube with one row per observation in the \"database\"")  
     # rows
     test <- is.vector(inputs$rows) && ( (is.logical(inputs$rows) && length(inputs$rows)==inputs$nObs) || (length(inputs$rows)==1 && inputs$rows=="all") )
     if(!test) stop("The \"rows\" argument for model component \"",inputs$componentName,"\" needs to be \"all\" or a vector of boolean statements with one entry per observation in the \"database\"")
@@ -485,20 +501,31 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     inputs$coding_set <- FALSE
     if(is.null(inputs[["coding"]])){
       inputs[["coding"]] <- 1:(length(inputs$tau)+1)  
-      if(functionality=="validate" & !apollo_inputs$silent) apollo_print(paste0('No coding provided for Ordered Logit for ',
-                                                                                'model component "', inputs$componentName,
-                                                                                '", so assuming outcomeOrdered goes from ', 
+      if(functionality=="validate" & !apollo_inputs$silent) apollo_print(paste0('No coding provided for Ordered model ',
+                                                                                'component "', inputs$componentName, '"', 
+                                                                                ', so assuming outcomeOrdered goes from ', 
                                                                                 '1 to ', max(inputs$coding)))
       inputs$coding_set <- TRUE
     }
     
+    # validate coding
+    values_present = unique(inputs$outcomeOrdered)
+    if(functionality=="validate" && !all(values_present %in% inputs$coding)){
+      if(!inputs$coding_set) stop("The levels in 'outcomeOrdered' do not match up with the default coding or the number of thresholds defined for model component \"",inputs$componentName,"\" !")
+      if(inputs$coding_set) stop("Some levels in 'outcomeOrdered' do not exist in 'coding' for model component \"",inputs$componentName,"\" !")
+    }
+    if(functionality=="validate" && !all(inputs$coding %in% values_present)){
+      if(!inputs$coding_set) stop("The levels in 'outcomeOrdered' do not match up with the default coding for model component \"",inputs$componentName,"\" !")
+      if(inputs$coding_set) stop("Some levels in 'coding' do not exist in 'outcomeOrdered' for model component \"",inputs$componentName,"\"!")
+    }; rm(values_present)
+    
     # Expand rows if necessary, and update nObs
     if(length(inputs$rows)==1 && inputs$rows=="all") inputs$rows <- rep(TRUE, inputs$nObs)
     inputs$nObs <- sum(inputs$rows)
-    # Filter rows, except for V
+    # Filter rows, except for V and thresholds
     if(any(!inputs$rows)){
       inputs$outcomeOrdered <- apollo_keepRows(inputs$outcomeOrdered, inputs$rows)
-      inputs$tau <- lapply(inputs$tau, apollo_keepRows, inputs$rows)
+      #inputs$tau <- lapply(inputs$tau, apollo_keepRows, inputs$rows)
     }
     
     # Apply coding
@@ -522,7 +549,8 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     for(i in mandatory) if(!(i %in% names(inputs))) stop('The inputs list for model component "', inputs$componentName, 
                                                          '" needs to include an object called "', i,'"!')
     # Check for optional inputs
-    if(is.null(inputs[["minConsumption"]])) inputs[["minConsumption"]] = NA
+    #if(is.null(inputs[["minConsumption"]])) inputs[["minConsumption"]] = NA
+    inputs[["minConsumption"]] = NA
     if(is.null(inputs[["rows"]])          ) inputs[["rows"]]           = "all"
     if(is.null(inputs[["nRep"]])){
       if(is.null(apollo_inputs$nRep)) inputs[["nRep"]] <- 100L else inputs[["nRep"]] <- apollo_inputs$nRep
@@ -554,7 +582,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     # Useful variables
     inputs$nObs <- max(sapply(inputs$continuousChoice, length))
     inputs$nAlt <- length(inputs$V)
-
+    
     # continuousChoice
     test <- is.list(inputs$continuousChoice) && length(inputs$continuousChoice)==inputs$nAlt && all(sapply(inputs$continuousChoice, is.numeric)) && all(sapply(inputs$continuousChoice,function(x) length(x)%in%c(1,inputs$nObs)))
     if(!test ) stop('"continuousChoice" for model component "', inputs$componentName, 
@@ -568,7 +596,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     test <- is.vector(inputs$alternatives) && is.character(inputs$alternatives)
     if(!test) stop('"alternatives" for model component "', inputs$componentName, '" must be a character vector.')
     if(length(inputs$alternatives)!=inputs$nAlt) stop('The length of "alternatives" for model component "', 
-                                                       inputs$componentName, '" does not match with the length of "V".')
+                                                      inputs$componentName, '" does not match with the length of "V".')
     
     # avail
     inputs$avail_set <- FALSE

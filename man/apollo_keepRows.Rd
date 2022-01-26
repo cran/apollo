@@ -9,10 +9,10 @@ apollo_keepRows(v, r)
 \arguments{
 \item{v}{Numeric scalar, vector, matrix or 3-dim array.}
 
-\item{r}{Boolean vector. As many elements as rows in \code{v}. TRUE for keeping the row. \code{FALSE} to drop it.}
+\item{r}{Boolean vector. As many elements as rows in \code{utilities}. TRUE for keeping the row. \code{FALSE} to drop it.}
 }
 \value{
-The same argument \code{v} but with the rows where \code{r==FALSE} removed.
+The same argument \code{utilities} but with the rows where \code{r==FALSE} removed.
 }
 \description{
 Given a numeric object (scalar, vector, matrix or 3-dim array) keeps only the specified rows.

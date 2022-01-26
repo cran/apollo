@@ -4,15 +4,20 @@
 #' 
 #' @param P List of vectors, matrices or 3-dim arrays. Likelihood of the model components.
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
-#' @param functionality Character. Can take different values depending on desired output of \code{apollo_probabilities}.
+#' @param functionality Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
 #'                      \itemize{
-#'                        \item \code{"estimate"} For model estimation, returns probabilities of chosen alternatives.
-#'                        \item \code{"prediction"} For model predictions, returns probabilities of all alternatives.
-#'                        \item \code{"validate"} Validates input.
-#'                        \item \code{"zero_LL"} Return probabilities with all parameters at zero.
-#'                        \item \code{"conditionals"} For conditionals, returns probabilities of chosen alternatives.
-#'                        \item \code{"output"} Checks that the model is well defined.
-#'                        \item \code{"raw"} For debugging, returns probabilities of all alternatives
+#'                        \item \strong{\code{"components"}}: For further processing/debugging, produces likelihood for each model component (if multiple components are present), at the level of individual draws and observations.
+#'                        \item \strong{\code{"conditionals"}}: For conditionals, produces likelihood of the full model, at the level of individual inter-individual draws.
+#'                        \item \strong{\code{"estimate"}}: For model estimation, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"gradient"}}: For model estimation, produces analytical gradients of the likelihood, where possible.
+#'                        \item \strong{\code{"output"}}: Prepares output for post-estimation reporting.
+#'                        \item \strong{\code{"prediction"}}: For model prediction, produces probabilities for individual alternatives and individual model components (if multiple components are present) at the level of an observation, after averaging across draws.
+#'                        \item \strong{\code{"preprocess"}}: Prepares likelihood functions for use in estimation.
+#'                        \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
+#'                        \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
+#'                        \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
+#'                        \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 #'                      }
 #' @return The likelihood (i.e. probability in the case of choice models) of the model in the appropriate form for the 
 #'         given functionality, multiplied by individual-specific weights.

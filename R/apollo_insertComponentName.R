@@ -9,7 +9,7 @@ apollo_insertComponentName <- function(e){
   # Validate input
   if(is.null(e)) stop('Argument "e" must be a function, a call , or a value')
   if(is.function(e)){eOrig <- e; e <- body(e)} else eOrig <- NULL
-  if(is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e)) return(e)
+  if(is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) || is.complex(e)) return(e)
   if(!is.call(e)) stop('Argument "e" must be a call')
   
   # Figure out if e is a call of the type: x <- apollo_<model>(...)
@@ -22,10 +22,15 @@ apollo_insertComponentName <- function(e){
   test <- test && (as.character(e[[3]][[1]]) %in% c('apollo_mnl', 'apollo_el', 'apollo_nl', 
                                                     'apollo_cnl',  'apollo_ol', 'apollo_op', 
                                                     'apollo_dft', 'apollo_normalDensity', 
-                                                    'apollo_mdcev', 'apollo_mdcnev', 'apollo_lc'))
+                                                    'apollo_mdcev', 'apollo_mdcnev', 'apollo_lc',
+                                                    "apollo_fmnl"))
   
   # If e is NOT of the type: x <- apollo_<model>(...)
-  if(!test && length(e)>1) for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- apollo_insertComponentName(e[[i]])
+  if(!test && length(e)>1) for(i in 1:length(e)) if(!is.null(e[[i]])){ 
+    #cat(as.character(e[[i]]), "\n")
+    isFuncArg <- i==2 && length(e[[i-1]])==1 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
+    if(!isFuncArg) e[[i]] <- apollo_insertComponentName(e[[i]])
+  }
   
   # Check that componentName has not been added already
   if(test && !is.null(names(e[[3]])) && names(e[[3]])[2]=='functionality') setPos <- 3 else setPos <- 2

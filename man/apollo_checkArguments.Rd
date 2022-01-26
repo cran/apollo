@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_checkArguments.R
 \name{apollo_checkArguments}
 \alias{apollo_checkArguments}
-\title{Checks definitions Apollo functions}
+\title{Checks definitions of Apollo functions}
 \usage{
 apollo_checkArguments(
   apollo_probabilities = NA,
@@ -13,10 +13,17 @@ apollo_checkArguments(
 \arguments{
 \item{apollo_probabilities}{Function. Likelihood function as defined by the user.}
 
-\item{apollo_randCoeff}{Function. Defines the random components used inside \code{apollo_probabilities}.}
+\item{apollo_randCoeff}{Function. Used with mixing models. Constructs the random parameters of a mixing model. Receives two arguments:
+\itemize{
+  \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters. 
+  \item \strong{\code{apollo_inputs}}: The output of this function (\code{apollo_validateInputs}).
+}}
 
-\item{apollo_lcPars}{Function. Defines the class allocation probabilities and (optionally) the lists of
-parameters of each class for latent class models.}
+\item{apollo_lcPars}{Function. Used with latent class models. Constructs a list of parameters for each latent class. Receives two arguments:
+\itemize{
+  \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters. 
+  \item \strong{\code{apollo_inputs}}: The output of this function (\code{apollo_validateInputs}).
+}}
 }
 \value{
 Returns (invisibly) TRUE if definitions are correct, and FALSE otherwise.

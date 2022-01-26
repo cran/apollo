@@ -2,8 +2,8 @@
 #' 
 #' Receives an estimated model object, calculates its Hessian, and classical and robust covariance matrix, and returns the  
 #' same model object, but with these additional elements.
-#' @param model A model object, as returned by \link{apollo_estimate}
-#' @param apollo_inputs List of settings. as returned by \link{apollo_validateInputs}
+#' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}.
+#' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @return model.
 #' @export
 apollo_addCovariance <- function(model, apollo_inputs){

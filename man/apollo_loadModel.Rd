@@ -13,8 +13,8 @@ apollo_loadModel(modelName)
 A model object.
 }
 \description{
-Loads an estimated model object from a file in the current working directory.
+Loads a previously estimated model object from a file.
 }
 \details{
-This function looks for a file named modelName_model.rds in the working directory, loads the object contained in it, and returns it.
+This function looks for a file named \code{modelName_model.rds} in the working or output directory, loads the object contained in it, and returns it.
 }

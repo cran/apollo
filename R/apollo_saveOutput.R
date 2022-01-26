@@ -1,37 +1,35 @@
 #' Saves estimation results to files.
 #' 
-#' Writes files in the working directory with the estimation results.
+#' Writes files in the working/output directory with the estimation results.
 #' 
-#' Estimation results are printed to different files in the working directory:
+#' Estimation results are saved different files in the working/output directory:
 #' \itemize{
-#'   \item \code{(modelName)_output.txt} Text file with the output produced by function \code{apollo_modelOutput}.
-#'   \item \code{(modelName)_estimates.csv} CSV file with the estimated parameter values, their standars errors, and t-ratios.
-#'   \item \code{(modelName)_covar.csv} CSV file with the estimated classical covariance matrix. Only when bayesian estimation was not used.
-#'   \item \code{(modelName)_robcovar.csv} CSV file with the estimated robust covariance matrix. Only when bayesian estimation was not used.
-#'   \item \code{(modelName)_corr.csv} CSV file with the estimated classical correlation matrix. Only when bayesian estimation was not used.
-#'   \item \code{(modelName)_robcorr.csv} CSV file with the estimated robust correlation matrix. Only when bayesian estimation was not used.
-#'   \item \code{(modelName).F12} F12 file with model results. Compatible with ALOGIT.
+#'   \item \strong{\code{(modelName)_corr.csv}} CSV file with the estimated classical correlation matrix. Only when bayesian estimation was not used.
+#'   \item \strong{\code{(modelName)_covar.csv}} CSV file with the estimated classical covariance matrix. Only when bayesian estimation was not used.
+#'   \item \strong{\code{(modelName)_estimates.csv}} CSV file with the estimated parameter values, their standars errors, and t-ratios.
+#'   \item \strong{\code{(modelName).F12}} F12 file with model results. Compatible with ALOGIT.
+#'   \item \strong{\code{(modelName)_output.txt}} Text file with the output produced by function \code{apollo_modelOutput}.
+#'   \item \strong{\code{(modelName)_robcorr.csv}} CSV file with the estimated robust correlation matrix. Only when bayesian estimation was not used.
+#'   \item \strong{\code{(modelName)_robcovar.csv}} CSV file with the estimated robust covariance matrix. Only when bayesian estimation was not used.
 #' }
 #' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}.
-#' @param saveOutput_settings List of options. Valid options are the following.
+#' @param saveOutput_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 #'                            \itemize{
-#'                               \item \code{printClassical}: Boolean. TRUE for printing classical standard errors. TRUE by default.
-### change 7 August
-#                                \item \code{printPVal}: Boolean. TRUE for printing p-values. FALSE by default.
-#'                               \item \code{printPVal}: Boolean or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
-#'                               \item \code{printT1}: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
-#'                               \item \code{printDataReport}: Boolean. TRUE for printing summary of choices in database and other diagnostics. FALSE by default.
-#'                               \item \code{printModelStructure}: Boolean. TRUE for printing model structure. TRUE by default.
-#'                               \item \code{printCovar}: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
-#'                               \item \code{printCorr}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
-#'                               \item \code{printOutliers}: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
-#'                               \item \code{printChange}: Boolean. TRUE for printing difference between starting values and estimates. TRUE by default.
-#'                               \item \code{printFunctions}: Boolean. TRUE for printing apollo_control, apollo_randCoeff (when available), apollo_lcPars (when available) and apollo_probabilities. TRUE by default.                               
-#'                               \item \code{saveEst}: Boolean. TRUE for saving estimated parameters and standard errors to a CSV file. TRUE by default.
-#'                               \item \code{saveCov}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. FALSE by default.
-#'                               \item \code{saveCorr}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. FALSE by default.
-#'                               \item \code{saveModelObject}: Boolean. TRUE to save the R model object to a file (use \link{apollo_loadModel} to load it to memory). TRUE by default.
-#'                               \item \code{writeF12}: Boolean. TRUE for writing results into an F12 file (ALOGIT format). FALSE by default.
+#'                               \item \strong{\code{printChange}}: Boolean. TRUE for printing difference between starting values and estimates. TRUE by default.
+#'                               \item \strong{\code{printClassical}}: Boolean. TRUE for printing classical standard errors. TRUE by default.
+#'                               \item \strong{\code{printCorr}}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
+#'                               \item \strong{\code{printCovar}}: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
+#'                               \item \strong{\code{printDataReport}}: Boolean. TRUE for printing summary of choices in database and other diagnostics. FALSE by default.
+#'                               \item \strong{\code{printFunctions}}: Boolean. TRUE for printing apollo_control, apollo_randCoeff (when available), apollo_lcPars (when available) and apollo_probabilities. TRUE by default.                               
+#'                               \item \strong{\code{printOutliers}}: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
+#'                               \item \strong{\code{printModelStructure}}: Boolean. TRUE for printing model structure. TRUE by default.
+#'                               \item \strong{\code{printPVal}}: Boolean or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
+#'                               \item \strong{\code{printT1}}: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
+#'                               \item \strong{\code{saveEst}}: Boolean. TRUE for saving estimated parameters and standard errors to a CSV file. TRUE by default.
+#'                               \item \strong{\code{saveCorr}}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. FALSE by default.
+#'                               \item \strong{\code{saveCov}}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. FALSE by default.
+#'                               \item \strong{\code{saveModelObject}}: Boolean. TRUE to save the R model object to a file (use \link{apollo_loadModel} to load it to memory). TRUE by default.
+#'                               \item \strong{\code{writeF12}}: Boolean. TRUE for writing results into an F12 file (ALOGIT format). FALSE by default.
 #'                            }
 #' @return nothing
 #' @export
@@ -105,6 +103,7 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
   #tmp <- apollo_modelOutput(model,saveOutput_settings)
   capture.output(tmp <- apollo_modelOutput(model,saveOutput_settings),
                  file=paste0(modName, "_output.txt"))
+  cat("Model output saved to",paste0(modName, "_output.txt"),"\n")
   #sink()
   
   # ################################## #
@@ -113,65 +112,68 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
   
   if(model$apollo_control$HB){
     if(saveEst){
+      currentWD <- getwd()
+      if(dir.exists(model$apollo_control$outputDirectory)) setwd(model$apollo_control$outputDirectory)
       RSGHB::writeModel(model, writeDraws = FALSE, path = getwd())
-      cat("RSGHB output saved in following files\n")
+      setwd(currentWD)
+      cat("\n\nRSGHB output saved in following files\n")
       cat("\nOutputs at iteration level (post burn-in chains)\n")
-      if(!is.null(tmp$non_random)) cat("Non-random parameters:",paste(model$apollo_control$modelName, "_F"   ,".csv", sep=""),"\n")
-      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
-      cat("\n")
-      if(!is.null(tmp$random_mean)) cat("Means for underlying normals:",paste(model$apollo_control$modelName, "_A"   ,".csv", sep=""),"\n")
-      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
-      cat("\n")
+      if(!is.null(tmp$non_random)){ cat("Non-random parameters:",paste(model$apollo_control$modelName, "_F"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")}
+      #cat("\n")
+      if(!is.null(tmp$random_mean)){ cat("Means for underlying normals:",paste(model$apollo_control$modelName, "_A"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("   These outputs have NOT had the scaling used in estimation applied to them\n")}
+      #cat("\n")
       cat("\nPosteriors\n")
-      if(!is.null(tmp$random_mean)) cat("Mean individual-level draws for underlying normals:",paste(model$apollo_control$modelName, "_B"   ,".csv", sep=""),"\n")
-      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
-      cat("\n")
-      if(!is.null(tmp$random_mean)) cat("SD of individual-level draws for underlying normals:",paste(model$apollo_control$modelName, "_Bsd"   ,".csv", sep=""),"\n")
-      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
-      cat("\n")
-      if(!is.null(tmp$random_mean)) cat("Mean individual-level draws after transformations to underlying normals:",paste(model$apollo_control$modelName, "_C"   ,".csv", sep=""),"\n")
-      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
-      cat("\n")
-      if(!is.null(tmp$random_mean)) cat("SD of individual-level draws after transformations to underlying normals:",paste(model$apollo_control$modelName, "_Csd"   ,".csv", sep=""),"\n")
-      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
-      cat("\n")
-      if(!is.null(tmp$random_mean)) cat("Sample variance-covariance matrix for underlying normals:",paste(model$apollo_control$modelName, "_D"   ,".csv", sep=""),"\n")
-      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
-      cat("\n")
+      if(!is.null(tmp$random_mean)){ cat("Mean individual-level draws for underlying normals:",paste(model$apollo_control$modelName, "_B"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("   These outputs have NOT had the scaling used in estimation applied to them\n")}
+      #cat("\n")
+      if(!is.null(tmp$random_mean)){ cat("SD of individual-level draws for underlying normals:",paste(model$apollo_control$modelName, "_Bsd"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("   These outputs have NOT had the scaling used in estimation applied to them\n")}
+      #cat("\n")
+      if(!is.null(tmp$random_mean)){ cat("Mean individual-level draws after transformations to underlying normals:",paste(model$apollo_control$modelName, "_C"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("   These outputs have had the scaling used in estimation applied to them\n")}
+      #cat("\n")
+      if(!is.null(tmp$random_mean)){ cat("SD of individual-level draws after transformations to underlying normals:",paste(model$apollo_control$modelName, "_Csd"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("   These outputs have had the scaling used in estimation applied to them\n")}
+      #cat("\n")
+      if(!is.null(tmp$random_mean)){ cat("Sample variance-covariance matrix for underlying normals:",paste(model$apollo_control$modelName, "_D"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("   These outputs have NOT had the scaling used in estimation applied to them\n")}
+      #cat("\n")
       cat("\nRSGHB log file saved to",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, ".log", sep=""),"\n")
-      cat("\n")
-      if(!is.null(tmp$non_random)){
+      #cat("\n")
       cat("\nAdditional output files:\n")
+      if(!is.null(tmp$non_random)){
       utils::write.csv(tmp$non_random   , paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_non_random"   ,".csv", sep=""))
-      cat("Summary of chains for non-random parameters:",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_non_random"   ,".csv", sep=""),"\n")}
-      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
+      cat("Summary of chains for non-random parameters:",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_non_random"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("   These outputs have had the scaling used in estimation applied to them\n")}
       if(!is.null(tmp$random_mean)){utils::write.csv(tmp$random_mean  , paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_random_mean"  ,".csv", sep=""))
-      cat("\n")
-      cat("Summary of chains for means of normals:",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_random_mean"   ,".csv", sep=""),"\n")}
-      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
+      #cat("\n")
+      cat("Summary of chains for means of normals:",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_random_mean"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("   These outputs have NOT had the scaling used in estimation applied to them\n")}
       if(!is.null(tmp$random_cov_mean)){utils::write.csv(tmp$random_cov_mean, paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_random_cov_mean",".csv", sep=""))
-      cat("\n")
-      cat("Means of chains for covariance of normals:",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_random_cov_mean"   ,".csv", sep=""),"\n")}
-      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
+      #cat("\n")
+      cat("Means of chains for covariance of normals:",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_random_cov_mean"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("   These outputs have NOT had the scaling used in estimation applied to them\n")}
       if(!is.null(tmp$random_cov_sd)){utils::write.csv(tmp$random_cov_sd, paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_random_cov_sd",".csv", sep=""))
-      cat("\n")
-      cat("SDs of chains for covariance of normals:",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_random_cov_sd"   ,".csv", sep=""),"\n")}
-      if(scaling_used) cat("These outputs have NOT had the scaling used in estimation applied to them\n")
+      #cat("\n")
+      cat("SDs of chains for covariance of normals:",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_random_cov_sd"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("   These outputs have NOT had the scaling used in estimation applied to them\n")}
       if(!is.null(tmp$posterior)){utils::write.csv(tmp$posterior    , paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_posterior"    ,".csv", sep=""))
-      cat("\n")
-      cat("Summary of posteriors for random parameters:",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_posterior"   ,".csv", sep=""),"\n")}
-      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
-      cat("\n")
+      #cat("\n")
+      cat("Summary of posteriors for random parameters:",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_param_posterior"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("   These outputs have had the scaling used in estimation applied to them\n")}
+      #cat("\n")
 #
       if(!is.null(tmp$random_coeff_covar)){utils::write.csv(tmp$random_coeff_covar, paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_random_coeff_covar",".csv", sep=""))
-      cat("\n")
-      cat("Covariance matrix of random coeffients (after distributional transforms):",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_random_coeff_covar"   ,".csv", sep=""),"\n")}
-      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
+      #cat("\n")
+      cat("Covariance matrix of random coeffients (after distributional transforms):",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_random_coeff_covar"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("   These outputs have had the scaling used in estimation applied to them\n")}
       if(!is.null(tmp$random_coeff_corr)){utils::write.csv(tmp$random_coeff_corr    , paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_random_coeff_corr"    ,".csv", sep=""))
-      cat("\n")
-      cat("Correlation matrix of random coeffients (after distributional transforms):",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_random_coeff_corr"   ,".csv", sep=""),"\n")}
-      if(scaling_used) cat("These outputs have had the scaling used in estimation applied to them\n")
-      cat("\n")
+      #cat("\n")
+      cat("Correlation matrix of random coeffients (after distributional transforms):",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, "_random_coeff_corr"   ,".csv", sep=""),"\n")
+      if(scaling_used) cat("   These outputs have had the scaling used in estimation applied to them\n")}
+      #cat("\n")
      }
     if(saveModelObject){
       tryCatch( {

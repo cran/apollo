@@ -1,22 +1,22 @@
 #' Simulated dataset of mode choice.
 #'
-#' A simulated dataset containing 8000 mode choices among four alternatives.
+#' A simulated dataset containing 8,000 mode choices among four alternatives.
 #'
 #' This dataset is to be used for discrete choice modelling.
-#' Data comes from 500 individuals, each with one revealed
-#' preferences (RP) observation, and 15 stated preferences
-#' (SP) observations. There are 8000 choices in total.
+#' Data comes from 500 individuals, each with two revealed
+#' preferences (RP) observation, and 14 stated stated
+#' (SC) observations. There are 8,000 choices in total.
 #' Data is simulated.
-#' Each observation contains attributes of the alternatives,
+#' Each observation contains attributes for the alternatives,
 #' availability of alternatives, and characteristics of the
 #' individuals.
-#' @format A data frame with 8000 rows and 25 variables:
+#' @format A data.frame with 8,000 rows and 25 variables:
 #' \describe{
 #'   \item{ID}{Numeric. Identification number of the individual.}
 #'   \item{RP}{Numeric. 1 if the row corresponds to a revealed preference (RP) observation. 0 otherwise.}
-#'   \item{RP_journey}{Numeric. Consecutive ID of RP observation.}
+#'   \item{RP_journey}{Numeric. Consecutive ID of RP observations.}
 #'   \item{SP}{Numeric. 1 if the row corresponds to a stated preference (SP) observation. 0 otherwise.}
-#'   \item{SP_task}{Numeric. Consecutive ID of SP choice task.}
+#'   \item{SP_task}{Numeric. Consecutive ID of SP choice tasks.}
 #'   \item{access_air}{Numeric. Access time (in minutes) of mode air.}
 #'   \item{access_bus}{Numeric. Access time (in minutes) of mode bus.}
 #'   \item{access_rail}{Numeric. Access time (in minutes) of mode rail.}

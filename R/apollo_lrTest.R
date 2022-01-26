@@ -1,6 +1,7 @@
 #' Likelihood ratio test
 #' 
 #' Calculates the likelihood ratio test value between two models and reports the corresponding p-value. 
+#' 
 #' The two models need to have been estimated on the same data, and one model needs to be nested within the other model.
 #' 
 #' @param model1 Either a character variable with the name of a previously estimated model, or an estimated 
@@ -93,11 +94,16 @@ apollo_lrTest = function(model1, model2){
       } else {
         LL[[i]]=modeluse$maximum  
       }
-      if(is.null(modeluse$nObs) || anyNA(modeluse$nObs[1])){
+      #if(is.null(modeluse$nObs) || anyNA(modeluse$nObs[1])){
+      #  stop("Number of observations not found in ",paste0(modeluse))
+      #} else {
+      #  obs[[i]]=modeluse$nObs[1]
+      #} 
+      if(is.null(modeluse$nObsTot) || anyNA(modeluse$nObsTot)){
         stop("Number of observations not found in ",paste0(modeluse))
       } else {
-        obs[[i]]=modeluse$nObs[1]
-      }      
+        obs[[i]]=sum(modeluse$nObsTot)
+      }  
       nParams     <- length(modeluse$apollo_beta)
       nFreeParams <- nParams
       if(!is.null(modeluse$apollo_fixed)) nFreeParams <- nFreeParams - length(modeluse$apollo_fixed)

@@ -9,7 +9,7 @@ apollo_expandLoop(f, apollo_inputs)
 \arguments{
 \item{f}{function (usually \code{apollo_probabilities}) inside which the name of the components are inserted.}
 
-\item{apollo_inputs}{List. Main inputs necessary for model estimation. See \link{apollo_validateInputs}.}
+\item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 }
 \value{
 A function or an expression (same type as input \code{f})

@@ -1,13 +1,12 @@
 Package: apollo
 Type: Package
 Title: Tools for Choice Model Estimation and Application
-Version: 0.2.6
+Version: 0.2.7
 Authors@R: c(
-    person("Stephane", "Hess", email="S.Hess@leeds.ac.uk", role="aut"),
-    person("David", "Palma", email="D.Palma@leeds.ac.uk", role=c("aut","cre")),
+    person("Stephane", "Hess", email="S.Hess@leeds.ac.uk", role=c("aut","cre")),
+    person("David", "Palma", email="D.Palma@leeds.ac.uk", role="aut"),
     person("Thomas", "Hancock", email="T.O.Hancock@leeds.ac.uk", role="ctb"))
-Description: The Choice Modelling Centre (CMC) at the University of Leeds 
-    has developed flexible code for the estimation and application 
+Description: Choice models are a widely used technique across numerous scientific disciplines. The Apollo package is a very flexible tool for the estimation and application 
     of choice models in R. Users are able to write their own 
     model functions or use a mix of already available ones. Random heterogeneity, 
     both continuous and discrete and at the level of individuals and 
@@ -31,16 +30,16 @@ LazyData: true
 Depends: R (>= 4.0.0), stats, utils
 Imports: Rcpp (>= 1.0.0), maxLik, mnormt, mvtnorm, graphics,
         randtoolbox, numDeriv, parallel, Deriv, matrixStats, RSGHB,
-        coda, tibble
+        coda, tibble, stringr
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen
 Suggests: knitr, rmarkdown, testthat
 VignetteBuilder: knitr
 RoxygenNote: 7.1.2
 NeedsCompilation: yes
-Packaged: 2021-11-04 18:20:37 UTC; david
-Author: Stephane Hess [aut],
-  David Palma [aut, cre],
+Packaged: 2022-01-25 12:02:02 UTC; stephane.hess
+Author: Stephane Hess [aut, cre],
+  David Palma [aut],
   Thomas Hancock [ctb]
-Maintainer: David Palma <D.Palma@leeds.ac.uk>
+Maintainer: Stephane Hess <S.Hess@leeds.ac.uk>
 Repository: CRAN
-Date/Publication: 2021-11-08 12:00:05 UTC
+Date/Publication: 2022-01-26 18:42:47 UTC

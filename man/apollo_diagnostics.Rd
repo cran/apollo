@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_diagnostics.R
 \name{apollo_diagnostics}
 \alias{apollo_diagnostics}
-\title{Pre-process input for multiple models
+\title{Pre-process input for common models
 return}
 \usage{
 apollo_diagnostics(inputs, modelType, apollo_inputs, data = TRUE, param = TRUE)
@@ -14,7 +14,7 @@ apollo_diagnostics(inputs, modelType, apollo_inputs, data = TRUE, param = TRUE)
 
 \item{apollo_inputs}{List of main inputs to the model estimation process. See \link{apollo_validateInputs}.}
 
-\item{data}{Boolean. TRUE for printing report related to dependant and independant variables. FALSE for not printing it. Default is TRUE.}
+\item{data}{Boolean. TRUE for printing report related to dependent and independent variables. FALSE for not printing it. Default is TRUE.}
 
 \item{param}{Boolean. TRUE for printing report related to estimated parameters (e.g. model structure). FALSE for not printing it. Default is TRUE.}
 }
@@ -22,6 +22,6 @@ apollo_diagnostics(inputs, modelType, apollo_inputs, data = TRUE, param = TRUE)
 (invisibly) TRUE if no error happend during execution.
 }
 \description{
-Pre-process input for multiple models
+Pre-process input for common models
 return
 }

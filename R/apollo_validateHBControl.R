@@ -1,24 +1,37 @@
-#' Validates the apollo_HB list of parameters
+#' Validates the \code{apollo_HB} list of parameters
 #'
-#' Validates the apollo_HB list of parameters and sets default values for the omitted ones.
+#' Validates the \code{apollo_HB} list of parameters and sets default values for the omitted ones.
 #'
 #' This function is only necessary when using bayesian estimation.
-#' @param apollo_HB List. Contains options for bayesian estimation. See \link[RSGHB]{doHB} for details.
-#'                  Parameters \code{modelname}, \code{gVarNamesFixed}, \code{gVarNamesNormal},
-#'                  \code{gDIST}, \code{svN} and \code{FC} are automatically set based on the
-#'                  other arguments of this function.
-#'                  It should also include a named character vector called \code{hbDist} identifying 
-#'                  the distribution of each parameter to be estimated. Possible values are as follows.
-#'                  \itemize{
-#'                    \item "F": Fixed - parameter kept at its starting value (not estimated).
-#'                    \item "NR": Non-random parameter, i.e. with a generic value across individuals.
-#'                    \item "N": Normal.
-#'                    \item "LN+": Positive log-normal.
-#'                    \item "LN-": Negative log-normal.
-#'                    \item "CN+": Positive censored normal.
-#'                    \item "CN-": Negative censored normal.
-#'                    \item "JSB": Johnson SB.
-#'                  }
+#' @param apollo_HB List. Contains options for Bayesian estimation. See \code{?RSGHB::doHB} for details.
+#'                   Parameters \code{modelname}, \code{gVarNamesFixed}, \code{gVarNamesNormal},
+#'                   \code{gDIST}, \code{svN} and \code{FC} are automatically set based on the
+#'                   other arguments of this function.
+#'                   Other settings to include are the following.
+#'                   \itemize{
+#'                     \item \strong{\code{constraintNorm}}: Character vector. Constraints for \emph{random} coefficients 
+#'                                                          in bayesian estimation. Constraints can be written as 
+#'                                                          "b1>b2", "b1<b2", "b1>0", or "b1<0".
+#'                     \item \strong{\code{fixedA}}: Named numeric vector. Contains the names and fixed mean values of 
+#'                                                  random parameters. For example, c(b1=0) fixes the mean of b1 to zero.
+#'                     \item \strong{\code{fixedD}}: Named numeric vector. Contains the names and fixed variance of 
+#'                                                  random parameters. For example, c(b1=1) fixes the variance of b1 to zero.
+#'                     \item \strong{\code{gNCREP}}: Numeric. Number of burn-in iterations to use prior to convergence (default=10^5).
+#'                     \item \strong{\code{gNEREP}}: Numeric. Number of iterations to keep for averaging after convergence has been reached (default=10^5).
+#'                     \item \strong{\code{gINFOSKIP}}: Numeric. Number of iterations between printing/plotting information about the iteration process (default=250).
+#'                     \item \strong{\code{hbDist}}: \emph{Mandatory} setting. A named character vector determining
+#'                                                  the distribution of each parameter to be estimated. Possible 
+#'                                                  values are as follows.
+#'                                                  \itemize{
+#'                                                    \item \strong{\code{"CN+"}}: Positive censored normal.
+#'                                                    \item \strong{\code{"CN-"}}: Negative censored normal.
+#'                                                    \item \strong{\code{"JSB"}}: Johnson SB.
+#'                                                    \item \strong{\code{"LN+"}}: Positive log-normal.
+#'                                                    \item \strong{\code{"LN-"}}: Negative log-normal.
+#'                                                    \item \strong{\code{"N"}}: Normal.
+#'                                                    \item \strong{\code{"NR"}}: Fixed (as in non-random) parameter.
+#'                                                  }
+#'                   }
 #' @param apollo_beta Named numeric vector. Names and values for parameters.
 #' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
 #'                    value is constant throughout estimation).
@@ -30,11 +43,14 @@ apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_c
   
   # Validate inputs
   if(!("hbDist" %in% names(apollo_HB))) stop("No hbDist element in apollo_HB.")
+  
+  if(any(apollo_HB$hbDist=="DNE")) apollo_HB$hbDist[which(apollo_HB$hbDist=="DNE")]="NR"
+  
   hbDist <- apollo_HB$hbDist
   if(length(apollo_beta)!=length(hbDist)) stop("Argument hbDist has different length than apollo_beta.")
   
   hbDist_nonest = hbDist[(names(apollo_beta) %in% apollo_fixed)]
-  if(any(!(hbDist_nonest%in%c("F","NR")))) stop("Only non-random parameters should be included in apollo_fixed for HB estimation, other constraints need to be accommodated in fixedA and fixedD!")
+  if(any(!(hbDist_nonest%in%c("F","NR","DNE")))) stop("Only non-random parameters should be included in apollo_fixed for HB estimation, other constraints need to be accommodated in fixedA and fixedD!")
   
   # Translate rnd param distributions into RSGHB coding
   map <- c("NR"=0, "F"=0, "N"=1, "LN+"=2, "LN-"=3, "CN+"=4, "CN-"=5, "JSB"=6)

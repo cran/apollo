@@ -9,29 +9,32 @@
 #' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
 #' @param apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 #'                          \itemize{
-#'                            \item apollo_beta: Named numeric vector. Names and values of model parameters.
-#'                            \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-#'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
+#'                            \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
+#'                            \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
+#'                            \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
-#' @param mixEM_settings List. Options controlling the EM process.
+#' @param mixEM_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 #'                                 \itemize{
-#'                                   \item \strong{stoppingCriterion}: Numeric. Convergence criterion. The EM process will stop when improvements in the log-likelihood fall below this value. Default is 10^-5.
-#'                                   \item \strong{EMmaxIterations}: Numeric. Maximum number of iterations of the EM algorithm before stopping. Default is 100.
-#'                                                                 Used only if \code{apollo_control$HB} is FALSE. Default is 200.
-#'                                   \item \strong{postEM}: Numeric scalar. Determines the number of tasks performed by this function 
+#'                        \item \strong{EMmaxIterations}: Numeric. Maximum number of iterations of the EM algorithm before 
+#'                                                        stopping. Default is 100. 
+#'                        \item \strong{postEM}: Numeric scalar. Determines the tasks performed by this function 
 #'                                               after the EM algorithm has converged. Can take values \code{0}, \code{1} 
 #'                                               or \code{2} only. If value is \code{0}, only the EM algorithm will be 
 #'                                               performed, and the results will be a model object without a covariance 
-#'                                               matrix (i.e. estimates only.). If value is \code{1}, after the EM 
-#'                                               algorithm the covariance matrix of the model will be calculated as well, 
+#'                                               matrix (i.e. estimates only). If value is \code{1}, after the EM 
+#'                                               algorithm, the covariance matrix of the model will be calculated as well, 
 #'                                               and the result will be a model object with a covariance matrix. If value 
 #'                                               is \code{2}, after the EM algorithm, the estimated parameter values will 
 #'                                               be used as starting value for a maximum likelihood estimation process, 
 #'                                               which will render a model object with a covariance matrix. Performing 
 #'                                               maximum likelihood estimation after the EM algorithm is useful, as there 
 #'                                               may be room for further improvement. Default is \code{2}.
-#'                                   \item \strong{silent}: Boolean. If TRUE, no information is printed to the console during estimation. Default is FALSE.
+#'                        \item \strong{silent}: Boolean. If TRUE, no information is printed to the console during 
+#'                                               estimation. Default is FALSE.
+#'                        \item \strong{stoppingCriterion}: Numeric. Convergence criterion. The EM process will stop when 
+#'                                                          improvements in the log-likelihood fall below this value. 
+#'                                                          Default is 10^-5.
 #'                                   \item \strong{transforms}: List. Optional argument, with one entry per parameter, showing the inverse transform to return from beta to the underlying Normal. E.g. if the first parameter is specified as negative logormal inside apollo_randCoeff, then the entry in transforms should be transforms[[1]]=function(x) log(-x)
 #'                                 }
 #' @param estimate_settings List. Options controlling the estimation process within each EM iteration. See \link{apollo_estimate} for details.
@@ -108,10 +111,10 @@ apollo_mixEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_in
   }
   
   apollo_print("The use of apollo_mixEM has a number of requirements. No checks are run for these, so the user needs to ensure these conditions are met by their model:")
-  apollo_print("1:This function is only suitable for single component models, i.e. no use of apollo_combineModels or manual multiplication of model components.")
-  apollo_print("2:All parameters need to be random, and a full covariance matrix needs to be estimated/specified in apollo_randCoeff.")
-  apollo_print("3:All random parameters need to be based on Normal distributions or transformations thereof.")
-  apollo_print("4:With K random parameters, the order of the elements in \'apollo_beta\' needs to be as follows: K means for the underlying Normals, followed by the elements of the lower triangle of the Cholesky matrix, by row.")
+  apollo_print("1: This function is only suitable for single component models, i.e. no use of apollo_combineModels or manual multiplication of model components.")
+  apollo_print("2: All parameters need to be random, and a full covariance matrix needs to be estimated/specified in apollo_randCoeff.")
+  apollo_print("3: All random parameters need to be based on Normal distributions or transformations thereof.")
+  apollo_print("4: With K random parameters, the order of the elements in \'apollo_beta\' needs to be as follows: K means for the underlying Normals, followed by the elements of the lower triangle of the Cholesky matrix, by row.")
   apollo_print('\n')
   
   apollo_print("Initialising EM algorithm")

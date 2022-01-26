@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_validateHBControl.R
 \name{apollo_validateHBControl}
 \alias{apollo_validateHBControl}
-\title{Validates the apollo_HB list of parameters}
+\title{Validates the \code{apollo_HB} list of parameters}
 \usage{
 apollo_validateHBControl(
   apollo_HB,
@@ -13,21 +13,34 @@ apollo_validateHBControl(
 )
 }
 \arguments{
-\item{apollo_HB}{List. Contains options for bayesian estimation. See \link[RSGHB]{doHB} for details.
+\item{apollo_HB}{List. Contains options for Bayesian estimation. See \code{?RSGHB::doHB} for details.
 Parameters \code{modelname}, \code{gVarNamesFixed}, \code{gVarNamesNormal},
 \code{gDIST}, \code{svN} and \code{FC} are automatically set based on the
 other arguments of this function.
-It should also include a named character vector called \code{hbDist} identifying 
-the distribution of each parameter to be estimated. Possible values are as follows.
+Other settings to include are the following.
 \itemize{
-  \item "F": Fixed - parameter kept at its starting value (not estimated).
-  \item "NR": Non-random parameter, i.e. with a generic value across individuals.
-  \item "N": Normal.
-  \item "LN+": Positive log-normal.
-  \item "LN-": Negative log-normal.
-  \item "CN+": Positive censored normal.
-  \item "CN-": Negative censored normal.
-  \item "JSB": Johnson SB.
+  \item \strong{\code{constraintNorm}}: Character vector. Constraints for \emph{random} coefficients 
+                                       in bayesian estimation. Constraints can be written as 
+                                       "b1>b2", "b1<b2", "b1>0", or "b1<0".
+  \item \strong{\code{fixedA}}: Named numeric vector. Contains the names and fixed mean values of 
+                               random parameters. For example, c(b1=0) fixes the mean of b1 to zero.
+  \item \strong{\code{fixedD}}: Named numeric vector. Contains the names and fixed variance of 
+                               random parameters. For example, c(b1=1) fixes the variance of b1 to zero.
+  \item \strong{\code{gNCREP}}: Numeric. Number of burn-in iterations to use prior to convergence (default=10^5).
+  \item \strong{\code{gNEREP}}: Numeric. Number of iterations to keep for averaging after convergence has been reached (default=10^5).
+  \item \strong{\code{gINFOSKIP}}: Numeric. Number of iterations between printing/plotting information about the iteration process (default=250).
+  \item \strong{\code{hbDist}}: \emph{Mandatory} setting. A named character vector determining
+                               the distribution of each parameter to be estimated. Possible 
+                               values are as follows.
+                               \itemize{
+                                 \item \strong{\code{"CN+"}}: Positive censored normal.
+                                 \item \strong{\code{"CN-"}}: Negative censored normal.
+                                 \item \strong{\code{"JSB"}}: Johnson SB.
+                                 \item \strong{\code{"LN+"}}: Positive log-normal.
+                                 \item \strong{\code{"LN-"}}: Negative log-normal.
+                                 \item \strong{\code{"N"}}: Normal.
+                                 \item \strong{\code{"NR"}}: Fixed (as in non-random) parameter.
+                               }
 }}
 
 \item{apollo_beta}{Named numeric vector. Names and values for parameters.}
@@ -43,7 +56,7 @@ value is constant throughout estimation).}
 Validated apollo_HB
 }
 \description{
-Validates the apollo_HB list of parameters and sets default values for the omitted ones.
+Validates the \code{apollo_HB} list of parameters and sets default values for the omitted ones.
 }
 \details{
 This function is only necessary when using bayesian estimation.

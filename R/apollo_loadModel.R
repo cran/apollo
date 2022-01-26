@@ -1,8 +1,8 @@
 #' Loads model from file
 #' 
-#' Loads an estimated model object from a file in the current working directory.
+#' Loads a previously estimated model object from a file.
 #' 
-#' This function looks for a file named modelName_model.rds in the working directory, loads the object contained in it, and returns it.
+#' This function looks for a file named \code{modelName_model.rds} in the working or output directory, loads the object contained in it, and returns it.
 #' @param modelName Character. Name of the model to load.
 #' @return A model object.
 #' @export

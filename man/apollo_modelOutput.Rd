@@ -9,19 +9,19 @@ apollo_modelOutput(model, modelOutput_settings = NA)
 \arguments{
 \item{model}{Model object. Estimated model object as returned by function \link{apollo_estimate}.}
 
-\item{modelOutput_settings}{List of options. It can include the following.
+\item{modelOutput_settings}{List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
-  \item \code{printFixed}: Logical. TRUE for printing fixed parameters among estimated parameter. TRUE by default.
-  \item \code{printClassical}: Logical. TRUE for printing classical standard errors. TRUE by default.
-  \item \code{printPVal}: Logical or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
-  \item \code{printT1}: Logical. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
-  \item \code{printDataReport}: Logical. TRUE for printing summary of choices in database and other diagnostics. FALSE by default.
-  \item \code{printModelStructure}: Logical. TRUE for printing model structure. TRUE by default.
-  \item \code{printCovar}: Logical. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
-  \item \code{printCorr}: Logical. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
-  \item \code{printOutliers}: Logical or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
-  \item \code{printChange}: Logical. TRUE for printing difference between starting values and estimates. FALSE by default.
-  \item \code{printFunctions}: Logical. TRUE for printing apollo_control, apollo_randCoeff (when available), apollo_lcPars (when available) and apollo_probabilities. FALSE by default.
+  \item \strong{\code{printChange}}: Logical. TRUE for printing difference between starting values and estimates. FALSE by default.
+  \item \strong{\code{printClassical}}: Logical. TRUE for printing classical standard errors. TRUE by default.
+  \item \strong{\code{printCorr}}: Logical. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
+  \item \strong{\code{printCovar}}: Logical. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
+  \item \strong{\code{printDataReport}}: Logical. TRUE for printing summary of choices in database and other diagnostics. FALSE by default.
+  \item \strong{\code{printFixed}}: Logical. TRUE for printing fixed parameters among estimated parameter. TRUE by default.
+  \item \strong{\code{printFunctions}}: Logical. TRUE for printing apollo_control, apollo_randCoeff (when available), apollo_lcPars (when available) and apollo_probabilities. FALSE by default.
+  \item \strong{\code{printModelStructure}}: Logical. TRUE for printing model structure. TRUE by default.
+  \item \strong{\code{printOutliers}}: Logical or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
+  \item \strong{\code{printPVal}}: Logical or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
+  \item \strong{\code{printT1}}: Logical. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
 }}
 }
 \value{

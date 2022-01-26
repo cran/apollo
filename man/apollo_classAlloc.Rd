@@ -2,34 +2,36 @@
 % Please edit documentation in R/apollo_classAlloc.R
 \name{apollo_classAlloc}
 \alias{apollo_classAlloc}
-\title{Calculates Multinomial Logit probabilities}
+\title{Calculates class allocation probabilities for a Latent Class model}
 \usage{
 apollo_classAlloc(classAlloc_settings)
 }
 \arguments{
 \item{classAlloc_settings}{List of inputs of the MNL model. It should contain the following.
 \itemize{
-  \item \strong{\code{V}}: Named list of deterministic utilities . Utilities of the classes in class allocation model. Names of elements must match those in \code{avail}, if provided.
-  \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of classes in class allocation model, one element per class Names of elements must match those in \code{V}. Values can be 0 or 1.
-  \item \strong{\code{rows}}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+  \item \strong{\code{utilities}}: Named list of deterministic utilities . Utilities of the classes in class allocation model. Names of elements must match those in \code{avail}, if provided.
+  \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of classes, one element per class Names of elements must match those in \code{classes}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
+  \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
   \item \strong{\code{componentName}}: Character. Name given to model component.
 }}
 }
 \value{
-The returned object depends on the value of argument \code{functionality}, which it fetches from the calling stack.
+The returned object depends on the value of argument \code{functionality}, which it fetches from the calling stack (see \link{apollo_validateInputs}).
         \itemize{
-        "estimate","conditionals", "components", "output", "prediction", "raw", "report"
-          \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for all classes
-          \item \strong{\code{"prediction"}}: Same as \code{"estimate"}.
-          \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
-          \item \strong{\code{"zero_LL"}}: Returns a scalar NA.
-          \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}.
           \item \strong{\code{"components"}}: Same as \code{"estimate"}.
+          \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}.
+          \item \strong{\code{"estimate"}}: List of vector/matrices/arrays with the allocation probabilities for each class.
+          \item \strong{\code{"gradient"}}: List containing the likelihood and gradient of the model component.
           \item \strong{\code{"output"}}: Same as \code{"estimate"}.
+          \item \strong{\code{"prediction"}}: Same as \code{"estimate"}.
+          \item \strong{\code{"preprocess"}}: Returns a list with pre-processed inputs, based on \code{classAlloc_settings}.
           \item \strong{\code{"raw"}}: Same as \code{"estimate"}.
-          \item \strong{\code{"repor"}}: Same as \code{"estimate"}.
+          \item \strong{\code{"report"}}: Same as \code{"estimate"}.
+          \item \strong{\code{"shares_LL"}}: List with probabilities for each class in an equal shares setting.
+          \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
+          \item \strong{\code{"zero_LL"}}: List with probabilities for each class in an equal shares setting.
         }
 }
 \description{
-Calculates probabilities of a Multinomial Logit model.
+Calculates class allocation probabilities for a Latent Class model using a Multinomial Logit model and can also perform other operations based on the value of the \code{functionality} argument.
 }

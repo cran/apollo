@@ -19,34 +19,34 @@ apollo_searchStart(
 
 \item{apollo_probabilities}{Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 \itemize{
-  \item apollo_beta: Named numeric vector. Names and values of model parameters.
-  \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-  \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
+  \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
+  \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
+  \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
-\item{searchStart_settings}{List containing options for the search of starting values. The following are valid options.
+\item{searchStart_settings}{List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
-  \item \code{nCandidates}: Numeric scalar. Number of candidate sets of parameters to be used at the start. Should be an integer bigger than 1. Default is 100.
-  \item \code{smartStart}: Boolean. If TRUE, candidates are randomly generated with more chances in the directions the Hessian indicates improvement of the LL function. Default is FALSE.
-  \item \code{apolloBetaMin}: Vector. Minimum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta - 0.1}.
-  \item \code{apolloBetaMax}: Vector. Maximum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta + 0.1}.
-  \item \code{maxStages}: Numeric scalar. Maximum number of search stages. The algorithm will stop when there is only one candidate left, or if it reaches this number of stages. Default is 5.
-  \item \code{dTest}: Numeric scalar. Tolerance for test 1. A candidate is discarded if its distance in parameter space to a better one is smaller than \code{dTest}. Default is 1.
-  \item \code{gTest}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is \code{10^(-3)}.
-  \item \code{llTest}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is 3.
-  \item \code{bfgsIter}: Numeric scalar. Number od BFGS iterations to perform at each stage to each remaining candidate. Default is 20.
+  \item \strong{\code{apolloBetaMax}}: Vector. Maximum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta + 0.1}.
+  \item \strong{\code{apolloBetaMin}}: Vector. Minimum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta - 0.1}.
+  \item \strong{\code{bfgsIter}}: Numeric scalar. Number od BFGS iterations to perform at each stage to each remaining candidate. Default is 20.
+  \item \strong{\code{dTest}}: Numeric scalar. Tolerance for test 1. A candidate is discarded if its distance in parameter space to a better one is smaller than \code{dTest}. Default is 1.
+  \item \strong{\code{gTest}}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is \code{10^(-3)}.
+  \item \strong{\code{llTest}}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is 3.
+  \item \strong{\code{maxStages}}: Numeric scalar. Maximum number of search stages. The algorithm will stop when there is only one candidate left, or if it reaches this number of stages. Default is 5.
+  \item \strong{\code{nCandidates}}: Numeric scalar. Number of candidate sets of parameters to be used at the start. Should be an integer bigger than 1. Default is 100.
+  \item \strong{\code{smartStart}}: Boolean. If TRUE, candidates are randomly generated with more chances in the directions the Hessian indicates improvement of the LL function. Default is FALSE.
 }}
 }
 \value{
 named vector of model parameters. These are the best values found.
 }
 \description{
-Given a set of starting values and a range for them, searches for points with a better likelihood.
+Given a set of starting values and a range for them, searches for points with a better likelihood and steeper gradients.
 }
 \details{
-This function implements a simplified version of the algorithm proposed by Bierlaire, Themans, & Zufferey (2010). The main difference
+This function implements a simplified version of the algorithm proposed by Bierlaire, M., Themans, M. & Zufferey, N. (2010), A Heuristic for Nonlinear Global Optimization, INFORMS Journal on Computing, 22(1), pp.59-70. The main difference
 lies in it implementing only two out of three tests on the candidates described by the authors. The implemented algorithm has the
 following steps.
 \enumerate{
@@ -62,5 +62,5 @@ following steps.
   \item Mark any candidates for which at least one test results in yes as inactive.
   \item Go back to step 3, unless only one candidate is active, or the maximum number of iterations (\code{maxStages}) has been reached.
 }
-This function will write a CSV file to the working directory summarising progress. This file is called \code{modelName}_searchStart.csv .
+This function will write a CSV file to the working/output directory summarising progress. This file is called \code{modelName}_searchStart.csv .
 }

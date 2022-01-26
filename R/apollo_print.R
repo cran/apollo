@@ -1,6 +1,6 @@
 #' Prints message to terminal
 #'
-#' Prints message to terminal if apollo_inputs$silent is FALSE
+#' Prints message to terminal if \code{apollo_inputs$silent} is FALSE
 #'
 #' @param txt Character, what to print.
 #' @param nSignifD Optional numeric integer. Minimum number of significant digits when printing numeric matrices. Default is 4.

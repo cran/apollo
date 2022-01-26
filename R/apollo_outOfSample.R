@@ -18,14 +18,14 @@
 #' (not recommended on panel data), then the optional \code{outOfSample_settings$samples} argument 
 #' should be provided.
 #' 
-#' This function writes two different files to the working directory:
+#' This function writes two different files to the working/output directory:
 #' \itemize{
-#'   \item \code{modelName_outOfSample_params.csv}: Records the estimated parameters, final loglikelihood, and number of observations on each repetition.
-#'   \item \code{modelName_outOfSample_samples.csv}: Records the sample composition of each repetition.
+#'   \item \strong{\code{modelName_outOfSample_params.csv}}: Records the estimated parameters, final log-likelihood, and number of observations on each repetition.
+#'   \item \strong{\code{modelName_outOfSample_samples.csv}}: Records the sample composition of each repetition.
 #' }
 #' The first two files are updated throughout the run of this function, while the last one is only written once the function finishes.
 #' 
-#' When run, this function will look for the two files above in the working directory. If they are found, 
+#' When run, this function will look for the two files above in the working/output directory. If they are found, 
 #' the function will attempt to pick up re-sampling from where those files left off. This is useful in 
 #' cases where the original bootstrapping was interrupted, or when additional re-sampling wants to be performed.
 #' 
@@ -33,18 +33,17 @@
 #' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
 #' @param apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 #'                          \itemize{
-#'                            \item apollo_beta: Named numeric vector. Names and values of model parameters.
-#'                            \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-#'                            \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
+#'                            \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
+#'                            \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
+#'                            \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param estimate_settings List. Options controlling the estimation process. See \link{apollo_estimate}.
-#' @param outOfSample_settings List. Options defining the sampling procedure. The following are valid options.
+#' @param outOfSample_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 #'                                   \describe{
 #'                                     \item{nRep}{Numeric scalar. Number of times a different pair of estimation and
 #'                                                 validation sets are to be extracted from the full database.
 #'                                                 Default is 30.}
-#'                                     \item{validationSize}{Numeric scalar. Size of the validation sample. Can be a percentage of the sample (0-1) or the number of individuals in the validation sample (>1). Default is 0.1.}
 #'                                     \item{samples}{Numeric matrix or data.frame. Optional argument. Must have as many rows as 
 #'                                                    observations in the \code{database}, and as many columns as number of  
 #'                                                    repetitions wanted. Each column represents a re-sample, and each element  
@@ -53,10 +52,11 @@
 #'                                                    argument is provided, then \code{nRep} and \code{validationSize} are ignored. 
 #'                                                    Note that this allows sampling at the observation rather than the individual 
 #'                                                    level.}
+#'                                     \item{validationSize}{Numeric scalar. Size of the validation sample. Can be a percentage of the sample (0-1) or the number of individuals in the validation sample (>1). Default is 0.1.}
 #'                                   }
 #' @return A matrix with the average log-likelihood per observation for both the estimation and validation 
 #'         samples, for each repetition. Two additional files with further details are written to the
-#'         working directory.
+#'         working/output directory.
 #' @export
 #' @importFrom maxLik maxLik
 #' @importFrom utils read.csv
@@ -291,7 +291,19 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   
   output_matrix=cbind(llInSampleStack[,"inSample_model"]/nObsStack,
                       llOutOfSampleStack[,"outOfSample_model"]/(nrow(database)-nObsStack))
-  colnames(output_matrix)=c("LL per obs in estimation sample","LL per obs in validation sample")
+  output_matrix=cbind(output_matrix,100*(output_matrix[,2]-output_matrix[,1])/abs(output_matrix[,1]))
   
-  return(output_matrix)
+  
+  output_matrix=rbind(output_matrix,colMeans(output_matrix))
+  
+  output_matrix=data.frame(output_matrix)
+  output_matrix[,1:2]=round(output_matrix[,1:2],4)
+  output_matrix[,3]=round(output_matrix[,3],2)
+  rownames(output_matrix)[nrow(output_matrix)]="Average"
+  colnames(output_matrix)=c("LL per obs in estimation sample","LL per obs in validation sample","% difference")
+  
+  cat("Outputs of out of sample testing:\n")
+  print(output_matrix)
+  
+  invisible(t(output_matrix))
 }

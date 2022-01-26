@@ -4,8 +4,8 @@
 #'
 #' This function should be called at the beginning of \code{apollo_probabilities}
 #' to make writing the log-likelihood more user-friendly. If used, then \link{apollo_detach}
-#' should be called at the end \code{apollo_probabilities}, or more conveniently, 
-#' using \link{on.exit}.
+#' should be called at the end of \code{apollo_probabilities}, or more conveniently, 
+#' using \link{on.exit} after the initial call to \code{apollo_attach}.
 #' \code{apollo_attach} attaches \code{apollo_beta}, \code{database}, \code{draws},
 #' and the output of \code{apollo_randCoeff} and \code{apollo_lcPars}, if they are
 #' defined by the user.

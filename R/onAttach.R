@@ -12,12 +12,12 @@
                             warning=function(w) return("alpha"),
                             error=function(e) return("alpha"))
   txt <- paste0("Apollo ", apolloVersion,
-  "\nwww.ApolloChoiceModelling.com",
-  "\nSee url for a detailed manual, examples and a help forum.",
-  "\nSign up to our mailing list for updates on new releases.")
+  "\nhttp://www.ApolloChoiceModelling.com",
+  "\nSee url for a detailed manual, examples and a user forum.",
+  "\nSign up to to user forum to receive updates on new releases.")
   
   ### Warning if more than six months old
-  releaseDate <- as.POSIXct('2021-11-01', format='%Y-%m-%d')
+  releaseDate <- as.POSIXct('2022-01-18', format='%Y-%m-%d')
   isOld <- as.POSIXct(Sys.Date()) > (releaseDate + 6*30.4*24*60*60)
   if(isOld) txt <- paste0(txt, 
                           '\n\nYour version of Apollo is more than six months old.',

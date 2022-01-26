@@ -7,41 +7,48 @@
 apollo_lc(lc_settings, apollo_inputs, functionality)
 }
 \arguments{
-\item{lc_settings}{List of arguments used by \code{apollo_lc}. It must include the following.
+\item{lc_settings}{List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
   \item \strong{inClassProb}: List of probabilities. Conditional likelihood for each class. One element per class, in the same order as \code{classProb}.
   \item \strong{classProb}: List of probabilities. Allocation probability for each class. One element per class, in the same order as \code{inClassProb}.
-  \item \strong{componentName}: Character. Name given to model component.
+  \item \strong{componentName}: Character. Name given to model component (optional).
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
-\item{functionality}{Character. Can take different values depending on desired output.
+\item{functionality}{Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
 \itemize{
-  \item "estimate" Used for model estimation.
-  \item "prediction" Used for model predictions.
-  \item "validate" Used for validating input.
-  \item "zero_LL" Used for calculating null likelihood.
-  \item "shares_LL": Used for calculating likelihood with constants only.
-  \item "conditionals" Used for calculating conditionals.
-  \item "output" Used for preparing output after model estimation.
-  \item "raw" Used for debugging.
-  \item "components" Returns \code{P} without changes.
+  \item \strong{\code{"components"}}: For further processing/debugging, produces likelihood for each model component (if multiple components are present), at the level of individual draws and observations.
+  \item \strong{\code{"conditionals"}}: For conditionals, produces likelihood of the full model, at the level of individual inter-individual draws.
+  \item \strong{\code{"estimate"}}: For model estimation, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+  \item \strong{\code{"gradient"}}: For model estimation, produces analytical gradients of the likelihood, where possible.
+  \item \strong{\code{"output"}}: Prepares output for post-estimation reporting.
+  \item \strong{\code{"prediction"}}: For model prediction, produces probabilities for individual alternatives and individual model components (if multiple components are present) at the level of an observation, after averaging across draws.
+  \item \strong{\code{"preprocess"}}: Prepares likelihood functions for use in estimation.
+  \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
+  \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
+  \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
+  \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+  \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 }}
 }
 \value{
 The returned object depends on the value of argument \code{functionality} as follows.
         \itemize{
+          \item \strong{\code{"components"}}: Returns nothing.
+          \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
           \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
+          \item \strong{\code{"gradient"}}: List containing the likelihood and gradient of the model component.
+          \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
           \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all models components, for each class.
+          \item \strong{\code{"preprocess"}}: Returns a list with pre-processed inputs, based on \code{lc_settings}.
+          \item \strong{\code{"raw"}}: Same as \code{"prediction"}
+          \item \strong{\code{"report"}}: Class allocation overview.
+          \item \strong{\code{"shares_LL"}}: Same as \code{"estimate"}
           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but also runs a set of tests on the given arguments.
           \item \strong{\code{"zero_LL"}}: Same as \code{"estimate"}
-          \item \strong{\code{"shares_LL"}}: Same as \code{"estimate"}
-          \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
-          \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
-          \item \strong{\code{"raw"}}: Same as \code{"prediction"}
         }
 }
 \description{
-Using the conditional likelihoods of each latent class, as well as teir classification probabilities, calculate the weighted likelihood of the whole model.
+Given within class probabilities, and class allocation probabilities, calculates the probabilities of an Exploded Logit model and can also perform other operations based on the value of the \code{functionality} argument.
 }

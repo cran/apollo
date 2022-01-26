@@ -7,9 +7,9 @@
 apollo_addCovariance(model, apollo_inputs)
 }
 \arguments{
-\item{model}{A model object, as returned by \link{apollo_estimate}}
+\item{model}{Model object. Estimated model object as returned by function \link{apollo_estimate}.}
 
-\item{apollo_inputs}{List of settings. as returned by \link{apollo_validateInputs}}
+\item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 }
 \value{
 model.

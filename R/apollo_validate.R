@@ -1,8 +1,22 @@
-#' Pre-process input for multiple models
+#' Pre-process input for common models
 #' return
 #' @param inputs List of settings
 #' @param modelType Character. Type of model, e.g. "mnl", "nl", "cnl", etc.
-#' @param functionality Character. Either "estimate","prediction","validate","zero_LL","conditionals","output","raw", or "preprocess". Only used for validation, it does not influence the return values.
+#' @param functionality Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
+#'                      \itemize{
+#'                        \item \strong{\code{"components"}}: For further processing/debugging, produces likelihood for each model component (if multiple components are present), at the level of individual draws and observations.
+#'                        \item \strong{\code{"conditionals"}}: For conditionals, produces likelihood of the full model, at the level of individual inter-individual draws.
+#'                        \item \strong{\code{"estimate"}}: For model estimation, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"gradient"}}: For model estimation, produces analytical gradients of the likelihood, where possible.
+#'                        \item \strong{\code{"output"}}: Prepares output for post-estimation reporting.
+#'                        \item \strong{\code{"prediction"}}: For model prediction, produces probabilities for individual alternatives and individual model components (if multiple components are present) at the level of an observation, after averaging across draws.
+#'                        \item \strong{\code{"preprocess"}}: Prepares likelihood functions for use in estimation.
+#'                        \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
+#'                        \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
+#'                        \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
+#'                        \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
+#'                      }
 #' @param apollo_inputs List of main inputs to the model estimation process. See \link{apollo_validateInputs}.
 #' @return The returned object depends on the value of argument operation
 #' @export
@@ -18,11 +32,15 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     # Checks specific to CNL
     if(modelType=="cnl"){
       if("root" %in% names(inputs$cnlNests)) stop('The root should not be included in argument cnlNests for model component "', inputs$componentName,'".')
+      test <- all(inputs$cnlNests!=0)
+      if(!test) stop("Structural parameters (lambda) cannot be zero for model component \"",inputs$componentName,"\"!")      
       test <- is.matrix(inputs$cnlStructure) && nrow(inputs$cnlStructure)==length(inputs$nestnames) && ncol(inputs$cnlStructure)==inputs$nAlt
       if(!test) stop('Argument "cnlStructure" for model component "', inputs$componentName, ' must be a matrix with one row per nest and one column per alternative.')
       #test <- 0.999<colSums(inputs$cnlStructure) && colSums(inputs$cnlStructure)<1.001
       test <- all((0.999<colSums(inputs$cnlStructure)) & (colSums(inputs$cnlStructure)<1.001))
       if(!test) stop("Allocation parameters (alpha) for some alternatives sum to values different than 1 for model component \"",inputs$componentName,"\"!")
+      test <- all((0<=inputs$cnlStructure) & (inputs$cnlStructure<=1))
+      if(!test) stop("Some allocation parameters (alpha) are outside the 0-1 range for model component \"",inputs$componentName,"\"!")
     }
     
     # Check that there are at least two or three alternatives
@@ -132,6 +150,8 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     if(modelType=='nl'){
       allElements <- c("root", unlist(inputs$nlStructure))
       if(is.null(inputs$nlStructure[["root"]])) stop("Tree structure for model component \"",inputs$componentName,"\" is missing an element called root!")
+      test <- all(inputs$nlNests!=0)
+      if(!test) stop("Structural parameters (lambda) cannot be zero for model component \"",inputs$componentName,"\"!")      
       #if(inputs$nlNests[["root"]]!=1) stop("The root lambda parameter for model component \"",inputs$componentName,"\" should be equal to 1.")
       if( !all(inputs$altnames %in% allElements) ) stop("All alternatives must be included in the tree structure for model component \"",inputs$componentName,"\".")
       if( !all(inputs$nestnames %in% allElements) ) stop("All nests must be included in the tree structure for model component \"",inputs$componentName,"\".")
@@ -153,16 +173,26 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     
   }
   
-  #### classAlloc ####
+  #### classAlloc #### 
   if(modelType=='classalloc'){
-    # Check there are at least 2 alternatives
-    if(inputs$nAlt<2) stop("Model component \"",inputs$componentName,"\"  requires at least 2 alternatives")
+    # Check there are at least 2 classes
+    if(inputs$nAlt<2) stop("Model component \"",inputs$componentName,"\"  requires at least 2 classes")
     # Check availabilities are only 0 or 1
     if(!all(sapply(inputs$avail, function(a) all(unique(a) %in% 0:1)))) stop("Some availability values for model component \"",inputs$componentName,"\" are not 0 or 1.")
     # Check all available alternatives have finite V
     inputs$V <- mapply(function(v,a) apollo_setRows(v, !a, 0), inputs$V, inputs$avail, SIMPLIFY=FALSE)
     test     <- all(sapply(inputs$V, function(v) all(is.finite(v))))
     if(!test) stop('Some utilities for model component "',inputs$componentName, '" contain values that are not finite numbers!')
+    # Check that the name in classes, V and avail match
+    ### retrieve class names (as the vector classes could be character or a named vector)
+    if(is.character(inputs$classes)){
+      inputs$classNames=inputs$classes
+    }else{
+      inputs$classNames=names(inputs$classes)
+    }
+    test <- length(inputs$V)==length(inputs$classes) && length(inputs$V)==length(inputs$avail)
+    test <- test && all(names(inputs$V) %in% inputs$classNames) && all(names(inputs$V) %in% names(inputs$avail))
+    if(!test) stop("Some of the names of the classes for model component '", inputs$componentName, "' do not match!")
   }
   
   #### NormD ####
@@ -176,17 +206,9 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
   
   #### OL, OP ####
   if(modelType %in% c("ol", "op")){
-    values_present = unique(inputs$outcomeOrdered)
-    if(!(all(values_present %in% inputs$coding ))){
-      if(!inputs$coding_set) stop("The levels in 'outcomeOrdered' do not match up with the default coding or the number of thresholds defined for model component \"",inputs$componentName,"\" !")
-      if(inputs$coding_set) stop("Some levels in 'outcomeOrdered' do not exist in 'coding' for model component \"",inputs$componentName,"\" !")
-    } 
-    if(!(all(inputs$coding %in% values_present ))){
-      if(!inputs$coding_set) stop("The levels in 'outcomeOrdered' do not match up with the default coding for model component \"",inputs$componentName,"\" !")
-      if(inputs$coding_set) stop("Some levels in 'coding' do not exist in 'outcomeOrdered' for model component \"",inputs$componentName,"\"!")
-    } 
-    rm(values_present)
+    # validation of coding is done in apollo_preprocess, as coding is applied in there
     if( (length(inputs$tau)+1) != length(inputs$coding) ) stop("Threshold vector length +1 does not match number of elements in argument 'coding' for model component \"",inputs$componentName,"\".")
+    if(length(inputs$tau)>1) for(s in 1:(length(inputs$tau)-1)) if(any(inputs$tau[[s+1]]<=inputs$tau[[s]])) stop('Tresholds for model component "', inputs$componentName, '" are not strictly increasing at starting values!')
     if(!all(is.finite(inputs$V))) stop('Some values inside V are not finite for model component "', inputs$componentName, '"')
   }
   
@@ -251,10 +273,10 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     #for(i in 1:length(inputs$avail)) if(length(inputs$avail[[i]])==1) inputs$avail[[i]] <- rep(inputs$avail[[i]], inputs$nObs)
     # check that all availabilities are either 0 or 1
     for(i in 1:inputs$nAlt) if( !all(unique(inputs$avail[[i]]) %in% 0:1) ) stop("Some availability values are not 0 or 1 for model component \"",
-                                                                         inputs$componentName,"\".")
+                                                                                inputs$componentName,"\".")
     # check that availability of outside is always 1
     if(inputs$hasOutside && any(!inputs$avail[[1]])) stop('Outside good is not available for some observations for model component "',
-                                                   inputs$componentName,'". It should always be available.')
+                                                          inputs$componentName,'". It should always be available.')
     # check that if minimum consumption exists, it has the same names as alternatives, and that no consumptions are less than minConsumption if alternative is available
     if(inputs$minX){
       if(!all(inputs$alternatives %in% names(inputs$minConsumption))) stop("Labels in \"alternatives\" for model component \"",
@@ -271,6 +293,7 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
       if(nrow(inputs$mdcnevStructure)!=length(inputs$mdcnevNests)) stop("Tree structure needs one row per nest!")
       if(ncol(inputs$mdcnevStructure)!=inputs$nAlt) stop("Tree structure needs one column per alternative!")
       if(any(colSums(inputs$mdcnevStructure)!=1)) stop("Each alternative must be allocated to one nest only!")
+      if(!all(inputs$mdcnevStructure %in% 0:1)) stop("All values in mdcnevStructure must be either 0 or 1!")
     }
     
   }

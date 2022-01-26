@@ -5,34 +5,36 @@
 \alias{apollo_drugChoiceData}
 \title{Simulated dataset of medication choice.}
 \format{
-A data frame with 10000 rows and 33 variables:
+A data.frame with 10,000 rows and 33 variables:
 \describe{
   \item{ID}{Numeric. Identification number of the individual.}
-  \item{task}{Numeric. 1 if the row corresponds to a revealed preference (RP) observation. 0 otherwise.}
-  \item{best}{Numeric. Consecutive ID of RP observation.}
-  \item{second_pref}{Numeric. 1 if the row corresponds to a stated preference (SP) observation. 0 otherwise.}
-  \item{third_pref}{Numeric. Consecutive ID of SP choice task.}
-  \item{worst}{Numeric. Access time (in minutes) of mode air.}
-  \item{brand_1}{Character. Name of alternative's brand.}
-  \item{country_1}{Character. Name of alternative's country of origin.}
-  \item{char_1}{Character. Characteristics of the alternative (standard, fast acting, or double strength).}
-  \item{side_effects_1}{Numeric. Chance of suffering negative side effects if this alternative is consumed.}
-  \item{price_1}{Numeric. Cost of this alternative in Pounds sterling (GBP).}
-  \item{brand_2}{Character. Name of alternative's brand.}
-  \item{country_2}{Character. Name of alternative's country of origin.}
-  \item{char_2}{Character. Characteristics of the alternative (standard, fast acting, or double strength).}
-  \item{side_effects_2}{Numeric. Chance of suffering negative side effects if this alternative is consumed.}
-  \item{price_2}{Numeric. Cost of this alternative in Pounds sterling (GBP).}
-  \item{brand_3}{Character. Name of alternative's brand.}
-  \item{country_3}{Character. Name of alternative's country of origin.}
-  \item{char_3}{Character. Characteristics of the alternative (standard, fast acting, or double strength).}
-  \item{side_effects_3}{Numeric. Chance of suffering negative side effects if this alternative is consumed.}
-  \item{price_3}{Numeric. Cost of this alternative in Pounds sterling (GBP).}
-  \item{brand_4}{Character. Name of alternative's brand.}
-  \item{country_4}{Character. Name of alternative's country of origin.}
-  \item{char_4}{Character. Characteristics of the alternative (standard, fast acting, or double strength).}
-  \item{side_effects_4}{Numeric. Chance of suffering negative side effects if this alternative is consumed.}
-  \item{price_4}{Numeric. Cost of this alternative in Pounds sterling (GBP).}
+  \item{task}{Numeric. Index of choice situations for each individual, going from 1 to 10.}
+  \item{best}{Numeric. Index of alternative selected as best option.}
+  \item{second_pref}{Numeric. Index of alternative selected as second-best option.}
+  \item{third_pref}{Numeric. Index of alternative selected as third-best option.}
+  \item{worst}{Numeric. Index of alternative selected as worst option.}
+  \item{brand_1}{Character. Brand for alternative 1.}
+  \item{country_1}{Character. Country of origin for alternative 1.}
+  \item{char_1}{Character. Characteristics of alternative 1 (standard, fast acting, or double strength).}
+  \item{side_effects_1}{Numeric. Chance of suffering negative side effects with alternative 1.}
+  \item{price_1}{Numeric. Cost of alternative 1 in Pounds sterling (GBP).}
+  \item{brand_2}{Character. Brand for alternative 2.}
+  \item{country_2}{Character. Country of origin for alternative 2.}
+  \item{char_2}{Character. Characteristics of alternative 2 (standard, fast acting, or double strength).}
+  \item{side_effects_2}{Numeric. Chance of suffering negative side effects with alternative 2.}
+  \item{price_2}{Numeric. Cost of alternative 2 in Pounds sterling (GBP).}
+  
+  \item{brand_3}{Character. Brand for alternative 3.}
+  \item{country_3}{Character. Country of origin for alternative 3.}
+  \item{char_3}{Character. Characteristics of alternative 3 (standard, fast acting, or double strength).}
+  \item{side_effects_3}{Numeric. Chance of suffering negative side effects with alternative 3.}
+  \item{price_3}{Numeric. Cost of alternative 3 in Pounds sterling (GBP).}
+  
+  \item{brand_4}{Character. Brand for alternative 4.}
+  \item{country_4}{Character. Country of origin for alternative 4.}
+  \item{char_4}{Character. Characteristics of alternative 4 (standard, fast acting, or double strength).}
+  \item{side_effects_4}{Numeric. Chance of suffering negative side effects with alternative 4.}
+  \item{price_4}{Numeric. Cost of alternative 4 in Pounds sterling (GBP).}
   \item{regular_user}{Numeric. 1 if the respondent is a regular user of headache medicine, 0 otherwise.}
   \item{university_educated}{Numeric. 1 if the respondent holds a university degree, 0 otherwise.}
   \item{over_50}{Numeric. 1 if the respondent is 50 years old or older, 0 otherwise.}
@@ -54,7 +56,7 @@ A simulated dataset containing 10,000 stated medication choices among four alter
 \details{
 This dataset is to be used for discrete choice modelling.
 Data comes from 1,000 individuals, each with ten stated 
-preferences (SP) observations among headache medication. 
+choice (SC) scenarios involving a choice among headache medication. 
 There are 10,000 choices in total. Data is simulated.
 Each observation contains attributes of the alternatives,
 characteristics of the respondent, and their answers to

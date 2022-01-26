@@ -2,59 +2,64 @@
 % Please edit documentation in R/apollo_cnl.R
 \name{apollo_cnl}
 \alias{apollo_cnl}
-\title{Calculates probabilities of a Cross-nested Logit}
+\title{Calculates Cross-Nested Logit probabilities}
 \usage{
 apollo_cnl(cnl_settings, functionality)
 }
 \arguments{
-\item{cnl_settings}{List of inputs of the CNL model. It should contain the following.
+\item{cnl_settings}{List of inputs of the CNL model. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
-  \item \strong{alternatives}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
-  \item \strong{avail}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
-  \item \strong{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
-  \item \strong{V}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
-  \item \strong{cnlNests}: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named according to nests. The lambda at the root is fixed to 1, and therefore does not need to be defined.
-  \item \strong{cnlStructure}: Numeric matrix. One row per nest and one column per alternative. Each element of the matrix is the alpha parameter of that (nest, alternative) pair.
-  \item \strong{rows}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
-  \item \strong{componentName}: Character. Name given to model component.
+  \item \strong{\code{alternatives}}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
+  \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
+  \item \strong{\code{choiceVar}}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
+  \item \strong{\code{cnlNests}}: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named according to nests. The lambda at the root is fixed to 1, and therefore does not need to be defined.
+  \item \strong{\code{cnlStructure}}: Numeric matrix. One row per nest and one column per alternative. Each element of the matrix is the alpha parameter of that (nest, alternative) pair.
+  \item \strong{\code{componentName}}: Character. Name given to model component.
+  \item \strong{\code{utilities}}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
+  \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
 }}
 
-\item{functionality}{Character. Can take different values depending on desired output.
+\item{functionality}{Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
 \itemize{
-  \item "estimate": Used for model estimation.
-  \item "prediction": Used for model predictions.
-  \item "validate": Used for validating input.
-  \item "zero_LL": Used for calculating null likelihood.
-  \item \code{"shares_LL"}: Used for calculating likelihood with constants only.
-  \item "conditionals": Used for calculating conditionals.
-  \item "output": Used for preparing output after model estimation.
-  \item "raw": Used for debugging.
+  \item \strong{\code{"components"}}: For further processing/debugging, produces likelihood for each model component (if multiple components are present), at the level of individual draws and observations.
+  \item \strong{\code{"conditionals"}}: For conditionals, produces likelihood of the full model, at the level of individual inter-individual draws.
+  \item \strong{\code{"estimate"}}: For model estimation, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+  \item \strong{\code{"gradient"}}: For model estimation, produces analytical gradients of the likelihood, where possible.
+  \item \strong{\code{"output"}}: Prepares output for post-estimation reporting.
+  \item \strong{\code{"prediction"}}: For model prediction, produces probabilities for individual alternatives and individual model components (if multiple components are present) at the level of an observation, after averaging across draws.
+  \item \strong{\code{"preprocess"}}: Prepares likelihood functions for use in estimation.
+  \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
+  \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
+  \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
+  \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+  \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 }}
 }
 \value{
 The returned object depends on the value of argument \code{functionality} as follows.
         \itemize{
-          \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
-          \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
-          \item \strong{\code{"validate"}}: Same as \code{"estimate"}
-          \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
-          \item \strong{\code{"shares_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when only constants are estimated.
+          \item \strong{\code{"components"}}: Same as \code{"estimate"}
           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
+          \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the probabilities for the chosen alternative for each observation.
+          \item \strong{\code{"gradient"}}: Not implemented.
           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
-          \item \strong{\code{"raw"}}: Same as \code{"prediction"}
+          \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the chosen alternative probability.
+          \item \strong{\code{"preprocess"}}: Returns a list with pre-processed inputs, based on \code{cnl_settings}.
+          \item \strong{\code{"raw"}}: Same as \code{"prediction"}.
+          \item \strong{\code{"report"}}: List with tree structure and choice overview.
+          \item \strong{\code{"shares_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when only constants are estimated.
+          \item \strong{\code{"validate"}}: Same as \code{"estimate"}.
+          \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
         }
 }
 \description{
-Calculates probabilities of a Cross-nested Logit model.
+Calculates the probabilities of a Cross-nested Logit model and can also perform other operations based on the value of the \code{functionality} argument.
 }
 \details{
 For the model to be consistent with utility maximisation, the estimated value of the lambda parameter of all nests
 should be between 0 and 1. Lambda parameters are inversely proportional to the correlation between the error terms of 
 alternatives in a nest. If lambda=1,  there is no relevant correlation between the unobserved
 utility of alternatives in that nest.
-The tree must contain an upper nest called \code{"root"}. The lambda parameter of the root is automatically
-set to 1 if not specified in \code{nlNests}. And while setting it to another value is possible, it is not
-recommended.
 Alpha parameters inside \code{cnlStructure} should be between 0 and 1. Using a transformation to ensure
-this constraint is satisfied is recommended (e.g. logistic transformation).
+this constraint is satisfied is recommended for complex structures (e.g. logistic transformation).
 }

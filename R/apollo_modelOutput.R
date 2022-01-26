@@ -4,19 +4,19 @@
 #' 
 #' Prints to screen the output of a model previously estimated by apollo_estimate()
 #' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}.
-#' @param modelOutput_settings List of options. It can include the following.
+#' @param modelOutput_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 #'                             \itemize{
-#'                               \item \code{printFixed}: Logical. TRUE for printing fixed parameters among estimated parameter. TRUE by default.
-#'                               \item \code{printClassical}: Logical. TRUE for printing classical standard errors. TRUE by default.
-#'                               \item \code{printPVal}: Logical or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
-#'                               \item \code{printT1}: Logical. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
-#'                               \item \code{printDataReport}: Logical. TRUE for printing summary of choices in database and other diagnostics. FALSE by default.
-#'                               \item \code{printModelStructure}: Logical. TRUE for printing model structure. TRUE by default.
-#'                               \item \code{printCovar}: Logical. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
-#'                               \item \code{printCorr}: Logical. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
-#'                               \item \code{printOutliers}: Logical or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
-#'                               \item \code{printChange}: Logical. TRUE for printing difference between starting values and estimates. FALSE by default.
-#'                               \item \code{printFunctions}: Logical. TRUE for printing apollo_control, apollo_randCoeff (when available), apollo_lcPars (when available) and apollo_probabilities. FALSE by default.
+#'                               \item \strong{\code{printChange}}: Logical. TRUE for printing difference between starting values and estimates. FALSE by default.
+#'                               \item \strong{\code{printClassical}}: Logical. TRUE for printing classical standard errors. TRUE by default.
+#'                               \item \strong{\code{printCorr}}: Logical. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
+#'                               \item \strong{\code{printCovar}}: Logical. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
+#'                               \item \strong{\code{printDataReport}}: Logical. TRUE for printing summary of choices in database and other diagnostics. FALSE by default.
+#'                               \item \strong{\code{printFixed}}: Logical. TRUE for printing fixed parameters among estimated parameter. TRUE by default.
+#'                               \item \strong{\code{printFunctions}}: Logical. TRUE for printing apollo_control, apollo_randCoeff (when available), apollo_lcPars (when available) and apollo_probabilities. FALSE by default.
+#'                               \item \strong{\code{printModelStructure}}: Logical. TRUE for printing model structure. TRUE by default.
+#'                               \item \strong{\code{printOutliers}}: Logical or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
+#'                               \item \strong{\code{printPVal}}: Logical or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
+#'                               \item \strong{\code{printT1}}: Logical. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
 #'                             }
 #' @return A matrix of coefficients, s.d. and t-tests (invisible)
 #' @export
@@ -74,7 +74,10 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
                               error=function(e) return("alpha"))
   } else apolloVersion <- "alpha"
   
-  cat('Model run using Apollo for R, version', apolloVersion, 'on', Sys.info()['sysname'], 'by', Sys.info()['user'], '\n')
+  #cat('Model run using Apollo for R, version', apolloVersion, 'on', Sys.info()['sysname'], 'by', Sys.info()['user'], '\n')
+  cat("Model run by ", Sys.info()['user'], " using Apollo ", apolloVersion, 
+      " on R ", paste0(version$major, ".", version$minor), 
+      " for ", Sys.info()['sysname'], ".\n", sep="")
   cat("www.ApolloChoiceModelling.com\n\n")
   cat("Model name                       : ", model$apollo_control$modelName,"\n", sep="")
   cat("Model description                : ", model$apollo_control$modelDescr,"\n", sep="")
@@ -283,13 +286,13 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   dropcolumns = unique(dropcolumns)
   if(length(dropcolumns)>0) output = output[,-dropcolumns, drop=FALSE]
   
-  cat("LL(start)                        : ",model$LLStart,"\n", sep="")
-  if(length(model$LLout)==1) cat("LL(0)                            : ",ifelse(!anyNA(model$LL0[1]),model$LL0[1],"Not applicable"),"\n", sep="")
-  if(length(model$LLout)>1 ) cat("LL(0, whole model)               : ",ifelse(!anyNA(model$LL0[1]),model$LL0[1],"Not applicable"),"\n", sep="")
-  if(length(model$LLout)==1) cat("LL(C)                            : ",ifelse(!anyNA(model$LLC[1]),model$LLC[1],"Not applicable"),"\n", sep="")
-  if(length(model$LLout)>1 ) cat("LL(C, whole model)               : ",ifelse(!anyNA(model$LLC[1]),model$LLC[1],"Not applicable"),"\n", sep="")
-  if(length(model$LLout)==1) cat("LL(final)                        : ",model$maximum,"\n",sep="")
-  if(length(model$LLout)>1 ) cat("LL(final, whole model)           : ",model$maximum,"\n",sep="")
+  cat("LL(start)                        : ",round(model$LLStart,2),"\n", sep="")
+  if(length(model$LLout)==1) cat("LL(0)                            : ",ifelse(!anyNA(model$LL0[1]),round(model$LL0[1],2),"Not applicable"),"\n", sep="")
+  if(length(model$LLout)>1 ) cat("LL(0, whole model)               : ",ifelse(!anyNA(model$LL0[1]),round(model$LL0[1],2),"Not applicable"),"\n", sep="")
+  if(length(model$LLout)==1) cat("LL(C)                            : ",ifelse(!anyNA(model$LLC[1]),round(model$LLC[1],2),"Not applicable"),"\n", sep="")
+  if(length(model$LLout)>1 ) cat("LL(C, whole model)               : ",ifelse(!anyNA(model$LLC[1]),round(model$LLC[1],2),"Not applicable"),"\n", sep="")
+  if(length(model$LLout)==1) cat("LL(final)                        : ",round(model$maximum,2),"\n",sep="")
+  if(length(model$LLout)>1 ) cat("LL(final, whole model)           : ",round(model$maximum,2),"\n",sep="")
   test <- !is.null(model$modelTypeList) && all(tolower(model$modelTypeList) %in% c("mnl", "nl", "cnl", "el", "dft", "lc"))
   test <- test && !anyNA(model$LL0[1])
   if(test){
@@ -313,8 +316,13 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       nam <- names(model$LLout)[j]
       sp1 <- ifelse(6+nchar(nam)<33, paste0(rep(" ",33-nchar(nam)-6), collapse=""), "")
       sp2 <- ifelse(9+nchar(nam)<33, paste0(rep(" ",33-nchar(nam)-10), collapse=""), "")
-      cat("LL(0,",nam,")",sp1,": ",ifelse(is.finite(model$LL0[j]),model$LL0[j],"Not applicable"),"\n", sep="")
-      cat("LL(final,",nam,")",sp2,": ",model$LLout[j],"\n", sep="")
+      cat("LL(0,", nam, ")", sp1, ": ", ifelse(is.finite(model$LL0[j]), round(model$LL0[j],2), "Not applicable"),"\n", sep="")
+      #cat("LL(final,", nam, ")", sp2, ": ", model$LLout[j], sep="")
+      txt <- paste0("LL(final,", nam, ")", sp2, ": ", round(model$LLout[j],2))
+      if(!is.finite(model$LLout[j])) cat(txt, " Likelihood equal to zero for at least\n", 
+                                         paste0(rep(" ", nchar(txt)), collapse=""), 
+                                         " one individual in this component.", sep="") else cat(txt)
+      cat('\n')
     }; rm(nam, sp1, sp2)
   }
   

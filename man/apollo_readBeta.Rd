@@ -24,7 +24,7 @@ apollo_readBeta(
 Named numeric vector. Names and updated starting values for parameters.
 }
 \description{
-Reads in parameters from a previously estimated model and copies the values to the given apollo_beta vector, only for those parameters whose name matches.
+Reads in parameters from a previously estimated model and copies the values to the given \code{apollo_beta} vector, only for those parameters whose name matches.
 }
 \details{
 This function will update the values of the parameters in its argument \code{apollo_beta} with the matching values in the file

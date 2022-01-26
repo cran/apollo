@@ -9,18 +9,18 @@ apollo_insertRows(v, r, val)
 \arguments{
 \item{v}{Numeric scalar, vector, matrix or 3-dim array.}
 
-\item{r}{Boolean vector. TRUE for inserting a row from \code{v}, \code{FALSE} to insert a new row with value \code{val}.}
+\item{r}{Boolean vector. TRUE for inserting a row from \code{utilities}, \code{FALSE} to insert a new row with value \code{val}.}
 
 \item{val}{Numeric scalar. Value that will fill new rows.}
 }
 \value{
-The same argument \code{v} but with the rows where \code{r==FALSE} removed.
+The same argument \code{utilities} but with the rows where \code{r==FALSE} removed.
 }
 \description{
 Given a numeric object (scalar, vector, matrix or 3-dim array) inserts rows in the specified places.
 }
 \details{
-In general, \code{r} should be longer than the number of rows in \code{v}, and \code{sum(r)=nrow(v)}.
+In general, \code{r} should be longer than the number of rows in \code{utilities}, and \code{sum(r)=nrow(v)}.
 If not, then a new object with as many rows as \code{r} will be returned. Old rows will be taken 
-from \code{v} from the top down.
+from \code{utilities} from the top down.
 }

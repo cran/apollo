@@ -1,58 +1,46 @@
-#' Calculates varcov matrix of an Apollo model
+#' Calculates variance-covariance matrix of an Apollo model
 #' 
-#' Calculates the Hessian, varcov matrix and s.e. of an Apollo model as defined buy its likelihood function 
-#' and apollo_inputs list of settings. Performs automatic scaling for increased numeric stability.
+#' Calculates the Hessian, variance-covariance matrix and standard errors of an Apollo model as defined by its likelihood function 
+#' and \code{apollo_inputs} list of settings. Performs automatic scaling for increased numeric stability.
 #' 
 #' It calculates the Hessian, variance-covariance, and standard errors at \code{apollo_beta} values of an 
-#' estimated model. At least one of the following settings must be provided (ordered by speed): \code{apollo_grad}, 
+#' estimated model. At least one of the following settings must be provided (ordered by speed of computation): \code{apollo_grad}, 
 #' \code{apollo_logLike}, or (\code{apollo_probabilities} and \code{apollo_inputs}). If more than one is provided, 
 #' then the priority is: \code{apollo_grad}, \code{apollo_logLike}, (\code{apollo_probabilities} and \code{apollo_inputs}).
 #' 
 #' @param apollo_beta Named numeric vector. Names and values of parameters at which to calculate the covariance matrix.
-#'                    Values _must not be scaled_, and they must include any fixed parameter.
+#'                    Values \strong{must not be scaled}, and they must include any fixed parameter.
 #' @param apollo_fixed Character vector. Names of fixed parameters.
 #' @param varcov_settings List of settings defining the behaviour of this function. It must contain at least one of
-#'                        teh following: apollo_logLike, apollo_grad or apollo_inputs.
+#'                        the following: \code{apollo_logLike}, \code{apollo_grad} or \code{apollo_inputs} together with \code{apollo_probabilities}.
 #'                        \itemize{
-#'                          \item \strong{hessianRoutine}: Character. Name of routine used to calculate 
-#'                                                         the Hessian. Valid values are \code{"analytic"}, 
-#'                                                         \code{"numDeriv"}, \code{"maxLik"} or \code{"none"} 
-#'                                                         to avoid estimating the Hessian and covariance matrix.
-#'                          \item \strong{scaleBeta}: Logical. If TRUE (default), parameters are scaled by their 
-#'                                                    own value before calculating the Hessian to increase numerical
-#'                                                    stability. However, the output is de-scaled, so they are in 
-#'                                                    the same scale as the \code{apollo_beta} argument.
-#'                          \item \strong{numDeriv_settings}: List. Additional arguments to the Richardson method 
-#'                                                            used by numDeriv to calculate the Hessian. See 
-#'                                                            argument \code{method.args} in \link[numDeriv]{grad} 
-#'                                                            for more details.
-#'                          \item \strong{apollo_logLike}: Function to calculate the loglikelihood of the model, as
-#'                                                         returned by \link{apollo_makeLogLike}.
-#'                          \item \strong{apollo_grad}: Function to calculate the gradient of the model, as
-#'                                                      returned by \link{apollo_makeGrad}.
-#'                          \item \strong{apollo_probabilities}: Function. Likelihood function of the model. 
-#'                                                               Must receive three arguments:
-#'                                                               \itemize{
-#'                                                                 \item apollo_beta: Named numeric vector.
-#'                                                                 \item apollo_inputs: List of settings.
-#'                                                                 \item functionality: Character.
-#'                                                               }
-#'                          \item \strong{apollo_inputs}: List of inputs to estimate a model, as returned by 
-#'                                                        \link{apollo_validateInputs}.
+#'                          \item \strong{\code{apollo_grad}}: Function to calculate the gradient of the model, as returned by \link{apollo_makeGrad}.
+#'                          \item \strong{\code{apollo_inputs}}: List grouping most common inputs. Created by function \link{apollo_validateInputs}.
+#'                          \item \strong{\code{apollo_logLike}}: Function to calculate the log-likelihood of the model, as returned by \link{apollo_makeLogLike}.
+#'                          \item \strong{\code{apollo_probabilities}}: apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:
+#'                          \itemize{
+#'                            \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
+#'                            \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
+#'                            \item \strong{\code{functionality}}: Character. Can be either 
+#'                            \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
+#'                          }
+#'                          \item \strong{\code{hessianRoutine}}: Character. Name of routine used to calculate the Hessian. Valid values are \code{"analytic"}, \code{"numDeriv"}, \code{"maxLik"} or \code{"none"} to avoid estimating the Hessian and covariance matrix.
+#'                          \item \strong{\code{numDeriv_settings}}: List. Additional arguments to the Richardson method used by numDeriv to calculate the Hessian. See argument \code{method.args} in \link[numDeriv]{grad} for more details.
+#'                          \item \strong{\code{scaleBeta}}: Logical. If TRUE (default), parameters are scaled by their own value before calculating the Hessian to increase numerical stability. However, the output is de-scaled, so they are in the same scale as the \code{apollo_beta} argument.
 #'                        }
 #' @return List with the following elements
 #'         \itemize{
-#'           \item \strong{hessian}: Numerical matrix. Hessian of the model at parameter estimates (\code{model$estimate}).
-#'           \item \strong{varcov}: Numerical matrix. Variance-covariance matrix.
-#'           \item \strong{se}: Named numerical vector. Standard errors of parameter estimates.
-#'           \item \strong{corrmat}: Numerical matrix. Correlation between parameter estimates.
-#'           \item \strong{robvarcov}: Numerical matrix. Robust variance-covariance matrix.
-#'           \item \strong{robse}: Named numerical vector. Robust standard errors of parameter estimates.
-#'           \item \strong{robcorrmat}: Numerical matrix. Robust correlation between parameter estimates.
-#'           \item \strong{apollo_beta}: Named numerical vector. Parameter estimates (\code{model$estimate}, not scaled).
-#'           \item \strong{methodUsed}: Character. Name of method used to calculate the Hessian.
-#'           \item \strong{methodsAttempted}: Character vector. Name of methods attempted to calculate the Hessian.
-#'           \item \strong{hessianScaling}: Named numeric vector. Scales used on the paramaters to calculate the Hessian (non-fixed only).
+#'           \item \strong{\code{apollo_beta}}: Named numerical vector. Parameter estimates (\code{model$estimate}, not scaled).
+#'           \item \strong{\code{corrmat}}: Numerical matrix. Correlation between parameter estimates.
+#'           \item \strong{\code{hessian}}: Numerical matrix. Hessian of the model at parameter estimates (\code{model$estimate}).
+#'           \item \strong{\code{hessianScaling}}: Named numeric vector. Scales used on the paramaters to calculate the Hessian (non-fixed only).
+#'           \item \strong{\code{methodsAttempted}}: Character vector. Name of methods attempted to calculate the Hessian.
+#'           \item \strong{\code{methodUsed}}: Character. Name of method used to calculate the Hessian.
+#'           \item \strong{\code{robcorrmat}}: Numerical matrix. Robust correlation between parameter estimates.
+#'           \item \strong{\code{robse}}: Named numerical vector. Robust standard errors of parameter estimates.
+#'           \item \strong{\code{robvarcov}}: Numerical matrix. Robust variance-covariance matrix.
+#'           \item \strong{\code{se}}: Named numerical vector. Standard errors of parameter estimates.
+#'           \item \strong{\code{varcov}}: Numerical matrix. Variance-covariance matrix.
 #'         }
 #' @importFrom stats var
 #' @export
@@ -135,7 +123,7 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
                                          apollo_estSet        = list(estimationRoutine='bhhh'))
     apollo_grad <- NULL
   }
-  if(!is.function(apollo_logLike)) stop('Creation of loglikelihood function (apollo_logLike) failed. Varcov matrix cannot be calculated.')
+  if(!is.function(apollo_logLike)) stop('Creation of log-likelihood function (apollo_logLike) failed. Varcov matrix cannot be calculated.')
   
   ### If apollo_grad is not provided, but analytic gradient is requested, then construct analytical gradient
   test <- !is.function(apollo_grad) && hessianRoutine=='analytic'
@@ -146,17 +134,37 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
   
   ### Scale if requested
   if(varcov_settings$scaleBeta){
-    # Calculate new (hessian) scaling
+    # Extract old scaling
+    oneCore <- environment(apollo_logLike)$singleCore
+    if( oneCore) s <- environment(apollo_logLike)$apollo_inputs$apollo_scaling
+    if(!oneCore) s <- parallel::clusterEvalQ(cl=environment(apollo_logLike)$cl,
+                                             apollo_inputs$apollo_scaling)[[1]]
+    oldScaling <- s
+    # Calculate LL before scaling
+    b <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
+    b[names(s)] <- b[names(s)]/s
+    test1 <- apollo_logLike(b, countIter=FALSE, sumLL=TRUE, writeIter=FALSE, getNIter=FALSE)
+    # Calculate new (hessian) scaling and turn scales equal to 0 into 1 to avoid divisions by zero.
     scaling <- abs(apollo_beta[!(names(apollo_beta) %in% apollo_fixed)])
-    # Turn scales equal to 0 into 1 to avoid divisions by zero.
     if(any(scaling==0)) scaling[scaling==0] <- 1
-    # Update apollo_inputs$apollo_scaling (single core)
-    if(environment(apollo_logLike)$singleCore) environment(apollo_logLike)$apollo_inputs$apollo_scaling <- scaling
-    # Update apollo_inputs$apollo_scaling (multicore)
-    if(!environment(apollo_logLike)$singleCore) parallel::clusterCall(cl=environment(apollo_logLike)$cl, 
-                                                                      fun=setSMulti, s=scaling)
+    # Update apollo_inputs$apollo_scaling
+    if( oneCore) environment(apollo_logLike)$apollo_inputs$apollo_scaling <- scaling
+    if(!oneCore) parallel::clusterCall(cl=environment(apollo_logLike)$cl, fun=setSMulti, s=scaling)
     # Scale apollo_beta to hessian scaling
     apollo_beta[names(scaling)] <- apollo_beta[names(scaling)]/scaling
+    # Calculate LL after scaling and make sure it is the same as before
+    b     <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
+    test2 <- apollo_logLike(b, countIter=FALSE, sumLL=TRUE, writeIter=FALSE, getNIter=FALSE)
+    test <- is.numeric(test1) && is.numeric(test2) && !any(is.nan(test1)) && !any(is.nan(test2))
+    test <- test && abs(sum(test2)/sum(test1) - 1) < 0.001
+    if(!test){
+      # If scaling didn't work, undo changes
+      if(!silent)apollo_print("Parameters could not be scaled for the Hessian calculation.")
+      apollo_beta[names(scaling)] <- apollo_beta[names(scaling)]*oldScaling
+      if(environment(apollo_logLike)$singleCore) environment(apollo_logLike)$apollo_inputs$apollo_scaling <- scaling
+      if(!environment(apollo_logLike)$singleCore) parallel::clusterCall(cl=environment(apollo_logLike)$cl, 
+                                                                        fun=setSMulti, s=s)
+    }
   }
   
   
@@ -206,7 +214,6 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
     if(!silent) cat(' 0%')
     H <- tryCatch(numDeriv::hessian(func=sumLogLike, x=beta_var_val, method.args=varcov_settings$numDeriv_settings),
                   error = function(e) return(NA))
-    ### end change
     if(!silent) cat('100%')
     if(anyNA(H)){
       if(!silent && length(H)==1) cat(' Failed')

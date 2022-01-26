@@ -1,19 +1,19 @@
 #' Write model results to file
 #' 
-#' Writes results from various models to a single CSV file.
+#' Writes results from various models to a single csv file.
 #' 
-#' @param combineResults_settings List of options. It can include the following.
+#' @param combineResults_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 #'                                \itemize{
-#'                                  \item modelNames: Character vector. List of names of models to combine. Use an empty vector to combine results from all models in the directory.
-#'                                  \item printClassical: Boolean. TRUE for printing classical standard errors. FALSE by default.
-#'                                  \item printPVal: Boolean. TRUE for printing p-values. FALSE by default.
-#'                                  \item printT1: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
-#'                                  \item estimateDigits: Numeric scalar. Number of decimal places to print for estimates. Default is 4.
-#'                                  \item tDigits: Numeric scalar. Number of decimal places to print for t-ratios values. Default is 2.
-#'                                  \item pDigits: Numeric scalar. Number of decimal places to print for p-values. Default is 2.
-#'                                  \item sortByDate: Boolean. If TRUE, models are ordered by date. Default is TRUE.
+#'                                  \item \strong{\code{modelNames}}: Character vector. Optional names of models to combine. Omit or use an empty vector to combine results from all models in the working/output directory.
+#'                                  \item \strong{\code{printClassical}}: Boolean. TRUE for printing classical standard errors. FALSE by default.
+#'                                  \item \strong{\code{printPVal}}: Boolean. TRUE for printing p-values. FALSE by default.
+#'                                  \item \strong{\code{printT1}}: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
+#'                                  \item \strong{\code{estimateDigits}}: Numeric scalar. Number of decimal places to print for estimates. Default is 4.
+#'                                  \item \strong{\code{tDigits}}: Numeric scalar. Number of decimal places to print for t-ratios values. Default is 2.
+#'                                  \item \strong{\code{pDigits}}: Numeric scalar. Number of decimal places to print for p-values. Default is 2.
+#'                                  \item \strong{\code{sortByDate}}: Boolean. If TRUE, models are ordered by date. Default is TRUE.
 #'                                }
-#' @return Nothing, but writes a file called 'model_comparison_[date].csv' in the working directory.
+#' @return Nothing, but writes a file called 'model_comparison_[date].csv' in the working/output directory.
 #' @export
 apollo_combineResults = function(combineResults_settings=NULL){
   
@@ -46,9 +46,9 @@ apollo_combineResults = function(combineResults_settings=NULL){
   
   if(is.null(combineResults_settings)) combineResults_settings=list()
   if(is.null(combineResults_settings[["modelNames"]])){
-    apollo_print("The combineResults_settings does not include an object called \"modelNames\". The apollo_combineResults function will include all models for which results have been stored in the working directory. Note that this function is not applicable for models estimated using HB.")
+    apollo_print("The combineResults_settings does not include an object called \"modelNames\". The apollo_combineResults function will include all models for which results have been stored in the working/output directory. Note that this function is not applicable for models estimated using HB.")
     combineResults_settings[["modelNames"]] = list.files(path=outputDirectory, pattern="*estimates.csv")
-    if(length(combineResults_settings[["modelNames"]])==0) stop('No model files found in the working directory!')
+    if(length(combineResults_settings[["modelNames"]])==0) stop('No model files found in the working/output directory!')
     for(j in 1:length(combineResults_settings[["modelNames"]])){
       l = nchar(combineResults_settings[["modelNames"]][j])
       l = l-14  
@@ -79,7 +79,7 @@ apollo_combineResults = function(combineResults_settings=NULL){
     modelNames = rownames(details)
   }
   
-  # Check that necessary files exists, either in outputDirectory or the working directory
+  # Check that necessary files exists, either in outputDirectory or the working/output directory
   for(f in paste0(modelNames, "_C.csv")){
     test <- file.exists(paste0(outputDirectory, f)) | file.exists(f)
     if(test) stop("Your list of modelNames includes some models estimated using HB, which are not supported!")

@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_lcUnconditionals.R
 \name{apollo_lcUnconditionals}
 \alias{apollo_lcUnconditionals}
-\title{Returns draws for random parameters in a latent class model model}
+\title{Returns unconditionals for a latent class model model}
 \usage{
 apollo_lcUnconditionals(model, apollo_probabilities, apollo_inputs)
 }
@@ -11,9 +11,9 @@ apollo_lcUnconditionals(model, apollo_probabilities, apollo_inputs)
 
 \item{apollo_probabilities}{Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 \itemize{
-  \item apollo_beta: Named numeric vector. Names and values of model parameters.
-  \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-  \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
+  \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
+  \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
+  \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
@@ -22,8 +22,5 @@ apollo_lcUnconditionals(model, apollo_probabilities, apollo_inputs)
 List of object, one per random component and one for the class allocation probabilities.
 }
 \description{
-Returns draws (unconditionals) for random parameters in model, including interactions with deterministic covariates
-}
-\details{
-This functions is only meant for use with continuous distributions
+Returns values for random parameters and class allocation probabilities in a latent class model model.
 }

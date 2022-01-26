@@ -11,9 +11,9 @@ apollo_llCalc(apollo_beta, apollo_probabilities, apollo_inputs, silent = FALSE)
 
 \item{apollo_probabilities}{Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 \itemize{
-  \item apollo_beta: Named numeric vector. Names and values of model parameters.
-  \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-  \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
+  \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
+  \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
+  \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
@@ -27,5 +27,5 @@ A list of vectors. Each vector corresponds to the log-likelihood of the whole mo
 Calculates the log-likelihood of each model component as well as the whole model.
 }
 \details{
-This function calls apollo_probabilities with functionality="output". Then, it reorders the list of likelihoods so that "model" goes first.
+This function calls apollo_probabilities with functionality="output". It then reorders the list of likelihoods so that "model" goes first.
 }

@@ -4,10 +4,10 @@
 #' 
 #' Internal use only.
 #' Algorithm described in
-#' Hess, S., Train, K., and Polak, J. (2006) Transportation Research 40B, 147 - 163.
-#' @param  N The number of draws to generate in each dimension
-#' @param  d The number of dimensions to generate draws in
-#' @param  i The number of individuals to generate draws for
+#' Hess, S., Train, K., and Polak, J. (2006) Transportation Research Part B, 40, 147 - 163.
+#' @param  N Numeric. The number of draws to generate in each dimension
+#' @param  d Numeric. The number of dimensions to generate draws in
+#' @param  i Numeric. The number of individuals to generate draws for
 #' @return A (N*i) x d matrix with random draws
 #' @export
 apollo_mlhs=function(N,d,i){

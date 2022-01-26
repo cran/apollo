@@ -2,7 +2,7 @@
 #' 
 #' Given a multi-row input, keeps only the first row for each individual.
 #' 
-#' This a function to keep only the first row of an object per indidividual. It can handle multiple components, scalars, vectors and three-dimensional arrays (cubes).
+#' This a function to keep only the first row of an object per indidividual. It can handle multiple types of components, including scalars, vectors and three-dimensional arrays (cubes).
 #' The argument database MUST contain a column called 'apollo_sequence', which is created by \link{apollo_validateData}.
 #' 
 #' @param P List of vectors, matrices or 3-dim arrays. Likelihood of the model components (or other object).

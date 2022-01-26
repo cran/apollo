@@ -19,5 +19,5 @@ apollo_print(txt, nSignifD = 4, widthLim = 11, highlight = FALSE)
 Nothing
 }
 \description{
-Prints message to terminal if apollo_inputs$silent is FALSE
+Prints message to terminal if \code{apollo_inputs$silent} is FALSE
 }

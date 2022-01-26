@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_validate.R
 \name{apollo_validate}
 \alias{apollo_validate}
-\title{Pre-process input for multiple models
+\title{Pre-process input for common models
 return}
 \usage{
 apollo_validate(inputs, modelType, functionality, apollo_inputs)
@@ -12,7 +12,21 @@ apollo_validate(inputs, modelType, functionality, apollo_inputs)
 
 \item{modelType}{Character. Type of model, e.g. "mnl", "nl", "cnl", etc.}
 
-\item{functionality}{Character. Either "estimate","prediction","validate","zero_LL","conditionals","output","raw", or "preprocess". Only used for validation, it does not influence the return values.}
+\item{functionality}{Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
+\itemize{
+  \item \strong{\code{"components"}}: For further processing/debugging, produces likelihood for each model component (if multiple components are present), at the level of individual draws and observations.
+  \item \strong{\code{"conditionals"}}: For conditionals, produces likelihood of the full model, at the level of individual inter-individual draws.
+  \item \strong{\code{"estimate"}}: For model estimation, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+  \item \strong{\code{"gradient"}}: For model estimation, produces analytical gradients of the likelihood, where possible.
+  \item \strong{\code{"output"}}: Prepares output for post-estimation reporting.
+  \item \strong{\code{"prediction"}}: For model prediction, produces probabilities for individual alternatives and individual model components (if multiple components are present) at the level of an observation, after averaging across draws.
+  \item \strong{\code{"preprocess"}}: Prepares likelihood functions for use in estimation.
+  \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
+  \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
+  \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
+  \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+  \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
+}}
 
 \item{apollo_inputs}{List of main inputs to the model estimation process. See \link{apollo_validateInputs}.}
 }
@@ -20,6 +34,6 @@ apollo_validate(inputs, modelType, functionality, apollo_inputs)
 The returned object depends on the value of argument operation
 }
 \description{
-Pre-process input for multiple models
+Pre-process input for common models
 return
 }

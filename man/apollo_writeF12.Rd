@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_writeF12.R
 \name{apollo_writeF12}
 \alias{apollo_writeF12}
-\title{Writes an F12 file with the results of a model estimation.}
+\title{Writes an F12 file}
 \usage{
 apollo_writeF12(model, truncateCoeffNames = TRUE)
 }
@@ -16,5 +16,5 @@ FALSE by default.}
 Nothing.
 }
 \description{
-Writes an F12 file with the results of a model estimation.
+Writes an F12 file (ALogit format) with the results of a model estimation.
 }

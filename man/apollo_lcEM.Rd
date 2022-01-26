@@ -21,27 +21,24 @@ change during estimation.}
 
 \item{apollo_probabilities}{Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 \itemize{
-  \item apollo_beta: Named numeric vector. Names and values of model parameters.
-  \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-  \item functionality: Character. Can be either "estimate" (default), "prediction", 
-        "validate", "conditionals", "zero_LL", or "raw".
+  \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
+  \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
+  \item \strong{\code{functionality}}: Character. Can be either 
+  \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
 \item{lcEM_settings}{List. Options controlling the EM process.
 \itemize{
-  \item \strong{stoppingCriterion}: Numeric. Convergence criterion. The EM process will stop when 
-                                    improvements in the log-likelihood fall below this value. 
-                                    Default is 10^-5.
   \item \strong{EMmaxIterations}: Numeric. Maximum number of iterations of the EM algorithm before 
                                   stopping. Default is 100. 
-  \item \strong{postEM}: Numeric scalar. Determines the number of tasks performed by this function 
+  \item \strong{postEM}: Numeric scalar. Determines the tasks performed by this function 
                          after the EM algorithm has converged. Can take values \code{0}, \code{1} 
                          or \code{2} only. If value is \code{0}, only the EM algorithm will be 
                          performed, and the results will be a model object without a covariance 
-                         matrix (i.e. estimates only.). If value is \code{1}, after the EM 
-                         algorithm the covariance matrix of the model will be calculated as well, 
+                         matrix (i.e. estimates only). If value is \code{1}, after the EM 
+                         algorithm, the covariance matrix of the model will be calculated as well, 
                          and the result will be a model object with a covariance matrix. If value 
                          is \code{2}, after the EM algorithm, the estimated parameter values will 
                          be used as starting value for a maximum likelihood estimation process, 
@@ -50,6 +47,9 @@ change during estimation.}
                          may be room for further improvement. Default is \code{2}.
   \item \strong{silent}: Boolean. If TRUE, no information is printed to the console during 
                          estimation. Default is FALSE.
+  \item \strong{stoppingCriterion}: Numeric. Convergence criterion. The EM process will stop when 
+                                    improvements in the log-likelihood fall below this value. 
+                                    Default is 10^-5.
 }}
 
 \item{estimate_settings}{List. Options controlling the estimation process within each EM iteration. See 
@@ -63,6 +63,6 @@ Uses the EM algorithm for estimating a latent class model.
 }
 \details{
 This function uses the EM algorithm for estimating a Latent Class model. It is only suitable for models without 
-continuous mixing. All parameters that vary across classes need to be included in the \code{apollo_lcPars} 
+continuous mixing. All parameters need to vary across classes and need to be included in the \code{apollo_lcPars} 
 function which is used by \code{apollo_lcEM}.
 }

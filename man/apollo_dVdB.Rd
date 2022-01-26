@@ -9,7 +9,7 @@ apollo_dVdB(apollo_beta, apollo_inputs, V)
 \arguments{
 \item{apollo_beta}{Named numeric vector of parameters.}
 
-\item{apollo_inputs}{List of Apollo main settings.}
+\item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
 \item{V}{List of functions}
 }
@@ -17,5 +17,5 @@ apollo_dVdB(apollo_beta, apollo_inputs, V)
 Named list. Each element is itself a list of functions: the partial derivatives of the elements of V.
 }
 \description{
-Calculates gradients (derivatives) of utility functions, considering definitions in apollo_randCoeff.
+Calculates gradients (derivatives) of utility functions.
 }

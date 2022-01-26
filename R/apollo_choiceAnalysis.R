@@ -1,22 +1,22 @@
 #' Reports market share for subsamples
 #'
-#' Compares market shares across subsamples in dataset, and writes results to a file.
+#' Compares market shares across subsamples in dataset, and conducts statistical tests.
 #'
-#' Saves the output to a csv file in the working directory.
-#' @param choiceAnalysis_settings List containing settings for this function. The settings must be:
+#' Saves the output to a csv file in the working/output directory.
+#' @param choiceAnalysis_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 #'                                \itemize{
-#'                                  \item \strong{alternatives}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
-#'                                  \item \strong{avail}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
-#'                                  \item \strong{choiceVar}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
-#'                                  \item \strong{explanators}: data.frame. Variables determining subsamples of the database. Values in each column must describe a group or groups of individuals (e.g. socio-demographics). Most usually a subset of columns from database.
-#'                                  \item \strong{printToScreen}: Logical. TRUE for returning output to screen as well as file. TRUE by default.
-#'                                  \item \strong{rows}: Boolean vector. Consideration of rows to include, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+#'                                  \item \strong{code{alternatives}}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}. Note that these need not necessarily be the alternatives as defined in the model, but could e.g. relate to cheapest/most expensive.
+#'                                  \item \strong{code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
+#'                                  \item \strong{code{choiceVar}}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
+#'                                  \item \strong{code{explanators}}: data.frame. Variables determining subsamples of the database. Values in each column must describe a group or groups of individuals (e.g. socio-demographics). Most usually a subset of columns from the database.
+#'                                  \item \strong{code{printToScreen}}: Logical. TRUE for returning output to screen as well as file. TRUE by default.
+#'                       \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
 #'                                }
 #' @param apollo_control List. Options controlling the running of the code. See \link{apollo_validateInputs}.
 #' @param database data.frame. Data used by model.
-#' @return Silently returns a matrix containg the mean ehen chosen and un chose for each explanator, 
+#' @return Silently returns a matrix containing the mean value for each explanator for those cases where an alternative is chosen and where it is not chosen, 
 #'         as well as the t-test comparing those means (H0: equivalence).
-#'         The table is also writen to a file called \code{modelName_choiceAnalysis.csv}.
+#'         The table is also written to a file called \code{modelName_choiceAnalysis.csv} and printed to screen.
 #' @export
 apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database){
   if(is.null(choiceAnalysis_settings[["printToScreen"]])) choiceAnalysis_settings[["printToScreen"]]=TRUE
@@ -42,13 +42,24 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
   if(length(rows)==1 && rows=="all") rows <- rep(TRUE, nrow(database))
   if(any(!rows)){
     database <- database[rows,]
-    avail <- lapply(avail,function(x) x[rows])
+    #avail <- lapply(avail,function(x) x[rows])
+    #if(is.list(avail)) for(j in alternatives) if(length(avail[[j]])!=1) avail[[j]]=avail[[j]][rows]
+    if(is.list(avail)) for(j in 1:length(alternatives)) if(length(avail[[j]])!=1) avail[[j]]=avail[[j]][rows]
     choiceVar  <- choiceVar[rows] 
     explanators <- explanators[rows,] 
   }
   
   ### Make sure there are no strange values in choiceVar
   if(!all(choiceVar %in% alternatives)) stop('Some values in "choiceVar" are not defined in "alternatives".')
+  
+  ### Check for unchosen and unavailable choices
+  #for(j in alternatives){
+  for(j in 1:length(alternatives)){
+    if(sum(choiceVar==alternatives[j])==0) apollo_print(paste0("Warning: Alternative ",names(alternatives)[j]," never chosen in your data."))
+    if(is.list(avail)&&(length(avail[[j]])!=1)){
+     if(any((choiceVar==alternatives[j])&(avail[[j]]==0))) stop(paste0("Your data contains rows where alternative ",names(alternatives)[j]," is chosen when not available!"))
+    }
+  }
   
   ### Create and matrix of outputs and sets its col and row names
   output           = matrix(0,nrow=length(alternatives),ncol=ncol(explanators)*3)
@@ -76,7 +87,13 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
     chosen          = subset(choiceVar, r)==alternatives[j]
     for(s in 1:ncol(explanators)){
       x = tapply(explanators_sub[,s],chosen, mean,na.rm=TRUE)
-      output[j,((s-1)*3+1)] = x[2]
+      if(length(x)==1){
+       if(names(x)=="TRUE"){
+        x=c(nFALSE=0,nTRUE=x)
+        }else{
+        x=c(nFALSE=x,nTRUE=0)
+      }}
+       output[j,((s-1)*3+1)] = x[2]
       output[j,((s-1)*3+2)] = x[1]
       if(x[1]==x[2]){
         output[j,((s-1)*3+3)] = NA
@@ -86,7 +103,6 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
         } else {
           output[j,((s-1)*3+3)] = NA
         }
-        
       }
     }
   }

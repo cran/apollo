@@ -8,7 +8,7 @@
 #' @param apollo_beta Named numeric vector. Names and values for parameters.
 #' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not 
 #'                     change during estimation.
-#' @param apollo_logLike Function to calculate the loglikelihood of the model, as created by \link{apollo_makeLogLike}
+#' @param apollo_logLike Function to calculate the log-likelihood of the model, as created by \link{apollo_makeLogLike}
 #'                       If provided, the value of the analytical gradient will be compared to the value of the
 #'                       numerical gradient as calculated using apollo_logLike and the numDeriv package.
 #'                       If the difference between the two is bigger than 1% for any dimension, it will be assumed
@@ -19,11 +19,11 @@
 #'                     return NULL.
 #' @return apollo_gradient function. It receives the following arguments
 #'         \itemize{
-#'           \item \code{b} Numeric vector of _variable_ parameters (i.e. must not include fixed parameters).
-#'           \item \code{countIter} Not used. Included only to mirror inputs of apollo_logLike.
-#'           \item \code{writeIter} Not used. Included only to mirror inputs of apollo_logLike.
-#'           \item \code{sumLL} Not used. Included only to mirror inputs of apollo_logLike.
-#'           \item \code{getNIter} Not used. Included only to mirror inputs of apollo_logLike.
+#'           \item \strong{\code{b}} Numeric vector of _variable_ parameters (i.e. must not include fixed parameters).
+#'           \item \strong{\code{countIter}} Not used. Included only to mirror inputs of apollo_logLike.
+#'           \item \strong{\code{getNIter}} Not used. Included only to mirror inputs of apollo_logLike.
+#'           \item \strong{\code{sumLL}} Not used. Included only to mirror inputs of apollo_logLike.
+#'           \item \strong{\code{writeIter}} Not used. Included only to mirror inputs of apollo_logLike.
 #'         }
 #'         If the creation of the gradient function fails, then it returns NULL.
 #' @export
@@ -65,7 +65,7 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
     test <- test & apollo_inputs$apollo_draws$intraNDraws>1
     test <- test & !is.null(apollo_inputs$apollo_control$analyticGrad_manualSet) 
     test <- test && !apollo_inputs$apollo_control$analyticGrad_manualSet
-    if(test & debug) apollo_print("Analytic gradients will not be built because inter & intra draws are being used (to avoid excesive memory usage).")
+    if(test & debug) apollo_print("By default, analytic gradients will not be used for your model as it combines inter & intra draws (to avoid excesive memory usage). If you wish to use analytic gradients, please set analyticGrad = TRUE in apollo_control.")
     if(test) return(NULL)
   }
   

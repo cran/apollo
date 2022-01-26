@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_sink.R
 \name{apollo_sink}
 \alias{apollo_sink}
-\title{Writes or stops writing output to a text file}
+\title{Starts or stops writing output to a text file.}
 \usage{
 apollo_sink(apollo_inputs = NULL)
 }

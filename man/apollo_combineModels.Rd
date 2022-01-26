@@ -17,7 +17,7 @@ apollo_combineModels(
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
-\item{functionality}{Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call apollo_probabilities, though the user can also call apollo_probabilities manually with a given functionality for testing/debugging. Possible values are:
+\item{functionality}{Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
 \itemize{
   \item \strong{\code{"components"}}: For further processing/debugging, produces likelihood for each model component (if multiple components are present), at the level of individual draws and observations.
   \item \strong{\code{"conditionals"}}: For conditionals, produces likelihood of the full model, at the level of individual inter-individual draws.
@@ -27,6 +27,8 @@ apollo_combineModels(
   \item \strong{\code{"prediction"}}: For model prediction, produces probabilities for individual alternatives and individual model components (if multiple components are present) at the level of an observation, after averaging across draws.
   \item \strong{\code{"preprocess"}}: Prepares likelihood functions for use in estimation.
   \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
+  \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
+  \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
   \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
   \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 }}
@@ -46,6 +48,7 @@ Argument \code{P} with (for most functionalities) an extra element called "model
           \item \strong{\code{"prediction"}}: Returns \code{P} without changes.
           \item \strong{\code{"preprocess"}}: Returns \code{P} without changes.
           \item \strong{\code{"raw"}}: Returns \code{P} without changes.
+          \item \strong{\code{"shares_LL"}}: Returns \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
           \item \strong{\code{"validate"}}: Returns \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
           \item \strong{\code{"zero_LL"}}: Returns \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
         }
@@ -56,5 +59,5 @@ Combines model components to create likelihood for overall model.
 \details{
 This function should be called inside apollo_probabilities after all model components have been produced.
 
-It should be called before apollo_avgInterDraws, apollo_avgIntraDraws, apollo_panelProd and apollo_prepareProb, whichever apply, except where these functions are called inside any latent class components of the overall model.
+It should be called before \link{apollo_avgInterDraws}, \link{apollo_avgIntraDraws}, \link{apollo_panelProd} and \link{apollo_prepareProb}, whichever apply, except where these functions are called inside any latent class components of the overall model.
 }

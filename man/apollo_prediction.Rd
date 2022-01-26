@@ -17,20 +17,20 @@ apollo_prediction(
 
 \item{apollo_probabilities}{Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 \itemize{
-  \item apollo_beta: Named numeric vector. Names and values of model parameters.
-  \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-  \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
+  \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
+  \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
+  \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
-\item{prediction_settings}{List of settings. It can have the following elements.
+\item{prediction_settings}{List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
-  \item \code{modelComponent} Character. Name of component of apollo_probabilities output to calculate predictions for. Default is "model", i.e. the whole model.
-  \item \code{runs} Numeric. Number of runs to use for computing confidence intervals of predictions.
-  \item \code{silent} Boolean. If TRUE, this function won't print any output to screen.
-  \item \code{nRep} Scalar integer. Only used for models that require simulation for prediction (e.g. MDCEV). Number of draws used to calculate prediction. Default is 100.
-  \item \code{summary} Boolean. If TRUE, a summary of the prediction is printed to screen. TRUE by default.
+  \item \strong{\code{modelComponent}}: Character. Name of component of apollo_probabilities output to calculate predictions for. Default is to predict for all components.
+  \item \strong{\code{nRep}}: Scalar integer. Only used for models that require simulation for prediction (e.g. MDCEV). Number of draws used to calculate prediction. Default is 100.
+  \item \strong{\code{runs}}: Numeric. Number of runs to use for computing confidence intervals of predictions.
+  \item \strong{\code{silent}}: Boolean. If TRUE, this function won't print any output to screen.
+  \item \strong{\code{summary}}: Boolean. If TRUE, a summary of the prediction is printed to screen. TRUE by default.
 }}
 
 \item{modelComponent}{\strong{Deprecated}. Same as \code{modelComponent} inside \code{prediction_settings}.}
@@ -40,7 +40,7 @@ A list containing predictions for component \code{modelComponent} of the model d
         The particular shape of the prediction will depend on the model component.
 }
 \description{
-Calculates apollo_probabilities with functionality="prediction" and extracts one element from the returned list.
+Calculates \code{apollo_probabilities} with functionality="prediction".
 }
 \details{
 Structure of predictions are simplified before returning, e.g. list of vectors are turned into a matrix.

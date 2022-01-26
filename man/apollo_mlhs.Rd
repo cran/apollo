@@ -7,11 +7,11 @@
 apollo_mlhs(N, d, i)
 }
 \arguments{
-\item{N}{The number of draws to generate in each dimension}
+\item{N}{Numeric. The number of draws to generate in each dimension}
 
-\item{d}{The number of dimensions to generate draws in}
+\item{d}{Numeric. The number of dimensions to generate draws in}
 
-\item{i}{The number of individuals to generate draws for}
+\item{i}{Numeric. The number of individuals to generate draws for}
 }
 \value{
 A (N*i) x d matrix with random draws
@@ -22,5 +22,5 @@ Generate random draws using the Modified Latin Hypercube Sampling algorithm.
 \details{
 Internal use only.
 Algorithm described in
-Hess, S., Train, K., and Polak, J. (2006) Transportation Research 40B, 147 - 163.
+Hess, S., Train, K., and Polak, J. (2006) Transportation Research Part B, 40, 147 - 163.
 }

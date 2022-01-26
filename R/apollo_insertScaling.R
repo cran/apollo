@@ -10,7 +10,7 @@
 #' @export
 apollo_insertScaling <- function(e, sca){
   # Validate input
-  test <- is.function(e) || is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) || is.call(e)
+  test <- is.function(e) || is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) || is.call(e) || is.complex(e)
   if(!test) stop('Argument "e" must be a function, a call, a symbol, or a value')
   if(is.function(e)){eOrig <- e; e <- body(e)} else eOrig <- NULL
   if(!is.vector(sca) || !is.numeric(sca) || is.null(names(sca))) stop('Argument "sca" must be a named numeric vector')
@@ -23,7 +23,10 @@ apollo_insertScaling <- function(e, sca){
       if(!is.null(e[[3]])) e[[3]] <- apollo_insertScaling(e[[3]], sca)
     } else {
       # If it's NOT an assignment, modify everything
-      for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- apollo_insertScaling(e[[i]], sca) 
+      for(i in 1:length(e)) if(!is.null(e[[i]])){
+        isFuncArg <- i==2 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
+        if(!isFuncArg) e[[i]] <- apollo_insertScaling(e[[i]], sca)
+      } 
     }
   }
   

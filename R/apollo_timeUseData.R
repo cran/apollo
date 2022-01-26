@@ -8,12 +8,12 @@
 #' of twelve different activities. The dataset also incluides characteristics
 #' of the participants.
 #' This dataset comes from the following publication.
-#' Calastri, Crastes dit Sourd and Hess (2018) We want it all: experiences 
+#' Calastri, C., Crastes dit Sourd, R. and Hess, S. (2020) We want it all: experiences 
 #' from a survey seeking to capture social network structures, lifetime events 
-#' and short-term travel and activity planning. Transportation 2018 1-27.
+#' and short-term travel and activity planning. Transportation, 47(1), pp. 175-201.
 #' \describe{
 #'   \item{indivID}{Numeric. Identification number of the individual.}
-#'   \item{day}{Numeric. Index of the day for each individual (day 1 was excluded).}
+#'   \item{day}{Numeric. Index of the day for each observation (day 1 was excluded).}
 #'   \item{date}{Numeric. Date in format yyyymmdd.}
 #'   \item{budget}{Numeric. Total amount of time registered during the day (in minutes).}
 #'   \item{t_a01}{Numeric. Time spent dropping-of or picking up other people (in minutes).}

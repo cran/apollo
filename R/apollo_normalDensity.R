@@ -1,8 +1,8 @@
-#' Calculates density from a Normal distribution
+#' Calculates density for a Normal distribution
 #'
-#' Calculates density from a Normal distribution at a specific value with a specified mean and standard deviation.
+#' Calculates density for a Normal distribution at a specific value with a specified mean and standard deviation and can also perform other operations based on the value of the \code{functionality} argument.
 #'
-#' This function estimates the linear model outcomeNormal = mu + xNormal + epsilon, where epsilon is a random error distributed Normal(0,sigma).
+#' This function calcualtes the probability of the linear model outcomeNormal = mu + xNormal + epsilon, where epsilon is a random error distributed Normal(0,sigma).
 #' If using this function in the context of an Integrated Choice and Latent Variable (ICLV) model with continuous
 #' indicators, then \code{outcomeNormal} would be the value of the indicator, \code{xNormal} would be the value of the latent variable (possibly
 #' multiplied by a parameter to measure its correlation with the indicator, e.g. xNormal=lambda*LV), and \code{mu} would be
@@ -10,34 +10,42 @@
 #' centered around its mean beforehand).
 #' @param normalDensity_settings List of arguments to the functions. It must contain the following.
 #'                               \itemize{
-#'                                 \item \code{outcomeNormal}: Numeric vector. Dependant variable.
-#'                                 \item \code{xNormal}: Numeric vector. Single explanatory variable.
-#'                                 \item \code{mu}: Numeric scalar. Intercept of the linear model.
-#'                                 \item \code{sigma}: Numeric scalar. Variance of error component of linear model to be estimated.
-#'                                 \item \code{rows}: Boolean vector. Consideration of rows in the likelihood calculation, FALSE to exclude. Length equal to the number of observations (nObs). Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
-#'                                 \item \code{componentName}: Character. Name given to model component.
+#'                                 \item \strong{\code{componentName}}: Character. Name given to model component.
+#'                                 \item \strong{\code{mu}}: Numeric scalar. Intercept of the linear model.
+#'                                 \item \strong{\code{outcomeNormal}}: Numeric vector. Dependent variable.
+#'                                 \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+#'                                 \item \strong{\code{sigma}}: Numeric scalar. Variance of error component of linear model to be estimated.
+#'                                 \item \strong{\code{xNormal}}: Numeric vector. Single explanatory variable.
 #'                               }
-#' @param functionality Character. Can take different values depending on desired output.
+#' @param functionality Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
 #'                      \itemize{
-#'                        \item "estimate": Used for model estimation.
-#'                        \item "prediction": Used for model predictions.
-#'                        \item "validate": Used for validating input.
-#'                        \item "zero_LL": Used for calculating null likelihood.
-#'                        \item "shares_LL": Used for calculating likelihood with constants only.
-#'                        \item "conditionals": Used for calculating conditionals.
-#'                        \item "output": Used for preparing output after model estimation.
-#'                        \item "raw": Used for debugging.
+#'                        \item \strong{\code{"components"}}: For further processing/debugging, produces likelihood for each model component (if multiple components are present), at the level of individual draws and observations.
+#'                        \item \strong{\code{"conditionals"}}: For conditionals, produces likelihood of the full model, at the level of individual inter-individual draws.
+#'                        \item \strong{\code{"estimate"}}: For model estimation, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"gradient"}}: For model estimation, produces analytical gradients of the likelihood, where possible.
+#'                        \item \strong{\code{"output"}}: Prepares output for post-estimation reporting.
+#'                        \item \strong{\code{"prediction"}}: For model prediction, produces probabilities for individual alternatives and individual model components (if multiple components are present) at the level of an observation, after averaging across draws.
+#'                        \item \strong{\code{"preprocess"}}: Prepares likelihood functions for use in estimation.
+#'                        \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
+#'                        \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
+#'                        \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
+#'                        \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 #'                      }
 #' @return The returned object depends on the value of argument \code{functionality} as follows.
 #'         \itemize{
+#'           \item \strong{\code{"components"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the likelihood for each observation.
+#'           \item \strong{\code{"gradient"}}: Not implemented
+#'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
 #'           \item \strong{\code{"prediction"}}: Not implemented. Returns NA.
+#'           \item \strong{\code{"preprocess"}}: Returns a list with pre-processed inputs, based on \code{normalDensity_settings}.
+#'           \item \strong{\code{"raw"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"report"}}: Dependent variable overview.
+#'           \item \strong{\code{"shares_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
 #'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
 #'           \item \strong{\code{"zero_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
-#'           \item \strong{\code{"shares_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
-#'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
-#'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
-#'           \item \strong{\code{"raw"}}: Same as \code{"estimate"}
 #'         }
 #' @importFrom utils capture.output
 #' @export
@@ -166,14 +174,20 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
     return(ans)
   } 
 
-  # ###################################################### #
-  #### functionality="estimate/conditionals/raw/output" ####
-  # ###################################################### #
+  # ################################################################# #
+  #### functionality="estimate/conditionals/raw/output/components" ####
+  # ################################################################# #
 
-  if(functionality %in% c("estimate", "conditionals", "raw", "output")){
+  if(functionality %in% c("estimate", "conditionals", "raw", "output", "components")){
     ans <- stats::dnorm(normalDensity_settings$outcomeNormal - normalDensity_settings$xNormal,
                         normalDensity_settings$mu, normalDensity_settings$sigma)
-    if(any(!normalDensity_settings$rows)) ans <- apollo_insertRows(ans, normalDensity_settings$rows, 1)
+    if(any(!normalDensity_settings$rows)){
+      if(functionality=="raw"){
+        ans <- apollo_insertRows(ans, normalDensity_settings$rows, NA)
+      } else {
+        ans <- apollo_insertRows(ans, normalDensity_settings$rows, 1)
+      } 
+    }
     return(ans)
   }
   

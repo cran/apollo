@@ -1,6 +1,6 @@
-#' Writes the vector [beta,ll] to a file called modelname_iterations.csv
+#' Writes the vector [beta,ll] to a file called \code{modelname_iterations.csv}
 #' @param beta vector of parameters to be written (including fixed ones).
-#' @param ll scalar representing the loglikelihood of the whole model.
+#' @param ll scalar representing the log-likelihood of the whole model.
 #' @param modelName Character. Name of the model.
 #' @return Nothing.
 #' @export

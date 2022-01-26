@@ -25,10 +25,10 @@ Takes a likelihood function and inserts \code{function ()} before key elements t
 \details{
 It modifies the definition of the following models.
 \itemize{
-  \item \code{apollo_mnl}: Turns all elements inside \code{mnl_settings$V} into functions.
-  \item \code{apollo_ol}: Turns \code{ol_settings$V} and all elements inside \code{ol_settings$tau} into functions.
-  \item \code{apollo_op}: Turns \code{op_settings$V} and all elements inside \code{op_settings$tau} into functions.
-  \item \code{apollo_normalDensity}: Turns \code{normalDensity_settings$xNormal}, \code{normalDensity_settings$mu} and \code{normalDensity_settings$sigma} into functions.
+  \item \strong{\code{apollo_mnl}}: Turns all elements inside \code{mnl_settings$V} into functions.
+  \item \strong{\code{apollo_ol}}: Turns \code{ol_settings$V} and all elements inside \code{ol_settings$tau} into functions.
+  \item \strong{\code{apollo_op}}: Turns \code{op_settings$V} and all elements inside \code{op_settings$tau} into functions.
+  \item \strong{\code{apollo_normalDensity}}: Turns \code{normalDensity_settings$xNormal}, \code{normalDensity_settings$mu} and \code{normalDensity_settings$sigma} into functions.
 }
 It can only track a maximum of 3 levels of depth in definitions. For example:
 \code{

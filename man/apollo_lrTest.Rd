@@ -17,6 +17,8 @@ model in memory, as returned by \link{apollo_estimate}.}
 LR-test p-value (invisibly)
 }
 \description{
-Calculates the likelihood ratio test value between two models and reports the corresponding p-value. 
+Calculates the likelihood ratio test value between two models and reports the corresponding p-value.
+}
+\details{
 The two models need to have been estimated on the same data, and one model needs to be nested within the other model.
 }

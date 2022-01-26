@@ -9,12 +9,12 @@ apollo_setRows(v, r, val)
 \arguments{
 \item{v}{Numeric scalar, vector, matrix or 3-dim array. Rows of this object will be replaced by \code{val} and}
 
-\item{r}{Boolean vector. As many elements as rows in \code{v}. TRUE for replacing that row, FALSE for not changing it.}
+\item{r}{Boolean vector. As many elements as rows in \code{utilities}. TRUE for replacing that row, FALSE for not changing it.}
 
 \item{val}{Numeric scalar. Value to which the specified rows must be set to.}
 }
 \value{
-The same argument \code{v} but with the rows where \code{r==TRUE} set to \code{val}.
+The same argument \code{utilities} but with the rows where \code{r==TRUE} set to \code{val}.
 }
 \description{
 Given a numeric object (scalar, vector, matrix or 3-dim array) sets a subset of rows to a given value.

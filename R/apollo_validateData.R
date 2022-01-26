@@ -2,11 +2,10 @@
 #'
 #' Checks consistency of the database with \code{apollo_control}, sorts it by indivID, and adds an internal ID variable (\code{apollo_sequence})
 #'
-#' This function should be called after calling apollo_validateControl.
-#' Observations are sorted only if apollo_control$panelData=TRUE.
+#' This function should be called after calling \link{apollo_validateControl}.
+#' Observations are sorted only if \code{apollo_control$panelData=TRUE}.
 #' @param database data.frame. Data used by model.
-#' @param apollo_control List. Options controlling the running of the code.
-#'                    See \code{?apollo_validateControl} for details.
+#' @param apollo_control List. Options controlling the running of the code. See \link{apollo_validateInputs}.
 #' @param silent Boolean. TRUE to keep the function from printing to the console.
 #'               Default is FALSE.
 #' @return Data.frame. Validated version of database.

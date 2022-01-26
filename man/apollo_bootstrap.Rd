@@ -23,19 +23,21 @@ apollo_bootstrap(
 
 \item{apollo_probabilities}{Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 \itemize{
-  \item apollo_beta: Named numeric vector. Names and values of model parameters.
-  \item apollo_inputs: List containing options of the model. See \link{apollo_validateInputs}.
-  \item functionality: Character. Can be either "estimate" (default), "prediction", "validate", "conditionals", "zero_LL", "shares_LL", or "raw".
+  \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
+  \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
+  \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 
-\item{estimate_settings}{List. Options controlling the estimation process. See \link{apollo_estimate}.
-\code{hessianRoutine='none'} by default.}
+\item{estimate_settings}{List. Options controlling the estimation process. See \link{apollo_estimate}. 
+\code{hessianRoutine="none"} by default.}
 
-\item{bootstrap_settings}{List. Options defining the sampling procedure. The following are valid options.
+\item{bootstrap_settings}{List containing settings for the sampling procedure. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
+  \item \strong{calledByEstimate}: Logical. TRUE if \code{apollo_bootstrap} is called by \link{apollo_estimate}. FALSE by default.
   \item \strong{nRep}: Numeric scalar. Number of times the model must be estimated with different samples. Default is 30.
+  \item \strong{recycle}: Logical. If TRUE, the function will look for old output files and append new repetitions to them. If FALSE, output files will be overwritten.
   \item \strong{samples}: Numeric matrix or data.frame. Optional argument. Must have as many rows as 
                           observations in the \code{database}, and as many columns as number of repetitions
                           wanted. Each column represents a re-sample, and each element the number of times 
@@ -45,48 +47,46 @@ apollo_bootstrap(
   \item \strong{seed}: \strong{DEPRECATED, \code{apollo_control$seed} is used since v0.2.5}. Numeric scalar (integer). 
                        Random number generator seed to generate the bootstrap samples. Only used if \code{samples} 
                        is \code{NA}. Default is 24.
-  \item \strong{calledByEstimate}: Logical. TRUE if \code{apollo_bootstrap} is called by \code{apollo_estimate}. FALSE by default.
-  \item \strong{recycle}: Logical. If TRUE, the function will look for old output files and append new repetitions to them. If FALSE, output files will be overwritten.
 }}
 }
 \value{
 List with three elements.
         \itemize{
-          \item \code{estimates}: Matrix containing the parameter estimates for each repetition. As many rows as repetitions and as many columns as parameters.
-          \item \code{varcov}: Covariance matrix of the estimated parameters across the repetitions.
-          \item \code{LL}: Vector of final loglikelihoods of each repetition.
+          \item \strong{\code{estimates}}: Matrix containing the parameter estimates for each repetition. As many rows as repetitions and as many columns as parameters.
+          \item \strong{\code{LL}}: Vector of final log-likelihoods of each repetition.
+          \item \strong{\code{varcov}}: Covariance matrix of the estimated parameters across the repetitions.
         }
-        This function also writes three output files to the working directory, with the following names ('x' represents the model name):
+        This function also writes three output files to the working/output directory, with the following names ('x' represents the model name):
         \itemize{
-          \item \strong{x_bootstrap_params.csv}: Table containing the parameter estimates, loglikelihood, and number of observations for each repetition.
+          \item \strong{x_bootstrap_params.csv}: Table containing the parameter estimates, log-likelihood, and number of observations for each repetition.
           \item \strong{x_bootstrap_samples.csv}: Table containing the description of the sample used in each repetition. Same format than \code{bootstrap_settings$samples}.
           \item \strong{x_bootstrap_vcov}: Table containing the covariance matrix of estimated parameters across the repetitions.
         }
 }
 \description{
-Samples individuals with replacement from the database, and estimates the model in each sample.
+Samples individuals with replacement from the database, and estimates the model for each sample.
 }
 \details{
-This function implements a basic block bootstrap. It estimates the model parameters on \code{nRep} number of different samples.
+This function implements a basic block bootstrap. It estimates the model parameters on \code{nRep} different samples.
 Each new sample is constructed by sampling \strong{with replacement} from the original full sample. Each new sample has as many 
 individuals as the original sample, though some of them may be repeated. Sampling is done at the \strong{individual} level, 
-therefore if different individuals have different number of observations, each re-sample could have different number of observations.
+therefore if different individuals have different number of observations, each re-sample does not necessarily have the same number of observations.
 
-If the sampling wants to be done at the individual level (not recommended on panel data), then the optional 
+If the sampling should be done at the individual level (not recommended for panel data), then the optional 
 \code{bootstrap_settings$samples} argument should be provided.
 
-For each sample, only the parameters and loglikelihood are estimated. Standard errors are not calculated (they may be in 
-future versions). The composition of each re-sample is stored on a file, though it should be consistent across runs.
+For each sample, only the parameters and log-likelihood are estimated. Standard errors are not calculated (they may be added in 
+future versions). The composition of the re-samples is stored in a file, but is stable with the same seed.
 
-This function writes three different files to the working directory:
+This function writes three different files to the working or output directory:
 \itemize{
-  \item \code{modelName_bootstrap_params.csv}: Records the estimated parameters, final loglikelihood, and number of observations on each re-sample
-  \item \code{modelName_bootstrap_samples.csv}: Records the composition of each re-sample.
-  \item \code{modelName_bootstrap_vcov.csv}: Variance-covariance matrix of the estimated parameters across re-samples.
+  \item \strong{\code{modelName_bootstrap_params.csv}}: estimated parameters, final log-likelihood, and number of observations for each re-sample
+  \item \strong{\code{modelName_bootstrap_samples.csv}}: composition of each re-sample.
+  \item \strong{\code{modelName_bootstrap_vcov.csv}}: variance-covariance matrix of the estimated parameters across re-samples.
 }
 The first two files are updated throughout the run of this function, while the last one is only written once the function finishes.
 
-When run, this function will look for the first two files above in the working directory. If they are found, the function will
+When run, this function will look for the first two files above in the working/output directory. If they are found, the function will
 attempt to pick up re-sampling from where those files left off. This is useful in cases where the original bootstrapping was 
-interrupted, or when additional re-sampling wants to be performed.
+interrupted, or when additional re-sampling runs are to be performed.
 }

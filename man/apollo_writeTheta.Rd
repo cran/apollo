@@ -2,14 +2,14 @@
 % Please edit documentation in R/apollo_writeTheta.R
 \name{apollo_writeTheta}
 \alias{apollo_writeTheta}
-\title{Writes the vector [beta,ll] to a file called modelname_iterations.csv}
+\title{Writes the vector [beta,ll] to a file called \code{modelname_iterations.csv}}
 \usage{
 apollo_writeTheta(beta, ll, modelName)
 }
 \arguments{
 \item{beta}{vector of parameters to be written (including fixed ones).}
 
-\item{ll}{scalar representing the loglikelihood of the whole model.}
+\item{ll}{scalar representing the log-likelihood of the whole model.}
 
 \item{modelName}{Character. Name of the model.}
 }
@@ -17,5 +17,5 @@ apollo_writeTheta(beta, ll, modelName)
 Nothing.
 }
 \description{
-Writes the vector [beta,ll] to a file called modelname_iterations.csv
+Writes the vector [beta,ll] to a file called \code{modelname_iterations.csv}
 }
