@@ -10,7 +10,7 @@ apollo_writeF12(model, truncateCoeffNames = TRUE)
 \item{model}{Model object. Estimated model object as returned by function \link{apollo_estimate}.}
 
 \item{truncateCoeffNames}{Boolean. TRUE to truncate parameter names to 10 characters.
-FALSE by default.}
+TRUE by default.}
 }
 \value{
 Nothing.

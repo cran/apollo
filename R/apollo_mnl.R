@@ -83,14 +83,96 @@ apollo_mnl <- function(mnl_settings, functionality){
     
   } else { 
     ### Do pre-processing
-    # Do pre-processing common to most models
-    mnl_settings <- apollo_preprocess(inputs = mnl_settings, modelType, 
-                                      functionality, apollo_inputs)
+    if(is.null(names(mnl_settings))) stop('All elements inside the inputs lists for model components must be named, e.g. mnl_settings=list(alternatives=c(...), avail=...).')
+    if(is.null(mnl_settings[["componentName"]])) stop('The settings of at least one model component is missing the mandatory "componentName" object.')
+    
+    # functionality
+    test <- functionality %in% c("estimate","prediction","validate","zero_LL","shares_LL","conditionals","output","raw","preprocess", "components", "gradient", "report")
+    if(!test) stop("Non-permissable setting for \"functionality\" for model component \"",mnl_settings$componentName,"\"")
+    
+    # Check for mandatory inputs
+    mandatory <- c("alternatives", "choiceVar", "V")
+    for(i in mandatory) if(!(i %in% names(mnl_settings))) stop('The inputs list for model component "', mnl_settings$componentName, 
+                                                               '" needs to include an object called "', i,'"!')
+    # Check for optional inputs (avail and rows)
+    if(is.null(mnl_settings[["rows"]])) mnl_settings[["rows"]]="all"
+    if(is.null(mnl_settings[['avail']])){
+      mnl_settings[['avail']]=1
+      if(!apollo_inputs$silent && functionality=='validate') apollo_print('Setting "avail" is missing, so full availability is assumed.')
+    }
+    
+    ### Store useful values
+    mnl_settings$altnames = names(mnl_settings$alternatives)
+    mnl_settings$altcodes = mnl_settings$alternatives
+    mnl_settings$nAlt     = length(mnl_settings$alternatives)
+    mnl_settings$nObs <- tryCatch(if(!is.null(apollo_inputs$database)) nrow(apollo_inputs$database) else stop('x'),
+                                  error=function(e){
+                                    lenV <- sapply(mnl_settings$V, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
+                                    lenA <- sapply(mnl_settings$avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
+                                    lenC <- ifelse(!is.null(mnl_settings$choiceVar),length(mnl_settings$choiceVar),length(mnl_settings$choiceShares[[1]]))
+                                    return(max(lenV, lenA, lenC))
+                                  })
+    
+    ### Format checks
+    # alternatives
+    test <- is.vector(mnl_settings$alternatives) & !is.null(names(mnl_settings$alternatives))
+    if(!test) stop("The \"alternatives\" argument for model component \"",mnl_settings$componentName,"\" needs to be a named vector")
+    # avail
+    test <- is.list(mnl_settings$avail) || (length(mnl_settings$avail)==1 && mnl_settings$avail==1)
+    if(!test) stop("The \"avail\" argument for model component \"",mnl_settings$componentName,"\" needs to be a list or set to 1")
+    if(is.list(mnl_settings$avail)){
+      lenA <- sapply(mnl_settings$avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
+      test <- all(lenA==mnl_settings$nObs | lenA==1)
+      if(!test) stop("All entries in \"avail\" for model component \"",mnl_settings$componentName,"\" need to be a scalar or a vector with one entry per observation in the \"database\"")
+    }
+    test <- is.vector(mnl_settings$choiceVar) && (length(mnl_settings$choiceVar)==mnl_settings$nObs || length(mnl_settings$choiceVar)==1)
+    if(!test) stop("The \"choiceVar\" argument for model component \"",mnl_settings$componentName,"\" needs to be a scalar or a vector with one entry per observation in the \"database\"")
+    
+    # rows
+    test <- is.vector(mnl_settings$rows)
+    #test <- test && ( (is.logical(mnl_settings$rows) && length(mnl_settings$rows)==mnl_settings$nObs) || (length(mnl_settings$rows)==1 && mnl_settings$rows=="all") )
+    #if(!test) stop("The \"rows\" argument for model component \"",mnl_settings$componentName,"\" needs to be \"all\" or a vector of logical statements with one entry per observation in the \"database\"")
+    test <- test && ( (is.logical(mnl_settings$rows) || all(mnl_settings$rows%in%c(0,1))) && length(mnl_settings$rows)==mnl_settings$nObs) || ( (all(mnl_settings$rows%in%c(0,1)) && length(mnl_settings$rows)==mnl_settings$nObs) || (length(mnl_settings$rows)==1 && mnl_settings$rows=="all") )
+    if(!test) stop("The \"rows\" argument for model component \"",mnl_settings$componentName,"\" needs to be \"all\" or a vector of logical statements or 0/1 entries with one entry per observation in the \"database\"")
+    if( all(mnl_settings$rows %in% c(0,1)) ) (mnl_settings$rows <- mnl_settings$rows>0)
+    
+    ### Expand availabilities if necessary
+    mnl_settings$avail_set <- FALSE
+    if(length(mnl_settings$avail)==1 && mnl_settings$avail==1){
+      mnl_settings$avail <- as.list(setNames(rep(1,mnl_settings$nAlt), mnl_settings$altnames))
+      mnl_settings$avail_set <- TRUE
+    }
+    
+    ### Check that avail and V are available for all alternatives
+    if(!all(mnl_settings$altnames %in% names(mnl_settings$V))) stop("The names of the alternatives for model component \"", mnl_settings$componentName,"\" do not match those in \"utilities\".")
+    if(!all(mnl_settings$altnames %in% names(mnl_settings$avail))) stop("The names of the alternatives for model component \"", mnl_settings$componentName,"\" do not match those in \"avail\".")
+    if(length(mnl_settings$V)>length(mnl_settings$altnames)) stop("More utilities have been defined than there are alternatives for model component \"", mnl_settings$componentName,"\"!")
+    if(length(mnl_settings$avail)>length(mnl_settings$altnames)) stop("More availabilities have been defined than there are alternatives for model component \"", mnl_settings$componentName,"\"!")
+      
+    ### Reorder availabilities and V
+    mnl_settings$avail <- mnl_settings$avail[mnl_settings$altnames]
+    mnl_settings$V     <- mnl_settings$V[mnl_settings$altnames]
+    
+    ### Expand rows if necessary, and update nObs
+    if(length(mnl_settings$rows)==1 && mnl_settings$rows=="all") mnl_settings$rows <- rep(TRUE, mnl_settings$nObs)
+    mnl_settings$nObs <- sum(mnl_settings$rows)
+    # Filter rows, except for V
+    if(any(!mnl_settings$rows)){
+      mnl_settings$avail <- lapply(mnl_settings$avail, 
+                                   function(av) if(length(av)==1) return(av) else return(av[mnl_settings$rows]))
+      mnl_settings$choiceVar <- apollo_keepRows(mnl_settings$choiceVar, mnl_settings$rows)
+    }
+    
+    ### Create Y
+    mnl_settings$Y <- lapply(as.list(mnl_settings$alternatives), function(i) mnl_settings$choiceVar==i)
+    
+    # Record availability of chosen alternative
+    mnl_settings$chosenAvail <- Reduce('+', mapply('*', mnl_settings$Y, mnl_settings$avail, SIMPLIFY=FALSE))
     
     # Determine which mnl likelihood to use (R or C++)
     if(apollo_inputs$apollo_control$cpp & !apollo_inputs$silent) apollo_print("No C++ optimisation for MNL available")
     # Using R likelihood
-    mnl_settings$probs_MNL=function(mnl_settings, all=FALSE){#}, restoreRows=TRUE){
+    mnl_settings$probs_MNL=function(mnl_settings, all=FALSE){
       # Fix choiceVar if "raw" and choiceVar==NA
       mnl_settings$choiceNA = FALSE
       if(all(is.na(mnl_settings$choiceVar))){
@@ -98,29 +180,28 @@ apollo_mnl <- function(mnl_settings, functionality){
         mnl_settings$choiceNA = TRUE
       }
       # Set utility of unavailable alternatives to 0 to avoid numerical issues (eg attributes = -999)
-      mnl_settings$V <- mapply(function(v,a) apollo_setRows(v, !a, 0), 
-                               mnl_settings$V, mnl_settings$avail, SIMPLIFY=FALSE)
+      V <- mapply(function(v,a) apollo_setRows(v, !a, 0), mnl_settings$V, mnl_settings$avail, SIMPLIFY=FALSE)
       # if probabilities for all alternatives are requested, then P is a list
       if(all){
         if(apollo_inputs$apollo_control$subMaxV){
           ### work with subtracting the maxV
-          maxV <- do.call(pmax, mnl_settings$V)
-          mnl_settings$V <- lapply(mnl_settings$V, "-", maxV)
-          mnl_settings$V <- lapply(X=mnl_settings$V, FUN=exp)
-          mnl_settings$V <- mapply('*', mnl_settings$V, mnl_settings$avail, SIMPLIFY = FALSE)
-          denom = Reduce('+',mnl_settings$V)
-          P <- lapply(mnl_settings$V, "/", denom)
+          maxV <- do.call(pmax, V)
+          V <- lapply(V, "-", maxV)
+          V <- lapply(X=V, FUN=exp)
+          V <- mapply('*', V, mnl_settings$avail, SIMPLIFY = FALSE)
+          denom = Reduce('+', V)
+          P <- lapply(V, "/", denom)
         } else {
           ### work with subtracting the chosenV
-          chosenV <- mapply("*", mnl_settings$Y, mnl_settings$V, SIMPLIFY=FALSE)
+          chosenV <- mapply("*", mnl_settings$Y, V, SIMPLIFY=FALSE)
           chosenV <- Reduce('+', chosenV)
-          mnl_settings$V <- lapply(X=mnl_settings$V, "-", chosenV)
-          mnl_settings$V <- lapply(X=mnl_settings$V, FUN=exp)
+          V <- lapply(X=V, "-", chosenV)
+          V <- lapply(X=V, FUN=exp)
           # consider availabilities (it assumes V and avail are in the same order)
-          mnl_settings$V <- mapply('*', mnl_settings$V, mnl_settings$avail, SIMPLIFY = FALSE)
+          V <- mapply('*', V, mnl_settings$avail, SIMPLIFY = FALSE)
           # calculate the denominator of the Logit probability expression
-          denom = Reduce('+',mnl_settings$V)
-          P <- lapply(mnl_settings$V, "/", denom)
+          denom = Reduce('+',V)
+          P <- lapply(V, "/", denom)
           if(any(sapply(P, anyNA))){
             P <- lapply(P, function(p){p[is.na(p)] <- 1; return(p)} )
             sP <- Reduce("+", P)
@@ -128,25 +209,53 @@ apollo_mnl <- function(mnl_settings, functionality){
           }
         }
         if(!mnl_settings$choiceNA) P[["chosen"]] <- Reduce("+", mapply("*", mnl_settings$Y, P, SIMPLIFY=FALSE))
-        # if only the probability of the chosen alternative is requested, then P is vector or a 3-dim array
       } else { 
+        # if only the probability of the chosen alternative is requested, then P is vector or a 3-dim array
         ### work with subtracting the chosenV
-        chosenV <- mapply("*", mnl_settings$Y, mnl_settings$V, SIMPLIFY=FALSE)
+        chosenV <- mapply("*", mnl_settings$Y, V, SIMPLIFY=FALSE)
         chosenV <- Reduce('+', chosenV)
-        mnl_settings$V <- lapply(X=mnl_settings$V, "-", chosenV)
-        mnl_settings$V <- lapply(X=mnl_settings$V, FUN=exp)
+        V <- lapply(X=V, "-", chosenV)
+        V <- lapply(X=V, FUN=exp)
         # consider availabilities (it assumes V and avail are in the same order)
-        mnl_settings$V <- mapply('*', mnl_settings$V, mnl_settings$avail, SIMPLIFY = FALSE)
+        V <- mapply('*', V, mnl_settings$avail, SIMPLIFY = FALSE)
         # calculate the denominator of the Logit probability expression
-        denom = Reduce('+',mnl_settings$V)
+        denom = Reduce('+', V)
         P <- mnl_settings$chosenAvail/denom
       }
-      # insert excluded rows with value 1 if only the chosen is requested, and 0 if all
-      #if(any(!mnl_settings$rows) & restoreRows){
-      #  if(is.list(P)) P <- lapply(P, apollo_insertRows, r=mnl_settings$r, val=0) else P <- apollo_insertRows(P, mnl_settings$rows, 1)
-      #}
       return(P)
     }
+    
+    # Create diagnostics function for MNL
+    mnl_settings$mnl_diagnostics <- function(inputs, apollo_inputs, data=TRUE, param=TRUE){
+      
+      # turn scalar availabilities into vectors
+      for(i in 1:length(inputs$avail)) if(length(inputs$avail[[i]])==1) inputs$avail[[i]] <- rep(inputs$avail[[i]], inputs$nObs)
+      
+      # Construct summary table of availabilities and market share
+      choicematrix = matrix(0, nrow=4, ncol=length(inputs$altnames), 
+                            dimnames=list(c("Times available", "Times chosen", "Percentage chosen overall",
+                                            "Percentage chosen when available"), inputs$altnames))
+      choicematrix[1,] = unlist(lapply(inputs$avail, sum))
+      for(j in 1:length(inputs$altnames)) choicematrix[2,j] = sum(inputs$choiceVar==inputs$altcodes[j]) # number of times each alt is chosen
+      choicematrix[3,] = choicematrix[2,]/inputs$nObs*100 # market share
+      choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 # market share controlled by availability
+      choicematrix[4,!is.finite(choicematrix[4,])] <- 0
+      
+      if(!apollo_inputs$silent & data){
+        if(any(choicematrix[4,]==0)) apollo_print("WARNING: some alternatives are never chosen in your data!")
+        if(any(choicematrix[4,]>=100)) apollo_print("WARNING: some alternatives are always chosen when available!")
+        #if(inputs$avail_set) apollo_print(paste0("WARNING: Availability not provided (or some elements are NA). Full availability assumed."))
+        apollo_print("\n")
+        apollo_print(paste0('Overview of choices for MNL model component ', 
+                            ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
+        print(round(choicematrix,2))
+      }
+      
+      return(invisible(TRUE))
+    }
+    
+    # Store model type
+    mnl_settings$modelType <- modelType
     
     # Construct necessary input for gradient (including gradient of utilities)
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
@@ -157,7 +266,7 @@ apollo_mnl <- function(mnl_settings, functionality){
     mnl_settings$gradient <- FALSE
     if(test){
       mnl_settings$V        <- mnl_settings$V[mnl_settings$altnames] # reorder V
-      mnl_settings$dV       <- apollo_dVdB(apollo_beta, apollo_inputs, mnl_settings$V)
+      mnl_settings$dV       <- apollo_dVdB2(apollo_beta, apollo_inputs, mnl_settings$V)
       mnl_settings$gradient <- !is.null(mnl_settings$dV)
     }; rm(test)
     
@@ -193,10 +302,57 @@ apollo_mnl <- function(mnl_settings, functionality){
     # Check that alternatives are named in altcodes and V
     if(is.null(mnl_settings$altnames) || is.null(mnl_settings$altcodes) || is.null(names(mnl_settings$V))) stop("Alternatives for model component \"",mnl_settings$componentName,"\" must be named, both in 'alternatives' and 'utilities'.")
     
-    if(!apollo_inputs$apollo_control$noValidation) apollo_validate(mnl_settings, modelType, 
-                                                                   functionality, apollo_inputs)
+    if(!apollo_inputs$apollo_control$noValidation){
+      # Check there are no repeated alternatives names
+      if(length(unique(mnl_settings$altnames))!=length(mnl_settings$altnames)) stop('Names of alternatives must be unique. Check definition of "alternatives".')
+      
+      # Check that there are at least two alternatives
+      minAlts <- 2
+      if(mnl_settings$nAlt<minAlts) stop("Model component \"",mnl_settings$componentName,"\"  requires at least ", minAlts, " alternatives")
+      
+      # Check if LLC is required with large numbers of alternatives
+      if(mnl_settings$nAlt>20 && !is.null(apollo_inputs$apollo_control$calculateLLC) && apollo_inputs$apollo_control$calculateLLC) apollo_print(paste0("The number of the alternatives for model component \"",mnl_settings$componentName,"\" is large and you may consider setting apollo_control$calculateLLC=FALSE to avoid the calculation of the log-likelihod with constants only."),highlight=TRUE)
+
+      # Check that choice vector is not empty
+      if(length(mnl_settings$choiceVar)==0) stop("Choice vector is empty for model component \"",mnl_settings$componentName,"\"")
+      
+      if(mnl_settings$nObs==0) stop("No data for model component \"",mnl_settings$componentName,"\"")
+      
+      # Check V and avail elements are named correctly
+      if(!all(mnl_settings$altnames %in% names(mnl_settings$V))) stop("The names of the alternatives for model component \"",mnl_settings$componentName,"\" do not match those in \"utilities\".")
+      if(!all(mnl_settings$altnames %in% names(mnl_settings$avail))) stop("The names of the alternatives for model component \"",mnl_settings$componentName,"\" do not match those in \"avail\".")
+      if(length(mnl_settings$V)>length(mnl_settings$altnames)) stop("More utilities have been defined than there are alternatives for model component \"", mnl_settings$componentName,"\"!")
+      if(length(mnl_settings$avail)>length(mnl_settings$altnames)) stop("More availabilities have been defined than there are alternatives for model component \"", mnl_settings$componentName,"\"!")
+      
+      # Check that there are no values in the choice column for undefined alternatives
+      mnl_settings$choiceLabs <- unique(mnl_settings$choiceVar)
+      if(!all(mnl_settings$choiceLabs %in% mnl_settings$altcodes)) stop("The data contains values for \"choiceVar\" for model component \"",mnl_settings$componentName,"\" that are not included in \"alternatives\".")
+      
+      # check that all availabilities are either 0 or 1
+      for(i in 1:length(mnl_settings$avail)) if( !all(unique(mnl_settings$avail[[i]]) %in% 0:1) ) stop("Some availability values for model component \"",mnl_settings$componentName,"\" are not 0 or 1.")
+      # check that at least 2 alternatives are available in at least one observation
+      if(max(Reduce('+',mnl_settings$avail))==1) stop("Only one alternative is available for each observation for model component \"",mnl_settings$componentName,"!")
+      # check that nothing unavailable is chosen
+      for(j in 1:mnl_settings$nAlt) if(any(mnl_settings$choiceVar==mnl_settings$altcodes[j] & mnl_settings$avail[[j]]==0)){
+        #stop("The data contains cases where alternative ",
+        #     mnl_settings$altnames[j]," is chosen for model component \"",
+        #     mnl_settings$componentName,"\" despite being listed as unavailable\n")
+        txt <-  paste0('WARNING: The data contains cases where alternative ', mnl_settings$altnames[j], 
+                       ' is chosen for model component "',mnl_settings$componentName, '" despite being', 
+                       ' listed as unavailable. This will cause the chosen probability to be', 
+                       ' zero, and potentially lead to an invalid LL.')
+        apollo_print(txt)
+      }
+      
+      # Check that no available alternative has utility = NA
+      # Requires setting non available alternatives utility to 0 first
+      mnl_settings$V <- mapply(function(v,a) apollo_setRows(v, !a, 0), mnl_settings$V, mnl_settings$avail, SIMPLIFY=FALSE)
+      if(!all(sapply(mnl_settings$V, function(v) all(is.finite(v))))) stop('Some utilities for model component "',
+                                                                     mnl_settings$componentName, 
+                                                                     '" contain values that are not finite numbers!')
+    } 
     
-    if(!apollo_inputs$apollo_control$noDiagnostics) apollo_diagnostics(mnl_settings, modelType, apollo_inputs)
+    if(!apollo_inputs$apollo_control$noDiagnostics) mnl_settings$mnl_diagnostics(mnl_settings, apollo_inputs)
     
     testL = mnl_settings$probs_MNL(mnl_settings, all=FALSE)
     if(any(!mnl_settings$rows)) testL <- apollo_insertRows(testL, mnl_settings$rows, 1)
@@ -262,35 +418,39 @@ apollo_mnl <- function(mnl_settings, functionality){
   
   if(functionality=="gradient"){
     # Verify everything necessary is available
-    if(is.null(mnl_settings$dV) || !all(sapply(mnl_settings$dV, is.function))) stop("Analytical gradient could not be calculated. Please set apollo_control$analyticGrad=FALSE.")
+    if(is.null(mnl_settings$dV)) stop("Analytical gradients cannot be calculated because the derivatives of the utilities are not available. Please set apollo_control$analyticGrad=FALSE.")
+    for(k in 1:length(mnl_settings$dV)) if(!all( sapply(mnl_settings$dV[[k]], is.function) )) stop("Analytical gradients cannot be calculated because not al the derivatives of the utilities are functions. Please set apollo_control$analyticGrad=FALSE.")
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
                             error=function(e) stop("apollo_mnl could not fetch apollo_beta for gradient estimation."))
     if(is.null(apollo_inputs$database)) stop("apollo_mnl could not fetch apollo_inputs$database for gradient estimation.")
     
-    # Calculate probabilities and derivatives of utilities for all alternatives
+    # Calculate probabilities
     P    <- mnl_settings$probs_MNL(mnl_settings, all=TRUE)
     Pcho <- P[["chosen"]]
     P    <- P[-which(names(P)=="chosen")]
-    e <- list2env(c(as.list(apollo_beta), apollo_inputs$database, list(apollo_inputs=apollo_inputs)), hash=TRUE)
-    for(i in 1:length(mnl_settings$dV)) environment(mnl_settings$dV[[i]]) <- e
-    dV<- lapply(mnl_settings$dV, function(dv) dv()) # One element per alt. Each element is an nPar long list
-    if(!all(mnl_settings$rows)) for(i in 1:length(dV)) dV[[i]] <- lapply(dV[[i]], apollo_keepRows, mnl_settings$rows)
-    for(i in 1:mnl_settings$nAlt) dV[[i]] <- lapply(dV[[i]], 
-                                                    function(dvik){ # Make dV=0 for unavailable alternatives
-                                                      test <- length(dvik)==1 && length(mnl_settings$avail[[i]])>1
-                                                      if(test) dvik <- rep(dvik, mnl_settings$nObs)
-                                                      dvik[!mnl_settings$avail[[i]]] <- 0
-                                                      return(dvik)
-                                                    })
     
     # Calculate gradient
-    GA<- mapply(function(y,p) y - p, mnl_settings$Y, P, SIMPLIFY=FALSE)
+    J <- length(mnl_settings$dV[[1]]) # number of alternatives
+    K <- length(mnl_settings$dV) # number of parameters
+    e <- list2env(c(as.list(apollo_beta), apollo_inputs$database, list(apollo_inputs=apollo_inputs)), hash=TRUE)
     G <- list()
-    for(k in 1:length(dV[[1]])){
-      dVk   <- lapply(dV, function(dv) dv[[k]])
-      G[[k]] <- Reduce("+", mapply("*", GA, dVk, SIMPLIFY=FALSE))
-    }
-    G <- lapply(G, "*", Pcho)
+    r <- all(mnl_settings$rows) # TRUE if all rows are used (no rows excluded)
+    a <- sapply(mnl_settings$avail, function(a) if(length(a)==1) a==1 else all(a==1)) # TRUE if all available
+    for(k in 1:K){
+      G[[k]] <- 0
+      for(j in 1:J){
+        # Calculate dVj/dbk, remove rows, expand it and replace unavailables rows by zero if necessary
+        dVjk <- mnl_settings$dV[[k]][[j]]
+        environment(dVjk) <- e
+        dVjk <- dVjk()
+        if(!r) dVjk <- apollo_keepRows(dVjk, mnl_settings$rows)
+        if(length(dVjk)==1 && !a[j]) dVjk <- rep(dVjk, mnl_settings$nObs)
+        if(!a[j]) dVjk <- apollo_setRows(dVjk, !mnl_settings$avail[[j]], 0)
+        # Calculate gradient
+        G[[k]] <- G[[k]] + (mnl_settings$Y[[j]] - P[[j]])*dVjk
+      }
+      G[[k]] <- Pcho*G[[k]]
+    }; rm(dVjk)
     
     # Restore rows and return
     if(!all(mnl_settings$rows)){
@@ -306,8 +466,8 @@ apollo_mnl <- function(mnl_settings, functionality){
   if(functionality=='report'){
     P <- list()
     apollo_inputs$silent <- FALSE
-    P$data  <- capture.output(apollo_diagnostics(mnl_settings, modelType, apollo_inputs, param=FALSE))
-    P$param <- capture.output(apollo_diagnostics(mnl_settings, modelType, apollo_inputs, data =FALSE))
+    P$data  <- capture.output(mnl_settings$mnl_diagnostics(mnl_settings, apollo_inputs, param=FALSE))
+    P$param <- capture.output(mnl_settings$mnl_diagnostics(mnl_settings, apollo_inputs, data =FALSE))
     return(P)
   }
   

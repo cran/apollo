@@ -1,58 +1,127 @@
 #' Cross-validation of fit (LL)
 #'
-#' Randomly generates estimation and validation samples, estimates the model on the first and 
-#' calculates the likelihood for the second, then repeats.
+#' Randomly generates estimation and validation samples, estimates the model on 
+#' the first and calculates the likelihood for the second, then repeats.
 #'
-#' A common way to test for overfitting of a model is to measure its fit on a sample not used 
-#' during estimation that is, measuring its out-of-sample fit. A simple way to do this is splitting 
-#' the complete available dataset in two parts: an estimation sample, and a validation sample. 
-#' The model of interest is estimated using only the estimation sample, and then those estimated 
-#' parameters are used to measure the fit of the model (e.g. the log-likelihood of the model)
-#' on the validation sample. Doing this with only one validation sample, however, may lead to biased 
-#' results, as a particular validation sample need not be representative of the population. One way to 
-#' minimise this issue is to randomly draw several pairs of estimation and validation samples from the 
-#' complete dataset, and apply the procedure to each pair.
+#' A common way to test for overfitting of a model is to measure its fit on a 
+#' sample not used during estimation that is, measuring its out-of-sample fit. 
+#' A simple way to do this is splitting the complete available dataset in two 
+#' parts: an estimation sample, and a validation sample. 
+#' The model of interest is estimated using only the estimation sample, and 
+#' then those estimated parameters are used to measure the fit of the model 
+#' (e.g. the log-likelihood of the model) on the validation sample. Doing this 
+#' with only one validation sample, however, may lead to biased results, as a 
+#' particular validation sample need not be representative of the population. 
+#' One way to minimise this issue is to randomly draw several pairs of 
+#' estimation and validation samples from the complete dataset, and apply the 
+#' procedure to each pair.
 #' 
-#' The splitting of the database into estimation and validation samples is done at the individual 
-#' level, not at the observation level. If the sampling wants to be done at the individual level 
-#' (not recommended on panel data), then the optional \code{outOfSample_settings$samples} argument 
-#' should be provided.
+#' The splitting of the database into estimation and validation samples is done 
+#' at the individual level, not at the observation level. If the sampling wants 
+#' to be done at the individual level (not recommended on panel data), then the 
+#' optional \code{outOfSample_settings$samples} argument should be provided.
 #' 
 #' This function writes two different files to the working/output directory:
 #' \itemize{
-#'   \item \strong{\code{modelName_outOfSample_params.csv}}: Records the estimated parameters, final log-likelihood, and number of observations on each repetition.
-#'   \item \strong{\code{modelName_outOfSample_samples.csv}}: Records the sample composition of each repetition.
+#'   \item \strong{\code{modelName_outOfSample_params.csv}}: Records the 
+#'         estimated parameters, final log-likelihood, and number of 
+#'         observations on each repetition.
+#'   \item \strong{\code{modelName_outOfSample_samples.csv}}: Records the 
+#'         sample composition of each repetition.
 #' }
-#' The first two files are updated throughout the run of this function, while the last one is only written once the function finishes.
+#' The first two files are updated throughout the run of this function, while 
+#' the last one is only written once the function finishes.
 #' 
-#' When run, this function will look for the two files above in the working/output directory. If they are found, 
-#' the function will attempt to pick up re-sampling from where those files left off. This is useful in 
-#' cases where the original bootstrapping was interrupted, or when additional re-sampling wants to be performed.
+#' When run, this function will look for the two files above in the 
+#' working/output directory. If they are found, the function will attempt to 
+#' pick up re-sampling from where those files left off. This is useful in cases 
+#' where the original bootstrapping was interrupted, or when additional 
+#' re-sampling wants to be performed.
 #' 
 #' @param apollo_beta Named numeric vector. Names and values for parameters.
-#' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
-#' @param apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:
+#' @param apollo_fixed Character vector. Names (as defined in 
+#'                     \code{apollo_beta}) of parameters whose value should not 
+#'                     change during estimation.
+#' @param apollo_probabilities Function. Returns probabilities of the model to 
+#'                             be estimated. Must receive three arguments:
 #'                          \itemize{
-#'                            \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
-#'                            \item \strong{\code{apollo_inputs}}: List containing options of the model. See \link{apollo_validateInputs}.
-#'                            \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
+#'                            \item \strong{\code{apollo_beta}}: Named numeric 
+#'                                  vector. Names and values of model parameters.
+#'                            \item \strong{\code{apollo_inputs}}: List 
+#'                                  containing options of the model. See 
+#'                                  \link{apollo_validateInputs}.
+#'                            \item \strong{\code{functionality}}: Character. 
+#'                                  Can be either \strong{\code{"components"}}, 
+#'                                  \code{"conditionals"}, \code{"estimate"} 
+#'                                  (default), \code{"gradient"}, 
+#'                                  \code{"output"}, \code{"prediction"}, 
+#'                                  \code{"preprocess"}, \code{"raw"}, 
+#'                                  \code{"report"}, \code{"shares_LL"}, 
+#'                                  \code{"validate"} or \code{"zero_LL"}.
 #'                          }
-#' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
-#' @param estimate_settings List. Options controlling the estimation process. See \link{apollo_estimate}.
-#' @param outOfSample_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
+#' @param apollo_inputs List grouping most common inputs. Created by function 
+#'                      \link{apollo_validateInputs}.
+#' @param estimate_settings List. Options controlling the estimation process. 
+#'                          See \link{apollo_estimate}.
+#' @param outOfSample_settings List. Contains settings for this function. User 
+#'                             input is required for all settings except those 
+#'                             with a default or marked as optional. 
 #'                                   \describe{
-#'                                     \item{nRep}{Numeric scalar. Number of times a different pair of estimation and
-#'                                                 validation sets are to be extracted from the full database.
+#'                                     \item{nRep}{Numeric scalar. Number of 
+#'                                                 times a different pair of 
+#'                                                 estimation and validation 
+#'                                                 sets are to be extracted 
+#'                                                 from the full database.
 #'                                                 Default is 30.}
-#'                                     \item{samples}{Numeric matrix or data.frame. Optional argument. Must have as many rows as 
-#'                                                    observations in the \code{database}, and as many columns as number of  
-#'                                                    repetitions wanted. Each column represents a re-sample, and each element  
-#'                                                    must be a 0 if the observation should be assigned to the estimation sample, 
-#'                                                    or 1 if the observation should be assigned to the prediction sample. If this 
-#'                                                    argument is provided, then \code{nRep} and \code{validationSize} are ignored. 
-#'                                                    Note that this allows sampling at the observation rather than the individual 
-#'                                                    level.}
-#'                                     \item{validationSize}{Numeric scalar. Size of the validation sample. Can be a percentage of the sample (0-1) or the number of individuals in the validation sample (>1). Default is 0.1.}
+#'                                     \item{samples}{Numeric matrix or 
+#'                                                    data.frame. Optional 
+#'                                                    argument. Must have as 
+#'                                                    many rows as observations 
+#'                                                    in the \code{database}, 
+#'                                                    and as many columns as 
+#'                                                    number of  repetitions 
+#'                                                    wanted. Each column 
+#'                                                    represents a re-sample, 
+#'                                                    and each element must be 
+#'                                                    a 0 if the observation 
+#'                                                    should be assigned to the 
+#'                                                    estimation sample, or 1 
+#'                                                    if the observation should 
+#'                                                    be assigned to the 
+#'                                                    prediction sample. If this 
+#'                                                    argument is provided, then 
+#'                                                    \code{nRep} and 
+#'                                                    \code{validationSize} are 
+#'                                                    ignored. Note that this 
+#'                                                    allows sampling at the 
+#'                                                    observation rather than 
+#'                                                    the individual level.}
+#'                                     \item{validationSize}{Numeric scalar. 
+#'                                                           Size of the 
+#'                                                           validation sample. 
+#'                                                           Can be a percentage 
+#'                                                           of the sample (0-1) 
+#'                                                           or the number of 
+#'                                                           individuals in the 
+#'                                                           validation sample 
+#'                                                           (>1). Default is 
+#'                                                           0.1.}
+#'                                     \item{rmseObs}{Character vector. Used to 
+#'                                                    calculate Root Mean 
+#'                                                    Squared Error (RMSE) of 
+#'                                                    prediction. It should 
+#'                                                    contain the name of the 
+#'                                                    columns with the observed 
+#'                                                    outcomes in the database, 
+#'                                                    in the same order than as 
+#'                                                    returned by 
+#'                                                    apollo_probabilities when 
+#'                                                    used with
+#'                                                    functionality="prediction". 
+#'                                                    If omitted or NULL, no 
+#'                                                    RMSE is calculated.
+#'                                                    It works only for models 
+#'                                                    with a single component.}
 #'                                   }
 #' @return A matrix with the average log-likelihood per observation for both the estimation and validation 
 #'         samples, for each repetition. Two additional files with further details are written to the
@@ -70,7 +139,8 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
                                                       silent=TRUE),
                                outOfSample_settings=list(nRep=10,
                                                          validationSize=0.1,
-                                                         samples=NA)){
+                                                         samples=NA, 
+                                                         rmseObs=NULL)){
   ### Set missing settings to default values
   default <- list(estimationRoutine="bfgs", maxIterations=200, writeIter=TRUE, hessianRoutine="none", printLevel=3L, silent=FALSE)
   tmp <- names(default)[!(names(default) %in% names(estimate_settings))] # options missing in estimate_settings
@@ -102,13 +172,13 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   workInLogs       <- apollo_inputs$apollo_control$workInLogs
   if(!is.null(apollo_inputs$apollo_control$seed)) seed <- apollo_inputs$apollo_control$seed + 3 else seed <- 13 + 3
   
-  # Extract values from estimate_settings and estimate_settings
+  # Extract values from estimate_settings and outOfSample_settings
   estimationRoutine <- estimate_settings$estimationRoutine
   maxIterations     <- estimate_settings$maxIterations
   nRep              <- outOfSample_settings$nRep
   validationSize    <- outOfSample_settings$validationSize
   samples           <- outOfSample_settings$samples
-  
+  rmseObs           <- outOfSample_settings$rmseObs
   
   # Validate arguments
   apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
@@ -170,6 +240,16 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   }
   rm(llComponents)
   
+  # Check that RMSE can be calculated and initialise if requested
+  if(!is.null(rmseObs)){
+    if(ncol(llInSampleStack)>1) stop("The model contains more than one component, but RMSE can only be calculated for models with a single component.")
+    if(!is.character(rmseObs)) stop("Argument rmseObs should be a character vector.")
+    if(!all(rmseObs %in% names(apollo_inputs$database))) stop("Not all outcomes included in rmsObs exist in the database.")
+    if(!all(sapply(apollo_inputs$database[,rmseObs], is.numeric))) stop("Not all outcomes included in rmseObs are numeric in the database.")
+    RMSE <- paste0("rmse_", c(rmseObs, "aggregate"))
+    RMSE <- matrix(0, nrow=nRep, ncol=length(rmseObs) + 1, dimnames=list(NULL, RMSE))
+  } else RMSE <- NULL
+  
   # Check if there are previous results. If so, load them
   fileNameParams <- paste0(apollo_control$outputDirectory, apollo_control$modelName, "_outOfSample_params.csv")
   fileNameSample <- paste0(apollo_control$outputDirectory, apollo_control$modelName, "_outOfSample_samples.csv")
@@ -210,6 +290,7 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
     }
     rm(tmp, tmp1, tmp2, tmp3, tmp4, test)
   }
+  if(nRun>=nRep) stop("All requested repetitions already exist in file fileNameParams.")
   
   # OUT OF SAMPLE LOOP
   apollo_print(paste0("Estimated parameters and log-likelihoods for each sample will be written to: ", fileNameParams))
@@ -250,9 +331,6 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
     # Write results
     if(succesfulEstimation){
       
-      # Closes clusters if using multicore
-      #if(exists('cl') & apollo_control$nCores>1) parallel::stopCluster(cl)
-      
       # Store estimated parameters
       temp <- c(model$estimate, apollo_beta[apollo_fixed])
       temp <- temp[names(apollo_beta)]
@@ -269,9 +347,25 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
       llout <- apollo_probabilities(model$estimate, apollo_inputs, functionality="output") # used to be apollo_inputs2
       for(j in 1:ncol(llOutOfSampleStack)) llOutOfSampleStack[i,j] <- ifelse(workInLogs, sum(llout[[j]]), sum(log(llout[[j]])))
       
+      # Store RMSE
+      if( is.character(rmseObs) ){
+        pred <- apollo_prediction(model, apollo_probabilities, apollo_inputs)
+        if( !is.data.frame(pred) ) stop("The model uses an incompatible component type. RMSE cannot be calculated.")
+        pred <- pred[,-(1:2)]  # drop "indivID" and "Observation"
+        if("chosen" %in% names(pred)) pred <- pred[, names(pred)!="chosen"] # drop chosen
+        pred <- pred[, 1:length(rmseObs)] # keep only as many outcomes as rmseObs
+        if(length(pred) < length(rmseObs)) stop("Number of outcomes in rmseObs is bigger than the number of outcomes generated by apollo_prediction.")
+        RMSE[i, 1:length(rmseObs)] <- sqrt(colMeans((pred - apollo_inputs$database[,rmseObs])^2))
+        RMSE[i, 1+length(rmseObs)] <- sqrt(mean((colSums(pred) - colSums(apollo_inputs$database[,rmseObs]))^2))
+      }
+      
       # Save results from cross-validation iteration
-      utils::write.csv(cbind(paramStack, llInSampleStack, llOutOfSampleStack,
-                             inSampleObs=nObsStack, outOfSampleObs=nrow(database)-nObsStack), 
+      utils::write.csv(cbind(paramStack, 
+                             llInSampleStack, 
+                             llOutOfSampleStack,
+                             inSampleObs=nObsStack, 
+                             outOfSampleObs=nrow(database)-nObsStack, 
+                             RMSE), 
                        fileNameParams, row.names=FALSE)
       utils::write.csv(samples[,1:i], fileNameSample, row.names=FALSE)
       apollo_print("Estimation results written to file.")

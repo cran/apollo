@@ -4,7 +4,7 @@
 #'
 #' All arguments to this function are optional. If the function is called without arguments, then it it will look in
 #' the user workspace (i.e. the global environment) for variables with the same name as its omitted arguments.
-#' We strongly recommend users to visit \url{http://www.ApolloChoiceModelling.com} for examples on how to use Apollo.
+#' We strongly recommend users to visit \url{http://www.apollochoicemodelling.com/} for examples on how to use Apollo.
 #' In the website, users will also find a detailed manual and a user-group for help and further reference.
 #' @param apollo_beta Named numeric vector. Names and values for parameters.
 #' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
@@ -60,7 +60,7 @@
 #'                  \itemize{
 #'                    \item \strong{\code{interDrawsType}}: Character. Type of inter-individual draws ('halton','mlhs','pmc','sobol','sobolOwen',
 #'                                                 'sobolFaureTezuka', 'sobolOwenFaureTezuka' or the name of an object loaded in memory,
-#'                                                 see manual in \url{http://www.ApolloChoiceModelling.com} for details).
+#'                                                 see manual in www.ApolloChoiceModelling.com for details).
 #'                    \item \strong{\code{interNDraws}}: Numeric scalar (>=0). Number of inter-individual draws per individual. Should be set to 0 if not using them.
 #'                    \item \strong{\code{interNormDraws}}: Character vector. Names of normaly distributed inter-individual draws.
 #'                    \item \strong{\code{interUnifDraws}}: Character vector. Names of uniform-distributed inter-individual draws.

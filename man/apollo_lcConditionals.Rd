@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_lcConditionals.R
 \name{apollo_lcConditionals}
 \alias{apollo_lcConditionals}
-\title{Calculates conditionals of a latent class model.}
+\title{Calculates conditionals for latent class models.}
 \usage{
 apollo_lcConditionals(model, apollo_probabilities, apollo_inputs)
 }

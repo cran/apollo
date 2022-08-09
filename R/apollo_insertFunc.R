@@ -392,11 +392,14 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
   }
   
   if(like){
-    f <- processModelDefinition(fName="apollo_mnl" , elemNames=c()   , listNames=c("V", "utilities")  , e=f)
-    f <- processModelDefinition(fName="apollo_fmnl", elemNames=c()   , listNames=c("V", "utilities")  , e=f)
+    f <- processModelDefinition(fName="apollo_mnl" , elemNames=c()  , listNames=c("V", "utilities") , e=f)
+    f <- processModelDefinition(fName="apollo_fmnl", elemNames=c()  , listNames=c("V", "utilities") , e=f)
     f <- processModelDefinition(fName="apollo_ol"  , elemNames=c("V", "utility"), listNames=c("tau"), e=f)
     f <- processModelDefinition(fName="apollo_op"  , elemNames=c("V", "utility"), listNames=c("tau"), e=f)
     f <- processModelDefinition(fName="apollo_normalDensity", elemNames=c("xNormal", "mu", "sigma"), listNames=c(), e=f)
+    f <- processModelDefinition(fName="apollo_rrm_2", elemNames=c() , listNames=c("rum_inputs", "regret_inputs", "regret_scale") , e=f)
+    f <- processModelDefinition(fName="apollo_rrm_3", elemNames=c() , listNames=c("rum_inputs", "regret_inputs", "regret_scale") , e=f)
+    f <- processModelDefinition(fName="apollo_rrm_4", elemNames=c() , listNames=c("rum_inputs", "regret_inputs", "regret_scale") , e=f)
     # Replace elements that are functions
     apollo_inputs <- tryCatch(get('apollo_inputs', envir=parent.frame()), 
                               error=function() list(apollo_control=list(mixing=FALSE), apollo_randCoeff=NA, apollo_lcPars=NA))

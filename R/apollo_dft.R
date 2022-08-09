@@ -734,6 +734,50 @@ apollo_dft = function(dft_settings,functionality){
       return(P)
     }
     
+    dft_settings$dft_diagnostics <- function(inputs, apollo_inputs, data=TRUE, param=TRUE){
+      
+      
+        # turn scalar availabilities into vectors
+        for(i in 1:length(inputs$avail)) if(length(inputs$avail[[i]])==1) inputs$avail[[i]] <- rep(inputs$avail[[i]], inputs$nObs)
+        
+        # Construct summary table of availabilities and market share
+        choicematrix = matrix(0, nrow=4, ncol=length(inputs$altnames), 
+                              dimnames=list(c("Times available", "Times chosen", "Percentage chosen overall",
+                                              "Percentage chosen when available"), inputs$altnames))
+        choicematrix[1,] = unlist(lapply(inputs$avail, sum))
+        for(j in 1:length(inputs$altnames)) choicematrix[2,j] = sum(inputs$choiceVar==inputs$altcodes[j]) # number of times each alt is chosen
+        choicematrix[3,] = choicematrix[2,]/inputs$nObs*100 # market share
+        choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 # market share controlled by availability
+        choicematrix[4,!is.finite(choicematrix[4,])] <- 0
+        
+        if(!apollo_inputs$silent & data){
+          if(any(choicematrix[4,]==0)) apollo_print("WARNING: some alternatives are never chosen in your data!")
+          if(any(choicematrix[4,]==1)) apollo_print("WARNING: some alternatives are always chosen when available!")
+          #if(inputs$avail_set) apollo_print(paste0("WARNING: Availability not provided (or some elements are NA). Full availability assumed."))
+          apollo_print("\n")
+          apollo_print(paste0('Overview of choices for ', toupper(inputs$modelType), ' model component ', 
+                              ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
+          print(round(choicematrix,2))
+        }
+      
+      if(!apollo_inputs$silent & data){
+        txt <- 'Notice: Not all of the attributes given in "attrValues" are named in "attrScalings" or "attrWeights". These will consequently be ignored.'
+        if(inputs$warn1) apollo_print(txt)
+        txt <- 'Notice: Not all of the alternatives given in "altStart" are named in "alternatives". These will consequently be ignored.'
+        if(inputs$warn2) apollo_print(txt)
+        txt <- 'Notice: A list was not supplied for "altStart". Starting values for all alternatives will be set to zero.'
+        if(inputs$warn3) apollo_print(txt)
+      }
+      
+      
+      return(invisible(TRUE))
+    }
+    
+    
+    # Store model type
+    dft_settings$modelType <- modelType
+    
+    
     # Construct necessary input for gradient (including gradient of utilities)
     dft_settings$gradient <- FALSE
     if(dft_settings$gradient && !apollo_inputs$silent)  apollo_print(paste0('No analytical gradient available for', 
@@ -802,7 +846,7 @@ apollo_dft = function(dft_settings,functionality){
   if (functionality=="validate"){
     if(!apollo_inputs$apollo_control$noValidation) apollo_validate(dft_settings, modelType, functionality, apollo_inputs)
     
-    if(!apollo_inputs$apollo_control$noDiagnostics) apollo_diagnostics(dft_settings, modelType, apollo_inputs)
+    if(!apollo_inputs$apollo_control$noDiagnostics) dft_settings$dft_diagnostics(dft_settings, apollo_inputs)
     
     testL = dft_settings$probs_DFT(dft_settings, all=FALSE)
     if(any(!dft_settings$rows)) testL <- apollo_insertRows(testL, dft_settings$rows, 1) # insert excluded rows with value 1
@@ -862,8 +906,8 @@ apollo_dft = function(dft_settings,functionality){
   if(functionality=='report'){
     P <- list()
     apollo_inputs$silent <- FALSE
-    P$data  <- capture.output(apollo_diagnostics(dft_settings, modelType, apollo_inputs, param=FALSE))
-    P$param <- capture.output(apollo_diagnostics(dft_settings, modelType, apollo_inputs, data =FALSE))
+    P$data  <- capture.output(dft_settings$dft_diagnostics(dft_settings, apollo_inputs, param=FALSE))
+    P$param <- capture.output(dft_settings$dft_diagnostics(dft_settings, apollo_inputs, data =FALSE))
     return(P)
   }
   

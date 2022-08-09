@@ -59,6 +59,6 @@ By default, this functions writes the estimated parameter values in each iterati
 can be turned off by setting \code{estimate_settings$writeIter} to \code{FALSE}.
 By default, \strong{final results are not written into a file nor printed to the console}, so users must make sure 
 to call function \link{apollo_modelOutput} and/or \link{apollo_saveOutput} afterwards.
-Users are strongly encouraged to visit \url{http://www.ApolloChoiceModelling.com} to download examples on how to use the Apollo package.
+Users are strongly encouraged to visit \url{http://www.apollochoicemodelling.com/} to download examples on how to use the Apollo package.
 The webpage also provides a detailed manual for the package, as well as a user-group to get further help.
 }

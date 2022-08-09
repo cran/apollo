@@ -166,7 +166,7 @@ apollo_classAlloc <- function(classAlloc_settings){
   if(functionality %in% c("estimate","conditionals", "components", "output", "prediction", "raw", "report")){
     P <- classAlloc_settings$probs_MNL(classAlloc_settings)
     if(!all(classAlloc_settings$rows)) P <- lapply(P, apollo_insertRows, r=classAlloc_settings$rows, val=1)
-    P <- lapply(P, apollo_firstRow, apollo_inputs=apollo_inputs)
+    #P <- lapply(P, apollo_firstRow, apollo_inputs=apollo_inputs)
     return(P)
   }
   

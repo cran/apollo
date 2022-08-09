@@ -16,6 +16,7 @@
 #'                                                  random parameters. For example, c(b1=0) fixes the mean of b1 to zero.
 #'                     \item \strong{\code{fixedD}}: Named numeric vector. Contains the names and fixed variance of 
 #'                                                  random parameters. For example, c(b1=1) fixes the variance of b1 to zero.
+#'                     \item \strong{\code{gFULLCV:}} Boolean. Whether the full variance-covariance structure should be used for random parameters (TRUE by default).
 #'                     \item \strong{\code{gNCREP}}: Numeric. Number of burn-in iterations to use prior to convergence (default=10^5).
 #'                     \item \strong{\code{gNEREP}}: Numeric. Number of iterations to keep for averaging after convergence has been reached (default=10^5).
 #'                     \item \strong{\code{gINFOSKIP}}: Numeric. Number of iterations between printing/plotting information about the iteration process (default=250).
@@ -71,6 +72,8 @@ apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_c
   apollo_HB$gDIST           = gDIST
   apollo_HB$svN             = svN
   apollo_HB$FC              = FC
+  
+  if(is.null(apollo_HB$gFULLCV)) apollo_HB$gFULLCV=TRUE
   
   if(length(apollo_HB$gVarNamesNormal)==0) {
     apollo_HB$gVarNamesNormal = NULL

@@ -5,7 +5,7 @@
 #' @param apollo_beta Named numeric vector of parameters.
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param V List of functions
-#' @return Named list. Each element is itself a list of functions: the partial derivatives of the elements of V.
+#' @return Named list. Each element is a function that returns a list, where each element is the partial derivatives of the elements of V.
 #' 
 #' @export
 apollo_dVdB <- function(apollo_beta, apollo_inputs, V){

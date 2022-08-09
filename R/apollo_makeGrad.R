@@ -90,9 +90,11 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   if( length(dVAvail)==0 || !all(compList %in% names(dVAvail)) ){
     #txt <- paste0("Some model components cannot be pre-processed. ",
     #              "Numeric gradients will be used")
-    txt <- paste('This model could potentially be estimated faster using', 
-                 'analytical gradients, yet some issue is preventing it',
-                 'from using them. You might want to ask for help in the',
+    txt <- paste('Apollo was not able to compute analytical gradients for your model.',
+                 'This could be because you are using model components for which analytical', 
+                 'gradients are not yet implemented, or because you coded your own model functions.',
+                 'If however you only used apollo_mnl, apollo_fmnl, apollo_normalDensity, apollo_ol or apollo_op',
+                 'then there could be another issue. You might want to ask for help in the',
                  'Apollo forum (http://www.apollochoicemodelling.com/forum)',
                  'on how to solve this issue. If you do, please post your',
                  'code and data (if not confidential).')
@@ -193,7 +195,8 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
         if(debug){
           tmp <- cbind(numeric=gradNum, analytic=gradAn, `Diff`=dif)
           rownames(tmp) <- names(gradNum)
-          apollo_print(tmp)
+          #apollo_print(tmp)
+          print(tmp)
         }
         if(!silent) apollo_print("Analytical gradient is different to numerical one. Numerical gradients will be used.")
         return(NULL)

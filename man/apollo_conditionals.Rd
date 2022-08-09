@@ -19,13 +19,21 @@ apollo_conditionals(model, apollo_probabilities, apollo_inputs)
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 }
 \value{
-List of matrices. Each matrix has dimensions nIndiv x 3. One matrix per random component.
-        Each row of each matrix contains the indivID of an individual, and the
-        posterior mean and s.d. of this random component for this individual
+Depends on whether the model uses continuous mixtures or latent class.
+        \itemize{
+          \item If the model contains a continuous mixture, the function returns a list of matrices. 
+                Each matrix has dimensions nIndiv x 3. One matrix per random component.
+                Each row of each matrix contains the indivID of an individual, and the
+                posterior mean and s.d. of this random component for this individual.
+          \item If the model contains latent classes, the function returns a matrix with 
+                the posterior class allocation probabilities for each individual.
+          \item If the model contains both continuous mixtures and latent classes,
+                the function fails.
+        }
 }
 \description{
-Calculates posterior expected values (conditionals) of continuously distributed random coefficients, as well as their standard deviations.
+Calculates posterior expected values (conditionals) of random coefficient models (continuous or discrete mixtures/latent class)
 }
 \details{
-This functions is only meant for use with continuous distributions
+This functions is only meant for use with models using either continuous distributions or latent classes, not both at the same time
 }

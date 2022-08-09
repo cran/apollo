@@ -23,6 +23,7 @@ apollo_deltaMethod(model, deltaMethod_settings)
   \item \strong{\code{operation}}: Character. Function to calculate the delta method for. See details. Not used if \code{expression} is provided.
   \item \strong{\code{parName1}}: Character. Name of the first parameter if \code{operation} is used. See details. Not used if \code{expression} is provided.
   \item \strong{\code{parName2}}: Character. Name of the second parameter if \code{operation} is used. See details. Not used if \code{expression} is provided.. Optional depending on \code{operation}.
+  \item \strong{\code{printPVal}}: Logical or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
   \item \strong{\code{multPar1}}: Numeric scalar. An optional value to scale \code{parName1}. Not used if \code{expression} is provided.
   \item \strong{\code{multPar2}}: Numeric scalar. An optional value to scale \code{parName2}. Not used if \code{expression} is provided.
 }}

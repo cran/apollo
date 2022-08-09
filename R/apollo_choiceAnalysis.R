@@ -6,7 +6,7 @@
 #' @param choiceAnalysis_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 #'                                \itemize{
 #'                                  \item \strong{code{alternatives}}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}. Note that these need not necessarily be the alternatives as defined in the model, but could e.g. relate to cheapest/most expensive.
-#'                                  \item \strong{code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1.
+#'                                  \item \strong{code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1. A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
 #'                                  \item \strong{code{choiceVar}}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
 #'                                  \item \strong{code{explanators}}: data.frame. Variables determining subsamples of the database. Values in each column must describe a group or groups of individuals (e.g. socio-demographics). Most usually a subset of columns from the database.
 #'                                  \item \strong{code{printToScreen}}: Logical. TRUE for returning output to screen as well as file. TRUE by default.
@@ -21,7 +21,7 @@
 apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database){
   if(is.null(choiceAnalysis_settings[["printToScreen"]])) choiceAnalysis_settings[["printToScreen"]]=TRUE
   if(is.null(choiceAnalysis_settings[["rows"]])) choiceAnalysis_settings[["rows"]]="all"
-  tmp <- c("alternatives", "avail", "choiceVar", "explanators")
+  tmp <- c("alternatives", "choiceVar", "explanators")
   for(i in tmp) if(is.null(choiceAnalysis_settings[[i]])) stop("The choiceAnalysis_settings list needs to include an object called \"",i,"\"!")
   
   ### Validate control & data as this function can be run before validateInputs
@@ -31,6 +31,10 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
   ### Extract useful values
   modelName   = apollo_control$modelName
   alternatives= choiceAnalysis_settings[["alternatives"]]
+  if(is.null(choiceAnalysis_settings[["avail"]])){
+    choiceAnalysis_settings[["avail"]]=1
+    apollo_print("Availabilities not provided for 'apollo_choiceAnalysis', so full availability is assumed.")
+  } 
   avail       = choiceAnalysis_settings[["avail"]]
   choiceVar   = choiceAnalysis_settings[["choiceVar"]]
   explanators = choiceAnalysis_settings[["explanators"]]

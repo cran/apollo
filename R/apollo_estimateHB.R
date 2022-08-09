@@ -44,8 +44,13 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   bootstrapSE       = estimate_settings[["bootstrapSE"]]
   bootstrapSeed     = estimate_settings[["bootstrapSeed"]]
   
+  ### added 1 Feb
+  apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, 
+                                       apollo_probabilities, apollo_inputs, 
+                                       apollo_estSet=estimate_settings, cleanMemory=TRUE)
+  
   # Checks for scaling
-  if(length(apollo_inputs$apollo_scaling)>0 && !is.na(apollo_inputs$apollo_scaling)){
+  if(!is.null(apollo_inputs$apollo_scaling) && !anyNA(apollo_inputs$apollo_scaling)){
     if(!is.null(apollo_HB$gVarNamesFixed)){
       r <- ( names(apollo_beta) %in% names(apollo_inputs$apollo_scaling) ) & ( names(apollo_beta) %in% apollo_HB$gVarNamesFixed )
       r <- names(apollo_beta)[r]
@@ -156,7 +161,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   # ################################## #
   ### Check that apollo_fixed hasn't changed since calling apollo_validateInputs
   tmp <- tryCatch( get("apollo_fixed", envir=globalenv()), error=function(e) 1 )
-  if( length(tmp)>0 && any(tmp %in% c(apollo_HB$gVarNamesFixed, apollo_HB$gVarNamesFixed)) ) stop("apollo_fixed seems to have changed since calling apollo_inputs.")
+  if( length(tmp)>0 && any(tmp %in% c(apollo_HB$gVarNamesFixed, apollo_HB$gVarNamesNormal)) ) stop("apollo_fixed seems to have changed since calling apollo_inputs.")
   
   ### Function masking apollo_probabilities and compatible with RSGHB
   gFix <- apollo_HB$gVarNamesFixed
@@ -180,12 +185,46 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   ### Third checkpoint
   time3 <- Sys.time()
 
+  ### added 1 Feb
+  model$modelTypeList        <- environment(apollo_logLike)$mType
+  model$nObsTot              <- environment(apollo_logLike)$nObsTot
+  
   model$apollo_HB   <- apollo_HB
   ### use pre-scaling values as starting values in output 
   model$apollo_beta <- apollo_test_beta
   model$LLStart <- sum(testLL)
   ### model$LL0         <- sum(log(apollo_probabilities(apollo_beta, apollo_inputs, functionality="zero_LL")))
-  if(workInLogs) model$LL0 <- sum((apollo_probabilities(apollo_beta, apollo_inputs, functionality="zero_LL"))) else model$LL0 <- sum(log(apollo_probabilities(apollo_beta, apollo_inputs, functionality="zero_LL")))
+  #if(workInLogs) model$LL0 <- sum((apollo_probabilities(apollo_beta, apollo_inputs, functionality="zero_LL"))) else model$LL0 <- sum(log(apollo_probabilities(apollo_beta, apollo_inputs, functionality="zero_LL")[["model"]]))
+  ### Calculate Zero LL
+  if(!silent) apollo_print("Calculating log-likelihood at equal shares (LL(0)) for applicable models... ")
+  model$LL0 <- tryCatch(apollo_probabilities(apollo_beta, apollo_inputs, functionality="zero_LL"),
+                        error=function(e) return(NA))
+  if(is.list(model$LL0)){
+    model$LL0=model$LL0[c("model",names(model$LL0)[names(model$LL0)!="model"])]
+    for(s in 1:length(model$LL0)){
+      if(is.list(model$LL0[[s]])) model$LL0[[s]]=model$LL0[[s]][["model"]]
+    }
+    if(!workInLogs) model$LL0=sapply(model$LL0,function(x) sum(log(x)))
+    if(workInLogs) model$LL0=sapply(model$LL0,sum)
+  } else {
+    model$LL0 <- ifelse( workInLogs, sum(model$LL0), sum(log(model$LL0)) )
+  }
+  
+  ### Calculate shares LL (constants only)
+  if(apollo_control$calculateLLC){
+    if(!silent) apollo_print("Calculating log-likelihood at observed shares from estimation data (LL(c)) for applicable models... ")
+    model$LLC <- tryCatch(apollo_probabilities(apollo_beta, apollo_inputs, functionality="shares_LL"),
+                          error=function(e) return(NA))
+    if(is.list(model$LLC)){
+      model$LLC = model$LLC[c("model",names(model$LLC)[names(model$LLC)!="model"])]
+      for(s in 1:length(model$LLC)) if(is.list(model$LLC[[s]])) model$LLC[[s]] = model$LLC[[s]][["model"]]
+      if(workInLogs) model$LLC <- sapply(model$LLC,sum) else model$LLC <- sapply(model$LLC,function(x) sum(log(x)))
+    } else {
+      model$LLC <- ifelse(workInLogs, sum(model$LLC), sum(log(model$LLC)) )
+    }
+  } else {
+    model$LLC=NA
+  }
   
   model$startTime   <- starttime
   model$apollo_control <- apollo_control
@@ -292,7 +331,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
     
   }
   
-  if(length(scaling)>0 && !is.na(scaling)){
+  if(length(scaling)>0 && !anyNA(scaling)){
     for(s in 1:length(scaling)){
       ss=names(scaling)[s]
       if(ss%in%colnames(model$C)) model$C[,ss]=scaling[s]*model$C[,ss]
@@ -318,10 +357,16 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   
   panelData <- apollo_control$panelData
   indivID   <- database[,apollo_control$indivID]
-  nObs <- length(indivID)
-  if(!panelData) indivID <- 1:nObs
+  nObs  <- nrow(apollo_inputs$database)
+  #nObs <- length(indivID)
+  #if(!panelData) indivID <- 1:nObs
   nIndiv <- length(unique(indivID))
-  obsPerIndiv <- as.vector(table(indivID))
+  #obsPerIndiv <- as.vector(table(indivID))
+  indiv <- unique(apollo_inputs$database[,apollo_inputs$apollo_control$indivID])
+  nObsPerIndiv <- rep(0, length(indiv))
+  for(n in 1:length(indiv)) nObsPerIndiv[n] <- sum(apollo_inputs$database[,apollo_inputs$apollo_control$indivID]==indiv[n])
+  names(nObsPerIndiv) <- indiv
+  
   
   if(is.null(model$chain_non_random)){
     fc1 <- NULL
@@ -336,7 +381,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
     M1 <- matrix(0, nrow=nObs, ncol=ncol(M))
     r1 <- 1
     for(i in 1:nIndiv){
-      r2 <- r1 + obsPerIndiv[i] - 1
+      r2 <- r1 + nObsPerIndiv[i] - 1
       M1[r1:r2,] <- matrix(as.vector(M[i,]), nrow=r2-r1+1, ncol=ncol(M), byrow=TRUE)
       r1 <- r2 + 1
     }
@@ -344,7 +389,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   } 
   model$estimate=c(fc1,b1)
   
-  # Report number of times the probs have been censored
+  # Report if the probs have been censored
   if(exists("apollo_HBcensor", envir=globalenv()) && !apollo_inputs$silent){
     apollo_print(paste0('WARNING: RSGHB has censored the probabilities. ',
                         'Please note that in at least some iterations RSGHB has ',
@@ -353,6 +398,93 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
                         'negative probabilities not leading to failures!'))
     rm("apollo_HBcensor", envir=globalenv())
   }
+  
+  ### New calculations for log-likelihood (29 Jan 2022)
+  
+  if(!silent) apollo_print("Calculating LL of each model component... ")
+  if(!silent && !is.null(b1)) apollo_print("...as you have used Bayesian estimation, sampling will be used, which may take a while... ")
+  
+  if(is.null(b1)){
+     Lout <- tryCatch(apollo_probabilities(fc1, apollo_inputs, functionality="output"),
+                      error=function(e){ apollo_print("Could not complete validation using estimated parameters."); return(NA) })
+     for(s in 1:length(Lout)){
+       Lout[[s]]=exp(rowsum(log(Lout[[s]]), group=indivID, reorder=FALSE))
+     }
+    }else{
+      LLdraws=500
+      Lout=NULL
+      for(s in 1:LLdraws){
+        pars=Ndraws[s,]
+        tmp <- tryCatch(apollo_probabilities(c(fc1,pars), apollo_inputs, functionality="output"),
+                      error=function(e){ apollo_print("Could not complete validation using estimated parameters."); return(NA) }) 
+        for(s in 1:length(tmp)){
+          tmp[[s]]=exp(rowsum(log(tmp[[s]]), group=indivID, reorder=FALSE))
+        }
+        if(is.null(Lout)){
+          Lout=tmp
+          for(s in 1:length(Lout)) Lout[[s]]=Lout[[s]]/LLdraws ## for averaging across draws
+        }else{
+          for(s in 1:length(Lout)){
+            Lout[[s]]=Lout[[s]]+tmp[[s]]/LLdraws ## for averaging across draws
+          }
+        }
+      }
+    }
+  
+  if(!anyNA(Lout) && is.list(Lout)){
+    Lout <- Lout[c("model",names(Lout)[names(Lout)!="model"])]
+    LLout <- Lout
+    for(s in 1:length(LLout)){
+      if(is.list(LLout[[s]])) LLout[[s]]=LLout[[s]][["model"]]
+    }
+    if(!workInLogs) LLout <- lapply(LLout, log)
+    ind_L=Lout[["model"]]
+    ind_LL=log(ind_L)
+    model$maximum=sum(ind_LL)
+    if(apollo_control$panelData){
+      model$avgLL <- setNames(ind_LL/nObsPerIndiv, names(nObsPerIndiv))
+      model$avgCP <- setNames(ind_L^(1/nObsPerIndiv), names(nObsPerIndiv))
+    } else {
+      model$avgLL <- setNames(ind_LL, indiv)
+      model$avgCP <- setNames(ind_L , indiv)
+    }
+    LLout <-lapply(LLout,sum)
+    #model$Pout  <- LLout
+    model$LLout <- unlist(LLout)
+  } else{
+    #model$Pout  <- LLout
+    model$LLout <- list(NA)
+    if(!silent) apollo_print("LL could not be calculated for all components.")
+  }
+  
+  ### Calculate Rho2, AIC, and BIC
+  nRandom <- length(model$apollo_HB$gVarNamesNormal)
+  if(nRandom>0){
+    random_means = nRandom-sum(!is.na(model$apollo_HB$fixedA)) ### fixed means
+    random_covar = (nRandom 
+                    +model$apollo_HB$gFULLCV*(nRandom*(nRandom-1)/2) ### off-diagonal covar
+                    -sum(!is.na(model$apollo_HB$fixedD))) ### fixed vars
+  } else {
+    random_means = 0
+    random_covar = 0
+  }
+  nFreeParams <- length(model$apollo_HB$gVarNamesFixed) + random_means + random_covar
+  test <- !is.null(model$modelTypeList) && !anyNA(model$LL0[1])
+  test <- test && all(tolower(model$modelTypeList) %in% c("mnl", "nl", "cnl", "el", "dft", "lc", "rrm"))
+  if(test & !silent) apollo_print("Calculating other model fit measures")
+  if(test) model$rho2_0 <- 1-(model$maximum/model$LL0[1]) else model$rho2_0 <- NA
+  if(test) model$adjRho2_0 <- 1-((model$maximum-nFreeParams)/model$LL0[1]) else model$adjRho2_0 <- NA
+  test <- test && is.numeric(model$LLC) && !anyNA(model$LLC[1])
+  if(test) model$rho2_C <- 1-(model$maximum/model$LLC[1]) else model$rho2_C <- NA
+  if(test) model$adjRho2_C <- 1-((model$maximum-nFreeParams)/model$LLC[1]) else model$adjRho2_C <- NA
+  model$AIC <- -2*model$maximum + 2*nFreeParams
+  model$BIC <- -2*model$maximum + nFreeParams*log(ifelse(!is.null(model$nObsTot), model$nObsTot, model$nObs))
+  model$nFreeParams <- nFreeParams
+  model$nnonrandom <- nFreeParams-random_means-random_covar
+  model$nrandom_means <- random_means
+  model$nrandom_covar <- random_covar
+  
+  ### End new calculations for log-likelihood (29 Jan 2022)
   
   ### Fourth checkpoint
   time4 <- Sys.time()

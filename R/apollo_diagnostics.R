@@ -162,7 +162,7 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
     #if(inputs$avail_set==TRUE & !apollo_inputs$silent & data) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'))
   }
   
-  #### EL ####
+  #### FMNL ####
   if(modelType=="fmnl"){
     # Table describing dependent variable
     choicematrix <- matrix(0, nrow=4, ncol=inputs$nAlt, 

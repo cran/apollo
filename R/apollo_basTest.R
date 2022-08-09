@@ -55,7 +55,8 @@ apollo_basTest = function(model1,model2){
       position=gregexpr(pattern=":",value)[[1]][1]
       modelNames[[i]]=(substr(value,position+2,nchar(value)))
       
-      id <- grepl("Adj.Rho-square (0)", lines, fixed=TRUE)
+      #id <- grepl("Adj.Rho-square (0)", lines, fixed=TRUE)
+      id <- grepl("Adj.Rho-squared vs equal shares", lines, fixed=TRUE)
       if(any(id)){
         value=lines[which(id)] 
       } else {
@@ -99,15 +100,15 @@ apollo_basTest = function(model1,model2){
 
     } else {
       modelNames[[i]]=modeluse$apollo_control$modelName
-      test <- !is.null(modeluse$modelTypeList) && all(tolower(modeluse$modelTypeList) %in% c("mnl", "nl", "cnl", "el", "dft", "lc"))
-      if(!test) stop("Adjusted rho2 calculation not possible for model ",paste0(modeluse))
+      test <- !is.null(modeluse$modelTypeList) && all(tolower(modeluse$modelTypeList) %in% c("mnl", "nl", "cnl", "el", "dft", "lc", "rrm"))
+      if(!test) stop("Adjusted rho2 calculation not possible for model ",paste0(modeluse$apollo_control$modelName))
       if(is.null(modeluse$maximum)){
-        stop("No LL found in ",paste0(modeluse))
+        stop("No LL found in ",paste0(modeluse$apollo_control$modelName))
       } else {
         LL[[i]]=modeluse$maximum  
       }
       if(is.null(modeluse$LL0) || anyNA(modeluse$LL0[1])){
-        stop("No LL(0) found in ",paste0(modeluse))
+        stop("No LL(0) found in ",paste0(modeluse$apollo_control$modelName))
       } else {
         LL0[[i]]=modeluse$LL0[1]
       }      

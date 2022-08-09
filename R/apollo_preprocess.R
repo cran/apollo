@@ -107,8 +107,11 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     }
     # rows
     test <- is.vector(inputs$rows)
-    test <- test && ( (is.logical(inputs$rows) && length(inputs$rows)==inputs$nObs) || (length(inputs$rows)==1 && inputs$rows=="all") )
-    if(!test) stop("The \"rows\" argument for model component \"",inputs$componentName,"\" needs to be \"all\" or a vector of logical statements with one entry per observation in the \"database\"")
+    #test <- test && ( (is.logical(inputs$rows) && length(inputs$rows)==inputs$nObs) || (length(inputs$rows)==1 && inputs$rows=="all") )
+    #if(!test) stop("The \"rows\" argument for model component \"",inputs$componentName,"\" needs to be \"all\" or a vector of logical statements with one entry per observation in the \"database\"")
+    test <- test && ( (is.logical(inputs$rows) || all(inputs$rows%in%c(0,1))) && length(inputs$rows)==inputs$nObs) || ( (all(inputs$rows%in%c(0,1)) && length(inputs$rows)==inputs$nObs) || (length(inputs$rows)==1 && inputs$rows=="all") )
+    if(!test) stop("The \"rows\" argument for model component \"",inputs$componentName,"\" needs to be \"all\" or a vector of logical statements or 0/1 entries with one entry per observation in the \"database\"")
+    if( all(inputs$rows %in% c(0,1)) ) (inputs$rows <- inputs$rows>0)
     
     if(modelType=="cnl"){
       # cnlNests
@@ -508,6 +511,15 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
       inputs$coding_set <- TRUE
     }
     
+    # Expand rows if necessary, and update nObs
+    if(length(inputs$rows)==1 && inputs$rows=="all") inputs$rows <- rep(TRUE, inputs$nObs)
+    inputs$nObs <- sum(inputs$rows)
+    # Filter rows, except for V and thresholds
+    if(any(!inputs$rows)){
+      inputs$outcomeOrdered <- apollo_keepRows(inputs$outcomeOrdered, inputs$rows)
+      #inputs$tau <- lapply(inputs$tau, apollo_keepRows, inputs$rows)
+    }
+    
     # validate coding
     values_present = unique(inputs$outcomeOrdered)
     if(functionality=="validate" && !all(values_present %in% inputs$coding)){
@@ -518,15 +530,6 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
       if(!inputs$coding_set) stop("The levels in 'outcomeOrdered' do not match up with the default coding for model component \"",inputs$componentName,"\" !")
       if(inputs$coding_set) stop("Some levels in 'coding' do not exist in 'outcomeOrdered' for model component \"",inputs$componentName,"\"!")
     }; rm(values_present)
-    
-    # Expand rows if necessary, and update nObs
-    if(length(inputs$rows)==1 && inputs$rows=="all") inputs$rows <- rep(TRUE, inputs$nObs)
-    inputs$nObs <- sum(inputs$rows)
-    # Filter rows, except for V and thresholds
-    if(any(!inputs$rows)){
-      inputs$outcomeOrdered <- apollo_keepRows(inputs$outcomeOrdered, inputs$rows)
-      #inputs$tau <- lapply(inputs$tau, apollo_keepRows, inputs$rows)
-    }
     
     # Apply coding
     map <- stats::setNames(1:length(inputs$coding), inputs$coding)

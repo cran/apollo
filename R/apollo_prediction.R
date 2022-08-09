@@ -118,6 +118,11 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   }
   ### end change
   
+  ### Check if there are weights (if there are, w is a numeric vector of weights)
+  w <- is.character(apollo_inputs$apollo_control$weights)
+  w <- w && (apollo_inputs$apollo_control$weights %in% names(apollo_inputs$database))
+  if(w) w <- apollo_inputs$database[,apollo_inputs$apollo_control$weights]
+  
   #### Prediction at the estimated values only (no runs) ####
   
   # If there are no runs, print summary and return
@@ -142,24 +147,54 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
           K  <- as.integer(ncol(M)/6)
           Kn <- colnames(M)[1:K]
           Kn <- substr(Kn, 1, nchar(Kn)-10)
-          M <- matrix(colSums(M, na.rm=TRUE), nrow=K, ncol=6, dimnames=list(Kn, c('cont_mean', 'cont_sd', 'disc_mean', 
-                                                                      'disc_sd', 'expe_mean', 'expe_sd')))
+          tmp <- c('cont_mean', 'cont_sd', 'disc_mean', 'disc_sd', 'expe_mean', 'expe_sd')
+          W <- cbind(colSums(M[, paste0(Kn, "_cont_mean")]), 
+                     sqrt(colSums(M[, paste0(Kn, "_cont_sd")]^2)), 
+                     colSums(M[, paste0(Kn, "_disc_mean")]), 
+                     sqrt(colSums(M[, paste0(Kn, "_disc_sd")]^2)), 
+                     colSums(M[, paste0(Kn, "_expe_mean")]), 
+                     sqrt(colSums(M[, paste0(Kn, "_expe_sd")]^2)))
+          colnames(W) <- tmp
+          if(is.numeric(w)){
+            UW <- M/w
+            UW <- cbind(colSums(UW[, paste0(Kn, "_cont_mean")]), 
+                        sqrt(colSums(UW[, paste0(Kn, "_cont_sd")]^2)), 
+                        colSums(UW[, paste0(Kn, "_disc_mean")]), 
+                        sqrt(colSums(UW[, paste0(Kn, "_disc_sd")]^2)), 
+                        colSums(UW[, paste0(Kn, "_expe_mean")]), 
+                        sqrt(colSums(UW[, paste0(Kn, "_expe_sd")]^2)))
+            colnames(UW) <- paste0(tmp, "_unweighted")
+            colnames(W)  <- paste0(tmp, "_weighted")
+            W <- cbind(UW, W)
+          }
+          rownames(W) <- Kn
+          M <- W
+          rm(W)
         }
         if(modelComponentType=='normd'){ # Normal density
           if(!singleElement) apollo_print(paste0("Summary of predicted demand at model estimates for model component: ", names(predictions)[m]))
           if(singleElement) apollo_print("Summary of predicted demand at model estimates")
-          M <- unlist(M)
-          M <- matrix(c(quantile(M, probs=c(0, 0.25, 0.5), na.rm=TRUE), mean(M, na.rm=TRUE), 
-                        quantile(M, probs=c(0.75, 1), na.rm=TRUE), sum(M, na.rm=TRUE)),
-                      nrow=1, ncol=7, 
-                      dimnames=list(names(predictions)[m], c('min', '1stQ', 'median', 'mean', '3rdQ', 'max', 'aggregate')))
+          M    <- unlist(M)
+          tmp  <- c('min', '1stQ', 'median', 'mean', '3rdQ', 'max', 'aggregate')
+          tmp2 <- quantile(M, probs=c(0, .25, .5, .5, .75, 1, 1), na.rm=TRUE)
+          tmp2[c(4,7)] <- c(mean(M, na.rm=TRUE), sum(M, na.rm=TRUE))
+          if(is.numeric(w)){
+            M <- M/w
+            tmp1 <- quantile(M, probs=c(0, .25, .5, .5, .75, 1, 1), na.rm=TRUE)
+            tmp1[c(4,7)] <- c(mean(M, na.rm=TRUE), sum(M, na.rm=TRUE))
+            M <- matrix(c(tmp1, tmp2), nrow=2, ncol=length(tmp), byrow=TRUE, 
+                        dimnames=list(c("Un-weighted", "Weighted"), tmp))
+          }
+          if(!is.numeric(w)) M <- matrix(tmp2, nrow=1, ncol=length(tmp), dimnames=list(names(predictions)[m], tmp))
         }
         if(!(modelComponentType %in% c('mdcev', 'mdcnev', 'normd'))){ # Discrete choice
           if(!singleElement) apollo_print(paste0("Prediction at model estimates for model component: ", names(predictions)[m]))
           if(singleElement) apollo_print("Prediction at model estimates")
           if(tolower(colnames(M)[ncol(M)])=='chosen') M <- M[,-ncol(M)]
-          M <- rbind(colSums(M, na.rm=TRUE), colMeans(M, na.rm=TRUE))
-          rownames(M) = c("Aggregate", "Average")
+          if(is.numeric(w)) M <- rbind(`Un-weighted aggregate`=  colSums(M/w, na.rm=TRUE), 
+                                       `Un-weighted average`  = colMeans(M/w, na.rm=TRUE), 
+                                       `Weighted aggregate`   =  colSums(M  , na.rm=TRUE))
+          if(!is.numeric(w)) M <- rbind(Aggregate=colSums(M, na.rm=TRUE), Average=colMeans(M, na.rm=TRUE))
         }
         ##print(M, digits=4)
         print(round(M,2))

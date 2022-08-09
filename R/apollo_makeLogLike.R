@@ -26,105 +26,8 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   if(!is.null(apollo_inputs$silent)) silent <- apollo_inputs$silent else silent <- FALSE
   if(!is.null(apollo_inputs$apollo_control$debug)) debug <- apollo_inputs$apollo_control$debug else debug <- FALSE
   
-  # # # #  # # # # 
-  #### Checks ####
-  # # # #  # # # # 
-  
-  ### Check that names of params in apollo_beta, apollo_randCoeff & apollo_lcPars are not re-defined
-  tmp <- as.character(body(apollo_probabilities))
-  tmp <- gsub("(", "", tmp, fixed=TRUE)
-  tmp <- gsub(")", "", tmp, fixed=TRUE)
-  tmp <- gsub(" ", "", tmp, fixed=TRUE)
-  # check for apollo_beta
-  for(i in names(apollo_beta)){
-    test <- grep(paste0("^",i,"="), tmp)
-    test <- c(test, grep(paste0("^",i,"<-"), tmp))
-    if(length(test)>0) stop("Parameter ", i, " from apollo_beta was re-defined ",
-                            "inside apollo_probabilities. This is not allowed.")
-  }; rm(i, test)
-  #check for apollo_randCoeff
-  if(apollo_inputs$apollo_control$mixing && is.function(apollo_inputs$apollo_randCoeff)){
-    env <- c(apollo_inputs$database, apollo_inputs$draws, as.list(apollo_beta))
-    env <- list2env(env, hash=TRUE, parent=parent.frame())
-    rnd <- apollo_inputs$apollo_randCoeff; environment(rnd) <- env
-    rnd <- rnd(apollo_beta, apollo_inputs)
-    for(i in names(rnd)){
-      test <- grep(paste0('^', i, '=|^', i, '<-'), tmp)
-      if(length(test)>0) stop("Parameter ", i, " from apollo_randCoeff was re-defined ",
-                              "inside apollo_probabilities. This is not allowed.")
-    }; rm(env, i, test)
-  }
-  #check for apollo_lcPars
-  if(is.function(apollo_inputs$apollo_lcPars)){
-    env <- c(apollo_inputs$database, as.list(apollo_beta))
-    if(exists('rnd', inherits=FALSE)) env <- c(env, apollo_inputs$draws, rnd)
-    env <- list2env(env, hash=TRUE, parent=parent.frame())
-    lcp <- apollo_inputs$apollo_lcPars; environment(lcp) <- env
-    lcp <- names(lcp(apollo_beta, apollo_inputs))
-    for(i in lcp){
-      test <- grep(paste0('^', i, '=|^', i, '<-'), tmp)
-      if(length(test)>0) stop("Parameter ", i, " from apollo_lcPars was re-defined ",
-                              "inside apollo_probabilities. This is not allowed.")
-    }; rm(env, lcp, i, test)
-  }; if(exists('rnd')) rm(rnd)
-  rm(tmp)
-  
-  ### Check there are no references to database inside apollo_probabilities
-  if(is.function(apollo_probabilities)){
-    tmp <- as.character(body(apollo_probabilities))
-    tmp <- gsub("apollo_inputs$database", " ", tmp, fixed=TRUE)
-    tmp <- grep("database", tmp, fixed=TRUE)
-    if(length(tmp)>0) stop("The database object is 'attached' and elements should thus be called",
-                           " directly in apollo_probabilities without the 'database$' prefix.")
-    rm(tmp)
-  }
-  
-  ### Check apollo_weighting is called if apollo_control$weights are defined (unless apollo_inputs$EM is TRUE)
-  w <- apollo_inputs$apollo_control[['weights']]
-  test <- is.null(apollo_inputs$EM) || (is.logical(apollo_inputs$EM) && !apollo_inputs$EM)
-  test <- test && !is.null(w) && !is.null(apollo_inputs$database) && (w %in% names(apollo_inputs$database))
-  if(test){
-    tmp <- as.character(body(apollo_probabilities))
-    tmp <- grep('apollo_weighting', tmp, fixed=TRUE)
-    if(length(tmp)==0) stop('When using weights, apollo_weighting should be called inside apollo_probabilities.')
-    rm(tmp)
-  }; rm(w)
-  
-  
-  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-  #### Modify apollo_probabilities, apollo_randCoeff & apollo_lcPars ####
-  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-  
-  if(debug) apollo_print('Inserting function() in user-defined functions')
-  
-  ### Insert "function ()" in apollo_probabilities, apollo_randCoeff and apollo_lcPars (if needed)
-  if(apollo_inputs$apollo_control$analyticGrad){
-    tmp1 <- apollo_insertFunc(apollo_probabilities, like=TRUE)
-    test <- !is.null(apollo_inputs$apollo_randCoeff) && is.function(apollo_inputs$apollo_randCoeff)
-    if(test) tmp2 <- apollo_insertFunc(apollo_inputs$apollo_randCoeff, randCoeff=TRUE)
-    test <- !is.null(apollo_inputs$apollo_lcPars) && is.function(apollo_inputs$apollo_lcPars)
-    if(test) tmp3 <- apollo_insertFunc(apollo_inputs$apollo_lcPars, lcPars=TRUE)
-    # Test that modified LL actually works
-    ll <- tryCatch(tmp1(apollo_beta, apollo_inputs), error=function(e) NULL)
-    if(is.null(ll)){
-      if(debug) apollo_print('function() could not be inserted correctly in user-defined functions. No analytic gradients possible')
-      apollo_inputs$apollo_control$analyticGrad <- FALSE
-    } else {
-      # Compare result of modified LL against original LL
-      tmp4 <- tryCatch(apollo_probabilities(apollo_beta, apollo_inputs), error=function(e) NULL)
-      test <- !is.null(tmp4) && is.numeric(tmp4) && is.numeric(ll) && length(tmp4)==length(ll)
-      test <- test && abs(sum(tmp4, na.rm=TRUE) - sum(ll, na.rm=TRUE))/sum(tmp4, na.rm=TRUE) < 0.01
-      if(test){
-        apollo_probabilities <- tmp1
-        if(exists('tmp2', inherits=FALSE)) apollo_inputs$apollo_randCoeff <- tmp2
-        if(exists('tmp3', inherits=FALSE)) apollo_inputs$apollo_lcPars    <- tmp3
-      }
-    }
-    rm(ll, test); for(i in paste0('tmp',1:4)) if(exists(i, inherits=FALSE)) rm(i)
-  }
-  
-  ### Copy the modified apollo_probabilities inside apollo_inputs
-  apollo_inputs$apollo_probabilities <- apollo_probabilities
+  ### Copy (the modified) apollo_probabilities inside apollo_inputs
+  apollo_inputs$apollo_probabilities <- apollo_probabilities # Not sure if this is necessary
   
   # # # # # # # # # # # # #
   #### Create workers  ####
@@ -132,8 +35,10 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   
   if(apollo_inputs$apollo_control$nCores==1) cl <- NA else {
     if(debug) apollo_print('Creating cluster...')
-    # Creates cluster and also deletes database and draws from apollo_inputs in here and in .GlobalEnv
-    cl <- apollo_makeCluster(apollo_probabilities, apollo_inputs, silent=silent, cleanMemory=cleanMemory)
+    # Creates cluster and also deletes database and draws from apollo_inputs in 
+    # here and in .GlobalEnv
+    cl <- apollo_makeCluster(apollo_probabilities, apollo_inputs, silent=silent, 
+                             cleanMemory=cleanMemory)
     apollo_inputs$apollo_control$nCores <- length(cl)
   }
   
@@ -163,13 +68,14 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   if(singleCore){
     ### SINGLE CORE
     
-    apollo_logLike <- function(bVar, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE){
+    apollo_logLike <- function(bVar, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE, logP=TRUE){
+      if(sumLL && !logP) stop("sumLL=TRUE cannot be used alongside logP=FALSE")
       # Return iteration count, if requested
       if(getNIter) return(nIter)
       # Calculate LL
       b  <- c(bVar, bFixedVal)
       ll <- apollo_probabilities(b, apollo_inputs, functionality="estimate")
-      if(!workInLogs) ll <- log(ll) # condition used to be workInLogs & panelData
+      if(!workInLogs && logP) ll <- log(ll) # condition used to be workInLogs & panelData
       sumll <- sum(ll)
       # Keep count of iterations and write them to file, if requested
       if(countIter || writeIter){
@@ -205,14 +111,15 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     environment(apollo_parProb) <- new.env(parent=environment())
     
     # Loglike
-    apollo_logLike <- function(bVar, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE){
+    apollo_logLike <- function(bVar, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE, logP=TRUE){
+      if(sumLL && !logP) stop("sumLL=TRUE cannot be used alongside logP=FALSE")
       # Return iteration count, if requested
       if(getNIter) return(nIter)
       # Calculate LL
       b  <- c(bVar, bFixedVal)
       ll <- parallel::clusterCall(cl=cl, fun=apollo_parProb, b=b)
       ll <- unlist(ll)
-      if(!workInLogs) ll <- log(ll) # condition used to be workInLogs & panelData
+      if(!workInLogs && logP) ll <- log(ll) # condition used to be workInLogs & panelData
       sumll <- sum(ll)
       # Keep count of iterations and write them to file, if requested
       if(countIter || writeIter){

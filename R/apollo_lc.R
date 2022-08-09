@@ -51,21 +51,48 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
                                  ' The name was set to "', lc_settings[["componentName"]], '" by default.'))
   }
   
+  # ############################### #
+  #### Load or do pre-processing ####
+  # ############################### #
+  if(!is.null(apollo_inputs[[paste0(lc_settings$componentName, "_settings")]]) && (functionality!="preprocess")){
+    # Load lc_settings from apollo_inputs
+    tmp <- apollo_inputs[[paste0(lc_settings$componentName, "_settings")]]
+    # If there is no V inside the loaded mnl_settings, restore the one received as argument
+    if(is.null(tmp$inClassProb)) tmp$inClassProb <- lc_settings$inClassProb
+    if(is.null(tmp$classProb  )) tmp$classProb   <- lc_settings$classProb
+    lc_settings <- tmp
+    rm(tmp)
+  } else {
+    if(functionality=="preprocess"){
+      # Do preprocessing
+      lc_settings <- list(componentName = lc_settings$componentName,
+                          LCNObs        = max(sapply(lc_settings$inClassProb, function(m_settings) sum(m_settings$rows))), 
+                          LCCompNames   = names(lc_settings$inClassProb),
+                          modelType     = 'LC',
+                          gradient      = TRUE,
+                          classAlloc_settings = lc_settings$classProb)
+    }
+    # Diagnostics function
+    lc_settings$lc_diagnostics <- function(inputs, apollo_inputs, data=TRUE, param=TRUE){
+      class_summary = matrix(0, nrow=length(inputs$classProb), ncol=1, dimnames=list(names(inputs$inClassProb), "Mean prob."))
+      if(is.null(rownames(class_summary))) rownames(class_summary) <- paste0("Class_", 1:length(inputs$classProb))
+      for(cc in 1:length(inputs$classProb)) class_summary[cc,1] <- mean(inputs$classProb[[cc]])
+      if(!apollo_inputs$silent & param){
+        apollo_print('\n')
+        apollo_print(paste0('Summary of class allocation for ', toupper(inputs$modeltype), ' model component ', 
+                            ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
+        apollo_print(class_summary)
+      }
+      return(invisible(TRUE))
+    }
+    if(functionality=="preprocess") return(lc_settings)
+  }
+  
   # ############################################### #
   #### functionalities with untransformed return ####
   # ############################################### #
   
   if(functionality=="components") return(NULL)
-  
-  if(functionality=="preprocess"){
-    lc_settings <- list(componentName = lc_settings$componentName,
-                        LCNObs        = max(sapply(lc_settings$inClassProb, function(m_settings) sum(m_settings$rows))), 
-                        LCCompNames   = names(lc_settings$inClassProb),
-                        modelType     = 'LC',
-                        gradient      = TRUE,
-                        classAlloc_settings = lc_settings$classProb)
-    return(lc_settings)
-  }
   
   ### Special case for EM estimation
   test <- !is.null(apollo_inputs$EM) && apollo_inputs$EM 
@@ -146,12 +173,22 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
     }
     
     # Print diagnostics
-    if(!apollo_inputs$apollo_control$noDiagnostics) apollo_diagnostics(lc_settings, modelType="LC", apollo_inputs)
+    if(!apollo_inputs$apollo_control$noDiagnostics) lc_settings$lc_diagnostics(lc_settings, apollo_inputs)
     
     # Check if classProb needs to be averaged to match the dimensionality of inClassProb, warn if so
     test <- nRowsInClassProb!=nRowsClassProb && nRowsClassProb!=1 && nRowsInClassProb < nRowsClassProb && !apollo_inputs$silent
-    if(test) apollo_print(paste0('Class probability for model component "', lc_settings$componentName, 
-                                 '" averaged across observations of each individual.'))
+    #if(test) apollo_print(paste0('Class probabilities for model component "', lc_settings$componentName, 
+    #                             '" averaged across observations of each individual.'))
+    if(test) apollo_print(paste0('The class allocation probabilities for model component "', lc_settings$componentName, 
+                                 '" are calculated at the observation level in \'apollo_lcPars\', but are used in',
+                                 ' \'apollo_probabilities\' to multiply within class probabilities that are at the',
+                                 ' individual level. Apollo will average the class allocation probabilities across',
+                                 ' observations for the same individual level before using them to multiply the',
+                                 ' within-class probabilities. If your class allocation probabilities are',
+                                 ' constant across choice situations for the same individual, then this is of no concern.',
+                                 ' If your class allocation probabilities however vary across choice tasks, then you should',
+                                 ' change your model specification in \'apollo_probabilities\' to only call \'apollo_panelProd\'',
+                                 ' after calling \'apollo_lc\'.'))
     
     testL = apollo_lc(lc_settings, apollo_inputs, functionality="estimate")
     return(testL)
@@ -171,7 +208,7 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
         # If classProb is calculated at the obs level while the inClassProb is at the indiv level
         classProb <- lapply(classProb, rowsum, group=indivID)
         classProb <- lapply(classProb, '/', nObsPerIndiv)
-        #if(!apollo_inputs$silent) apollo_print(paste0('Class probability for model component "', lc_settings$componentName, 
+        #if(!apollo_inputs$silent) apollo_print(paste0('Class probabilities for model component "', lc_settings$componentName, 
         #                                              '" averaged across observations of each individual.'))
       } else {
         # If inClassProb is calculated at the obs level while the classProb is at the indiv level
@@ -283,7 +320,7 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
           classProb[[i]]$grad <- lapply(classProb[[i]]$grad, '/', nObsPerIndiv)
           classProb[[i]]$like <- rowsum(classProb[[i]]$like, group=indivID)/nObsPerIndiv
         }
-        #if(!apollo_inputs$silent) apollo_print(paste0('Class probability for model component "', lc_settings$componentName, 
+        #if(!apollo_inputs$silent) apollo_print(paste0('Class probabilities for model component "', lc_settings$componentName, 
         #                                              '" averaged across observations of each individual.'))
       } else {
         # If inClassProb is calculated at the obs level while the classProb is at the indiv level
@@ -315,8 +352,8 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   if(functionality=='report'){
     P <- list()
     apollo_inputs$silent <- FALSE
-    P$data  <- capture.output(apollo_diagnostics(lc_settings, modelType="LC", apollo_inputs, param=FALSE))
-    P$param <- capture.output(apollo_diagnostics(lc_settings, modelType="LC", apollo_inputs, data =FALSE))
+    P$data  <- capture.output(lc_settings$lc_diagnostics(lc_settings, apollo_inputs, param=FALSE))
+    P$param <- capture.output(lc_settings$lc_diagnostics(lc_settings, apollo_inputs, data =FALSE))
     return(P)
   }
   

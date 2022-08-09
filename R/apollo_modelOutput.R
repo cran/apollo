@@ -39,6 +39,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   if(is.null(modelOutput_settings[["printChange"]])) modelOutput_settings[["printChange"]] = FALSE
   if(is.null(modelOutput_settings[["printFunctions"]])) modelOutput_settings[["printFunctions"]] = FALSE
   if(is.null(modelOutput_settings[["printFixed"]])) modelOutput_settings[["printFixed"]] = TRUE
+  if(is.null(modelOutput_settings[["printModifiedFunctions"]])) modelOutput_settings[["printModifiedFunctions"]] = FALSE
   
   printClassical   = modelOutput_settings[["printClassical"]]
   printPVal        = modelOutput_settings[["printPVal"]]
@@ -50,6 +51,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   printChange      = modelOutput_settings[["printChange"]]
   printFunctions   = modelOutput_settings[["printFunctions"]]
   printFixed       = modelOutput_settings[["printFixed"]]
+  printModifiedFunctions = modelOutput_settings[["printModifiedFunctions"]]
   
   test <- !is.null(model$manualScaling) && length(model$manualScaling)==1 && is.logical(model$manualScaling)
   if(test) scaling_used <- model$manualScaling else {
@@ -62,9 +64,10 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   # ####################### #
   
   apollo_control <- model$apollo_control
-  nParams     <- length(model$apollo_beta)
-  nFreeParams <- nParams
-  if(!is.null(model$apollo_fixed)) nFreeParams <- nFreeParams - length(model$apollo_fixed)
+  #nParams     <- length(model$apollo_beta)
+  #nFreeParams <- nParams
+  #if(!is.null(model$apollo_fixed)) nFreeParams <- nFreeParams - length(model$apollo_fixed)
+  
   
   
   # Printing model information
@@ -79,29 +82,29 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       " on R ", paste0(version$major, ".", version$minor), 
       " for ", Sys.info()['sysname'], ".\n", sep="")
   cat("www.ApolloChoiceModelling.com\n\n")
-  cat("Model name                       : ", model$apollo_control$modelName,"\n", sep="")
-  cat("Model description                : ", model$apollo_control$modelDescr,"\n", sep="")
-  cat("Model run at                     : ", paste(model$startTime),"\n", sep="")
-  cat("Estimation method                : ", model$estimationRoutine, "\n", sep="")
-  if(!apollo_control$HB) cat("Model diagnosis                  : ",model$message,"\n", sep="")
-  cat("Number of individuals            : ", model$nIndivs,"\n", sep="")
-  cat("Number of rows in database       : ", model$nObs,"\n", sep="")
+  cat("Model name                                  : ", model$apollo_control$modelName,"\n", sep="")
+  cat("Model description                           : ", model$apollo_control$modelDescr,"\n", sep="")
+  cat("Model run at                                : ", paste(model$startTime),"\n", sep="")
+  cat("Estimation method                           : ", model$estimationRoutine, "\n", sep="")
+  if(!apollo_control$HB) cat("Model diagnosis                             : ",model$message,"\n", sep="")
+  cat("Number of individuals                       : ", model$nIndivs,"\n", sep="")
+  cat("Number of rows in database                  : ", model$nObs,"\n", sep="")
   if(!is.null(model$nObsTot)){
-    cat('Number of modelled outcomes      : ', sum(model$nObsTot), '\n', sep='')
+    cat('Number of modelled outcomes                 : ', sum(model$nObsTot), '\n', sep='')
     if(length(model$nObsTot)>1) for(i in names(model$nObsTot)){
       if(nchar(i)>26) txt <- substr(i, 1, 26) else txt <- i # max 26 characters for the component name
       if(nchar(txt)<26) txt <- paste0(c(rep(' ', 26 - nchar(txt)), txt), collapse='')
       cat('      ', txt, ' : ', model$nObsTot[i], '\n', sep='')
     }; cat('\n')
   }
-  cat("Number of cores used             : ",model$apollo_control$nCores,"\n")
+  cat("Number of cores used                        : ",model$apollo_control$nCores,"\n")
   if(model$apollo_control$mixing){
     d <- model$apollo_draws
     if(d$interNDraws>0 && length(c(d$interUnifDraws, d$interNormDraws))>0){
-      cat("Number of inter-individual draws : ", d$interNDraws, ' (', d$interDrawsType, ')', "\n", sep='')
+      cat("Number of inter-individual draws            : ", d$interNDraws, ' (', d$interDrawsType, ')', "\n", sep='')
     }
     if(d$intraNDraws>0 && length(c(d$intraUnifDraws, d$intraNormDraws))>0){
-      cat("Number of intra-individual draws     : ", d$intraNDraws, ' (', d$intraDrawsType, ')', "\n", sep='')
+      cat("Number of intra-individual draws                : ", d$intraNDraws, ' (', d$intraDrawsType, ')', "\n", sep='')
     }
     if(!model$apollo_control$panelData & model$apollo_control$mixing & d$interNDraws>0){
       cat("WARNING: Inter-individual draws were used\n")
@@ -118,12 +121,56 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   if(apollo_control$HB){
     apollo_HB <- model$apollo_HB
     cat("Estimation carried out using RSGHB\n")
-    cat("Burn-in iterations               : ",model$gNCREP,"\n", sep="")
-    cat("Post burn-in iterations          : ",model$gNEREP,"\n", sep="")
-    cat("LL(start)                        : ",model$LLStart,"\n", sep="")
-    cat("LL(0)                            : ",model$LL0[1],"\n", sep="")
-    cat("Average post. LL post burn-in    : ",mean(colSums(log(model$cmcLLout))),"\n",sep="")
-    cat("Average post. RLH post burn-in   : ",round(mean(colMeans((model$cmcRLHout))),4),"\n",sep="")
+    cat("Burn-in iterations                          : ",model$gNCREP,"\n", sep="")
+    cat("Post burn-in iterations                     : ",model$gNEREP,"\n", sep="")
+    
+    #cat("LL(start)                        : ",model$LLStart,"\n", sep="")
+    #cat("LL(0)                            : ",model$LL0[1],"\n", sep="")
+    #cat("Average post. LL post burn-in    : ",mean(colSums(log(model$cmcLLout))),"\n",sep="")
+    #cat("Average post. RLH post burn-in   : ",round(mean(colMeans((model$cmcRLHout))),4),"\n",sep="")
+    cat("\n")
+    apollo_print("Classical model fit statistics were calculated at parameter values obtained using averaging across the post burn-in iterations.")
+    cat("LL(start)                                   : ",round(model$LLStart,2),"\n", sep="")
+    if(length(model$LLout)==1) cat("LL at equal shares, LL(0)                   : ",ifelse(!anyNA(model$LL0[1]),round(model$LL0[1],2),"Not applicable"),"\n", sep="")
+    if(length(model$LLout)>1 ) cat("LL (whole model) at equal shares, LL(0)     : ",ifelse(!anyNA(model$LL0[1]),round(model$LL0[1],2),"Not applicable"),"\n", sep="")
+    if(length(model$LLout)==1) cat("LL at observed shares, LL(C)                : ",ifelse(!anyNA(model$LLC[1]),round(model$LLC[1],2),"Not applicable"),"\n", sep="")
+    if(length(model$LLout)>1 ) cat("LL (whole model) at observed shares, LL(C)  : ",ifelse(!anyNA(model$LLC[1]),round(model$LLC[1],2),"Not applicable"),"\n", sep="")
+    if(length(model$LLout)==1) cat("LL(final)                                   : ",round(model$maximum,2),"\n",sep="")
+    if(length(model$LLout)>1 ) cat("LL(final, whole model)                      : ",round(model$maximum,2),"\n",sep="")
+    cat("Rho-squared vs equal shares                  : ", ifelse(anyNA(model$rho2_0   ), "Not applicable", round(model$rho2_0   , 4)),"\n")
+    cat("Adj.Rho-squared vs equal shares              : ", ifelse(anyNA(model$adjRho2_0), "Not applicable", round(model$adjRho2_0, 4)),"\n")
+    cat("Rho-squared vs observed shares               : ", ifelse(anyNA(model$rho2_C   ), "Not applicable", round(model$rho2_C   , 4)),"\n")
+    cat("Adj.Rho-squared vs observed shares           : ", ifelse(anyNA(model$adjRho2_C), "Not applicable", round(model$adjRho2_C, 4)),"\n")
+    cat("AIC                                         : ",round(model$AIC, 2),"\n")
+    cat("BIC                                         : ",round(model$BIC, 2),"\n")
+    cat("\n")
+    cat("Equiv. estimated parameters                 :  ", model$nFreeParams,"\n", sep="")
+    if(model$nnonrandom>0){
+    cat(" (non-random parameters                     :  ", model$nnonrandom,")\n", sep="")
+    }
+    if(model$nrandom_means>0){
+    cat(" (means of random parameters                :  ", model$nrandom_means,")\n", sep="")
+    }
+    if(model$nrandom_covar>0){
+    cat(" (covariance matrix terms                   :  ", model$nrandom_covar,")\n", sep="")
+    }
+
+    if(length(model$LLout)>1){
+      cat("\n")
+      for(j in 2:length(model$LLout)){
+        nam <- names(model$LLout)[j]
+        sp1 <- ifelse(6+nchar(nam)<33, paste0(rep(" ",33-nchar(nam)-6), collapse=""), "")
+        sp2 <- ifelse(9+nchar(nam)<33, paste0(rep(" ",33-nchar(nam)-10), collapse=""), "")
+        cat("LL(0,", nam, ")", sp1, ": ", ifelse(is.finite(model$LL0[j]), round(model$LL0[j],2), "Not applicable"),"\n", sep="")
+        #cat("LL(final,", nam, ")", sp2, ": ", model$LLout[j], sep="")
+        txt <- paste0("LL(final,", nam, ")", sp2, ": ", round(model$LLout[j],2))
+        if(!is.finite(model$LLout[j])) cat(txt, " Likelihood equal to zero for at least\n", 
+                                           paste0(rep(" ", nchar(txt)), collapse=""), 
+                                           " one individual in this component.", sep="") else cat(txt)
+        cat('\n')
+      }; rm(nam, sp1, sp2)
+    }
+    cat("\n")
     f <- function(t){
       tmpH <- floor(t/60^2)
       tmpM <- floor((t-tmpH*60^2)/60)
@@ -132,14 +179,14 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
             formatC(tmpM,width=2,format='d',flag=0),
             tmpS,sep=':')
     }
-    cat("Time taken (hh:mm:ss)            : ",f(model$timeTaken),"\n")
-    cat("     pre-estimation              : ",f(model$timePre),"\n")
-    cat("     estimation                  : ",f(model$timeEst),"\n")
-    cat("     post-estimation             : ",f(model$timePost),"\n")
+    cat("Time taken (hh:mm:ss)                       : ",f(model$timeTaken),"\n")
+    cat("     pre-estimation                         : ",f(model$timePre),"\n")
+    cat("     estimation                             : ",f(model$timeEst),"\n")
+    cat("     post-estimation                        : ",f(model$timePost),"\n")
     cat("\n\n")
     
     cat("Chain convergence report (Geweke test)\n\n")
-    if(!is.null(model$F)){
+    if(!is.null(model[["F"]])){
       cat("Fixed (non random) parameters (t-test value for Geweke test)\n")
       #tmp <- coda::geweke.diag(model$F[,2:(ncol(model$F))], frac1=0.1, frac2=0.5)[[1]]
       #names(tmp) <- model$params.fixed
@@ -147,14 +194,14 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       print( round(model$F_convergence, 4) )
       cat("\n")
     }
-    if(!is.null(model$A)){
+    if(!is.null(model[["A"]])){
       cat("Random parameters (t-test value for Geweke test)\n")
       #tmp <- coda::geweke.diag(model$A[,2:(ncol(model$A))], frac1=0.1, frac2=0.5)[[1]]
       #print( round(tmp, 4) )
       print( round(model$A_convergence, 4) )
       cat("\n")
     }
-    if(!is.null(model$D)){
+    if(!is.null(model[["D"]])){
       cat("Covariances of random parameters (t-test value for Geweke test)\n")
       # This assumes the matrix is square
       #tmp <- c()
@@ -221,6 +268,30 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       print(round(model$posterior_mean,4))
       cat("\n")
       
+      ### 3 Feb
+      
+      if(printFunctions){
+        cat("\nSettings and functions used in model definition:\n")
+        cat("\napollo_control")
+        cat("\n--------------\n")
+        tmp=model$apollo_control
+        tmp$cpp=NULL
+        tmp$matrixMult=NULL
+        tmp$subMaxV=NULL
+        txt=t(data.frame(tmp))
+        colnames(txt)="Value"
+        print(txt)
+        cat("\napollo_HB")
+        cat("\n--------------\n")
+        print(model$apollo_HB)
+        cat("\n")
+        cat("\n\napollo_probabilities")
+        cat("\n--------------------\n")
+        txt=capture.output(print(model$apollo_probabilities))
+        cat(txt, sep="\n")
+      }
+      ### end 3 Feb
+      
       ans[["random_mean"]]   <- model$chain_random_mean
       ans[["random_cov_mean"]] <- model$chain_random_cov_mean
       ans[["random_cov_sd"]] <- model$chain_random_cov_sd
@@ -286,29 +357,19 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   dropcolumns = unique(dropcolumns)
   if(length(dropcolumns)>0) output = output[,-dropcolumns, drop=FALSE]
   
-  cat("LL(start)                        : ",round(model$LLStart,2),"\n", sep="")
-  if(length(model$LLout)==1) cat("LL(0)                            : ",ifelse(!anyNA(model$LL0[1]),round(model$LL0[1],2),"Not applicable"),"\n", sep="")
-  if(length(model$LLout)>1 ) cat("LL(0, whole model)               : ",ifelse(!anyNA(model$LL0[1]),round(model$LL0[1],2),"Not applicable"),"\n", sep="")
-  if(length(model$LLout)==1) cat("LL(C)                            : ",ifelse(!anyNA(model$LLC[1]),round(model$LLC[1],2),"Not applicable"),"\n", sep="")
-  if(length(model$LLout)>1 ) cat("LL(C, whole model)               : ",ifelse(!anyNA(model$LLC[1]),round(model$LLC[1],2),"Not applicable"),"\n", sep="")
-  if(length(model$LLout)==1) cat("LL(final)                        : ",round(model$maximum,2),"\n",sep="")
-  if(length(model$LLout)>1 ) cat("LL(final, whole model)           : ",round(model$maximum,2),"\n",sep="")
-  test <- !is.null(model$modelTypeList) && all(tolower(model$modelTypeList) %in% c("mnl", "nl", "cnl", "el", "dft", "lc"))
-  test <- test && !anyNA(model$LL0[1])
-  if(test){
-    cat("Rho-square (0)                   : ",round(1-(model$maximum/model$LL0[1]),4),"\n")
-    cat("Adj.Rho-square (0)               : ",round(1-((model$maximum-nFreeParams)/model$LL0[1]),4),"\n")
-    if(is.numeric(model$LLC) && !anyNA(model$LLC[1])){
-      cat("Rho-square (C)                   : ",round(1-(model$maximum/model$LLC[1]),4),"\n")
-      cat("Adj.Rho-square (C)               : ",round(1-((model$maximum-nFreeParams)/model$LLC[1]),4),"\n")
-    }
-  } else {
-    cat("Rho-square (0)                   : Not applicable\n")
-    cat("Adj.Rho-square (0)               : Not applicable\n")
-  }
-  cat("AIC                              : ",round(-2*model$maximum + 2*nFreeParams,2),"\n")
-  if(!is.null(model$nObsTot)) tmp <- sum(model$nObsTot) else tmp <- model$nObs
-  cat("BIC                              : ",round(-2*model$maximum + nFreeParams*log(tmp),2),"\n")
+  cat("LL(start)                                   : ",round(model$LLStart,2),"\n", sep="")
+  if(length(model$LLout)==1) cat("LL at equal shares, LL(0)                   : ",ifelse(!anyNA(model$LL0[1]),round(model$LL0[1],2),"Not applicable"),"\n", sep="")
+  if(length(model$LLout)>1 ) cat("LL (whole model) at equal shares, LL(0)     : ",ifelse(!anyNA(model$LL0[1]),round(model$LL0[1],2),"Not applicable"),"\n", sep="")
+  if(length(model$LLout)==1) cat("LL at observed shares, LL(C)                : ",ifelse(!anyNA(model$LLC[1]),round(model$LLC[1],2),"Not applicable"),"\n", sep="")
+  if(length(model$LLout)>1 ) cat("LL (whole model) at observed shares, LL(C)  : ",ifelse(!anyNA(model$LLC[1]),round(model$LLC[1],2),"Not applicable"),"\n", sep="")
+  if(length(model$LLout)==1) cat("LL(final)                                   : ",round(model$maximum,2),"\n",sep="")
+  if(length(model$LLout)>1 ) cat("LL(final, whole model)                      : ",round(model$maximum,2),"\n",sep="")
+  cat("Rho-squared vs equal shares                  : ", ifelse(anyNA(model$rho2_0   ), "Not applicable", round(model$rho2_0   , 4)),"\n")
+  cat("Adj.Rho-squared vs equal shares              : ", ifelse(anyNA(model$adjRho2_0), "Not applicable", round(model$adjRho2_0, 4)),"\n")
+  cat("Rho-squared vs observed shares               : ", ifelse(anyNA(model$rho2_C   ), "Not applicable", round(model$rho2_C   , 4)),"\n")
+  cat("Adj.Rho-squared vs observed shares           : ", ifelse(anyNA(model$adjRho2_C), "Not applicable", round(model$adjRho2_C, 4)),"\n")
+  cat("AIC                                         : ",round(model$AIC, 2),"\n")
+  cat("BIC                                         : ",round(model$BIC, 2),"\n")
   
   if(length(model$LLout)>1){
     cat("\n")
@@ -327,7 +388,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   }
   
   cat("\n")
-  cat("Estimated parameters             :  ", nFreeParams,"\n", sep="")
+  cat("Estimated parameters                        :  ", model$nFreeParams,"\n", sep="")
   #cat("Norm of the gradient at optimum  : ",round( sqrt(sum(model$gradient^2)),2), "\n\n")
   f <- function(t){
     tmpH <- floor(t/60^2)
@@ -337,15 +398,15 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
           formatC(tmpM,width=2,format='d',flag=0),
           tmpS,sep=':')
   }
-  cat("Time taken (hh:mm:ss)            : ",f(model$timeTaken),"\n")
-  cat("     pre-estimation              : ",f(model$timePre),"\n")
-  cat("     estimation                  : ",f(model$timeEst),"\n")
-  cat("     post-estimation             : ",f(model$timePost),"\n")
+  cat("Time taken (hh:mm:ss)                       : ",f(model$timeTaken),"\n")
+  cat("     pre-estimation                         : ",f(model$timePre),"\n")
+  cat("     estimation                             : ",f(model$timeEst),"\n")
+  cat("     post-estimation                        : ",f(model$timePost),"\n")
   if(length(grep('successful', model$message))==0) tmp <- paste0("(",model$message,")") else tmp <- ""
-  cat("Iterations                       : ",model$nIter, tmp, "\n")
-  if(model$bootstrapSE>0) cat("Number of bootstrap repetitions  : ", model$bootstrapSE, "\n")
+  cat("Iterations                                  : ",model$nIter, tmp, "\n")
+  if(model$bootstrapSE>0) cat("Number of bootstrap repetitions             : ", model$bootstrapSE, "\n")
   if(!is.null(model$eigValue) && !anyNA(model$eigValue)){
-    cat("Min abs eigenvalue of Hessian    : ",round(min(abs(model$eigValue)),6),"\n")
+    cat("Min abs eigenvalue of Hessian               : ",round(min(abs(model$eigValue)),6),"\n")
     if(any(model$eigValue>0)) apollo_print("Some eigenvalues of Hessian are positive, indicating potential problems!") 
   }
   
@@ -374,12 +435,12 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   ### Print diagnostics
   # Model structure
   if(!is.null(model$componentReport)) for(r in model$componentReport){
-    test <- !is.null(r$param) && length(r$param)>0 && modelOutput_settings$printModelStructure
+    test <- is.list(r) && !is.null(r$param) && length(r$param)>0 && modelOutput_settings$printModelStructure
     if(test) for(j in r$param) cat(j, '\n', sep='')
     if(test) cat('\n')
   }
   if(!is.null(model$componentReport)) for(r in model$componentReport){
-    test <- !is.null(r$data ) && length(r$data )>0 && modelOutput_settings$printDataReport
+    test <- is.list(r) && !is.null(r$data) && length(r$data)>0 && modelOutput_settings$printDataReport
     if(test) for(j in r$data ) cat(j, '\n', sep='')
     if(test) cat('\n')
   }

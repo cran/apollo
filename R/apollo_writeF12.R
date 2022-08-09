@@ -4,7 +4,7 @@
 #' 
 #' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}.
 #' @param truncateCoeffNames Boolean. TRUE to truncate parameter names to 10 characters.
-#'                           FALSE by default.
+#'                           TRUE by default.
 #' @return Nothing.
 #' @export
 apollo_writeF12 <- function(model, truncateCoeffNames=TRUE){
@@ -85,7 +85,7 @@ apollo_writeF12 <- function(model, truncateCoeffNames=TRUE){
   corrV <- rep('', (K-1)*K/2)             
   for(i in 2:K) for(j in 1:(i-1)){
     if(is.na(corrM[i,j]) | is.infinite(corrM[i,j]) | is.nan(corrM[i,j])) corrM[i,j] <- 0
-    corrV[(i-2)*(i-1)/2+j] <- format(corrM[i,j], width=7,digits=0, scientific=FALSE)
+    corrV[(i-2)*(i-1)/2+j] <- format(corrM[i,j], width=7, scientific=FALSE)
   } 
   lineK7 <- ''
   for(i in 1:length(corrV)){

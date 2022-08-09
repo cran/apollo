@@ -46,7 +46,8 @@ apollo_weighting=function(P, apollo_inputs, functionality){
     isCub <- is.array(p) && length(dim(p))==3
     if(!isVec && !isMat && !isCub) stop('An element of P is not a numeric vector, matrix or cube (3-dim array)')
     if(isVec) nR <- length(p) else nR <- dim(p)[1]
-    if(nR==nObs){ if(!apollo_inputs$apollo_control$workInLogs) return(p^w) else return(w*p) }
+    #if(nR==nObs){ if(!apollo_inputs$apollo_control$workInLogs) return(p^w) else return(w*p) }
+    if(nR==nObs) return(p^w)
     if(nR==nInd){ if(!apollo_inputs$apollo_control$workInLogs) return(p^wInd) else return(wInd*p) }
     warning('An element of P did not have as many rows as observations or individuals, so it was not weighted.')
     return(p)
@@ -77,11 +78,31 @@ apollo_weighting=function(P, apollo_inputs, functionality){
   }
   
   
-  # ########################################################################## #
-  #### estimate, zero_LL, conditionals, output, raw, components, prediction #### 
-  # ########################################################################## #
-  if(functionality %in% c('estimate', 'zero_LL', 'conditionals', 'output', 'components','prediction')){
+  # ############################################################## #
+  #### estimate, zero_LL, conditionals, output, raw, components #### 
+  # ############################################################## #
+  if(functionality %in% c('estimate', 'zero_LL', 'conditionals', 'output', 'components')){
     P <- lapply(P, wf)
+    return(P)
+  }
+  
+  # ################ #
+  #### prediction #### 
+  # ################ #
+  if(functionality=="prediction"){
+    wf2 <- function(p){
+      if(is.list(p)) return( lapply(p, wf2) )
+      isVec <- is.vector(p)
+      isMat <- is.matrix(p)
+      isCub <- is.array(p) && length(dim(p))==3
+      if(!isVec && !isMat && !isCub) stop('An element of P is not a numeric vector, matrix or cube (3-dim array)')
+      if(isVec) nR <- length(p) else nR <- dim(p)[1]
+      if(nR==nObs) return(w*p)
+      if(nR==nInd) return(wInd*p)
+      warning('An element of P did not have as many rows as observations or individuals, so it was not weighted.')
+      return(p)
+    }
+    P <- lapply(P, wf2)
     return(P)
   }
   

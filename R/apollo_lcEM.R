@@ -125,6 +125,7 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   if(!is.null(estimate_settings$constraints)) stop('Constraints are not supported')
   if(apollo_inputs$apollo_control$mixing==TRUE) stop("The apollo_lcEM function cannot be used for models that include continuous random parameters!")
   if(apollo_inputs$apollo_control$HB==TRUE) stop("The apollo_lcEM function cannot be used with Bayesian estimation!")
+  if(length(grep("length(pi_values)",deparse(apollo_probabilities),fixed=TRUE))==0) stop("For using the EM algorithm for latent class, the loop over classes needs to be defined as for(s in 1:length(pi_values))!")
   
   ### Commence EM
   apollo_print("Initialising EM algorithm")
@@ -158,7 +159,7 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
     ), hash=TRUE)
     lcPars <- lcPars(apollo_beta, apollo_inputs)
     
-    # Validate return of apollo_lcPars, get number of classes and remove the pi_values (NAMED ENFORCED)
+    # Validate return of apollo_lcPars, get number of classes and remove the pi_values (NAME ENFORCED)
     if(!is.list(lcPars)) stop("The apollo_lcPars function should return a list.")
     if(!all(sapply(lcPars, is.list))) stop("All elements inside the list returned by apollo_lcPars should be lists.")
     S <- max(sapply(lcPars, length))
@@ -234,7 +235,13 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
     ###new line 16 Oct
     #lcPars = apollo_inputs$apollo_lcPars(apollo_beta, apollo_inputs)
     #log_pi_values = lapply(lcPars$pi_values,log)
-    log_pi_values = lapply(get('pi_values'),log)
+    pi_values <- get('pi_values')
+    nObs <- nrow(apollo_inputs$database) # adjust dimen of pi_values if necessary 30/06/22
+    if(apollo_inputs$apollo_control$panelData) for(s in 1:length(pi_values)){
+      rP   <- ifelse(is.array(pi_values[[s]]), nrow(pi_values[[s]]), length(pi_values[[s]]))
+      if(rP==nObs) pi_values[[s]] <- apollo_firstRow(pi_values[[s]], apollo_inputs)
+    }
+    log_pi_values = lapply(pi_values,log)
     P[["model"]]  = exp(Reduce('+', mapply('*',h,log_pi_values,SIMPLIFY = FALSE)))
     P = apollo_prepareProb(P, apollo_inputs, functionality)
     return(P)
@@ -338,12 +345,23 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
     pi             = apollo_lcUnconditionals(model, apollo_probabilities, apollo_inputs)[["pi_values"]]
     h              = list()
     for(s in 1:classes){
-      h[[s]] = as.vector( pi[[s]]*L[[s]]/L[[(classes+1)]] )
-    }
+      # adjust dimensionality of pi if necessary
+      rL <- ifelse(is.array( L[[s]]), nrow( L[[s]]), length( L[[s]]))
+      rP <- ifelse(is.array(pi[[s]]), nrow(pi[[s]]), length(pi[[s]]))
+      if(rP!=1 && rL!=1 && rP!=rL){
+        if(rP>rL) piS <- apollo_firstRow(pi[[s]], apollo_inputs) else piS <- pi[[s]]
+        if(rP<rL && is.vector(pi[[s]])){ # only works for vector pi
+          nObsPerIndiv <- apollo_inputs$database[,apollo_inputs$apollo_control$indivID]
+          nObsPerIndiv <- as.vector(table(nObsPerIndiv))
+          piS <- rep(pi[[s]], each=nObsPerIndiv)
+        } 
+      } else piS <- pi[[s]]
+      h[[s]] = as.vector( piS*L[[s]]/L[[(classes+1)]] )
+    }; rm(piS)
     
     ### Calculate current log-likelihood for LC model
     Lcurrent = sum( log(L[[(classes+1)]]) )
-    cat("Current LL : ",Lcurrent,"\n",sep="")
+    cat("- Current LL : ",Lcurrent,"\n",sep="")
     
     # ########## #
     ### Step 4 ###
@@ -454,8 +472,8 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
     apollo_inputs$class_specific = 0
     Lnew   = sum(log(apollo_probabilities(apollo_beta, apollo_inputs, functionality="output")[[(classes+1)]]))
     change = Lnew - Lcurrent
-    cat("New LL     : ",Lnew,"\n",sep="")
-    cat("Improvement: ",change,"\n\n",sep="")
+    cat("- New LL     : ",Lnew,"\n",sep="")
+    cat("- Improvement: ",change,"\n\n",sep="")
     
     ### Determine whether convergence has been reached
     if(change<stopping_criterion) stop = 1

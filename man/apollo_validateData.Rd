@@ -9,16 +9,18 @@ apollo_validateData(database, apollo_control, silent)
 \arguments{
 \item{database}{data.frame. Data used by model.}
 
-\item{apollo_control}{List. Options controlling the running of the code. See \link{apollo_validateInputs}.}
+\item{apollo_control}{List. Options controlling the running of the code. See 
+\link{apollo_validateInputs}.}
 
-\item{silent}{Boolean. TRUE to keep the function from printing to the console.
-Default is FALSE.}
+\item{silent}{Boolean. TRUE to prevent the function from printing to the 
+console. Default is FALSE.}
 }
 \value{
 Data.frame. Validated version of database.
 }
 \description{
-Checks consistency of the database with \code{apollo_control}, sorts it by indivID, and adds an internal ID variable (\code{apollo_sequence})
+Checks consistency of the database with \code{apollo_control}, sorts it by 
+indivID, and adds an internal ID variable (\code{apollo_sequence})
 }
 \details{
 This function should be called after calling \link{apollo_validateControl}.

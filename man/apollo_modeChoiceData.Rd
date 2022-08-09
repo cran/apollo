@@ -9,9 +9,9 @@ A data.frame with 8,000 rows and 25 variables:
 \describe{
   \item{ID}{Numeric. Identification number of the individual.}
   \item{RP}{Numeric. 1 if the row corresponds to a revealed preference (RP) observation. 0 otherwise.}
-  \item{RP_journey}{Numeric. Consecutive ID of RP observations.}
+  \item{RP_journey}{Numeric. Consecutive ID of RP observations. 0 if SP observation.}
   \item{SP}{Numeric. 1 if the row corresponds to a stated preference (SP) observation. 0 otherwise.}
-  \item{SP_task}{Numeric. Consecutive ID of SP choice tasks.}
+  \item{SP_task}{Numeric. Consecutive ID of SP choice tasks. 0 if RP observation.}
   \item{access_air}{Numeric. Access time (in minutes) of mode air.}
   \item{access_bus}{Numeric. Access time (in minutes) of mode bus.}
   \item{access_rail}{Numeric. Access time (in minutes) of mode rail.}

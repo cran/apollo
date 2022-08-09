@@ -12,8 +12,8 @@ apollo_bootstrap(
   estimate_settings = list(estimationRoutine = "bfgs", maxIterations = 200, writeIter =
     FALSE, hessianRoutine = "none", printLevel = 2L, silent = FALSE, maxLik_settings =
     list()),
-  bootstrap_settings = list(nRep = 30, samples = NA, calledByEstimate = FALSE, recycle
-    = TRUE)
+  bootstrap_settings = list(nRep = 30, samples = NA, calledByEstimate = FALSE, recycle =
+    TRUE)
 )
 }
 \arguments{

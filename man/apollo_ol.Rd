@@ -45,7 +45,7 @@ The returned object depends on the value of argument \code{functionality} as fol
           \item \strong{\code{"preprocess"}}: Returns a list with pre-processed inputs, based on \code{ol_settings}.
           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
           \item \strong{\code{"report"}}: Dependent variable overview.
-          \item \strong{\code{"shares_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
+          \item \strong{\code{"shares_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when only constants are estimated.
           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
           \item \strong{\code{"zero_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
         }

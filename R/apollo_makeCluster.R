@@ -185,6 +185,22 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
   ### Copy functions in the workspace to the workers
   # apollo_probabilities is copied separately to ensure it keeps its name
   funcs <- as.vector(utils::lsf.str(envir=.GlobalEnv))
+  if(length(funcs)>0){ # remove functions created with Rcpp
+    isRcppF <- function(e){
+      if(is.function(e)) e <- body(e)
+      isVal <- is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) || is.complex(e)
+      if(isVal) return(FALSE)
+      isExp <- is.expression(e) || is.call(e)
+      isCall <- length(e)>1 && is.symbol(e[[1]]) && as.character(e[[1]])==".Call"
+      if(isCall) return(TRUE)
+      if(isExp && !isCall && length(e)>=1){
+        for(i in 1:length(e)) if(!is.null(e[[i]])) if(isRcppF(e[[i]])) return(TRUE)
+      }
+      return(FALSE)
+    }
+    for(i in 1:length(funcs)) if(isRcppF(get(funcs[i], envir=.GlobalEnv))) funcs[i] <- ""
+    funcs <- funcs[funcs!=""]
+  }
   parallel::clusterExport(cl, funcs, envir=.GlobalEnv)
   parallel::clusterExport(cl, "apollo_probabilities", envir=environment())
   if(debug){

@@ -2,7 +2,7 @@
 % Please edit documentation in R/apollo_unconditionals.R
 \name{apollo_unconditionals}
 \alias{apollo_unconditionals}
-\title{Returns draws for continuously distributed random parameters in mixture model}
+\title{Returns unconditionals for models with random heterogeneity}
 \usage{
 apollo_unconditionals(model, apollo_probabilities, apollo_inputs)
 }
@@ -19,13 +19,24 @@ apollo_unconditionals(model, apollo_probabilities, apollo_inputs)
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
 }
 \value{
-List of object, one per random coefficient.
-        With inter-individual draws only, this will be a matrix, with one row per individual, and one column per draw.
-        With intra-individual draws, this will be a three-dimensional array, with one row per observation, inter-individual draws in the second dimension, and intra-individual draws in the third dimension.
+Depends on whether the model uses continuous mixtures or latent class. 
+        \itemize{
+          \item If the model contains a continuous mixture, it returns a list with one object per
+                random coefficient. When using inter-individual draws only, each element will be 
+                a matrix with one row per individual, and one column per draw. When using intra-
+                individual draws, each element will be a three-dimensional array, with one row 
+                per observation, inter-individual draws in the second dimension, and intra-
+                individual draws in the third dimension.
+          \item If the model contains latent classes, it returns a list with as many elements
+                as random coefficients in the model, plus one additional element containing 
+                the class allocation probabilities.
+          \item If the model contains both continuous mixing and latent classes, a list with the
+                two elements described above will be returned.
+        }
 }
 \description{
-Returns draws (unconditionals) for random parameters in model, including interactions with deterministic covariates.
+Returns unconditionals for random parameters in model, both for continuous mixtures and latent class.
 }
 \details{
-This functions is only meant for use with continuous distributions
+This functions is only meant for use with models using continuous distributions or latent classes, or both at the same time.
 }

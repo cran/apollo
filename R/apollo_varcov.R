@@ -157,7 +157,7 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
     test2 <- apollo_logLike(b, countIter=FALSE, sumLL=TRUE, writeIter=FALSE, getNIter=FALSE)
     test <- is.numeric(test1) && is.numeric(test2) && !any(is.nan(test1)) && !any(is.nan(test2))
     test <- test && abs(sum(test2)/sum(test1) - 1) < 0.001
-    if(!test){
+    if(is.na(test)||!test){
       # If scaling didn't work, undo changes
       if(!silent)apollo_print("Parameters could not be scaled for the Hessian calculation.")
       apollo_beta[names(scaling)] <- apollo_beta[names(scaling)]*oldScaling

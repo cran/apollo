@@ -69,17 +69,12 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
   saveCorr        = saveOutput_settings[["saveCorr"]]
   saveModelObject = saveOutput_settings[["saveModelObject"]]
   writeF12        = saveOutput_settings[["writeF12"]]
-  
-  if(length(model$scaling)>0 && !is.na(model$scaling)){
-    scaling_used=TRUE
-  }else{
-    scaling_used=FALSE
-  }
+  scaling_used    = length(model$scaling)>0 && !anyNA(model$scaling)
   
   # Check if files exists, and if they do, rename them as OLD
   modName <- paste0(model$apollo_control$outputDirectory,model$apollo_control$modelName)
   if(file.exists( paste0(modName, "_output.txt") )){
-    # Figure out corresponding OLD verison
+    # Figure out corresponding OLD version
     n <- 1
     while( file.exists( paste0(modName, "_OLD", n, "_output.txt") ) ) n <- n + 1
     modNameOld <- paste0(modName, "_OLD", n)
@@ -87,7 +82,7 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
     outFiles <- c("_output.txt", "_estimates.csv", 
                   "_covar.csv", "_robcovar.csv", "_bootcovar.csv", 
                   "_corr.csv", "_robcorr.csv", "_bootcorr.csv",
-                  "_model.rds",
+                  "_model.rds", ".F12", 
                   "_F.csv", "_A.csv", "_B.csv", "_Bsd.csv", "_C.csv", "_Csd.csv", "_D.csv", 
                   ".log", "_param_non_random.csv", "_param_random_mean.csv", "_param_random_cov_mean.csv",
                   "_param_random_cov_sd.csv", "_param_posterior.csv", "_random_coeff_covar.csv", "_random_coeff_corr.csv")
@@ -177,6 +172,8 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
      }
     if(saveModelObject){
       tryCatch( {
+        model$cmcLLout=NULL
+        model$cmcRLHout=NULL
         saveRDS(model, file=paste0(model$apollo_control$outputDirectory,model$apollo_control$modelName,"_model.rds"))
         cat("\nModel object saved to",paste(model$apollo_control$outputDirectory,model$apollo_control$modelName, ".rds", sep=""),"\n")
         cat("\n")

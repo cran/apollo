@@ -40,6 +40,7 @@
 #'                               \item \strong{\code{operation}}: Character. Function to calculate the delta method for. See details. Not used if \code{expression} is provided.
 #'                               \item \strong{\code{parName1}}: Character. Name of the first parameter if \code{operation} is used. See details. Not used if \code{expression} is provided.
 #'                               \item \strong{\code{parName2}}: Character. Name of the second parameter if \code{operation} is used. See details. Not used if \code{expression} is provided.. Optional depending on \code{operation}.
+#'                               \item \strong{\code{printPVal}}: Logical or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
 #'                               \item \strong{\code{multPar1}}: Numeric scalar. An optional value to scale \code{parName1}. Not used if \code{expression} is provided.
 #'                               \item \strong{\code{multPar2}}: Numeric scalar. An optional value to scale \code{parName2}. Not used if \code{expression} is provided.
 #'                             }
@@ -62,6 +63,7 @@ apollo_deltaMethod <- function(model, deltaMethod_settings){
   test <- is.list(deltaMethod_settings) && !is.null(names(deltaMethod_settings))
   if(!test) stop("Input \"deltaMethod_settings\" should be a named list. Type ?apollo_deltaMethod for help.")
   if(is.null(deltaMethod_settings[["varcov"]])) deltaMethod_settings[["varcov"]] <- "robust"
+  if(is.null(deltaMethod_settings[["printPVal"]])) deltaMethod_settings[["printPVal"]] = FALSE
   test <- deltaMethod_settings[["varcov"]] %in% c("classical", "robust", "bootstrap")
   if(!test) stop("Setting \"varcov\" can only take values \"classical\", \"robust\" or \"bootstrap\".")
   if(is.null(deltaMethod_settings[["expression"]])){
@@ -158,9 +160,18 @@ apollo_deltaMethod <- function(model, deltaMethod_settings){
     
     cat("Running Delta method computation for user-defined function:\n\n")
     out = delta_from_expression(deltaMethod_settings[["expression"]][1])
+    
     if(length(deltaMethod_settings[["expression"]])>1){
       for(s in 2:length(deltaMethod_settings[["expression"]])) out=rbind(out,delta_from_expression(deltaMethod_settings[["expression"]][s]))
     }
+
+    if(!isFALSE(deltaMethod_settings$printPVal)){
+      if(deltaMethod_settings$printPVal==2) pMult <- 2 else pMult <- 1
+      out=cbind(out,round(pMult*(1-stats::pnorm(abs(out[,4]))),4))
+      if(pMult==2) colnames(out)[5]="p(2-sided)"
+      if(pMult==1) colnames(out)[5]="p(1-sided)"
+    }
+    
     print(out,row.names=FALSE)
     return(invisible(out))
   }
@@ -290,6 +301,13 @@ apollo_deltaMethod <- function(model, deltaMethod_settings){
   delta_output=cbind(v,se,t)
   colnames(delta_output)=c("Value","Robust s.e.","Rob t-ratio (0)")
   rownames(delta_output)=operation_name
+  
+  if(!isFALSE(deltaMethod_settings$printPVal)){
+    if(deltaMethod_settings$printPVal==2) pMult <- 2 else pMult <- 1
+    delta_output=cbind(delta_output,pMult*(1-stats::pnorm(abs(t))))
+    if(pMult==2) colnames(delta_output)[4]="p(2-sided)"
+    if(pMult==1) colnames(delta_output)[4]="p(1-sided)"
+  }
   
   cat("\nRunning Delta method computations\n")
   print(delta_output, digits=4)

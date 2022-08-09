@@ -62,7 +62,7 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
   #### HB estimation ####
   # ################### #
 
-  if(apollo_inputs$apollo_control$HB){
+  if((apollo_inputs$apollo_control$HB)&&(functionality=="estimate")){
     test = ifelse(is.na(P[["model"]]), TRUE, P[["model"]] < 9.88131291682493e-324)
     if(any(test)){
       tmp <- globalenv()

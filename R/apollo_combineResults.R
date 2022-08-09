@@ -273,7 +273,8 @@ apollo_combineResults = function(combineResults_settings=NULL){
     } else otheroutputs[k,j] = NA
     
     k=k+1
-    inputvar = grep("Adj.Rho-square \\(0\\)", lines) 
+    inputvar = grep("Adj.Rho-square \\(0\\)", lines)
+    if(length(inputvar)==0) inputvar = grep("Adj.Rho-squared vs equal shares", lines) 
     if(length(inputvar)!=0){
       inputvar = lines[inputvar]
       position=gregexpr(pattern=":",inputvar)[[1]][1]
@@ -287,6 +288,7 @@ apollo_combineResults = function(combineResults_settings=NULL){
     
     k=k+1
     inputvar = grep("Adj.Rho-square \\(C\\)", lines) 
+    if(length(inputvar)==0) inputvar = grep("Adj.Rho-squared vs observed shares", lines) 
     if(length(inputvar)!=0){
       inputvar = lines[inputvar]
       position=gregexpr(pattern=":",inputvar)[[1]][1]

@@ -48,6 +48,7 @@ apollo_print <- function(txt, nSignifD=4, widthLim=11, highlight=FALSE){
   
   # If highlighted
   if(highlight){
+    cat("\n... current process will resume in 5 seconds unless interrupted by the user\n")
     cat(paste0(rep('#', getOption("width")-1-5), collapse=''))
     for(i in 1:5){ Sys.sleep(1); cat('#')}
     cat('\n')

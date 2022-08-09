@@ -46,7 +46,7 @@
 #'           \item \strong{\code{"preprocess"}}: Returns a list with pre-processed inputs, based on \code{ol_settings}.
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'           \item \strong{\code{"report"}}: Dependent variable overview.
-#'           \item \strong{\code{"shares_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
+#'           \item \strong{\code{"shares_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when only constants are estimated.
 #'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
 #'           \item \strong{\code{"zero_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
 #'         }
@@ -101,26 +101,40 @@ apollo_ol  <- function(ol_settings, functionality){
     # Determine which mnl likelihood to use (R or C++)
     if(apollo_inputs$apollo_control$cpp & !apollo_inputs$silent) apollo_print("No C++ optimisation available for OL components.")
     # Using R likelihood
-    ol_settings$probs_OL <- function(ol_settings, all=FALSE, restoreRows=TRUE){
-      nThr <- length(ol_settings$tau) # number of thresholds
-      tau1 <- Reduce("+", mapply("*", ol_settings$Y[-(nThr+1)], ol_settings$tau, SIMPLIFY=FALSE))
-      tau0 <- Reduce("+", mapply("*", ol_settings$Y[-1       ], ol_settings$tau, SIMPLIFY=FALSE))
-      tau1[ol_settings$outcomeOrdered==length(ol_settings$coding)] <- Inf
-      tau0[ol_settings$outcomeOrdered==1] <- -Inf
+    ol_settings$probs_OL <- function(ol_settings, all=FALSE){
+      J    <- length(ol_settings$tau) + 1
+      tau1 <- Reduce("+", mapply("*", ol_settings$Y[-J], ol_settings$tau, SIMPLIFY=FALSE))
+      tau0 <- Reduce("+", mapply("*", ol_settings$Y[-1], ol_settings$tau, SIMPLIFY=FALSE))
+      tau1 <- apollo_setRows(tau1, ol_settings$outcomeOrdered==J,  Inf)
+      tau0 <- apollo_setRows(tau0, ol_settings$outcomeOrdered==1, -Inf)
       P <- 1/(1 + exp(ol_settings$V-tau1)) - 1/(1 + exp(ol_settings$V-tau0))
-      #if(restoreRows && any(!ol_settings$rows)) P <- apollo_insertRows(P, ol_settings$rows, 1)
       if(all){
         P2 = list()
         ol_settings$tau <- c(-Inf, ol_settings$tau, Inf)
         for(j in 1:(length(ol_settings$tau)-1)) P2[[j]] = 
             1/(1 + exp(ol_settings$V-ol_settings$tau[[j+1]])) - 1/(1 + exp(ol_settings$V-ol_settings$tau[[j]]))
         names(P2) <- ol_settings$coding
-        #if(restoreRows && any(!ol_settings$rows)) P2 <- lapply(P2, apollo_insertRows, r=ol_settings$rows, val=NA)
         if(!(length(ol_settings$outcomeOrdered)==1 && is.na(ol_settings$outcomeOrdered))) P2[["chosen"]] <- P
         P <- P2
       }
       return(P)
     }
+    
+    ol_settings$ol_diagnostics <- function(inputs, apollo_inputs, data=TRUE, param=TRUE){
+      choicematrix <- t(as.matrix(table(inputs$outcomeOrdered)))
+      choicematrix <- rbind(choicematrix, choicematrix[1,]/inputs$nObs*100)
+      rownames(choicematrix) <- c("Times chosen", "Percentage chosen overall")
+      if(!apollo_inputs$silent & data){
+        apollo_print("\n")
+        apollo_print(paste0('Overview of choices for ', toupper(inputs$modeltype), ' model component ', 
+                            ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
+        print(round(choicematrix,2))
+      }
+      return(invisible(TRUE))
+    }
+    
+    # Store model type
+    ol_settings$modelType <- modelType
     
     # Construct necessary input for gradient (including gradient of utilities)
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
@@ -130,15 +144,15 @@ apollo_ol  <- function(ol_settings, functionality){
     test <- test && apollo_inputs$apollo_control$analyticGrad
     ol_settings$gradient <- FALSE
     if(test){
-      tmp <- list(V=ol_settings$V); tmp <- c(tmp, ol_settings$tau)
-      tmp <- apollo_dVdB(apollo_beta, apollo_inputs, tmp)
-      if(!is.null(tmp)){
-        ol_settings$dV   <- tmp$V
-        ol_settings$dTau <- tmp[-which(names(tmp)=="V")]
-      }
-      test <- !is.null(ol_settings$dV) && is.function(ol_settings$dV)
-      test <- test && !is.null(ol_settings$dTau) && is.list(ol_settings$dTau) 
-      test <- test && all(sapply(ol_settings$dTau, is.function))
+      tmp1 <- apollo_dVdB2(apollo_beta, apollo_inputs, list(V=ol_settings$V))
+      tmp2 <- apollo_dVdB2(apollo_beta, apollo_inputs, ol_settings$tau      )
+      if(!is.null(tmp1) && !is.null(tmp2)){
+        ol_settings$dV   <- lapply(tmp1, `[[`, 1) # list(dV/db1, dV/db2, ...)
+        ol_settings$dTau <- tmp2 # list(b1=list(dt1/db1, dt2/db1, ...), b2=...)
+      }; rm(tmp1, tmp2)
+      test <- is.list(ol_settings$dV) && sapply(ol_settings$dV, is.function)
+      test <- test && is.list(ol_settings$dTau) 
+      test <- test && all(sapply(ol_settings$dTau, sapply, is.function))
       ol_settings$gradient <- test
     }; rm(test)
     
@@ -178,7 +192,7 @@ apollo_ol  <- function(ol_settings, functionality){
     if(!apollo_inputs$apollo_control$noValidation) apollo_validate(ol_settings, modelType, 
                                                                    functionality, apollo_inputs)
     
-    if(!apollo_inputs$apollo_control$noDiagnostics) apollo_diagnostics(ol_settings, modelType, apollo_inputs)
+    if(!apollo_inputs$apollo_control$noDiagnostics) ol_settings$ol_diagnostics(ol_settings, apollo_inputs)
     testL = ol_settings$probs_OL(ol_settings)
     if(any(!ol_settings$rows)) testL <- apollo_insertRows(testL, ol_settings$rows, 1)
     if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"",ol_settings$componentName,"\"")
@@ -192,7 +206,7 @@ apollo_ol  <- function(ol_settings, functionality){
   # ########################################################## #
 
   if(functionality=="zero_LL"){
-    P <- rep(NA, ol_settings$nObs)
+    P <- rep(1/length(ol_settings$coding), ol_settings$nObs)
     if(any(!ol_settings$rows)) P <- apollo_insertRows(P, ol_settings$rows, 1)
     return(P)
   }
@@ -202,7 +216,9 @@ apollo_ol  <- function(ol_settings, functionality){
   # ############################### #
   
   if(functionality %in% c("shares_LL")){
-    P <- rep(NA, ol_settings$nObs)
+    Y       <- do.call(cbind, ol_settings$Y)
+    Yshares <- colSums(Y)/nrow(Y)
+    P       <- as.vector(Y%*%Yshares)
     if(any(!ol_settings$rows)) P <- apollo_insertRows(P, ol_settings$rows, 1)
     return(P)
   }
@@ -234,43 +250,39 @@ apollo_ol  <- function(ol_settings, functionality){
                             error=function(e) stop("apollo_ol could not fetch apollo_beta for gradient estimation."))
     if(is.null(apollo_inputs$database)) stop("apollo_ol could not fetch apollo_inputs$database for gradient estimation.")
     
-    # Calculate probabilities and derivatives of utilities for all alternatives
+    # Calculate probabilities
     Pcho <- ol_settings$probs_OL(ol_settings, all=FALSE)
-    e <- list2env(c(as.list(apollo_beta), apollo_inputs$database, list(apollo_inputs=apollo_inputs)), hash=TRUE)
-    dV <- ol_settings$dV; environment(dV) <- e
-    dV <- dV()
-    for(i in 1:length(ol_settings$dTau)) environment(ol_settings$dTau[[i]]) <- e
-    dTau <- lapply(ol_settings$dTau, function(dT) dT())
-    if(!all(ol_settings$rows)){
-      dV <- lapply(dV, apollo_keepRows, ol_settings$rows)
-      for(i in 1:length(dTau)) dTau[[i]] <- lapply(dTau[[i]], apollo_keepRows, ol_settings$rows)
-    }; rm(e)
-    
-    # Extract right thresholds
-    nPar <- length(dV) # number of parameters
-    nThr <- length(ol_settings$tau) # number of thresholds
-    dTau1 <- list(); dTau0 <- list()
-    for(i in 1:nPar){
-      dTau1[[i]] <- Reduce("+", mapply("*", ol_settings$Y[-(nThr+1)], lapply(dTau, function(dT) dT[[i]]), SIMPLIFY=FALSE) )
-      dTau0[[i]] <- Reduce("+", mapply("*", ol_settings$Y[-1       ], lapply(dTau, function(dT) dT[[i]]), SIMPLIFY=FALSE) )
-      #dTau1[choFirst] <- Inf # No need as these will be zero be default (the derivative of Inf)
-      #dTau0[choLast] <- -Inf
-    }
-    rm(dTau)
-    tau1 <- Reduce("+", mapply("*", ol_settings$Y[-(nThr+1)], ol_settings$tau, SIMPLIFY=FALSE))
-    tau0 <- Reduce("+", mapply("*", ol_settings$Y[-1       ], ol_settings$tau, SIMPLIFY=FALSE))
-    tau1[ol_settings$outcomeOrdered==length(ol_settings$coding)] <- Inf
-    tau0[ol_settings$outcomeOrdered==1] <- -Inf
+    if(anyNA(Pcho)) stop("NAs in choice probabilities when calculating the gradient for component ", ol_settings$componentName)
     
     # Calculate gradient
-    tmp1 <- mapply("-", dV, dTau1, SIMPLIFY=FALSE)
-    tmp0 <- mapply("-", dV, dTau0, SIMPLIFY=FALSE)
-    tmpA <- exp(ol_settings$V - tau1)
-    tmpA <- tmpA/(1 + tmpA)^2
-    tmpB <- exp(ol_settings$V - tau0)
-    tmpB[tmpB==Inf] <- 0
-    tmpB <- tmpB/(1 + tmpB)^2
-    G    <- mapply(function(t1, t0) -tmpA*t1 + tmpB*t0, tmp1, tmp0, SIMPLIFY=FALSE)
+    J  <- length(ol_settings$tau) + 1 # number of levels (alternatives)
+    K  <- length(ol_settings$dV) # number of parameters
+    G  <- list()
+    r  <- all(ol_settings$rows) # TRUE if all rows are used (no rows excluded)
+    e  <- list2env(c(as.list(apollo_beta), apollo_inputs$database, list(apollo_inputs=apollo_inputs)), hash=TRUE)
+    t0 <- Reduce("+", mapply("*", ol_settings$Y[-1], ol_settings$tau, SIMPLIFY=FALSE))
+    t1 <- Reduce("+", mapply("*", ol_settings$Y[-J], ol_settings$tau, SIMPLIFY=FALSE))
+    t0 <- apollo_setRows(t0, ol_settings$outcomeOrdered==1, -Inf)
+    t1 <- apollo_setRows(t1, ol_settings$outcomeOrdered==J,  Inf)
+    V  <- ol_settings$V
+    for(k in 1:K){
+      G[[k]] <- 0
+      dV    <- ol_settings$dV[[k]]; environment(dV) <- e
+      dV    <- dV()
+      dTau  <- ol_settings$dTau[[k]]
+      dTau  <- lapply(dTau, function(f){ environment(f) <- e; return(f())})
+      if(!r){ # remove rows if necessary
+        dV   <- apollo_keepRows(dV, ol_settings$rows)
+        dTau <- lapply(dTau, apollo_keepRows, r=ol_settings$rows)
+      }
+      dTau0 <- Reduce("+", mapply("*", ol_settings$Y[-1], dTau, SIMPLIFY=FALSE))
+      dTau1 <- Reduce("+", mapply("*", ol_settings$Y[-J], dTau, SIMPLIFY=FALSE))
+      # No need to set borders to zero as they already are.
+      eVT0  <- exp(V - t0)
+      eVT0[is.infinite(eVT0)] <- 0
+      eVT1  <- exp(V - t1)
+      G[[k]] <- eVT0*(dV - dTau0)/(1 + eVT0)^2 - eVT1*(dV - dTau1)/(1 + eVT1)^2
+    }; rm(dV, dTau, dTau0, dTau1, eVT0, eVT1)
     
     # Restore rows and return
     if(!all(ol_settings$rows)){
@@ -286,8 +298,8 @@ apollo_ol  <- function(ol_settings, functionality){
   if(functionality=='report'){
     P <- list()
     apollo_inputs$silent <- FALSE
-    P$data  <- capture.output(apollo_diagnostics(ol_settings, modelType, apollo_inputs, param=FALSE))
-    P$param <- capture.output(apollo_diagnostics(ol_settings, modelType, apollo_inputs, data =FALSE))
+    P$data  <- capture.output(ol_settings$ol_diagnostics(ol_settings, apollo_inputs, param=FALSE))
+    P$param <- capture.output(ol_settings$ol_diagnostics(ol_settings, apollo_inputs, data =FALSE))
     return(P)
   }
   

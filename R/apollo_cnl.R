@@ -156,6 +156,71 @@ apollo_cnl <- function(cnl_settings, functionality){
       return(Palts)
     }
     
+    cnl_settings$cnl_diagnostics <- function(inputs, apollo_inputs, data=TRUE, param=TRUE){
+      
+      
+        # turn scalar availabilities into vectors
+        for(i in 1:length(inputs$avail)) if(length(inputs$avail[[i]])==1) inputs$avail[[i]] <- rep(inputs$avail[[i]], inputs$nObs)
+        
+        # Construct summary table of availabilities and market share
+        choicematrix = matrix(0, nrow=4, ncol=length(inputs$altnames), 
+                              dimnames=list(c("Times available", "Times chosen", "Percentage chosen overall",
+                                              "Percentage chosen when available"), inputs$altnames))
+        choicematrix[1,] = unlist(lapply(inputs$avail, sum))
+        for(j in 1:length(inputs$altnames)) choicematrix[2,j] = sum(inputs$choiceVar==inputs$altcodes[j]) # number of times each alt is chosen
+        choicematrix[3,] = choicematrix[2,]/inputs$nObs*100 # market share
+        choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 # market share controlled by availability
+        choicematrix[4,!is.finite(choicematrix[4,])] <- 0
+        
+        if(!apollo_inputs$silent & data){
+          if(any(choicematrix[4,]==0)) apollo_print("WARNING: some alternatives are never chosen in your data!")
+          if(any(choicematrix[4,]>=100)) apollo_print("WARNING: some alternatives are always chosen when available!")
+          #if(inputs$avail_set) apollo_print(paste0("WARNING: Availability not provided (or some elements are NA). Full availability assumed."))
+          apollo_print("\n")
+          apollo_print(paste0('Overview of choices for ', toupper(inputs$modelType), ' model component ', 
+                              ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
+          print(round(choicematrix,2))
+        }
+      
+        if(param){
+          if(!apollo_inputs$silent & data) apollo_print('\n')
+          if( !all(sapply(inputs$cnlNests, length)==1) ){
+            inputs$cnlNests <- lapply(inputs$cnlNests, mean)
+            if(!apollo_inputs$silent) apollo_print(paste0('In the following table, lambda values ',
+                                                          '(nest scales) where averaged across ',
+                                                          'participants and draws for model component "',
+                                                          inputs$componentName, '".')) 
+          }
+          out_tree = cbind(inputs$cnlStructure, unlist(inputs$cnlNests))
+          out_tree = apply(out_tree, MARGIN=2, function(x){
+            if(all(x %in% 0:1)) round(x,0) else round(x,4)
+            return(x)
+          } )
+          ###change 4 Oct
+          #rownames(out_tree)=inputs$nestnames
+          rownames(out_tree)=paste0(inputs$nestnames," nest")
+          #colnames(out_tree)=c(inputs$altnames,"lambda")
+          colnames(out_tree)=c(paste0(inputs$altnames," (alpha)"),"lambda")
+          if(!apollo_inputs$silent){
+            apollo_print(paste0('Structure for ', toupper(inputs$modelType), ' model component ', 
+                                ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
+            apollo_print(out_tree)
+            for(a in 1:(ncol(out_tree)-1)){
+              if(sum(out_tree[,a])!=1) apollo_print(paste0("Allocation parameters for alternative \'",inputs$altnames[a],"\' do not sum to 1. You may want to impose a constraint using a logistic transform."))
+              if(any(out_tree[,a]<0)) apollo_print(paste0("Some allocation parameters for alternative \'",inputs$altnames[a],"\' are negative. You may want to impose a constraint using a logistic transform."))
+              if(any(out_tree[,a]>1)) apollo_print(paste0("Some allocation parameters for alternative \'",inputs$altnames[a],"\' are larger than 1. You may want to impose a constraint using a logistic transform."))
+            }
+            if(any(out_tree[,ncol(out_tree)]<0)) apollo_print("Some lambda parameters are negative. You may want to impose a constraint or reconsider your model structure.")
+            if(any(out_tree[,ncol(out_tree)]>1)) apollo_print("Some lambda parameters are larger than 1. You may want to impose a constraint or reconsider your model structure.")
+          }
+        }
+        return(invisible(TRUE))
+    }
+    
+    
+    # Store model type
+    cnl_settings$modelType <- modelType
+    
     # Construct necessary input for gradient (including gradient of utilities)
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
                             error=function(e) return(NULL))
@@ -211,7 +276,7 @@ apollo_cnl <- function(cnl_settings, functionality){
     if(!apollo_inputs$apollo_control$noValidation) apollo_validate(cnl_settings, modelType, 
                                                                    functionality, apollo_inputs)
     
-    if(!apollo_inputs$apollo_control$noDiagnostics) apollo_diagnostics(cnl_settings, modelType, apollo_inputs)
+    if(!apollo_inputs$apollo_control$noDiagnostics) cnl_settings$cnl_diagnostics(cnl_settings, apollo_inputs)
 
     testL <- cnl_settings$probs_CNL(cnl_settings)
     if(any(!cnl_settings$rows)) testL <- apollo_insertRows(testL, cnl_settings$rows, 1) # insert excluded rows with value 1
@@ -279,8 +344,8 @@ apollo_cnl <- function(cnl_settings, functionality){
   if(functionality=='report'){
     P <- list()
     apollo_inputs$silent <- FALSE
-    P$data  <- utils::capture.output(apollo_diagnostics(cnl_settings, modelType, apollo_inputs, param=FALSE))
-    P$param <- utils::capture.output(apollo_diagnostics(cnl_settings, modelType, apollo_inputs, data =FALSE))
+    P$data  <- utils::capture.output(cnl_settings$cnl_diagnostics(cnl_settings, apollo_inputs, param=FALSE))
+    P$param <- utils::capture.output(cnl_settings$cnl_diagnostics(cnl_settings, apollo_inputs, data =FALSE))
     return(P)
   }
 }

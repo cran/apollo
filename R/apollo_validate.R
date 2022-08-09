@@ -77,7 +77,7 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     }
 
     # Check V and avail elements are named correctly
-    if(modelType!="dft" && !all(inputs$altnames %in% names(inputs$V))) stop("The names of the alternatives for model component \"",inputs$componentName,"\" do not match those in \"V\".")
+    if(modelType!="dft" && !all(inputs$altnames %in% names(inputs$V))) stop("The names of the alternatives for model component \"",inputs$componentName,"\" do not match those in \"utilities\".")
     if(modelType!="el") if(!all(inputs$altnames %in% names(inputs$avail))) stop("The names of the alternatives for model component \"",inputs$componentName,"\" do not match those in \"avail\".")
     if(modelType=="el") for(s in 1:inputs$stages) if(!all(inputs$altnames %in% names(inputs$avail[[s]]))) stop('The names of the alternatives for model component "',inputs$componentName,'" do not match those in "avail" (in stage ',s,').')
     
@@ -150,7 +150,8 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     if(modelType=='nl'){
       allElements <- c("root", unlist(inputs$nlStructure))
       if(is.null(inputs$nlStructure[["root"]])) stop("Tree structure for model component \"",inputs$componentName,"\" is missing an element called root!")
-      test <- all(inputs$nlNests!=0)
+      #test <- all(inputs$nlNests!=0)
+      test <- all(sapply(inputs$nlNests, function(x) is.numeric(x) && all(x!=0)))
       if(!test) stop("Structural parameters (lambda) cannot be zero for model component \"",inputs$componentName,"\"!")      
       #if(inputs$nlNests[["root"]]!=1) stop("The root lambda parameter for model component \"",inputs$componentName,"\" should be equal to 1.")
       if( !all(inputs$altnames %in% allElements) ) stop("All alternatives must be included in the tree structure for model component \"",inputs$componentName,"\".")
@@ -229,7 +230,7 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     if(inputs$hasOutside && inputs$alternatives[1]!="outside") stop("First product for model component \"",inputs$componentName,"\" must be called \"outside\"!")
     # Check labels
     namesinside=names(inputs$V)[names(inputs$V)!="outside"]
-    if(!all(inputs$alternatives %in% names(inputs$V))) stop("Labels in \"alternatives\" for model component \"",inputs$componentName,"\" do not match those in \"V\"!")
+    if(!all(inputs$alternatives %in% names(inputs$V))) stop("Labels in \"alternatives\" for model component \"",inputs$componentName,"\" do not match those in \"utilities\"!")
     if(!all(inputs$alternatives %in% names(inputs$alpha))) stop("Labels in \"alternatives\" for model component \"",inputs$componentName,"\" do not match those in \"alpha\"!")
     if(!all(namesinside %in% names(inputs$gamma))) stop("Labels in \"alternatives\" for model component \"",inputs$componentName,"\" do not match those in \"gamma\"!")
     if(!all(inputs$alternatives %in% names(inputs$continuousChoice))) stop("Labels in \"alternatives\" for model component \"",inputs$componentName,"\" do not match those in \"continuousChoice\"!")

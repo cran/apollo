@@ -216,6 +216,60 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
       return( P )
     }
     
+    mdcnev_settings$mdcnev_diagnostics <- function(inputs, apollo_inputs, data=TRUE, param=TRUE){
+      
+      
+        # Table describing dependent variable
+        choicematrix <- matrix(0, nrow=4, ncol=inputs$nAlt, 
+                               dimnames=list(c("Times available","Observations in which chosen",
+                                               "Average consumption when available",
+                                               "Average consumption when chosen"),
+                                             inputs$altnames))
+        for(a in 1:inputs$nAlt){
+          choicematrix[1,a] <- ifelse(length(inputs$avail[[a]])==1 && inputs$avail[[a]]==1, 
+                                      inputs$nObs, sum(inputs$avail[[a]]) )
+          choicematrix[2,a] <- sum(inputs$discrete_choice[[a]])
+          choicematrix[3,a] <- ifelse(choicematrix[1,a]>0, sum(inputs$continuousChoice[[a]])/choicematrix[1,a], 0)
+          choicematrix[4,a] <- ifelse(choicematrix[2,a]>0, sum(inputs$continuousChoice[[a]])/choicematrix[2,a], 0)
+        }
+        # Print table
+        if(!apollo_inputs$silent & data){
+          apollo_print("\n")
+          apollo_print(paste0('Overview of choices for ', toupper(inputs$modeltype), ' model component ', 
+                              ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
+          print(round(choicematrix,2))
+          
+          # Print warnings
+          for(a in 1:inputs$nAlt){
+            if(choicematrix[2,a]==0) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'))
+            if(choicematrix[2,a]==choicematrix[1,a] && inputs$altnames[a]!=inputs$outside) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'))
+          }
+          #if(inputs$avail_set==TRUE & !apollo_inputs$silent) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'))
+        }
+        
+        if(!apollo_inputs$silent & param){
+          if(data) apollo_print('\n')
+          apollo_print(paste0('Nest structure for ', toupper(inputs$modeltype), ' model component ', 
+                              ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
+          colnames(inputs$mdcnevStructure) <- inputs$alternatives
+          rownames(inputs$mdcnevStructure) <- names(inputs$mdcnevNests)
+          maxL <- max(nchar(names(inputs$mdcnevNests)))
+          for(n in rownames(inputs$mdcnevStructure)) apollo_print(paste0(
+            n, paste0(rep('.', maxL - nchar(n)), collapse=''),' (', round(inputs$mdcnevNests[[n]], 2), '): ', 
+            paste0(inputs$alternatives[inputs$mdcnevStructure[n,]>0], collapse=', ')
+          ))
+          #apollo_print(inputs$mdcnevStructure)
+        }
+      
+      
+      #### return ####
+      return(invisible(TRUE))
+    }
+    
+    
+    # Store model type
+    mdcnev_settings$modelType <- modelType
+    
     # Construct necessary input for gradient (including gradient of utilities)
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
                             error=function(e) return(NULL))
@@ -301,7 +355,7 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
     if(!apollo_inputs$apollo_control$noValidation) apollo_validate(mdcnev_settings, modelType, 
                                                                    functionality, apollo_inputs)
 
-    if(!apollo_inputs$apollo_control$noDiagnostics) apollo_diagnostics(mdcnev_settings, modelType, apollo_inputs)
+    if(!apollo_inputs$apollo_control$noDiagnostics) mdcnev_settings$mdcnev_diagnostics(mdcnev_settings, apollo_inputs)
     
     testL = mdcnev_settings$probs_MDCNEV(mdcnev_settings)
     if(any(!mdcnev_settings$rows)) testL <- apollo_insertRows(testL, mdcnev_settings$rows, 1)
@@ -471,8 +525,8 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
   if(functionality=='report'){
     P <- list()
     apollo_inputs$silent <- FALSE
-    P$data  <- capture.output(apollo_diagnostics(mdcnev_settings, modelType, apollo_inputs, param=FALSE))
-    P$param <- capture.output(apollo_diagnostics(mdcnev_settings, modelType, apollo_inputs, data =FALSE))
+    P$data  <- capture.output(mdcnev_settings$mdcnev_diagnostics(mdcnev_settings, apollo_inputs, param=FALSE))
+    P$param <- capture.output(mdcnev_settings$mdcnev_diagnostics(mdcnev_settings, apollo_inputs, data =FALSE))
     return(P)
   }
 }

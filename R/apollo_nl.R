@@ -154,6 +154,89 @@ apollo_nl <- function(nl_settings, functionality){
       return(Palts)
     }
     
+    nl_settings$nl_diagnostics <- function(inputs, apollo_inputs, data=TRUE, param=TRUE){
+      
+      #### MNL, NL, CNL, DFT ####
+      
+        # turn scalar availabilities into vectors
+        for(i in 1:length(inputs$avail)) if(length(inputs$avail[[i]])==1) inputs$avail[[i]] <- rep(inputs$avail[[i]], inputs$nObs)
+        
+        # Construct summary table of availabilities and market share
+        choicematrix = matrix(0, nrow=4, ncol=length(inputs$altnames), 
+                              dimnames=list(c("Times available", "Times chosen", "Percentage chosen overall",
+                                              "Percentage chosen when available"), inputs$altnames))
+        choicematrix[1,] = unlist(lapply(inputs$avail, sum))
+        for(j in 1:length(inputs$altnames)) choicematrix[2,j] = sum(inputs$choiceVar==inputs$altcodes[j]) # number of times each alt is chosen
+        choicematrix[3,] = choicematrix[2,]/inputs$nObs*100 # market share
+        choicematrix[4,] = choicematrix[2,]/choicematrix[1,]*100 # market share controlled by availability
+        choicematrix[4,!is.finite(choicematrix[4,])] <- 0
+        
+        if(!apollo_inputs$silent & data){
+          if(any(choicematrix[4,]==0)) apollo_print("WARNING: some alternatives are never chosen in your data!")
+          if(any(choicematrix[4,]>=100)) apollo_print("WARNING: some alternatives are always chosen when available!")
+          #if(inputs$avail_set) apollo_print(paste0("WARNING: Availability not provided (or some elements are NA). Full availability assumed."))
+          apollo_print("\n")
+          apollo_print(paste0('Overview of choices for ', toupper(inputs$modelType), ' model component ', 
+                              ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
+          print(round(choicematrix,2))
+        }
+      
+
+        if(param){
+          if(!apollo_inputs$silent & data) apollo_print('\n') # 
+          if(!apollo_inputs$silent){
+            # Warning for automatic setting of root nesting parameter
+            if(inputs$root_set) apollo_print("Notice: Root lambda parameter set to 1.")
+            # Identifying nest's parents
+            nestAbove <- unique(lapply(inputs$ancestors, '[', -1))
+            nestAbove <- setNames(sapply(nestAbove, function(x) if(length(x)==1) return('Inf') else x[2]) ,
+                                  sapply(nestAbove, '[', 1))
+            # Printing graphical representation of the tree, using recursive function
+            apollo_print(paste0('Nesting structure for ', toupper(inputs$modeltype), ' model component ', 
+                                ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
+            print_tree_level = function(nlStructure, component, preceding_nest_layer, space){
+              if(preceding_nest_layer!=0) space=c(space,"  |")
+              for(j in 1:length(nlStructure[[component]])){
+                space <- gsub("[']", " ", space)
+                if(j==length(nlStructure[[component]])) space[length(space)] <- gsub("[|]", "'", space[length(space)])
+                if(nlStructure[[component]][j] %in% inputs$altnames){
+                  depth <- length(space)
+                  cat("\n",space,rep("-",3*(maxDepth-depth)),"-Alternative: ",nlStructure[[component]][j], sep="")
+                } else {
+                  l  <- inputs$nlNests[[nlStructure[[component]][j]]]
+                  #n0 <- nestAbove[nlStructure[[component]][j]]
+                  #if(n0=='Inf') l0 <- 1 else l0 <- inputs$nlNests[[n0]]
+                  cat("\n",space,"-Nest: ", nlStructure[[component]][j], " (",round(l,4), ")", sep="")
+                  #if(any(l<0 | l0<l)) cat(' WARNING: nest param. should be between 0 and ', round(l0,4), '.', sep='')
+                  print_tree_level(nlStructure, nlStructure[[component]][j], preceding_nest_layer+1, space)
+                }
+              }
+            } # end of print_tree_level function
+            maxDepth <- max(sapply(inputs$ancestors, length))-1
+            cat("Nest: ",names(inputs$nlStructure)[[1]]," (",round(inputs$nlNests[[names(inputs$nlStructure)[[1]]]],4),")", sep="")
+            print_tree_level(inputs$nlStructure, "root", preceding_nest_layer=0, space="|")
+            apollo_print('\n')
+            # Print warning if nesting parameters do not make sense
+            for(i in names(inputs$nlNests)){
+              l  <- inputs$nlNests[[i]]
+              if(i=='root') l0 <- 1 else l0 <- inputs$nlNests[[ nestAbove[i] ]]
+              if(any(l<0 | l0<l)){
+                txt <- paste0('WARNING: The nesting parameter for nest "', i, '" should be between 0 and ', round(l0,4))
+                if(i!='root') txt <- paste0(txt, ' (the nesting parameter for nest "', nestAbove[i], '")')
+                txt <- paste0(txt, ', yet its value is ', round(l, 4), '.')
+                cat('\n'); apollo_print(txt)
+              }
+            }
+          }
+        } # end of NL special checks
+      
+        return(invisible(TRUE))
+    }
+    
+    
+    # Store model type
+    nl_settings$modelType <- modelType
+    
     # Construct necessary input for gradient (including gradient of utilities)
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
                             error=function(e) return(NULL))
@@ -206,7 +289,7 @@ apollo_nl <- function(nl_settings, functionality){
     if(!apollo_inputs$apollo_control$noValidation) apollo_validate(nl_settings, modelType, 
                                                                    functionality, apollo_inputs)
     
-    if(!apollo_inputs$apollo_control$noDiagnostics) apollo_diagnostics(nl_settings, modelType, apollo_inputs)
+    if(!apollo_inputs$apollo_control$noDiagnostics) nl_settings$nl_diagnostics(nl_settings, apollo_inputs)
     
     testL=nl_settings$probs_NL(nl_settings)
     if(any(!nl_settings$rows)) testL <- apollo_insertRows(testL, nl_settings$rows, 1) # insert excluded rows with value 1
@@ -274,8 +357,8 @@ apollo_nl <- function(nl_settings, functionality){
   if(functionality=='report'){
     P <- list()
     apollo_inputs$silent <- FALSE
-    P$data  <- capture.output(apollo_diagnostics(nl_settings, modelType, apollo_inputs, param=FALSE))
-    P$param <- capture.output(apollo_diagnostics(nl_settings, modelType, apollo_inputs, data =FALSE))
+    P$data  <- capture.output(nl_settings$nl_diagnostics(nl_settings, apollo_inputs, param=FALSE))
+    P$param <- capture.output(nl_settings$nl_diagnostics(nl_settings, apollo_inputs, data =FALSE))
     return(P)
   }
   

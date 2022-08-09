@@ -123,7 +123,7 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
       
       
       timeTaken[i,j] <- as.numeric(difftime(t1,t0,units='secs'))/nRep
-      cat(' ', sprintf("%6.2f", timeTaken[i,j],2),sep='')
+      cat(' ', sprintf("%6.2f", timeTaken[i,j]),sep='')
       
       mbRAM <- sum(gc()[,2])
       if(apollo_inputs$apollo_control$nCores>1){

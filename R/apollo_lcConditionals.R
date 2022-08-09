@@ -1,4 +1,4 @@
-#' Calculates conditionals of a latent class model.
+#' Calculates conditionals for latent class models.
 #' 
 #' Calculates posterior expected values (conditionals) of class allocation probabilities for each individual.
 #' 
@@ -53,7 +53,19 @@ apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
   
   ### Calculate posterior class allocation probs
   post_pi = vector(mode="list", length=classes)
-  for(s in 1:classes) post_pi[[s]] = lcpars[[class_prob]][[s]]*L[[s]]/L[["model"]]
+  nObsPerIndiv <- apollo_inputs$database[,apollo_inputs$apollo_control$indivID]
+  nObsPerIndiv <- as.vector(table(nObsPerIndiv))
+  for(s in 1:classes){
+    # adjust dimensionality of pi if necessary
+    pi <- lcpars[[class_prob]][[s]]
+    rL <- ifelse(is.array( L[[s]]), nrow( L[[s]]), length( L[[s]]))
+    rP <- ifelse(is.array(pi), nrow(pi), length(pi))
+    if(rP!=1 && rL!=1 && rP!=rL){
+      if(rP>rL) pi <- apollo_firstRow(pi, apollo_inputs)
+      if(rP<rL && is.vector(pi)) pi <- rep(pi, each=nObsPerIndiv)
+    }
+    post_pi[[s]] = pi*L[[s]]/L[["model"]]
+  }; rm(pi, rL, rP)
   
   ### Prepare output
   conditionals = matrix(unlist(post_pi), ncol = length(post_pi), byrow = FALSE)
