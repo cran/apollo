@@ -48,7 +48,7 @@
 #' @export
 apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, lcEM_settings=NA, estimate_settings=NA){
   
-  apollo_print("The use of apollo_lcEM has a number of requirements. No checks are run for these, so the user needs to ensure these conditions are met by their model:")
+  apollo_print("The use of apollo_lcEM has a number of requirements. No checks are run for these, so the user needs to ensure these conditions are met by their model:", type="i")
   apollo_print("1: This function is only suitable for single component models, i.e. no use of apollo_combineModels or manual multiplication of model components.")
   apollo_print("2: Any parameters that vary across classes need to be included in the definition of random parameters in apollo_lcPars.")
   apollo_print("3: The entries in the lists in apollo_lcPars need to be individual parameters, not functions thereof.")
@@ -63,7 +63,7 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   tmp <- names(default)[!(names(default) %in% names(lcEM_settings))] # options missing in lcEM_settings
   for(i in tmp) lcEM_settings[[i]] <- default[[i]]
   test <- is.list(lcEM_settings) && !is.null(lcEM_settings$postEM) && (lcEM_settings$postEM %in% 0:2)
-  if(!test) stop('Setting "postEM" inside argument "lcEM_settings" can only take values 0, 1 or 2.')
+  if(!test) stop('SYNTAX ISSUE - Setting "postEM" inside argument "lcEM_settings" can only take values 0, 1 or 2.')
   rm(i,tmp)
   
   ### Extract variables from apollo_input
@@ -122,10 +122,10 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   
   ### Checks
   # Using constraints would require altering the constraints based on which parameters are fixed
-  if(!is.null(estimate_settings$constraints)) stop('Constraints are not supported')
-  if(apollo_inputs$apollo_control$mixing==TRUE) stop("The apollo_lcEM function cannot be used for models that include continuous random parameters!")
-  if(apollo_inputs$apollo_control$HB==TRUE) stop("The apollo_lcEM function cannot be used with Bayesian estimation!")
-  if(length(grep("length(pi_values)",deparse(apollo_probabilities),fixed=TRUE))==0) stop("For using the EM algorithm for latent class, the loop over classes needs to be defined as for(s in 1:length(pi_values))!")
+  if(!is.null(estimate_settings$constraints)) stop('INCORRECT FUNCTION/SETTING USE - Constraints are not supported with the EM algorithm!')
+  if(apollo_inputs$apollo_control$mixing==TRUE) stop("INCORRECT FUNCTION/SETTING USE - he apollo_lcEM function cannot be used for models that include continuous random parameters!")
+  if(apollo_inputs$apollo_control$HB==TRUE) stop("INCORRECT FUNCTION/SETTING USE - The apollo_lcEM function cannot be used with Bayesian estimation!")
+  if(length(grep("length(pi_values)",deparse(apollo_probabilities),fixed=TRUE))==0) stop("SYNTAX ISSUE - For using the EM algorithm for latent class, the loop over classes needs to be defined as for(s in 1:length(pi_values))!")
   
   ### Commence EM
   apollo_print("Initialising EM algorithm")
@@ -143,9 +143,9 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   
   apollo_EMClassifyParams <- function(apollo_beta, apollo_inputs){
     # Validate apollo_beta & apollo_lcPars
-    if(is.null(names(apollo_beta))) stop("apollo_beta must be a named vector.")
-    if(is.null(apollo_inputs$apollo_lcPars)) stop("apollo_lcPars is missing from apollo_inputs.")
-    if(!is.function(apollo_inputs$apollo_lcPars)) stop("apollo_lcPars is not a functions.")
+    if(is.null(names(apollo_beta))) stop("INPUT ISSUE - apollo_beta must be a named vector.")
+    if(is.null(apollo_inputs$apollo_lcPars)) stop("INPUT ISSUE - apollo_lcPars is missing from apollo_inputs.")
+    if(!is.function(apollo_inputs$apollo_lcPars)) stop("SYNTAX ISSUE - apollo_lcPars is not a functions.")
     
     # Run apollo_lcPars with dummy values to identify them later
     b <- c(0,0)
@@ -160,12 +160,12 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
     lcPars <- lcPars(apollo_beta, apollo_inputs)
     
     # Validate return of apollo_lcPars, get number of classes and remove the pi_values (NAME ENFORCED)
-    if(!is.list(lcPars)) stop("The apollo_lcPars function should return a list.")
-    if(!all(sapply(lcPars, is.list))) stop("All elements inside the list returned by apollo_lcPars should be lists.")
+    if(!is.list(lcPars)) stop("SYNTAX ISSUE - The apollo_lcPars function should return a list.")
+    if(!all(sapply(lcPars, is.list))) stop("SYNTAX ISSUE - All elements inside the list returned by apollo_lcPars should be lists.")
     S <- max(sapply(lcPars, length))
-    if(!all(sapply(lcPars, length)==S)) stop("All elements inside the list returned by apollo_lcPars should have the same length.")
-    if(S==1) stop("At least two classes must be defined in apollo_lcPars.")
-    if(is.null(lcPars$pi_values)) stop("The list returned by apollo_lcPars should contain an element called 'pi_values'.")
+    if(!all(sapply(lcPars, length)==S)) stop("SYNTAX ISSUE - All elements inside the list returned by apollo_lcPars should have the same length.")
+    if(S==1) stop("SYNTAX ISSUE - At least two classes must be defined in apollo_lcPars.")
+    if(is.null(lcPars$pi_values)) stop("SYNTAX ISSUE - The list returned by apollo_lcPars should contain an element called 'pi_values'.")
     lcPars <- lcPars[names(lcPars)[names(lcPars)!="pi_values"]]
     
     # Scale b if necessary
@@ -179,7 +179,7 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
       tmp <- c()
       for(i in lcPars){
         test <- (i[[s]] %in% b) || (length(i[[s]])==1 && is.numeric(i[[s]])) # is param or value
-        if(!test) stop(paste("A value inside the return of apollo_lcPars (except for pi_values)",
+        if(!test) stop(paste("SYNTAX ISSUE - A value inside the return of apollo_lcPars (except for pi_values)",
                              "is not inside apollo_beta nor a fixed value. E.g. The second ",
                              "element of lcpars[[1]] = list(b1, b1+1) is not acceptable."))
         tmp <- c(tmp, names(b)[which(b==i[[s]])])
@@ -223,7 +223,7 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   
   ### Stop if there are generic parameters
   test <- length(apollo_beta_list$generic)>0 && !all(apollo_beta_list$generic %in% apollo_fixed)
-  if(test) stop('The EM algorithm for latent classes cannot handle generic parameters across classes (', 
+  if(test) stop('INCORRECT FUNCTION/SETTING USE - The EM algorithm for latent classes cannot handle generic parameters across classes (', 
                 paste0(apollo_beta_list$generic, collapse=', '),')')
   
   ### DEFINE MODEL AND LIKELIHOOD FUNCTION FOR CLASS ALLOCATION
@@ -260,7 +260,7 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   
   ### Create function to update h and class_specific
   updateHCS <- function(h, cs, w=FALSE, LL){
-    if(!is.logical(w)) stop('Argument "w" must be a scalar Logical')
+    if(!is.logical(w)) stop('SYNTAX ISSUE - Argument "w" must be a scalar Logical')
     ### Update h & class_specific inside apollo_inputs
     if(anyNA(environment(LL)$cl)){
       # Single core

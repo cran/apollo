@@ -10,7 +10,7 @@
 #' centered around its mean beforehand).
 #' @param normalDensity_settings List of arguments to the functions. It must contain the following.
 #'                               \itemize{
-#'                                 \item \strong{\code{componentName}}: Character. Name given to model component.
+#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                                 \item \strong{\code{mu}}: Numeric scalar. Intercept of the linear model.
 #'                                 \item \strong{\code{outcomeNormal}}: Numeric vector. Dependent variable.
 #'                                 \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
@@ -64,7 +64,7 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
   if(functionality=="validate"){
     apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
     apollo_modelList <- c(apollo_modelList, normalDensity_settings$componentName)
-    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", normalDensity_settings$componentName,
+    if(anyDuplicated(apollo_modelList)) stop("SPECIFICATION ISSUE - Duplicated componentName found (", normalDensity_settings$componentName,
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
@@ -167,8 +167,8 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
     testL = stats::dnorm(normalDensity_settings$outcomeNormal - normalDensity_settings$xNormal,
                          normalDensity_settings$mu, normalDensity_settings$sigma)
     if(any(!normalDensity_settings$rows)) testL <- apollo_insertRows(testL, normalDensity_settings$rows, 1)
-    if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"", normalDensity_settings$componentName,"\"")
-    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("\nSome observations have zero probability at starting value for model component \"", normalDensity_settings$componentName,"\""))
+    if(all(testL==0)) stop("\nCALCULATION ISSUE - All observations have zero probability at starting value for model component \"", normalDensity_settings$componentName,"\"")
+    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("\nSome observations have zero probability at starting value for model component \"", normalDensity_settings$componentName,"\""), type="i")
     return(invisible(testL))
   }
 
@@ -214,12 +214,12 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
   # ################################ #
   
   if(functionality=="gradient"){
-    if(!normalDensity_settings$gradient) stop("Analytical gradient could not be calculated for ", 
+    if(!normalDensity_settings$gradient) stop("INTERNAL ISSUE - Analytical gradient could not be calculated for ", 
                                               normalDensity_settings$componentName, 
                                               ". Please set apollo_control$analyticGrad=FALSE.")
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
-                            error=function(e) stop("apollo_mnl could not fetch apollo_beta for gradient estimation."))
-    if(is.null(apollo_inputs$database)) stop("apollo_mnl could not fetch apollo_inputs$database for gradient estimation.")
+                            error=function(e) stop("INTERNAL ISSUE - apollo_normalDensity could not fetch apollo_beta for gradient estimation."))
+    if(is.null(apollo_inputs$database)) stop("INTERNAL ISSUE - apollo_normalDensity could not fetch apollo_inputs$database for gradient estimation.")
     
     # Calculate likelihood
     L <- stats::dnorm(normalDensity_settings$outcomeNormal - normalDensity_settings$xNormal,

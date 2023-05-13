@@ -13,17 +13,21 @@ apollo_saveOutput(model, saveOutput_settings = NA)
 \itemize{
    \item \strong{\code{printChange}}: Boolean. TRUE for printing difference between starting values and estimates. TRUE by default.
    \item \strong{\code{printClassical}}: Boolean. TRUE for printing classical standard errors. TRUE by default.
-   \item \strong{\code{printCorr}}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
-   \item \strong{\code{printCovar}}: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. TRUE by default.
+   \item \strong{\code{printCorr}}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. For Bayesian estimation, this setting is used for the covariane of random parameters. TRUE by default.
+   \item \strong{\code{printCovar}}: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. For Bayesian estimation, this setting is used for the correlation of random parameters. TRUE by default.
    \item \strong{\code{printDataReport}}: Boolean. TRUE for printing summary of choices in database and other diagnostics. FALSE by default.
+   \item \strong{\code{printFixed}}: Logical. TRUE for printing fixed parameters among estimated parameter. TRUE by default.
    \item \strong{\code{printFunctions}}: Boolean. TRUE for printing apollo_control, apollo_randCoeff (when available), apollo_lcPars (when available) and apollo_probabilities. TRUE by default.                               
-   \item \strong{\code{printOutliers}}: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
+   \item \strong{\code{printHBconvergence}}: Boolean. TRUE for printing Geweke convergence tests. TRUE by default.                               
+   \item \strong{\code{printHBiterations}}: Boolean. TRUE for printing an iterations report for HB estimation. TRUE by default.                               
    \item \strong{\code{printModelStructure}}: Boolean. TRUE for printing model structure. TRUE by default.
+   \item \strong{\code{printOutliers}}: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
    \item \strong{\code{printPVal}}: Boolean or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
    \item \strong{\code{printT1}}: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
    \item \strong{\code{saveEst}}: Boolean. TRUE for saving estimated parameters and standard errors to a CSV file. TRUE by default.
    \item \strong{\code{saveCorr}}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. FALSE by default.
-   \item \strong{\code{saveCov}}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. FALSE by default.
+   \item \strong{\code{saveCov}}: Boolean. TRUE for saving estimated covariance matrix to a CSV file. FALSE by default.
+   \item \strong{\code{saveHBiterations}}: Boolean. TRUE for including HB iterations in the saved model object. FALSE by default.
    \item \strong{\code{saveModelObject}}: Boolean. TRUE to save the R model object to a file (use \link{apollo_loadModel} to load it to memory). TRUE by default.
    \item \strong{\code{writeF12}}: Boolean. TRUE for writing results into an F12 file (ALOGIT format). FALSE by default.
 }}

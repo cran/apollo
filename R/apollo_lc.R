@@ -112,21 +112,21 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
                                  ' without a componentName. The name was set to "',
                                  lc_settings[["componentName"]],'" by default.'))
   }
-  if(is.null(lc_settings[["inClassProb"]])) stop('The lc_settings list for model component "',
+  if(is.null(lc_settings[["inClassProb"]])) stop('SYNTAX ISSUE - The lc_settings list for model component "',
                                                  lc_settings$componentName,'" needs to include an object called "inClassProb"!')
-  if(is.null(lc_settings[["classProb"]])) stop('The lc_settings list for model component "',
+  if(is.null(lc_settings[["classProb"]])) stop('SYNTAX ISSUE - The lc_settings list for model component "',
                                                lc_settings$componentName,'" needs to include an object called "classProb"!')
   inClassProb    = lc_settings[["inClassProb"]]
   classProb      = lc_settings[["classProb"]]
   apollo_control = apollo_inputs[["apollo_control"]]
-  if(apollo_control$workInLogs && apollo_control$mixing) stop('The settings "workInLogs" and "mixing" in "apollo_control" ',
+  if(apollo_control$workInLogs && apollo_control$mixing) stop('INTERNAL ISSUE - The settings "workInLogs" and "mixing" in "apollo_control" ',
                                                               'cannot be used together for latent class models.')
   
   # Check that inClassProb is not a list of lists (if its is, use 'model' component or fail)
-  if(!is.list(inClassProb)) stop('Setting "inClassProb" inside "lc_settings" must be a list.')
+  if(!is.list(inClassProb)) stop('INPUT ISSUE - Setting "inClassProb" inside "lc_settings" must be a list.')
   for(i in 1:length(inClassProb)) if(is.list(inClassProb[[i]]) && functionality %in% c("conditionals","estimate","validate","zero_LL", "shares_LL", "output")){
     test <- is.null(inClassProb[[i]]$model)
-    if(test) stop(paste0('At least one element inside "inClassProb" setting is a list. It should be a numeric vector, matrix',
+    if(test) stop(paste0('INPUT ISSUE - At least one element inside "inClassProb" setting is a list. It should be a numeric vector, matrix',
                          ' or array. If you are using apollo_combineModels inside each class, try using it with the argument', 
                          ' apollo_combineModel(..., asList=FALSE)')) else inClassProb[[i]] <- inClassProb[[i]]$model
   }
@@ -161,14 +161,14 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
     
     # Validate inputs
     if(!apollo_inputs$apollo_control$noValidation){
-      if(length(inClassProb)!=length(classProb)) stop("Arguments 'inClassProb' and 'classProb' for model component \"",
+      if(length(inClassProb)!=length(classProb)) stop("INPUT ISSUE - Arguments 'inClassProb' and 'classProb' for model component \"",
                                                       lc_settings$componentName,"\" must have the same length.")
-      for(cc in 1:length(classProb)) if(sum(inClassProb[[cc]])==0) stop('Within class probabilities for model component "',
+      for(cc in 1:length(classProb)) if(sum(inClassProb[[cc]])==0) stop('CALCULATION ISSUE - Within class probabilities for model component "',
                                                                         lc_settings$componentName, 
                                                                         '" are zero for every individual for class ',
                                                                         ifelse(is.numeric(names(inClassProb)[cc]),cc,names(inClassProb)[cc]))
       classprobsum = Reduce("+",classProb)
-      if(any(round(classprobsum,10)!=1)) stop("Class allocation probabilities in 'classProb' for model component \"",
+      if(any(round(classprobsum,10)!=1)) stop("SPECIFICATION ISSUE - Class allocation probabilities in 'classProb' for model component \"",
                                               lc_settings$componentName,"\" must sum to 1.")
     }
     
@@ -213,7 +213,6 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
       } else {
         # If inClassProb is calculated at the obs level while the classProb is at the indiv level
         classProb <- lapply(classProb, rep, nObsPerIndiv)
-        ### warning('Class probability repeated for all observations of the same individual.')
       }
     }
     
@@ -244,7 +243,7 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
       nObsPerIndiv <- as.vector(table(indivID))
       if( nRowsInClassProb < nRowsClassProb ){
         # If classProb is calculated at the obs level while the inClassProb is at the indiv level
-        stop("Class-probability variable for model component \"",lc_settings$componentName,"\" has more elements than in-class-probability.")
+        stop("SPECIFICATION ISSUE - Class-probability variable for model component \"",lc_settings$componentName,"\" has more elements than in-class-probability.")
       } else {
         # If inClassProb is calculated at the obs level while the classProb is at the indiv level
         S=length(classProb)
@@ -274,7 +273,12 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
     }
     
     nClass<- length(classProb)
+    for(s in 1:length(inClassProb)){
+      if(!is.list(inClassProb[[s]])) inClassProb[[s]]=list(inClassProb[[s]])  
+    }
+    
     nAlts <- length(inClassProb[[1]])
+    
     Pout <- vector(mode="list", length=nAlts)
     for(i in 1:nAlts){
       Pout[[i]] <- 0*inClassProb[[1]][[1]]
@@ -292,13 +296,13 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   
   if(functionality==("gradient")){
     # Initial checks
-    if(any(sapply(inClassProb, function(p) is.null(p$like) || is.null(p$grad)))) stop("Some components in inClassProb are missing the 'like' and/or 'grad' elements")
-    if(any(sapply(classProb, function(p) is.null(p$like) || is.null(p$grad)))) stop("Some components in classProb are missing the 'like' and/or 'grad' elements")
-    if(apollo_inputs$apollo_control$workInLogs && apollo_inputs$apollo_control$analyticGrad) stop("workInLogs cannot be used in conjunction with analyticGrad")
+    if(any(sapply(inClassProb, function(p) is.null(p$like) || is.null(p$grad)))) stop("INTERNAL ISSUE - Some components in inClassProb are missing the 'like' and/or 'grad' elements")
+    if(any(sapply(classProb, function(p) is.null(p$like) || is.null(p$grad)))) stop("INTERNAL ISSUE - Some components in classProb are missing the 'like' and/or 'grad' elements")
+    if(apollo_inputs$apollo_control$workInLogs && apollo_inputs$apollo_control$analyticGrad) stop("INCORRECT FUNCTION/SETTING USE - workInLogs cannot be used in conjunction with analyticGrad")
     K <- length(inClassProb[[1]]$grad) # number of parameters
-    if(K!=length(classProb[[1]]$grad)) stop("Dimensions of gradients not consistent between classProb and inClassProb")
-    if(any(sapply(inClassProb, function(p) length(p$grad))!=K)) stop("Dimensions of gradients from different components in inClassProb imply different number of parameters")
-    if(any(sapply(classProb, function(p) length(p$grad))!=K)) stop("Dimensions of gradients from different components in classProb imply different number of parameters")
+    if(K!=length(classProb[[1]]$grad)) stop("INTERNAL ISSUE - Dimensions of gradients not consistent between classProb and inClassProb")
+    if(any(sapply(inClassProb, function(p) length(p$grad))!=K)) stop("INTERNAL ISSUE - Dimensions of gradients from different components in inClassProb imply different number of parameters")
+    if(any(sapply(classProb, function(p) length(p$grad))!=K)) stop("INTERNAL ISSUE - Dimensions of gradients from different components in classProb imply different number of parameters")
     
     # Count number of rows in inClassProb
     nRowsInClassProb <- 0
@@ -328,7 +332,6 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
           classProb[[i]]$grad <- lapply(classProb[[i]]$grad, rep, nObsPerIndiv)
           classProb[[i]]$like <- rep(classProb[[i]]$like, nObsPerIndiv)
         }
-        ### warning('Class probability repeated for all observations of the same individual.')
       }
     }
     

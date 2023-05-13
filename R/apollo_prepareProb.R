@@ -46,17 +46,41 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
 
   if(!is.list(P)) P=list(model=P)
   ## change 8 July
-  #if(is.null(P[["model"]]) && !(functionality %in% c("prediction", "gradient", "preprocess")) ) stop('Element called model is missing in list P!')
-  if(is.null(P[["model"]]) && !(functionality %in% c("prediction", "gradient", "preprocess", "report")) ) stop('Element called model is missing in list P!')
+  #if(is.null(P[["model"]]) && !(functionality %in% c("prediction", "gradient", "preprocess")) ) stop('SYNTAX ISSUE - Element called model is missing in list P!')
+  if(is.null(P[["model"]]) && !(functionality %in% c("prediction", "gradient", "preprocess", "report")) ) stop('SYNTAX ISSUE - Element called model is missing in list P!')
   ### end change
   panelData <- apollo_inputs$apollo_control$panelData
   nIndiv <- length(unique(apollo_inputs$database[, apollo_inputs$apollo_control$indivID]))
-
+  
+  # ############################################### #
+  #### functionality="validate" ####
+  # ############################################### #
+  
+  if(functionality=="validate"){
+    dimP <- c(1, 1, 1)
+    if(is.array(P[["model"]])){
+      if(length(dim(P[["model"]]))==2) dimP[1:2] <- dim(P[["model"]])
+      if(length(dim(P[["model"]]))==3) dimP      <- dim(P[["model"]])
+    } else if(is.vector(P[["model"]])) dimP[1] <- length(P[["model"]]) else {
+      stop("SPECIFICATION ISSUE - apollo_probabilities needs to return ",
+           "a valid vector of likelihood values.")
+    }
+    
+    if(panelData && dimP[1]>nIndiv && !apollo_inputs$apollo_control$HB) stop("SPECIFICATION ISSUE - Need to ", 
+                                         "multiply across observations for the same ", 
+                                         "individual! (see ?apollo_panelProd)")
+    if(dimP[3]>1) stop("SPECIFICATION ISSUE - Need to average over intra-", 
+                       "individual draws! (see ?apollo_avgIntraDraws)")
+    if(dimP[2]>1) stop("SPECIFICATION ISSUE - Need to average over inter-", 
+                       "individual draws! (see ?apollo_avgInterDraws)")
+    return(P)
+  }
+  
   # ############################################### #
   #### functionalities with untransformed return ####
   # ############################################### #
   
-  if(functionality %in% c("components", "prediction", "validate", "raw", "report")) return(P)
+  if(functionality %in% c("components", "prediction", "raw", "report")) return(P)
 
   # ################### #
   #### HB estimation ####
@@ -105,8 +129,8 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
   
   if(functionality=="gradient"){
     if("model" %in% names(P)) P <- P$model
-    if(is.null(P$like) || is.null(P$grad)) stop("Missing like and/or grad elements inside components!")
-    if(apollo_inputs$apollo_control$workInLogs && apollo_inputs$apollo_control$analyticGrad) stop("workInLogs cannot be used in conjunction with analyticGrad!")
+    if(is.null(P$like) || is.null(P$grad)) stop("INTERNAL ISSUE - Missing like and/or grad elements inside components!")
+    if(apollo_inputs$apollo_control$workInLogs && apollo_inputs$apollo_control$analyticGrad) stop("INTERNAL ISSUE - workInLogs cannot be used in conjunction with analyticGrad!")
     test <- is.array(P$like) && ncol(P$like)==1 && (length(dim(P$like))==2 || (length(dim(P$like))==3 && dim(P$like)[3]==1))
     if(test) P$like <- as.vector(P$like)
     if(is.list(P)) P = do.call(cbind, P$grad)/P$like
@@ -133,11 +157,12 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
     }
 
     if(is.array(P[["model"]])) nPRows <- dim(P[["model"]])[1] else nPRows <- length(P[["model"]])
-    if(panelData && nPRows>nIndiv) stop("Need to multiply observations for the same individual! (see ?apollo_panelProd)")
+    #if(panelData && nPRows>nIndiv && !apollo_inputs$apollo_control$HB) stop("SPECIFICATION ISSUE - Need to multiply over observations for the same individual! (see ?apollo_panelProd)")
+    if(panelData && nPRows>nIndiv && !apollo_inputs$apollo_control$HB && !apollo_inputs$apollo_control$overridePanel) stop("SPECIFICATION ISSUE - Need to multiply over observations for the same individual! (see ?apollo_panelProd)")
     
     if(is.array(P[["model"]])){
-      if(length(dim(P[["model"]]))==3) stop('Need to average over intra-individual draws! (see ?apollo_avgIntraDraws)')
-      if(dim(P[["model"]])[2]>1) stop('Need to average over inter-individual draws! (see ?apollo_avgInterDraws)')
+      if(length(dim(P[["model"]]))==3) stop('SPECIFICATION ISSUE - Need to average over intra-individual draws! (see ?apollo_avgIntraDraws)')
+      if(dim(P[["model"]])[2]>1) stop('SPECIFICATION ISSUE - Need to average over inter-individual draws! (see ?apollo_avgInterDraws)')
       if(dim(P[["model"]])[2]==1) P[["model"]]=as.vector(P[["model"]])
     }
     return(P[["model"]])

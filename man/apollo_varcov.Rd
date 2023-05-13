@@ -25,6 +25,7 @@ the following: \code{apollo_logLike}, \code{apollo_grad} or \code{apollo_inputs}
     \item \strong{\code{functionality}}: Character. Can be either 
     \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
   }
+  \item \strong{\code{BHHH_matrix}}: Matrix. Optional input, providing the BHHH matrix so it does not get recalculated.
   \item \strong{\code{hessianRoutine}}: Character. Name of routine used to calculate the Hessian. Valid values are \code{"analytic"}, \code{"numDeriv"}, \code{"maxLik"} or \code{"none"} to avoid estimating the Hessian and covariance matrix.
   \item \strong{\code{numDeriv_settings}}: List. Additional arguments to the Richardson method used by numDeriv to calculate the Hessian. See argument \code{method.args} in \link[numDeriv]{grad} for more details.
   \item \strong{\code{scaleBeta}}: Logical. If TRUE (default), parameters are scaled by their own value before calculating the Hessian to increase numerical stability. However, the output is de-scaled, so they are in the same scale as the \code{apollo_beta} argument.

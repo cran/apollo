@@ -116,8 +116,8 @@ apollo_combineResults = function(combineResults_settings=NULL){
   if(!is.character(modelNames)) stop("Argument 'modelNames' must be a character vector.")
   
   estimates    = list()
-  otheroutputs = data.frame(matrix(0,nrow=10,ncol=length(modelNames)))
-  rownames(otheroutputs) = c("Model name","Model description","Number of individuals","Number of modelled outcomes","Estimated parameters","LL(final)","Adj.Rho-square (0)","Adj.Rho-square (C)","AIC","BIC")
+  otheroutputs = data.frame(matrix(0,nrow=12,ncol=length(modelNames)))
+  rownames(otheroutputs) = c("Model name","Model description","Number of individuals","Number of modelled outcomes","Estimated parameters","Estimation time ((hh:mm:ss)","Iterations","LL(final)","Adj.Rho-square (0)","Adj.Rho-square (C)","AIC","BIC")
   values = 1 + ( 1 + printClassical ) * ( 1 + printT1) * ( 1 + printPVal )
   
   for(j in 1:length(modelNames)){
@@ -264,6 +264,28 @@ apollo_combineResults = function(combineResults_settings=NULL){
     } else otheroutputs[k,j] = NA
     
     k=k+1
+    inputvar = grep("Time taken \\(hh:mm:ss\\)", lines) 
+    if(length(inputvar)!=0){
+      inputvar = lines[inputvar]
+      position=gregexpr(pattern=":",inputvar)[[1]][3] ## third one as : used twice in time
+      tmp=substr(inputvar,position+1,nchar(inputvar))
+      #position=gregexpr(pattern=":",tmp)
+      #hours=as.double(substr(tmp,1,position[[1]][1]-1))
+      #minutes=as.double(substr(tmp,position[[1]][1]+1,position[[1]][2]-1))
+      #seconds=as.double(substr(tmp,position[[1]][2]+1,nchar(tmp)))
+      #otheroutputs[k,j]=round(3600*hours+60*minutes+seconds,2)
+      otheroutputs[k,j]=trimws(tmp)
+    } else otheroutputs[k,j] = NA
+    
+    k=k+1
+    inputvar = grep("Iterations", lines) 
+    if(length(inputvar)!=0){
+      inputvar = lines[inputvar]
+      position=gregexpr(pattern=":",inputvar)[[1]][1]
+      otheroutputs[k,j]=as.double(substr(inputvar,position+1,nchar(inputvar)))
+    } else otheroutputs[k,j] = NA
+    
+    k=k+1
     inputvar = grep("LL\\(final)", lines) 
     if(length(inputvar)==0) inputvar = grep("LL\\(final, whole model)", lines) 
     if(length(inputvar)!=0){
@@ -320,7 +342,7 @@ apollo_combineResults = function(combineResults_settings=NULL){
   }
   
   
-  otherouputs_new=data.frame(matrix("",nrow=10,ncol=values*length(modelNames)))
+  otherouputs_new=data.frame(matrix("",nrow=12,ncol=values*length(modelNames)))
   rownames(otherouputs_new)=rownames(otheroutputs)
   for(j in 1:length(modelNames)){
     otherouputs_new[,((j-1)*values+1)]=otheroutputs[,j]  
@@ -331,7 +353,7 @@ apollo_combineResults = function(combineResults_settings=NULL){
     }
   }
   otherouputs_new=rbind(otherouputs_new,rep("",ncol(otherouputs_new)))
-  rownames(otherouputs_new)[11]=""
+  rownames(otherouputs_new)[13]=""
   filename=paste0(outputDirectory, "model_comparison_", gsub("[: -]", "" , Sys.time(), perl=TRUE), ".csv")
   
   utils::write.table(otherouputs_new, filename, sep = ",", col.names = F, append = T)

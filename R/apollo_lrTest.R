@@ -41,13 +41,13 @@ apollo_lrTest = function(model1, model2){
       filename = paste0(outputDirectory, modeluse, "_output.txt", collapse='')
       if(!file.exists(filename)) filename = paste0(modeluse,"_output.txt", collapse='')
       if(!file.exists(filename)){
-        if(outputDirectory=='') stop('File ', filename, ' not found in working directory.') else 
-          stop('File ', filename, ' not found in working directory, nor in ', outputDirectory, '.') 
+        if(outputDirectory=='') stop('INPUT ISSUE - File ', filename, ' not found in working directory.') else 
+          stop('INPUT ISSUE - File ', filename, ' not found in working directory, nor in ', outputDirectory, '.') 
       } 
       lines = tryCatch(readLines(filename), 
                        warning=function(w) x=FALSE,
                        error=function(e) x=FALSE)
-      if(is.logical(lines) && lines==FALSE) stop("Could not open file ",filename) 
+      if(is.logical(lines) && lines==FALSE) stop("INPUT ISSUE - Could not open file ",filename) 
       
       ### Read model name
       id <- grepl(paste0("Model name"), lines)
@@ -59,7 +59,7 @@ apollo_lrTest = function(model1, model2){
       if(any(id)){
         value=lines[which(id)] 
       } else {
-        stop("Number of observations not found in ",filename)
+        stop("INPUT ISSUE - Number of observations not found in ",filename)
       }
       position=gregexpr(pattern=":",value)[[1]][1]
       obs[[i]]=as.double(substr(value,position+1,nchar(value)))
@@ -71,7 +71,7 @@ apollo_lrTest = function(model1, model2){
       } else if(any(id2)){
         value=lines[which(id2)] 
       } else {
-        stop("No final LL found in ",filename)
+        stop("INPUT ISSUE - No final LL found in ",filename)
       }
       position=gregexpr(pattern=":",value)[[1]][1]
       LL[[i]]=as.double(substr(value,position+1,nchar(value)))
@@ -80,7 +80,7 @@ apollo_lrTest = function(model1, model2){
       if(any(id)){
         value=lines[which(id)] 
       } else {
-        stop("Number of estimated parameters not found in ",filename)
+        stop("INPUT ISSUE - Number of estimated parameters not found in ",filename)
       }
       position=gregexpr(pattern=":",value)[[1]][1]
       k[[i]]=as.double(substr(value,position+1,nchar(value)))
@@ -90,17 +90,17 @@ apollo_lrTest = function(model1, model2){
       
       modelNames[[i]]=modeluse$apollo_control$modelName
       if(is.null(modeluse$maximum)){
-        stop("No LL found in ",paste0(modeluse))
+        stop("INPUT ISSUE - No LL found in ",paste0(modeluse))
       } else {
         LL[[i]]=modeluse$maximum  
       }
       #if(is.null(modeluse$nObs) || anyNA(modeluse$nObs[1])){
-      #  stop("Number of observations not found in ",paste0(modeluse))
+      #  stop("INPUT ISSUE - Number of observations not found in ",paste0(modeluse))
       #} else {
       #  obs[[i]]=modeluse$nObs[1]
       #} 
       if(is.null(modeluse$nObsTot) || anyNA(modeluse$nObsTot)){
-        stop("Number of observations not found in ",paste0(modeluse))
+        stop("INPUT ISSUE - Number of observations not found in ",paste0(modeluse))
       } else {
         obs[[i]]=sum(modeluse$nObsTot)
       }  
@@ -111,9 +111,9 @@ apollo_lrTest = function(model1, model2){
     }
   }
 
-  if(obs[[1]]!=obs[[2]]) stop("The two models to be compared were not estimated on the same number of observations. A likelihood ratio test cannot be used!")
-  if(k[[1]]==k[[2]]) stop("The two models to be compared have the same number of parameters. A likelihood ratio test cannot be used!")
-  if(((k[[1]]-k[[2]])*(LL[[1]]-LL[[2]]))<0) stop("The model with more parameters does not have a better log-likelihood. A likelihood ratio test cannot be used!")
+  if(obs[[1]]!=obs[[2]]) stop("INCORRECT FUNCTION/SETTING USE - The two models to be compared were not estimated on the same number of observations. A likelihood ratio test cannot be used!")
+  if(k[[1]]==k[[2]]) stop("INCORRECT FUNCTION/SETTING USE - The two models to be compared have the same number of parameters. A likelihood ratio test cannot be used!")
+  if(((k[[1]]-k[[2]])*(LL[[1]]-LL[[2]]))<0) stop("INCORRECT FUNCTION/SETTING USE - The model with more parameters does not have a better log-likelihood. A likelihood ratio test cannot be used!")
 
   if(LL[[2]]<LL[[1]]){
     apollo_print(paste0("The order of your two models will be reversed in the output as model 1 has better fit than model 2."))
@@ -139,5 +139,6 @@ apollo_lrTest = function(model1, model2){
   cat("\nLikelihood ratio test-value:   ",round(LR_test_value,2),"\n")
   cat("Degrees of freedom:            ",df,"\n")
   cat("Likelihood ratio test p-value: ",formatC(p),"\n")
+  apollo_print("\nThe p-value from the test is returned insibly as an output from this function. Calling the function via result=apollo_lrTest(...) will save this output in an object called result (or otherwise named object).", type="i")
   return(invisible(p))
 }

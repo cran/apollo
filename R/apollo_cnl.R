@@ -15,7 +15,7 @@
 #'                       \item \strong{\code{choiceVar}}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
 #'                       \item \strong{\code{cnlNests}}: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named according to nests. The lambda at the root is fixed to 1, and therefore does not need to be defined.
 #'                       \item \strong{\code{cnlStructure}}: Numeric matrix. One row per nest and one column per alternative. Each element of the matrix is the alpha parameter of that (nest, alternative) pair.
-#'                       \item \strong{\code{componentName}}: Character. Name given to model component.
+#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                       \item \strong{\code{utilities}}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
 #'                       \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
 #'                     }
@@ -67,7 +67,7 @@ apollo_cnl <- function(cnl_settings, functionality){
   if(functionality=="validate"){
     apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
     apollo_modelList <- c(apollo_modelList, cnl_settings$componentName)
-    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", cnl_settings$componentName,
+    if(anyDuplicated(apollo_modelList)) stop("SPECIFICATION ISSUE - Duplicated componentName found (", cnl_settings$componentName,
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
@@ -173,9 +173,9 @@ apollo_cnl <- function(cnl_settings, functionality){
         choicematrix[4,!is.finite(choicematrix[4,])] <- 0
         
         if(!apollo_inputs$silent & data){
-          if(any(choicematrix[4,]==0)) apollo_print("WARNING: some alternatives are never chosen in your data!")
-          if(any(choicematrix[4,]>=100)) apollo_print("WARNING: some alternatives are always chosen when available!")
-          #if(inputs$avail_set) apollo_print(paste0("WARNING: Availability not provided (or some elements are NA). Full availability assumed."))
+          if(any(choicematrix[4,]==0)) apollo_print("Some alternatives are never chosen in your data!", type="w")
+          if(any(choicematrix[4,]>=100)) apollo_print("Some alternatives are always chosen when available!", type="w")
+          #if(inputs$avail_set) apollo_print("Availability not provided (or some elements are NA). Full availability assumed.", type="i")
           apollo_print("\n")
           apollo_print(paste0('Overview of choices for ', toupper(inputs$modelType), ' model component ', 
                               ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
@@ -206,7 +206,8 @@ apollo_cnl <- function(cnl_settings, functionality){
                                 ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
             apollo_print(out_tree)
             for(a in 1:(ncol(out_tree)-1)){
-              if(sum(out_tree[,a])!=1) apollo_print(paste0("Allocation parameters for alternative \'",inputs$altnames[a],"\' do not sum to 1. You may want to impose a constraint using a logistic transform."))
+              #if(sum(out_tree[,a])!=1) apollo_print(paste0("Allocation parameters for alternative \'",inputs$altnames[a],"\' do not sum to 1. You may want to impose a constraint using a logistic transform."))
+              if(abs(sum(out_tree[,a])-1)>10^-4) apollo_print(paste0("Allocation parameters for alternative \'",inputs$altnames[a],"\' do not sum to 1. You may want to impose a constraint using a logistic transform."))
               if(any(out_tree[,a]<0)) apollo_print(paste0("Some allocation parameters for alternative \'",inputs$altnames[a],"\' are negative. You may want to impose a constraint using a logistic transform."))
               if(any(out_tree[,a]>1)) apollo_print(paste0("Some allocation parameters for alternative \'",inputs$altnames[a],"\' are larger than 1. You may want to impose a constraint using a logistic transform."))
             }
@@ -280,7 +281,7 @@ apollo_cnl <- function(cnl_settings, functionality){
 
     testL <- cnl_settings$probs_CNL(cnl_settings)
     if(any(!cnl_settings$rows)) testL <- apollo_insertRows(testL, cnl_settings$rows, 1) # insert excluded rows with value 1
-    if(all(testL==0)) stop('All observations have zero probability at starting value for model component "', cnl_settings$componentName,'"')
+    if(all(testL==0)) stop('CALCULATION ISSUE - All observations have zero probability at starting value for model component "', cnl_settings$componentName,'"')
         if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0('Some observations have zero probability at starting value for model component "', cnl_settings$componentName,'"'))
     return(invisible(testL))
   }

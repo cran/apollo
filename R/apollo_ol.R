@@ -14,7 +14,7 @@
 #' @param ol_settings List of settings for the OL model. It should include the following.
 #'                   \itemize{
 #'                     \item \strong{\code{coding}}: Numeric or character vector. Optional argument. Defines the order of the levels in \code{outcomeOrdered}. The first value is associated with the lowest level of \code{outcomeOrdered}, and the last one with the highest value. If not provided, is assumed to be \code{1:(length(tau) + 1)}.
-#'                     \item \strong{\code{componentName}}: Character. Name given to model component.
+#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                     \item \strong{\code{outcomeOrdered}}: Numeric vector. Dependent variable. The coding of this variable is assumed to be from 1 to the maximum number of different levels. For example, if the ordered response has three possible values: "never", "sometimes" and "always", then it is assumed that outcomeOrdered contains "1" for "never", "2" for "sometimes", and 3 for "always". If another coding is used, then it should be specified using the \code{coding} argument.
 #'                     \item \strong{\code{rows}}: Boolean vector. TRUE if a row must be considered in the calculations, FALSE if it must be excluded. It must have length equal to the length of argument \code{outcomeOrdered}. Default value is \code{"all"}, meaning all rows are considered in the calculation.
 #'                     \item \strong{\code{tau}}: List of numeric vectors/matrices/3-dim arrays. Thresholds. As many as number of different levels in the dependent variable - 1. Extreme thresholds are fixed at -inf and +inf. Mixing is allowed in thresholds. Can also be a matrix with as many rows as observations and as many columns as thresholds.
@@ -67,7 +67,7 @@ apollo_ol  <- function(ol_settings, functionality){
   if(functionality=="validate"){
     apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
     apollo_modelList <- c(apollo_modelList, ol_settings$componentName)
-    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", ol_settings$componentName,
+    if(anyDuplicated(apollo_modelList)) stop("SPECIFICATION ISSUE - Duplicated componentName found (", ol_settings$componentName,
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
@@ -195,9 +195,9 @@ apollo_ol  <- function(ol_settings, functionality){
     if(!apollo_inputs$apollo_control$noDiagnostics) ol_settings$ol_diagnostics(ol_settings, apollo_inputs)
     testL = ol_settings$probs_OL(ol_settings)
     if(any(!ol_settings$rows)) testL <- apollo_insertRows(testL, ol_settings$rows, 1)
-    if(all(testL==0)) stop("\nAll observations have zero probability at starting value for model component \"",ol_settings$componentName,"\"")
+    if(all(testL==0)) stop("\nCALCULATION ISSUE - All observations have zero probability at starting value for model component \"",ol_settings$componentName,"\"")
     if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0('Some observations have zero probability at starting value for model component "', 
-                                          ol_settings$componentName,'".'))
+                                          ol_settings$componentName,'".'), type="i")
     return(invisible(testL))
   }
 
@@ -245,14 +245,14 @@ apollo_ol  <- function(ol_settings, functionality){
   
   if(functionality=="gradient"){
     # Verify everything necessary is available
-    if(is.null(ol_settings$gradient) || !ol_settings$gradient) stop("Analytical gradient could not be calculated. Please set apollo_control$analyticGrad=FALSE.")
+    if(is.null(ol_settings$gradient) || !ol_settings$gradient) stop("INTERNAL ISSUE - Analytical gradient could not be calculated. Please set apollo_control$analyticGrad=FALSE.")
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
-                            error=function(e) stop("apollo_ol could not fetch apollo_beta for gradient estimation."))
-    if(is.null(apollo_inputs$database)) stop("apollo_ol could not fetch apollo_inputs$database for gradient estimation.")
+                            error=function(e) stop("INTERNAL ISSUE - apollo_ol could not fetch apollo_beta for gradient estimation."))
+    if(is.null(apollo_inputs$database)) stop("INTERNAL ISSUE - apollo_ol could not fetch apollo_inputs$database for gradient estimation.")
     
     # Calculate probabilities
     Pcho <- ol_settings$probs_OL(ol_settings, all=FALSE)
-    if(anyNA(Pcho)) stop("NAs in choice probabilities when calculating the gradient for component ", ol_settings$componentName)
+    if(anyNA(Pcho)) stop("INTERNAL ISSUE - NAs in choice probabilities when calculating the gradient for component ", ol_settings$componentName)
     
     # Calculate gradient
     J  <- length(ol_settings$tau) + 1 # number of levels (alternatives)

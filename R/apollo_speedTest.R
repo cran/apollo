@@ -52,10 +52,10 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
   apollo_checkArguments(apollo_probabilities,apollo_inputs$apollo_randCoeff,apollo_inputs$apollo_lcPars)
   
   ### Checks
-  if(apollo_inputs$apollo_control$HB) stop("The function 'apollo_speedTest' is not applicable for models estimated using HB.")
+  if(apollo_inputs$apollo_control$HB) stop("INCORRECT FUNCTION/SETTING USE - The function 'apollo_speedTest' is not applicable for models estimated using HB.")
   if(apollo_inputs$apollo_control$mixing){
-    if(anyNA(apollo_inputs$apollo_draws)) stop("Argument 'apollo_draws' must be provided when estimating mixture models.")
-    if(!is.function(apollo_inputs$apollo_randCoeff)) stop("Argument 'apollo_randCoeff' must be provided when estimating mixture models.")
+    if(anyNA(apollo_inputs$apollo_draws)) stop("SYNTAX ISSUE - Argument 'apollo_draws' must be provided when estimating mixture models.")
+    if(!is.function(apollo_inputs$apollo_randCoeff)) stop("SYNTAX ISSUE - Argument 'apollo_randCoeff' must be provided when estimating mixture models.")
   }
   if(!apollo_inputs$apollo_control$mixing){
     apollo_inputs$apollo_draws <- list(interUnifDraws=c(), interNormDraws=c(), interNDraws=0,

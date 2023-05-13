@@ -8,8 +8,8 @@
 #'                       \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
 #'                       \item \strong{\code{choiceVar}}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
 #'                       \item \strong{\code{utilities}}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
-#'                       \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
-#'                       \item \strong{\code{componentName}}: Character. Name given to model component.
+#'                       \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}. Set to \code{"all"} by default if omitted.
+#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                     }
 #' @param functionality Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
 #'                      \itemize{
@@ -62,7 +62,7 @@ apollo_mnl <- function(mnl_settings, functionality){
   if(functionality=="validate"){
     apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
     apollo_modelList <- c(apollo_modelList, mnl_settings$componentName)
-    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", mnl_settings$componentName,
+    if(anyDuplicated(apollo_modelList)) stop("SPECIFICATION ISSUE - Duplicated componentName found (", mnl_settings$componentName,
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
@@ -83,16 +83,16 @@ apollo_mnl <- function(mnl_settings, functionality){
     
   } else { 
     ### Do pre-processing
-    if(is.null(names(mnl_settings))) stop('All elements inside the inputs lists for model components must be named, e.g. mnl_settings=list(alternatives=c(...), avail=...).')
-    if(is.null(mnl_settings[["componentName"]])) stop('The settings of at least one model component is missing the mandatory "componentName" object.')
+    if(is.null(names(mnl_settings))) stop('SYNTAX ISSUE - All elements inside the inputs lists for model components must be named, e.g. mnl_settings=list(alternatives=c(...), avail=...).')
+    if(is.null(mnl_settings[["componentName"]])) stop('SYNTAX ISSUE - The settings of at least one model component is missing the mandatory "componentName" object.')
     
     # functionality
     test <- functionality %in% c("estimate","prediction","validate","zero_LL","shares_LL","conditionals","output","raw","preprocess", "components", "gradient", "report")
-    if(!test) stop("Non-permissable setting for \"functionality\" for model component \"",mnl_settings$componentName,"\"")
+    if(!test) stop("SYNTAX ISSUE - Non-permissable setting for \"functionality\" for model component \"",mnl_settings$componentName,"\"")
     
     # Check for mandatory inputs
     mandatory <- c("alternatives", "choiceVar", "V")
-    for(i in mandatory) if(!(i %in% names(mnl_settings))) stop('The inputs list for model component "', mnl_settings$componentName, 
+    for(i in mandatory) if(!(i %in% names(mnl_settings))) stop('SYNTAX ISSUE - The inputs list for model component "', mnl_settings$componentName, 
                                                                '" needs to include an object called "', i,'"!')
     # Check for optional inputs (avail and rows)
     if(is.null(mnl_settings[["rows"]])) mnl_settings[["rows"]]="all"
@@ -116,24 +116,24 @@ apollo_mnl <- function(mnl_settings, functionality){
     ### Format checks
     # alternatives
     test <- is.vector(mnl_settings$alternatives) & !is.null(names(mnl_settings$alternatives))
-    if(!test) stop("The \"alternatives\" argument for model component \"",mnl_settings$componentName,"\" needs to be a named vector")
+    if(!test) stop("SYNTAX ISSUE - The \"alternatives\" argument for model component \"",mnl_settings$componentName,"\" needs to be a named vector")
     # avail
     test <- is.list(mnl_settings$avail) || (length(mnl_settings$avail)==1 && mnl_settings$avail==1)
-    if(!test) stop("The \"avail\" argument for model component \"",mnl_settings$componentName,"\" needs to be a list or set to 1")
+    if(!test) stop("SYNTAX ISSUE - The \"avail\" argument for model component \"",mnl_settings$componentName,"\" needs to be a list or set to 1")
     if(is.list(mnl_settings$avail)){
       lenA <- sapply(mnl_settings$avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
       test <- all(lenA==mnl_settings$nObs | lenA==1)
-      if(!test) stop("All entries in \"avail\" for model component \"",mnl_settings$componentName,"\" need to be a scalar or a vector with one entry per observation in the \"database\"")
+      if(!test) stop("SYNTAX ISSUE - All entries in \"avail\" for model component \"",mnl_settings$componentName,"\" need to be a scalar or a vector with one entry per observation in the \"database\"")
     }
     test <- is.vector(mnl_settings$choiceVar) && (length(mnl_settings$choiceVar)==mnl_settings$nObs || length(mnl_settings$choiceVar)==1)
-    if(!test) stop("The \"choiceVar\" argument for model component \"",mnl_settings$componentName,"\" needs to be a scalar or a vector with one entry per observation in the \"database\"")
+    if(!test) stop("SYNTAX ISSUE - The \"choiceVar\" argument for model component \"",mnl_settings$componentName,"\" needs to be a scalar or a vector with one entry per observation in the \"database\"")
     
     # rows
     test <- is.vector(mnl_settings$rows)
     #test <- test && ( (is.logical(mnl_settings$rows) && length(mnl_settings$rows)==mnl_settings$nObs) || (length(mnl_settings$rows)==1 && mnl_settings$rows=="all") )
-    #if(!test) stop("The \"rows\" argument for model component \"",mnl_settings$componentName,"\" needs to be \"all\" or a vector of logical statements with one entry per observation in the \"database\"")
+    #if(!test) stop("SYNTAX ISSUE - The \"rows\" argument for model component \"",mnl_settings$componentName,"\" needs to be \"all\" or a vector of logical statements with one entry per observation in the \"database\"")
     test <- test && ( (is.logical(mnl_settings$rows) || all(mnl_settings$rows%in%c(0,1))) && length(mnl_settings$rows)==mnl_settings$nObs) || ( (all(mnl_settings$rows%in%c(0,1)) && length(mnl_settings$rows)==mnl_settings$nObs) || (length(mnl_settings$rows)==1 && mnl_settings$rows=="all") )
-    if(!test) stop("The \"rows\" argument for model component \"",mnl_settings$componentName,"\" needs to be \"all\" or a vector of logical statements or 0/1 entries with one entry per observation in the \"database\"")
+    if(!test) stop("SYNTAX ISSUE - The \"rows\" argument for model component \"",mnl_settings$componentName,"\" needs to be \"all\" or a vector of logical statements or 0/1 entries with one entry per observation in the \"database\"")
     if( all(mnl_settings$rows %in% c(0,1)) ) (mnl_settings$rows <- mnl_settings$rows>0)
     
     ### Expand availabilities if necessary
@@ -144,10 +144,10 @@ apollo_mnl <- function(mnl_settings, functionality){
     }
     
     ### Check that avail and V are available for all alternatives
-    if(!all(mnl_settings$altnames %in% names(mnl_settings$V))) stop("The names of the alternatives for model component \"", mnl_settings$componentName,"\" do not match those in \"utilities\".")
-    if(!all(mnl_settings$altnames %in% names(mnl_settings$avail))) stop("The names of the alternatives for model component \"", mnl_settings$componentName,"\" do not match those in \"avail\".")
-    if(length(mnl_settings$V)>length(mnl_settings$altnames)) stop("More utilities have been defined than there are alternatives for model component \"", mnl_settings$componentName,"\"!")
-    if(length(mnl_settings$avail)>length(mnl_settings$altnames)) stop("More availabilities have been defined than there are alternatives for model component \"", mnl_settings$componentName,"\"!")
+    if(!all(mnl_settings$altnames %in% names(mnl_settings$V))) stop("SYNTAX ISSUE - The names of the alternatives for model component \"", mnl_settings$componentName,"\" do not match those in \"utilities\".")
+    if(!all(mnl_settings$altnames %in% names(mnl_settings$avail))) stop("SYNTAX ISSUE - The names of the alternatives for model component \"", mnl_settings$componentName,"\" do not match those in \"avail\".")
+    if(length(mnl_settings$V)>length(mnl_settings$altnames)) stop("SYNTAX ISSUE - More utilities have been defined than there are alternatives for model component \"", mnl_settings$componentName,"\"!")
+    if(length(mnl_settings$avail)>length(mnl_settings$altnames)) stop("SYNTAX ISSUE - More availabilities have been defined than there are alternatives for model component \"", mnl_settings$componentName,"\"!")
       
     ### Reorder availabilities and V
     mnl_settings$avail <- mnl_settings$avail[mnl_settings$altnames]
@@ -204,6 +204,7 @@ apollo_mnl <- function(mnl_settings, functionality){
           P <- lapply(V, "/", denom)
           if(any(sapply(P, anyNA))){
             P <- lapply(P, function(p){p[is.na(p)] <- 1; return(p)} )
+            P <- mapply('*', P, mnl_settings$avail, SIMPLIFY = FALSE)
             sP <- Reduce("+", P)
             P <- lapply(P, "/", sP)
           }
@@ -242,13 +243,14 @@ apollo_mnl <- function(mnl_settings, functionality){
       choicematrix[4,!is.finite(choicematrix[4,])] <- 0
       
       if(!apollo_inputs$silent & data){
-        if(any(choicematrix[4,]==0)) apollo_print("WARNING: some alternatives are never chosen in your data!")
-        if(any(choicematrix[4,]>=100)) apollo_print("WARNING: some alternatives are always chosen when available!")
-        #if(inputs$avail_set) apollo_print(paste0("WARNING: Availability not provided (or some elements are NA). Full availability assumed."))
+        if(any(choicematrix[4,]==0)) apollo_print("Some alternatives are never chosen in your data!", type="w")
+        if(any(choicematrix[4,]>=100)) apollo_print("Some alternatives are always chosen when available!", type="w")
+        #if(inputs$avail_set) apollo_print("Availability not provided (or some elements are NA). Full availability assumed.", type="i")
         apollo_print("\n")
         apollo_print(paste0('Overview of choices for MNL model component ', 
                             ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
         print(round(choicematrix,2))
+        cat("\n")
       }
       
       return(invisible(TRUE))
@@ -300,54 +302,54 @@ apollo_mnl <- function(mnl_settings, functionality){
   
   if(functionality=="validate"){
     # Check that alternatives are named in altcodes and V
-    if(is.null(mnl_settings$altnames) || is.null(mnl_settings$altcodes) || is.null(names(mnl_settings$V))) stop("Alternatives for model component \"",mnl_settings$componentName,"\" must be named, both in 'alternatives' and 'utilities'.")
+    if(is.null(mnl_settings$altnames) || is.null(mnl_settings$altcodes) || is.null(names(mnl_settings$V))) stop("SYNTAX ISSUE - Alternatives for model component \"",mnl_settings$componentName,"\" must be named, both in 'alternatives' and 'utilities'.")
     
     if(!apollo_inputs$apollo_control$noValidation){
       # Check there are no repeated alternatives names
-      if(length(unique(mnl_settings$altnames))!=length(mnl_settings$altnames)) stop('Names of alternatives must be unique. Check definition of "alternatives".')
+      if(length(unique(mnl_settings$altnames))!=length(mnl_settings$altnames)) stop('SYNTAX ISSUE - Names of alternatives must be unique. Check definition of "alternatives".')
       
       # Check that there are at least two alternatives
       minAlts <- 2
-      if(mnl_settings$nAlt<minAlts) stop("Model component \"",mnl_settings$componentName,"\"  requires at least ", minAlts, " alternatives")
+      if(mnl_settings$nAlt<minAlts) stop("SYNTAX ISSUE - Model component \"",mnl_settings$componentName,"\"  requires at least ", minAlts, " alternatives")
       
       # Check if LLC is required with large numbers of alternatives
-      if(mnl_settings$nAlt>20 && !is.null(apollo_inputs$apollo_control$calculateLLC) && apollo_inputs$apollo_control$calculateLLC) apollo_print(paste0("The number of the alternatives for model component \"",mnl_settings$componentName,"\" is large and you may consider setting apollo_control$calculateLLC=FALSE to avoid the calculation of the log-likelihod with constants only."),highlight=TRUE)
+      if(mnl_settings$nAlt>20 && !is.null(apollo_inputs$apollo_control$calculateLLC) && apollo_inputs$apollo_control$calculateLLC) apollo_print(paste0("The number of the alternatives for model component \"",mnl_settings$componentName,"\" is large and you may consider setting apollo_control$calculateLLC=FALSE to avoid the calculation of the log-likelihod with constants only."), pause=5, type="i")
 
       # Check that choice vector is not empty
-      if(length(mnl_settings$choiceVar)==0) stop("Choice vector is empty for model component \"",mnl_settings$componentName,"\"")
+      if(length(mnl_settings$choiceVar)==0) stop("SYNTAX ISSUE - Choice vector is empty for model component \"",mnl_settings$componentName,"\"")
       
-      if(mnl_settings$nObs==0) stop("No data for model component \"",mnl_settings$componentName,"\"")
+      if(mnl_settings$nObs==0) stop("INPUT ISSUE - No data for model component \"",mnl_settings$componentName,"\"")
       
       # Check V and avail elements are named correctly
-      if(!all(mnl_settings$altnames %in% names(mnl_settings$V))) stop("The names of the alternatives for model component \"",mnl_settings$componentName,"\" do not match those in \"utilities\".")
-      if(!all(mnl_settings$altnames %in% names(mnl_settings$avail))) stop("The names of the alternatives for model component \"",mnl_settings$componentName,"\" do not match those in \"avail\".")
-      if(length(mnl_settings$V)>length(mnl_settings$altnames)) stop("More utilities have been defined than there are alternatives for model component \"", mnl_settings$componentName,"\"!")
-      if(length(mnl_settings$avail)>length(mnl_settings$altnames)) stop("More availabilities have been defined than there are alternatives for model component \"", mnl_settings$componentName,"\"!")
+      if(!all(mnl_settings$altnames %in% names(mnl_settings$V))) stop("SYNTAX ISSUE - The names of the alternatives for model component \"",mnl_settings$componentName,"\" do not match those in \"utilities\".")
+      if(!all(mnl_settings$altnames %in% names(mnl_settings$avail))) stop("SYNTAX ISSUE - The names of the alternatives for model component \"",mnl_settings$componentName,"\" do not match those in \"avail\".")
+      if(length(mnl_settings$V)>length(mnl_settings$altnames)) stop("SYNTAX ISSUE - More utilities have been defined than there are alternatives for model component \"", mnl_settings$componentName,"\"!")
+      if(length(mnl_settings$avail)>length(mnl_settings$altnames)) stop("SYNTAX ISSUE - More availabilities have been defined than there are alternatives for model component \"", mnl_settings$componentName,"\"!")
       
       # Check that there are no values in the choice column for undefined alternatives
       mnl_settings$choiceLabs <- unique(mnl_settings$choiceVar)
-      if(!all(mnl_settings$choiceLabs %in% mnl_settings$altcodes)) stop("The data contains values for \"choiceVar\" for model component \"",mnl_settings$componentName,"\" that are not included in \"alternatives\".")
+      if(!all(mnl_settings$choiceLabs %in% mnl_settings$altcodes)) stop("INPUT ISSUE - The data contains values for \"choiceVar\" for model component \"",mnl_settings$componentName,"\" that are not included in \"alternatives\".")
       
       # check that all availabilities are either 0 or 1
-      for(i in 1:length(mnl_settings$avail)) if( !all(unique(mnl_settings$avail[[i]]) %in% 0:1) ) stop("Some availability values for model component \"",mnl_settings$componentName,"\" are not 0 or 1.")
+      for(i in 1:length(mnl_settings$avail)) if( !all(unique(mnl_settings$avail[[i]]) %in% 0:1) ) stop("INPUT ISSUE - Some availability values for model component \"",mnl_settings$componentName,"\" are not 0 or 1.")
       # check that at least 2 alternatives are available in at least one observation
-      if(max(Reduce('+',mnl_settings$avail))==1) stop("Only one alternative is available for each observation for model component \"",mnl_settings$componentName,"!")
+      if(max(Reduce('+',mnl_settings$avail))==1) stop("SPECIFICATION ISSUE - Only one alternative is available for each observation for model component \"",mnl_settings$componentName,"!")
       # check that nothing unavailable is chosen
       for(j in 1:mnl_settings$nAlt) if(any(mnl_settings$choiceVar==mnl_settings$altcodes[j] & mnl_settings$avail[[j]]==0)){
-        #stop("The data contains cases where alternative ",
+        #stop("SPECIFICATION ISSUE - The data contains cases where alternative ",
         #     mnl_settings$altnames[j]," is chosen for model component \"",
         #     mnl_settings$componentName,"\" despite being listed as unavailable\n")
-        txt <-  paste0('WARNING: The data contains cases where alternative ', mnl_settings$altnames[j], 
+        txt <-  paste0('The data contains cases where alternative ', mnl_settings$altnames[j], 
                        ' is chosen for model component "',mnl_settings$componentName, '" despite being', 
                        ' listed as unavailable. This will cause the chosen probability to be', 
                        ' zero, and potentially lead to an invalid LL.')
-        apollo_print(txt)
+        apollo_print(txt, type="w")
       }
       
       # Check that no available alternative has utility = NA
       # Requires setting non available alternatives utility to 0 first
       mnl_settings$V <- mapply(function(v,a) apollo_setRows(v, !a, 0), mnl_settings$V, mnl_settings$avail, SIMPLIFY=FALSE)
-      if(!all(sapply(mnl_settings$V, function(v) all(is.finite(v))))) stop('Some utilities for model component "',
+      if(!all(sapply(mnl_settings$V, function(v) all(is.finite(v))))) stop('CALCULATION ISSUE - Some utilities for model component "',
                                                                      mnl_settings$componentName, 
                                                                      '" contain values that are not finite numbers!')
     } 
@@ -356,7 +358,7 @@ apollo_mnl <- function(mnl_settings, functionality){
     
     testL = mnl_settings$probs_MNL(mnl_settings, all=FALSE)
     if(any(!mnl_settings$rows)) testL <- apollo_insertRows(testL, mnl_settings$rows, 1)
-    if(all(testL==0)) stop("All observations have zero probability at starting value for model component \"",mnl_settings$componentName,"\"")
+    if(all(testL==0)) stop("CALCULATION ISSUE - All observations have zero probability at starting value for model component \"",mnl_settings$componentName,"\"")
     if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("Some observations have zero probability at starting value for model component \"",mnl_settings$componentName,"\"", sep=""))
     return(invisible(testL))
   }
@@ -418,11 +420,11 @@ apollo_mnl <- function(mnl_settings, functionality){
   
   if(functionality=="gradient"){
     # Verify everything necessary is available
-    if(is.null(mnl_settings$dV)) stop("Analytical gradients cannot be calculated because the derivatives of the utilities are not available. Please set apollo_control$analyticGrad=FALSE.")
-    for(k in 1:length(mnl_settings$dV)) if(!all( sapply(mnl_settings$dV[[k]], is.function) )) stop("Analytical gradients cannot be calculated because not al the derivatives of the utilities are functions. Please set apollo_control$analyticGrad=FALSE.")
+    if(is.null(mnl_settings$dV)) stop("INTERNAL ISSUE - Analytical gradients cannot be calculated because the derivatives of the utilities are not available. Please set apollo_control$analyticGrad=FALSE.")
+    for(k in 1:length(mnl_settings$dV)) if(!all( sapply(mnl_settings$dV[[k]], is.function) )) stop("INTERNAL ISSUE - Analytical gradients cannot be calculated because not al the derivatives of the utilities are functions. Please set apollo_control$analyticGrad=FALSE.")
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
-                            error=function(e) stop("apollo_mnl could not fetch apollo_beta for gradient estimation."))
-    if(is.null(apollo_inputs$database)) stop("apollo_mnl could not fetch apollo_inputs$database for gradient estimation.")
+                            error=function(e) stop("INTERNAL ISSUE - apollo_mnl could not fetch apollo_beta for gradient estimation."))
+    if(is.null(apollo_inputs$database)) stop("INTERNAL ISSUE - apollo_mnl could not fetch apollo_inputs$database for gradient estimation.")
     
     # Calculate probabilities
     P    <- mnl_settings$probs_MNL(mnl_settings, all=TRUE)

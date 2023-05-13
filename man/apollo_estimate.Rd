@@ -28,11 +28,12 @@ apollo_estimate(
 
 \item{estimate_settings}{List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
- \item \strong{\code{bootstrapSE}}: Numeric. Number of bootstrap samples to calculate standard errors. Default is 0, meaning no bootstrap s.e. will be calculated. Number must zero or a positive integer. Only used if \code{apollo_control$HB} is \code{FALSE}.
+ \item \strong{\code{bgw_settings}}: List. Additional arguments to the BGW optimisation method. See \link[bgw]{bgw_mle} for more details.
+ \item \strong{\code{bootstrapSE}}: Numeric. Number of bootstrap samples to calculate standard errors. Default is 0, meaning no bootstrap s.e. will be calculated. Number must zero or a positive integer. Only used if \code{apollo_control$estMethod!="HB"}.
  \item \strong{\code{bootstrapSeed}}: Numeric scalar (integer). Random number generator seed to generate the bootstrap samples. Only used if \code{bootstrapSE>0}. Default is 24.
  \item \strong{\code{constraints}}: Character vector. Linear constraints on parameters to estimate. For example \code{c('b1>0', 'b1 + 2*b2>1')}. Only \code{>}, \code{<} and \code{=} can be used. Inequalities cannot be mixed with equality constraints, e.g. \code{c(b1-b2=0, b2>0)} will fail. All parameter names must be on the left side. Fixed parameters cannot go into constraints. Alternatively, constraints can be defined as in \link[maxLik]{maxLik}. Constraints can only be used with maximum likelihood estimation and the BFGS routine in particular.
- \item \strong{\code{estimationRoutine}}: Character. Estimation method. Can take values "bfgs", "bhhh", or "nr". Used only if \code{apollo_control$HB} is FALSE. Default is "bfgs".
- \item \strong{\code{hessianRoutine}}: Character. Name of routine used to calculate the Hessian of the log-likelihood function after estimation. Valid values are \code{"analytic"} (default), \code{"numDeriv"} (to use the numeric routine in package numDeric), \code{"maxLik"} (to use the numeric routine in packahe maxLik), and \code{"none"} to avoid estimating the Hessian and the covariance matrix. Only used if \code{apollo_control$HB=FALSE}.
+ \item \strong{\code{estimationRoutine}}: Character. Estimation method. Can take values "bfgs", "bgw", "bhhh", or "nr". Used only if \code{apollo_control$HB} is FALSE. Default is "bfgs".
+ \item \strong{\code{hessianRoutine}}: Character. Name of routine used to calculate the Hessian of the log-likelihood function after estimation. Valid values are \code{"analytic"} (default), \code{"numDeriv"} (to use the numeric routine in package numDeric), \code{"maxLik"} (to use the numeric routine in packahe maxLik), and \code{"none"} to avoid calculating the Hessian and the covariance matrix. Only used if \code{apollo_control$HB=FALSE}.
  \item \strong{\code{maxIterations}}: Numeric. Maximum number of iterations of the estimation routine before stopping. Used only if \code{apollo_control$HB} is FALSE. Default is 200.
  \item \strong{\code{maxLik_settings}}: List. Additional settings for maxLik. See argument \code{control} in \link[maxLik]{maxBFGS}, \link[maxLik]{maxBHHH} and \link[maxLik]{maxNM} for more details. Only used for maximum likelihood estimation.
  \item \strong{\code{numDeriv_settings}}: List. Additional arguments to the Richardson method used by numDeriv to calculate the Hessian. See argument \code{method.args} in \link[numDeriv]{grad} for more details.
@@ -41,6 +42,7 @@ apollo_estimate(
  \item \strong{\code{scaleHessian}}: Logical. If TRUE, parameters are scaled to 1 for Hessian estimation. Default is TRUE.
  \item \strong{\code{scaling}}: Named vector. Names of elements should match those in \code{apollo_beta}. Optional scaling for parameters. If provided, for each parameter \code{i}, \code{(apollo_beta[i]/scaling[i])} is optimised, but \code{scaling[i]*(apollo_beta[i]/scaling[i])} is used during estimation. For example, if parameter b3=10, while b1 and b2 are close to 1, then setting \code{scaling = c(b3=10)} can help estimation, specially the calculation of the Hessian. Reports will still be based on the non-scaled parameters.
  \item \strong{\code{silent}}: Logical. If TRUE, no information is printed to the console during estimation. Default is FALSE.
+ \item \strong{\code{validateGrad}}: Logical. If TRUE, the analytical gradient (if used) is compared to the numerical one. Default is TRUE.
  \item \strong{\code{writeIter}}: Logical. Writes value of the parameters in each iteration to a csv file. Works only if \code{estimation_routine="bfgs"}. Default is TRUE.
 }}
 }

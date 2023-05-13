@@ -43,8 +43,8 @@ apollo_avgIntraDraws <- function(P, apollo_inputs, functionality){
   
   apollo_control=apollo_inputs[["apollo_control"]]
   
-  if(apollo_control$HB==TRUE) stop('Function apollo_avgIntraDraws should not be used when apollo_control$HB==TRUE!')
-  if(!apollo_control$mixing) stop('No mixing used in model!')
+  if(apollo_control$HB==TRUE) stop('SYNTAX ISSUE - Function apollo_avgIntraDraws should not be used when apollo_control$HB==TRUE!')
+  if(!apollo_control$mixing) stop('SYNTAX ISSUE - Function apollo_avgIntraDraws should not be used when no mixing used in model!')
 
   isCube <- function(x) is.array(x) && length(dim(x))==3
   inputIsList <- is.list(P)
@@ -61,19 +61,19 @@ apollo_avgIntraDraws <- function(P, apollo_inputs, functionality){
 
   if(functionality=="gradient"){
     # Checks
-    if(!is.list(P)) stop("Input P should be a list with at least one component")
-    if(any(sapply(P, function(p) is.null(p$like) || is.null(p$grad)))) stop("Some components are missing the like and/or grad elements")
-    if(apollo_control$workInLogs && apollo_control$analyticGrad) stop("workInLogs cannot be used in conjunction with analyticGrad")
+    if(!is.list(P)) stop("INTERNAL ISSUE - Input P should be a list with at least one component")
+    if(any(sapply(P, function(p) is.null(p$like) || is.null(p$grad)))) stop("INTERNAL ISSUE - Some components are missing the like and/or grad elements")
+    if(apollo_control$workInLogs && apollo_control$analyticGrad) stop("INCORRECT FUNCTION/SETTING USE - workInLogs cannot be used in conjunction with analyticGrad")
     K <- length(P[[1]]$grad) # number of parameters
-    if(any(sapply(P, function(p) length(p$grad))!=K)) stop("Dimensions of gradients from different components imply different number of parameters")
+    if(any(sapply(P, function(p) length(p$grad))!=K)) stop("INTERNAL ISSUE - Dimensions of gradients from different components imply different number of parameters")
     
     # Average intra draws for like and grad of each component
     for(i in 1:length(P)){
       cNam <- apollo_inputs$apolloLog$listOfNames[i]
       test <- !is.null(P[[i]]$like) && !is.null(P[[i]]$grad)
-      if(!test) stop("Elements like and/or grad missing for component ", cNam)
+      if(!test) stop("INTERNAL ISSUE - Elements like and/or grad missing for component ", cNam)
       test <- isCube(P[[i]]$like) && is.list(P[[i]]$grad) && any(sapply(P[[i]]$grad,isCube))
-      if(!test) stop("Elements like or grad for component ", cNam, " have the wrong dimensions. Maybe there is no need to call apollo_avgIntraDraws")
+      if(!test) stop("INTERNAL ISSUE - Elements like or grad for component ", cNam, " have the wrong dimensions. Maybe there is no need to call apollo_avgIntraDraws")
       P[[i]]$like <- apply(P[[i]]$like, MARGIN=c(1,2), sum)/dim(P[[i]]$like)[3]
       P[[i]]$grad <- lapply(P[[i]]$grad, function(g) if(isCube(g)) apply(g, MARGIN=c(1,2), sum)/dim(g)[3] else g)
     }
@@ -96,10 +96,10 @@ apollo_avgIntraDraws <- function(P, apollo_inputs, functionality){
   
   if(functionality %in% c("estimate", "conditionals", "validate")){
     if(is.list(P)){
-      if(!any(sapply(P, isCube))) stop('No intra-individual draws present to average over on any component!')
+      if(!any(sapply(P, isCube))) stop('SPECIFICATION ISSUE - No intra-individual draws present to average over for any component!')
       P <- lapply(P, function(p) if(isCube(p)) apply(p, MARGIN=c(1,2), sum)/dim(p)[3] else p)
     } else {
-      if(!isCube(P)) stop('No intra-individual draws present to average over!')
+      if(!isCube(P)) stop('SPECIFICATION ISSUE - No intra-individual draws present to average over!')
       P <- apply(P, MARGIN=c(1,2), sum)/dim(P)[3]
     }
     return(P)

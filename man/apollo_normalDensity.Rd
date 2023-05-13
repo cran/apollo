@@ -8,14 +8,14 @@ apollo_normalDensity(normalDensity_settings, functionality)
 }
 \arguments{
 \item{normalDensity_settings}{List of arguments to the functions. It must contain the following.
-\itemize{
-  \item \strong{\code{componentName}}: Character. Name given to model component.
-  \item \strong{\code{mu}}: Numeric scalar. Intercept of the linear model.
-  \item \strong{\code{outcomeNormal}}: Numeric vector. Dependent variable.
-  \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
-  \item \strong{\code{sigma}}: Numeric scalar. Variance of error component of linear model to be estimated.
-  \item \strong{\code{xNormal}}: Numeric vector. Single explanatory variable.
-}}
+        \itemize{
+\item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
+          \item \strong{\code{mu}}: Numeric scalar. Intercept of the linear model.
+          \item \strong{\code{outcomeNormal}}: Numeric vector. Dependent variable.
+          \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
+          \item \strong{\code{sigma}}: Numeric scalar. Variance of error component of linear model to be estimated.
+          \item \strong{\code{xNormal}}: Numeric vector. Single explanatory variable.
+        }}
 
 \item{functionality}{Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
 \itemize{

@@ -71,9 +71,9 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
    if(!is.null(apollo_inputs$apollo_control$seed)) seed <- apollo_inputs$apollo_control$seed + 4 else seed <- 13 + 4
    
    ### Checks
-   if(nCandidates<2) stop("Argument 'nCandidates' should be at least 2.")
-   if(maxStages<1) stop("Argument 'maxStages' should be at least 1.")
-   if(anyNA(c(apolloBetaMin,apolloBetaMax)) & !smartStart) stop("Invalid 'apolloBetaMin' and/or 'apolloBetaMax' parameters.")
+   if(nCandidates<2) stop("SYNTAX ISSUE - Argument 'nCandidates' should be at least 2.")
+   if(maxStages<1) stop("SYNTAX ISSUE - Argument 'maxStages' should be at least 1.")
+   if(anyNA(c(apolloBetaMin,apolloBetaMax)) & !smartStart) stop("SYNTAX ISSUE - Invalid 'apolloBetaMin' and/or 'apolloBetaMax' parameters.")
    apollo_print("Testing probability function (apollo_probabilities)")
    apollo_inputs$apollo_control$noDiagnostics <- TRUE
    apollo_probabilitiesVal <- apollo_insertComponentName(apollo_probabilities)
@@ -156,7 +156,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
       LL <- LL[-removeRows]
       nCandidates <- nCandidates - length(removeRows)
       apollo_print(paste0(length(removeRows), " candidates removed due to non-finite starting LL. ", nCandidates, " remain."))
-      if(nCandidates<1) stop("All initial candidates had non-finite starting LL.")
+      if(nCandidates<1) stop("CALCULATION ISSUE - All initial candidates had non-finite starting LL.")
       if(nCandidates==1) return(candidates[[1]])
    }
    

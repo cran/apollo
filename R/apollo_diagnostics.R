@@ -26,9 +26,9 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
     choicematrix[4,!is.finite(choicematrix[4,])] <- 0
     
     if(!apollo_inputs$silent & data){
-      if(any(choicematrix[4,]==0)) apollo_print("WARNING: some alternatives are never chosen in your data!")
-      if(any(choicematrix[4,]==1)) apollo_print("WARNING: some alternatives are always chosen when available!")
-      #if(inputs$avail_set) apollo_print(paste0("WARNING: Availability not provided (or some elements are NA). Full availability assumed."))
+      if(any(choicematrix[4,]==0)) apollo_print("Some alternatives are never chosen in your data!", type="w")
+      if(any(choicematrix[4,]==1)) apollo_print("Some alternatives are always chosen when available!", type="w")
+      #if(inputs$avail_set) apollo_print("Availability not provided (or some elements are NA). Full availability assumed.", type="w")
       apollo_print("\n")
       apollo_print(paste0('Overview of choices for ', toupper(modelType), ' model component ', 
                           ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
@@ -59,20 +59,20 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
                             ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
         apollo_print(out_tree)
         for(a in 1:(ncol(out_tree)-1)){
-          if(sum(out_tree[,a])!=1) apollo_print(paste0("Allocation parameters for alternative \'",inputs$altnames[a],"\' do not sum to 1. You may want to impose a constraint using a logistic transform."))
-          if(any(out_tree[,a]<0)) apollo_print(paste0("Some allocation parameters for alternative \'",inputs$altnames[a],"\' are negative. You may want to impose a constraint using a logistic transform."))
-          if(any(out_tree[,a]>1)) apollo_print(paste0("Some allocation parameters for alternative \'",inputs$altnames[a],"\' are larger than 1. You may want to impose a constraint using a logistic transform."))
+          if(sum(out_tree[,a])!=1) apollo_print(paste0("Allocation parameters for alternative \'",inputs$altnames[a],"\' do not sum to 1. You may want to impose a constraint using a logistic transform."), type="i")
+          if(any(out_tree[,a]<0)) apollo_print(paste0("Some allocation parameters for alternative \'",inputs$altnames[a],"\' are negative. You may want to impose a constraint using a logistic transform."), type="i")
+          if(any(out_tree[,a]>1)) apollo_print(paste0("Some allocation parameters for alternative \'",inputs$altnames[a],"\' are larger than 1. You may want to impose a constraint using a logistic transform."), type="i")
         }
-        if(any(out_tree[,ncol(out_tree)]<0)) apollo_print("Some lambda parameters are negative. You may want to impose a constraint or reconsider your model structure.")
-        if(any(out_tree[,ncol(out_tree)]>1)) apollo_print("Some lambda parameters are larger than 1. You may want to impose a constraint or reconsider your model structure.")
+        if(any(out_tree[,ncol(out_tree)]<0)) apollo_print("Some lambda parameters are negative. You may want to impose a constraint or reconsider your model structure.", type="i")
+        if(any(out_tree[,ncol(out_tree)]>1)) apollo_print("Some lambda parameters are larger than 1. You may want to impose a constraint or reconsider your model structure.", type="i")
       }
     }
     
     if(modelType=='nl' & param){
       if(!apollo_inputs$silent & data) apollo_print('\n') # 
       if(!apollo_inputs$silent){
-        # Warning for automatic setting of root nesting parameter
-        if(inputs$root_set) apollo_print("Notice: Root lambda parameter set to 1.")
+        # WARNING for automatic setting of root nesting parameter
+        if(inputs$root_set) apollo_print("Root lambda parameter set to 1.", type="i")
         # Identifying nest's parents
         nestAbove <- unique(lapply(inputs$ancestors, '[', -1))
         nestAbove <- setNames(sapply(nestAbove, function(x) if(length(x)==1) return('Inf') else x[2]) ,
@@ -106,23 +106,24 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
         for(i in names(inputs$nlNests)){
           l  <- inputs$nlNests[[i]]
           if(i=='root') l0 <- 1 else l0 <- inputs$nlNests[[ nestAbove[i] ]]
-          if(any(l<0 | l0<l)){
-            txt <- paste0('WARNING: The nesting parameter for nest "', i, '" should be between 0 and ', round(l0,4))
+          #if(any(l<0 | l0<l)){
+          if(length(l)==1 && any(l<0 | l0<l)){
+            txt <- paste0('The nesting parameter for nest "', i, '" should be between 0 and ', round(l0,4))
             if(i!='root') txt <- paste0(txt, ' (the nesting parameter for nest "', nestAbove[i], '")')
             txt <- paste0(txt, ', yet its value is ', round(l, 4), '.')
-            cat('\n'); apollo_print(txt)
+            cat('\n'); apollo_print(txt, type="w")
           }
         }
       }
     } # end of NL special checks
     
     if(modelType=="dft" & !apollo_inputs$silent & data){
-      txt <- 'Notice: Not all of the attributes given in "attrValues" are named in "attrScalings" or "attrWeights". These will consequently be ignored.'
-      if(inputs$warn1) apollo_print(txt)
-      txt <- 'Notice: Not all of the alternatives given in "altStart" are named in "alternatives". These will consequently be ignored.'
-      if(inputs$warn2) apollo_print(txt)
-      txt <- 'Notice: A list was not supplied for "altStart". Starting values for all alternatives will be set to zero.'
-      if(inputs$warn3) apollo_print(txt)
+      txt <- 'Not all of the attributes given in "attrValues" are named in "attrScalings" or "attrWeights". These will consequently be ignored.'
+      if(inputs$warn1) apollo_print(txt, type="i")
+      txt <- 'Not all of the alternatives given in "altStart" are named in "alternatives". These will consequently be ignored.'
+      if(inputs$warn2) apollo_print(txt, type="i")
+      txt <- 'A list was not supplied for "altStart". Starting values for all alternatives will be set to zero.'
+      if(inputs$warn3) apollo_print(txt, type="i")
     }
     
   } 
@@ -156,10 +157,10 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
     }
     
     if(!apollo_inputs$silent & data) for(a in 1:inputs$nAlt){
-      if(sum(choicematrix[4,a,])==0) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'))
-      if(choicematrix[4,a,1]==1) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'))
+      if(sum(choicematrix[4,a,])==0) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'), type="w")
+      if(choicematrix[4,a,1]==1) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'), type="w")
     }
-    #if(inputs$avail_set==TRUE & !apollo_inputs$silent & data) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'))
+    #if(inputs$avail_set==TRUE & !apollo_inputs$silent & data) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'), type="i")
   }
   
   #### FMNL ####
@@ -187,10 +188,10 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
       
       # Print warnings
       for(a in 1:inputs$nAlt){
-        if(choicematrix[2,a]==0) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'))
-        if(choicematrix[4,a]==1) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is always given the full choice share when available in model component "', inputs$componentName, '".'))
+        if(choicematrix[2,a]==0) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'), type="w")
+        if(choicematrix[4,a]==1) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is always given the full choice share when available in model component "', inputs$componentName, '".'), type="w")
       }
-      #if(inputs$avail_set==TRUE & !apollo_inputs$silent) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'))
+      #if(inputs$avail_set==TRUE & !apollo_inputs$silent) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'), type="i")
     }
   }
   
@@ -243,8 +244,8 @@ apollo_diagnostics <- function(inputs, modelType, apollo_inputs, data=TRUE, para
       
       # Print warnings
       for(a in 1:inputs$nAlt){
-        if(choicematrix[2,a]==0) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'))
-        if(choicematrix[2,a]==choicematrix[1,a] && inputs$altnames[a]!=inputs$outside) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'))
+        if(choicematrix[2,a]==0) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'), type="w")
+        if(choicematrix[2,a]==choicematrix[1,a] && inputs$altnames[a]!=inputs$outside) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'), type="w")
       }
       #if(inputs$avail_set==TRUE & !apollo_inputs$silent) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'))
     }

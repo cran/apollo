@@ -14,7 +14,7 @@
 #' @return A matrix with the posterior class allocation probabilities for each individual.
 #' @export
 apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
-  if(!is.function(apollo_inputs$apollo_lcPars)) stop("This function is for latent class models. For other models use \"apollo_conditionals\".")
+  if(!is.function(apollo_inputs$apollo_lcPars)) stop("SYNTAX ISSUE - This function is for latent class models. For other models use \"apollo_conditionals\".")
   
   if(is.null(apollo_inputs$silent)) silent = FALSE else silent = apollo_inputs$silent
   apollo_beta  = model$estimate
@@ -33,10 +33,10 @@ apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
   apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
   
   if(is.null(apollo_control$HB)) apollo_control$HB=FALSE
-  if(apollo_control$HB) stop("The function \'apollo_lcConditionals\' is not applicables for models estimated using HB!") 
+  if(apollo_control$HB) stop("INCORRECT FUNCTION/SETTING USE - The function \'apollo_lcConditionals\' is not applicables for models estimated using HB!") 
 
   ### Validation
-  if(apollo_control$mixing) stop("apollo_lcConditionals can only be used for latent class models without continuous random heterogeneity")
+  if(apollo_control$mixing) stop("SYNTAX ISSUE - apollo_lcConditionals can only be used for latent class models without continuous random heterogeneity")
   
   if(!silent) apollo_print("Calculating conditionals...")
   ### Get allocation and inClass probs
@@ -44,12 +44,12 @@ apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
     environment(apollo_lcPars) <- environment()
     apollo_lcPars(apollo_beta, apollo_inputs)
   })
-  if(is.null(lcpars[[class_prob]])) stop("The lcpars function needs to create an object called \"pi_values\"!")
+  if(is.null(lcpars[[class_prob]])) stop("SYNTAX ISSUE - The lcpars function needs to create an object called \"pi_values\"!")
   L      = apollo_probabilities(apollo_beta, apollo_inputs, functionality="output")
   classes    = length(lcpars[[class_prob]])
   components = length(L)
-  if(components>(classes+1)) stop("apollo_lcConditionals can only be used for latent class models alone (i.e. no hybrid choice)")
-  if(components!=(classes+1)) stop("Model should contain one component per class, and an overall model!")
+  if(components>(classes+1)) stop("SYNTAX ISSUE - apollo_lcConditionals can only be used for latent class models alone (i.e. no hybrid choice)")
+  if(components!=(classes+1)) stop("SYNTAX ISSUE - Model should contain one component per class, and an overall model!")
   
   ### Calculate posterior class allocation probs
   post_pi = vector(mode="list", length=classes)

@@ -11,8 +11,7 @@ apollo_outOfSample(
   apollo_inputs,
   estimate_settings = list(estimationRoutine = "bfgs", maxIterations = 200, writeIter =
     FALSE, hessianRoutine = "none", printLevel = 3L, silent = TRUE),
-  outOfSample_settings = list(nRep = 10, validationSize = 0.1, samples = NA, rmseObs =
-    NULL)
+  outOfSample_settings = list(nRep = 10, validationSize = 0.1, samples = NA, rmse = NULL)
 )
 }
 \arguments{
@@ -89,28 +88,27 @@ with a default or marked as optional.
                               validation sample 
                               (>1). Default is 
                               0.1.}
-        \item{rmseObs}{Character vector. Used to 
-                       calculate Root Mean 
-                       Squared Error (RMSE) of 
-                       prediction. It should 
-                       contain the name of the 
-                       columns with the observed 
-                       outcomes in the database, 
-                       in the same order than as 
-                       returned by 
-                       apollo_probabilities when 
-                       used with
-                       functionality="prediction". 
-                       If omitted or NULL, no 
-                       RMSE is calculated.
-                       It works only for models 
-                       with a single component.}
+        \item{rmse}{Character matrix with two
+                    columns. Used to calculate 
+                    Root Mean Squared Error (RMSE) 
+                    of prediction. The first 
+                    column must contain the names 
+                    of observed outcomes in the 
+                    database. The second column 
+                    must contain the names of the 
+                    predicted outcomes as 
+                    returned by 
+                    \code{apollo_prediction}. 
+                    If omitted or NULL, no RMSE 
+                    is calculated. This only 
+                    works for models with a 
+                    single component.}
       }}
 }
 \value{
-A matrix with the average log-likelihood per observation for both the estimation and validation 
-        samples, for each repetition. Two additional files with further details are written to the
-        working/output directory.
+A matrix with the average log-likelihood per observation for both the 
+        estimation and validation samples, for each repetition. Two additional 
+        files with further details are written to the working/output directory.
 }
 \description{
 Randomly generates estimation and validation samples, estimates the model on 

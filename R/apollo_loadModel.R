@@ -8,7 +8,7 @@
 #' @export
 apollo_loadModel <- function(modelName){
   # Validate model name
-  if(!(length(modelName)==1 && is.character(modelName))) stop("Argument 'modelName' must be a character variable.")
+  if(!(length(modelName)==1 && is.character(modelName))) stop("SYNTAX ISSUE - Argument 'modelName' must be a character variable.")
   
   # Fetch output directory
   outputDirectory <- ''
@@ -27,7 +27,7 @@ apollo_loadModel <- function(modelName){
   # Look for modelname in outputdirectory and working directory, if not found
   fileName <- paste0(outputDirectory, modelName, "_model.rds")
   if(!file.exists(fileName)) fileName <- paste0(getwd(), '/', modelName, "_model.rds")
-  model <- tryCatch(readRDS(fileName), error=function(e) stop("Cannot find or open ", fileName) )
+  model <- tryCatch(readRDS(fileName), error=function(e) stop("INPUT ISSUE - Cannot find or open ", fileName) )
   cat("\nSuccessfully loaded ",fileName)
   return(model)
 }

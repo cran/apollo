@@ -16,13 +16,13 @@
 #' @export
 apollo_longToWide=function(longData,longToWide_settings){
   ### CHECKS
-  if(!is.data.frame(longData)) stop("The data object passed to \'apollo_longToWide\' needs to be a data.frame!")
-  if(!is.list(longToWide_settings)) stop("The \'longToWide_settings\' argument passed to \'apollo_longToWide\' needs to be a list!")
+  if(!is.data.frame(longData)) stop("INPUT ISSUE - The data object passed to \'apollo_longToWide\' needs to be a data.frame!")
+  if(!is.list(longToWide_settings)) stop("INPUT ISSUE - The \'longToWide_settings\' argument passed to \'apollo_longToWide\' needs to be a list!")
   mandatory <- c("alternative_column", "alternative_specific_attributes", "choice_column", "ID_column", "observation_column")
-  for(i in mandatory) if(!(i %in% names(longToWide_settings))) stop('The \'longToWide_settings\' list needs to include an object called "', i,'"!')
-  for(i in names(longToWide_settings)[names(longToWide_settings)!="alternative_specific_attributes"]) if(!longToWide_settings[[i]]%in%colnames(longData)) stop('No column entitled "', longToWide_settings[[i]],'" found in data!')
-  for(i in longToWide_settings$alternative_specific_attributes) if(!i%in%colnames(longData)) stop('No column entitled "', i,'" found in data!')
-  if(length(longToWide_settings$alternative_specific_attributes)!=length(unique(longToWide_settings$alternative_specific_attributes))) stop("Some of the attribute names are duplicated in \'alternative_specific_attributes\'.")
+  for(i in mandatory) if(!(i %in% names(longToWide_settings))) stop('INPUT ISSUE - The \'longToWide_settings\' list needs to include an object called "', i,'"!')
+  for(i in names(longToWide_settings)[names(longToWide_settings)!="alternative_specific_attributes"]) if(!longToWide_settings[[i]]%in%colnames(longData)) stop('INPUT ISSUE - No column entitled "', longToWide_settings[[i]],'" found in data!')
+  for(i in longToWide_settings$alternative_specific_attributes) if(!i%in%colnames(longData)) stop('INPUT ISSUE - No column entitled "', i,'" found in data!')
+  if(length(longToWide_settings$alternative_specific_attributes)!=length(unique(longToWide_settings$alternative_specific_attributes))) stop("SYNTAX ISSUE - Some of the attribute names are duplicated in \'alternative_specific_attributes\'.")
   ### working copies
   alternative_column=longToWide_settings$alternative_column
   alternative_specific_attributes=longToWide_settings$alternative_specific_attributes
@@ -47,7 +47,7 @@ apollo_longToWide=function(longData,longToWide_settings){
   ### further checks
   test1=length(unique(longData$ID_obs*choice))==(length(unique(longData$ID_obs))+1)
   test2=sum(overview[,2])==(length(unique(longData$ID_obs)))
-  if(!(test1&test2)) stop("A single alternative needs to be chosen in each separate choice scenario!")
+  if(!(test1&test2)) stop("INPUT ISSUE - A single alternative needs to be chosen in each separate choice scenario!")
   ###sort by ID_obs
   longData=longData[order(longData$ID_obs),]
   #names of alts

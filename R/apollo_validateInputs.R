@@ -11,6 +11,7 @@
 #' @param database data.frame. Data used by model.
 #' @param apollo_control List. Options controlling the running of the code. User input is required for all settings except those with a default or marked as optional. 
 #'                       \itemize{
+#'                         \item \strong{\code{analyticGrad}}: Boolean. TRUE to use analytical gradients during parameter estimation, if they are available. FALSE to use numerical gradients. - TRUE by default.
 #'                         \item \strong{\code{calculateLLC}}: Boolean. TRUE if user wants to calculate LL at constants (if applicable). - TRUE by default.
 #'                         \item \strong{\code{HB}}: Boolean. TRUE if using RSGHB for Bayesian estimation of model.
 #'                         \item \strong{\code{indivID}}: Character. Name of column in the database with each decision maker's ID.
@@ -99,29 +100,29 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
   for(i in tmp){
     x <- get(i, envir=environment(), inherits=FALSE)
     if(length(x)==1 && is.na(x)) x <- tryCatch( get(i, envir=globalenv()), error=function(e) NA )
-    if(length(x)==1 && is.na(x)) stop("No variable called ", i, " found in user workspace (i.e. global environment).") else assign(i, x, envir=environment())
+    if(length(x)==1 && is.na(x)) stop("INPUT ISSUE - No variable called ", i, " found in user workspace (i.e. global environment).") else assign(i, x, envir=environment())
   }; rm(tmp, x, i)
   
   ### Validate apollo_beta & apollo_fixed
-  if(!is.numeric(apollo_beta) | !is.vector(apollo_beta) | is.null(names(apollo_beta))) stop("The \"apollo_beta\" argument needs to be a named vector")
-  if(length(apollo_fixed)>0 && !is.character(apollo_fixed)) stop("'apollo_fixed' is not an empty vector nor a vector of names.")
+  if(!is.numeric(apollo_beta) | !is.vector(apollo_beta) | is.null(names(apollo_beta))) stop("SYNTAX ISSUE - The \"apollo_beta\" argument needs to be a named vector")
+  if(length(apollo_fixed)>0 && !is.character(apollo_fixed)) stop("SYNTAX ISSUE - 'apollo_fixed' is not an empty vector nor a vector of names.")
   if(anyDuplicated(names(apollo_beta))){
     txt <- paste0(names(apollo_beta)[duplicated(names(apollo_beta))], collapse=", ")
-    txt <- paste0("The \"apollo_beta\" argument contains duplicate elements (", txt, ").")
+    txt <- paste0("SYNTAX ISSUE - The \"apollo_beta\" argument contains duplicate elements (", txt, ").")
     stop(txt)
   }
   if(anyDuplicated(apollo_fixed)){
     txt <- paste0(apollo_fixed[duplicated(apollo_fixed)], collapse=", ")
-    txt <- paste0("The \"apollo_fixed\" argument contains duplicate elements (", txt, ").")
+    txt <- paste0("SYNTAX ISSUE - The \"apollo_fixed\" argument contains duplicate elements (", txt, ").")
     stop(txt)
   }
   if(!all(apollo_fixed %in% names(apollo_beta))){
     txt <- apollo_fixed[!(apollo_fixed %in% names(apollo_beta))]
     txt <- paste0(txt, collapse=", ")
-    txt <- paste0("Some parameters included in 'apollo_fixed' (", txt, ") are not included in 'apollo_beta'.")
+    txt <- paste0("SYNTAX ISSUE - Some parameters included in 'apollo_fixed' (", txt, ") are not included in 'apollo_beta'.")
     stop(txt)
   }
-  if(all(names(apollo_beta) %in% apollo_fixed)) stop('All elements in apollo_beta are included in apollo_fixed, so there is nothing to estimate!')
+  if(all(names(apollo_beta) %in% apollo_fixed)) stop('SYNTAX ISSUE - All elements in apollo_beta are included in apollo_fixed, so there is nothing to estimate!')
   
   ### If database is a tibble, turn it into a data.frame
   if('tibble' %in% installed.packages()[,"Package"] && tibble::is_tibble(database)) database <- as.data.frame(database)
@@ -142,36 +143,37 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
   ### Try to recover apollo_HB if appropiate, and sets the default value for the missing parts
   if(!apollo_control$HB) apollo_HB <- NA else{
     if(length(apollo_HB)==1 && is.na(apollo_HB)) apollo_HB <- tryCatch( get("apollo_HB", envir=globalenv()), error=function(e) NA )
-    if(length(apollo_HB)==1 && is.na(apollo_HB)) stop("No variable called apollo_HB found in user workspace (i.e. global environment)!")
+    if(length(apollo_HB)==1 && is.na(apollo_HB)) stop("SYNTAX ISSUE - No variable called apollo_HB found in user workspace (i.e. global environment)!")
     apollo_HB <- apollo_validateHBControl(apollo_HB, apollo_beta, apollo_fixed, apollo_control, silent)
     # Check that database is sorted by indiv
     ordID <- sort(database[,apollo_control$indivID])
-    if(any(ordID!=database[,apollo_control$indivID])) stop('For estimation using HB the database needs to be sorted by ID!')
+    if(any(ordID!=database[,apollo_control$indivID])) stop('INPUT ISSUE - For estimation using HB the database needs to be sorted by ID!')
   }
-  if(apollo_control$HB && anyNA(apollo_HB)) stop("Argument apollo_HB must be provided when using Bayesian estimation!")
+  if(apollo_control$HB && anyNA(apollo_HB)) stop("SYNTAX ISSUE - Argument apollo_HB must be provided when using Bayesian estimation!")
   
   ### Try to recover apollo_draws and apollo_randCoeff if appropiate, and sets the default value for the missing parts
   if(!apollo_control$mixing){
     if(!is.function(apollo_randCoeff)) apollo_randCoeff <- tryCatch( get("apollo_randCoeff", envir=globalenv()), error=function(e) NA )
-    if(is.function(apollo_randCoeff)) apollo_print("Function called apollo_randCoeff found in user workspace will be ignored as model not using mixing.")
+    if(is.function(apollo_randCoeff)) apollo_print("Function called apollo_randCoeff found in user workspace will be ignored as model not using mixing.", type="i")
     if(length(apollo_draws)==1 && is.na(apollo_draws)) apollo_draws <- tryCatch( get("apollo_draws", envir=globalenv()), error=function(e) NA )
-    if(length(apollo_draws)==1 && !is.na(apollo_draws)) apollo_print("Variable called apollo_draws found in user workspace will be ignored as model not using mixing.")
+    if(length(apollo_draws)==1 && !is.na(apollo_draws)) apollo_print("Variable called apollo_draws found in user workspace will be ignored as model not using mixing.", type="i")
     apollo_draws     <- NA
     draws            <- NA
     apollo_randCoeff <- NA
   } else{
     if(length(apollo_draws)==1 && is.na(apollo_draws)) apollo_draws <- tryCatch( get("apollo_draws", envir=globalenv()), error=function(e) NA )
-    if(length(apollo_draws)==1 && is.na(apollo_draws)) stop("Mixing set to TRUE in apollo_control, but no variable called apollo_draws found in user workspace (i.e. global environment).")
+    if(length(apollo_draws)==1 && is.na(apollo_draws)) stop("SYNTAX ISSUE - Mixing set to TRUE in apollo_control, but no variable called apollo_draws found in user workspace (i.e. global environment).")
     default <- list(interDrawsType="halton", interNDraws=0, interUnifDraws=c(), interNormDraws=c(), 
                     intraDrawsType='halton', intraNDraws=0, intraUnifDraws=c(), intraNormDraws=c())
     for(i in names(default)) if(!(i %in% names(apollo_draws))) apollo_draws[[i]] <- default[[i]]
     
     if(!is.function(apollo_randCoeff)) apollo_randCoeff <- tryCatch( get("apollo_randCoeff", envir=globalenv()), error=function(e) NA )
-    if(!is.function(apollo_randCoeff)) stop("Mixing set to TRUE in apollo_control, but no function called apollo_randCoeff found in user workspace (i.e. global environment).")
+    if(!is.function(apollo_randCoeff)) stop("SYNTAX ISSUE - Mixing set to TRUE in apollo_control, but no function called apollo_randCoeff found in user workspace (i.e. global environment).")
   }
   
   ### Try to recover apollo_lcPars if not provided
-  if(length(apollo_lcPars)==1 && is.na(apollo_lcPars)) apollo_lcPars <- tryCatch( get("apollo_lcPars", envir=globalenv()), error=function(e) NA )
+  #if(length(apollo_lcPars)==1 && is.na(apollo_lcPars)) apollo_lcPars <- tryCatch( get("apollo_lcPars", envir=globalenv()), error=function(e) NA )
+  if(length(apollo_lcPars)==1 && !is.function(apollo_lcPars) && is.na(apollo_lcPars)) apollo_lcPars <- tryCatch( get("apollo_lcPars", envir=globalenv()), error=function(e) NA )
   
   ### Create apolloLog
   #apolloLog      <- new.env(parent=emptyenv())

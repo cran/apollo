@@ -17,13 +17,14 @@ apollo_deltaMethod(model, deltaMethod_settings)
                     cannot be included. If the user does not provide a name for an expression, then the expression itself is used in the output. If this setting is provided, then \code{operation}, 
                     \code{parName1}, \code{parName2}, \code{multPar1} and \code{multPar2} are
                     ignored.
+  \item \strong{\code{allPairs}}: Logical. If set to TRUE, Delta method calculations are carried out for the ratio and difference for all pairs of parameters and returned as two separate matrices with values and t-ratios. FALSE by default.
   \item \strong{\code{varcov}}: Character. Type of variance-covariance matrix to use in calculations. 
                            It can take values \code{"classical"}, \code{"robust"} and 
                            \code{"bootstrap"}. Default is \code{"robust"}.
+  \item \strong{\code{printPVal}}: Logical or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
   \item \strong{\code{operation}}: Character. Function to calculate the delta method for. See details. Not used if \code{expression} is provided.
   \item \strong{\code{parName1}}: Character. Name of the first parameter if \code{operation} is used. See details. Not used if \code{expression} is provided.
   \item \strong{\code{parName2}}: Character. Name of the second parameter if \code{operation} is used. See details. Not used if \code{expression} is provided.. Optional depending on \code{operation}.
-  \item \strong{\code{printPVal}}: Logical or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
   \item \strong{\code{multPar1}}: Numeric scalar. An optional value to scale \code{parName1}. Not used if \code{expression} is provided.
   \item \strong{\code{multPar2}}: Numeric scalar. An optional value to scale \code{parName2}. Not used if \code{expression} is provided.
 }}

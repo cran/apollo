@@ -35,12 +35,12 @@ apollo_mixUnconditionals <- function(model, apollo_probabilities, apollo_inputs)
   apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
   
   if(is.null(apollo_control$HB)) apollo_control$HB=FALSE
-  if(apollo_control$HB) stop("The function \"apollo_unconditionals\" is not applicables for models estimated using HB!") 
-  #if(is.function(apollo_inputs$apollo_lcPars)) stop("The function \"apollo_unconditionals\" is not applicables for models containing latent class components!")
+  if(apollo_control$HB) stop("INCORRECT FUNCTION/SETTING USE - The function \"apollo_unconditionals\" is not applicables for models estimated using HB!") 
+  #if(is.function(apollo_inputs$apollo_lcPars)) stop("INCORRECT FUNCTION/SETTING USE - The function \"apollo_unconditionals\" is not applicables for models containing latent class components!")
   
   ### Validate input
-  if(!apollo_control$mixing) stop("Sample level random parameters can only be produced for mixture models!")
-  if(anyNA(draws)) stop("Random draws have not been specified despite setting mixing=TRUE")
+  if(!apollo_control$mixing) stop("INCORRECT FUNCTION/SETTING USE - Sample level random parameters can only be produced for mixture models!")
+  if(anyNA(draws)) stop("INCORRECT FUNCTION/SETTING USE - Random draws have not been specified despite setting mixing=TRUE")
   
   ### Run apollo_randCoeff
   env <- list2env( c(as.list(apollo_beta), apollo_inputs$database, apollo_inputs$draws), 

@@ -43,9 +43,9 @@ apollo_conditionals=function(model, apollo_probabilities, apollo_inputs){
   if(is.null(apollo_control$HB)) apollo_control$HB=FALSE
   HB               = apollo_control$HB
   
-  if(HB) stop("The function \'apollo_conditionals\' is not applicable for models estimated using HB!") 
-  if(continuous&latentClass)stop("The function \'apollo_conditionals\' is not applicable for models combining continuous mixtures with latent class components!")
-  if(!(continuous|latentClass)) stop("The function \'apollo_conditionals\' requires either a model using continuous mixtures or a latent class model!")
+  if(HB) stop("INCORRECT FUNCTION/SETTING USE - The function \'apollo_conditionals\' is not applicable for models estimated using HB!") 
+  if(continuous&latentClass)stop("INCORRECT FUNCTION/SETTING USE - The function \'apollo_conditionals\' is not applicable for models combining continuous mixtures with latent class components!")
+  if(!(continuous|latentClass)) stop("INCORRECT FUNCTION/SETTING USE - The function \'apollo_conditionals\' requires either a model using continuous mixtures or a latent class model!")
   if(continuous) return(apollo_mixConditionals(model, apollo_probabilities, apollo_inputs))
   if(latentClass) return(apollo_lcConditionals(model, apollo_probabilities, apollo_inputs))
 }

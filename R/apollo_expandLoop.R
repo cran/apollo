@@ -68,7 +68,7 @@ apollo_expandLoop <- function(f, apollo_inputs){
     test1 <- test1 && length(e)>1 && is.symbol(e[[1]]) && (as.character(e[[1]]) %in% c('paste', 'paste0'))
     if(test1){
       e <- tryCatch(eval(e, envir=env), 
-                    error=function(em) stop('Could not evaluate ', deparse(e)))
+                    error=function(em) stop('INTERNAL ISSUE - Could not evaluate ', deparse(e)))
       return(e)
     }
     # Case 3: an expression
@@ -87,9 +87,9 @@ apollo_expandLoop <- function(f, apollo_inputs){
     test1 <- is.expression(e) || is.call(e)
     test1 <- test1 && length(e)>1 && is.symbol(e[[1]]) && as.character(e[[1]])=='get'
     if(test1){
-      if(length(all.vars(e))>0) stop('Unknown variables inside "get" (can only use index).')
+      if(length(all.vars(e))>0) stop('INTERNAL ISSUE - Unknown variables inside "get" (can only use index).')
       test3 <- length(e)==2 && is.character(e[[2]])
-      if(!test3) stop('Could not build variable name fetched by "get".')
+      if(!test3) stop('INTERNAL ISSUE - Could not build variable name fetched by "get".')
       e <- as.symbol(e[[2]])
       return(e)
     }
@@ -120,7 +120,7 @@ apollo_expandLoop <- function(f, apollo_inputs){
         if(!is.null(env)){
           e[[3]] <- tryCatch(eval(e[[3]], envir=env), error=function(e) NULL)
         } else e[[3]] <- NULL
-        if(is.null(e[[3]])) stop('expandLoop: Unknown variable inside index')
+        if(is.null(e[[3]])) stop('INTERNAL ISSUE - expandLoop: Unknown variable inside index')
         return(e)
       }
     }
@@ -147,7 +147,7 @@ apollo_expandLoop <- function(f, apollo_inputs){
       jSym <- e[[2]] # index
       if(!is.null(defs)) e[[3]] <- replaceByDef(e[[3]], defs, rightSide=TRUE)
       jValues <- tryCatch(eval(e[[3]], envir=env), # all values that j needs to take
-                          error=function(e) stop('Could not evaluate all possible values for index ', jSym, '.'))
+                          error=function(e) stop('INTERNAL ISSUE - Could not evaluate all possible values for index ', jSym, '.'))
       #if(!is.null(defs)){ # replace definitions in expression inside loop, except for the index
       #  tmp <- which(names(defs)==as.character(jSym))
       #  if(any(tmp)) e[[4]] <- replaceByDef(e[[4]], defs[-tmp]) else e[[4]] <- replaceByDef(e[[4]], defs)
@@ -244,7 +244,7 @@ apollo_expandLoop <- function(f, apollo_inputs){
                           error=function(e) NULL)
   if(is.null(apollo_beta)) apollo_beta <- tryCatch(get('apollo_beta', envir=globalenv(), inherits=FALSE),
                                                    error=function(e) NULL)
-  if(is.null(apollo_beta)) stop('apollo_expandLoop could not fetch apollo_beta.')
+  if(is.null(apollo_beta)) stop('INTERNAL ISSUE - apollo_expandLoop could not fetch apollo_beta.')
   
   #### Process and return ####
   defs  <- apollo_varList(f, apollo_inputs)

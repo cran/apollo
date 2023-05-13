@@ -9,7 +9,7 @@
 #' @export
 apollo_insertRRMQuotes <- function(f){
   # Validate inputs
-  if(!is.function(f)) stop('Argument "f" should be a function.')
+  if(!is.function(f)) stop('INTERNAL ISSUE - Argument "f" should be a function.')
   
   # If there's no call to apollo_rrm, return function as is
   if(!any(grepl("apollo_rrm", deparse(f)))) return(f)

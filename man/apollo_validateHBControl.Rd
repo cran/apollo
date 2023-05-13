@@ -42,6 +42,7 @@ Other settings to include are the following.
                                  \item \strong{\code{"N"}}: Normal.
                                  \item \strong{\code{"NR"}}: Fixed (as in non-random) parameter.
                                }
+  \item \strong{\code{nodiagnostics}}: Boolean. Turn off pre-estimation diagnostics for RSGHB. Set to TRUE by default.
 }}
 
 \item{apollo_beta}{Named numeric vector. Names and values for parameters.}

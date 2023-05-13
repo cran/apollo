@@ -127,7 +127,7 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
       saveRDS(L, file=inputPieceFile[i])
       TRUE
     }, warning=function(w) FALSE, error=function(e) FALSE)
-    if(!wroteOK) stop("Apollo could not write data pieces to disk. This is necessary for multi-core processing to work.")
+    if(!wroteOK) stop("INTERNAL ISSUE - Apollo could not write data pieces to disk. This is necessary for multi-core processing to work.")
     if(debug) cat(".")
     if(debug && i==nCores) cat("\n")
   }
@@ -218,11 +218,11 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
   parallel::parLapply(cl, inputPieceFile, fun=function(fileName){
     tmp <- globalenv()
     txt <- " This is necessary for multi-core processing to work."
-    if(!file.exists(fileName)) stop(paste0("A piece of data is missing from disk.",txt))
+    if(!file.exists(fileName)) stop(paste0("INTERNAL ISSUE - A piece of data is missing from disk.",txt))
     apollo_inputs_piece <- tryCatch(readRDS(fileName),
                                     warning = function(w) FALSE,
                                     error   = function(e) FALSE)
-    if(is.logical(apollo_inputs_piece) && !apollo_inputs_piece) stop(paste0("A piece of data could not be loaded from disk.",txt))
+    if(is.logical(apollo_inputs_piece) && !apollo_inputs_piece) stop(paste0("INTERNAL ISSUE - A piece of data could not be loaded from disk.",txt))
     assign("apollo_inputs", apollo_inputs_piece, envir=tmp)
   })
   unlink(inputPieceFile) # delete tmp files

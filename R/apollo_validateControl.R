@@ -28,7 +28,7 @@
 apollo_validateControl=function(database,apollo_control, silent=FALSE){
   
   if(is.null(apollo_control$debug)) apollo_control$debug <- FALSE
-  if(!is.logical(apollo_control$debug) || length(apollo_control$debug)!=1) stop('Setting "debug" in apollo_control should have a logical (boolean) value.')
+  if(!is.logical(apollo_control$debug) || length(apollo_control$debug)!=1) stop('SYNTAX ISSUE - Setting "debug" in apollo_control should have a logical (boolean) value.')
   debug <- apollo_control$debug
   
   if(is.null(apollo_control$modelName)){
@@ -38,7 +38,7 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   
   if(is.null(apollo_control$modelDescr)) apollo_control$modelDescr <- 'No model description provided in apollo_control'
   
-  if(is.null(apollo_control$indivID)) stop('Name of column with individual IDs not provided in apollo_control.')
+  if(is.null(apollo_control$indivID)) stop('SYNTAX ISSUE - Name of column with individual IDs not provided in apollo_control.')
   
   if(is.null(apollo_control$nCores)){
     apollo_control$nCores <- 1
@@ -117,15 +117,15 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
     if(!silent) apollo_print("Working in logs is only applicable with panel data; workInLogs set to FALSE in apollo_control.")
   }
   
-  if(!is.logical(apollo_control$mixing       )) stop("Setting for mixing in apollo_control should be TRUE or FALSE")
-  if(!is.logical(apollo_control$HB           )) stop("Setting for HB in apollo_control should be TRUE or FALSE")
-  if(!is.logical(apollo_control$noValidation )) stop("Setting for noValidation in apollo_control should be TRUE or FALSE")
-  if(!is.logical(apollo_control$noDiagnostics)) stop("Setting for noDiagnostics in apollo_control should be TRUE or FALSE")
-  if(!is.logical(apollo_control$workInLogs   )) stop("Setting for workInLogs in apollo_control should be TRUE or FALSE")
+  if(!is.logical(apollo_control$mixing       )) stop("SYNTAX ISSUE - Setting for mixing in apollo_control should be TRUE or FALSE")
+  if(!is.logical(apollo_control$HB           )) stop("SYNTAX ISSUE - Setting for HB in apollo_control should be TRUE or FALSE")
+  if(!is.logical(apollo_control$noValidation )) stop("SYNTAX ISSUE - Setting for noValidation in apollo_control should be TRUE or FALSE")
+  if(!is.logical(apollo_control$noDiagnostics)) stop("SYNTAX ISSUE - Setting for noDiagnostics in apollo_control should be TRUE or FALSE")
+  if(!is.logical(apollo_control$workInLogs   )) stop("SYNTAX ISSUE - Setting for workInLogs in apollo_control should be TRUE or FALSE")
 
   if(!is.null(apollo_control$weights)){
     w <- apollo_control$weights
-    if(length(w)!=1 || !is.character(w) || !(w %in% names(database))) stop("'apollo_control$weights' is not the name of a column in 'database'.")
+    if(length(w)!=1 || !is.character(w) || !(w %in% names(database))) stop("SYNTAX ISSUE - 'apollo_control$weights' is not the name of a column in 'database'.")
   }
   
   if((apollo_control$noValidation==TRUE)&!silent) apollo_print("With setting noValidation=TRUE in apollo_control, your model code will not be validated prior to estimation. This may of course be deliberate for large models or models with many components.")
@@ -134,7 +134,7 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
     apollo_control$cpp <- FALSE
     if(debug) apollo_print("Missing setting for cpp in apollo_control, set to default of FALSE.")
   } else {
-    if(!is.logical(apollo_control$cpp) || !length(apollo_control$cpp)==1) stop("Setting cpp in apollo_control should be a single logical value!")
+    if(!is.logical(apollo_control$cpp) || !length(apollo_control$cpp)==1) stop("SYNTAX ISSUE - Setting cpp in apollo_control should be a single logical value!")
   }
   
   if(is.null(apollo_control$analyticGrad)){
@@ -143,7 +143,7 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
     apollo_control$analyticGrad_manualSet <- FALSE
   } else {
     test <- is.logical(apollo_control$analyticGrad) && length(apollo_control$analyticGrad)==1
-    if(!test) stop("Setting analyticGrad in apollo_control should be a single logical value")
+    if(!test) stop("SYNTAX ISSUE - Setting analyticGrad in apollo_control should be a single logical value")
     apollo_control$analyticGrad_manualSet <- TRUE
   }
   
@@ -161,19 +161,32 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
     apollo_control$matrixMult <- FALSE
     if(debug) apollo_print("Missing setting for matrixMult in apollo_control, set to default of FALSE")
   } else {
-    if(!is.logical(apollo_control$matrixMult) || !length(apollo_control$matrixMult)==1) stop("Setting matrixMult in apollo_control should be a single logical value")
+    if(!is.logical(apollo_control$matrixMult) || !length(apollo_control$matrixMult)==1) stop("SYNTAX ISSUE - Setting matrixMult in apollo_control should be a single logical value")
   }
-  if(apollo_control$matrixMult & apollo_control$mixing) stop("Setting matrixMult in apollo_control is only valid for models without mixing!")
+  if(apollo_control$matrixMult & apollo_control$mixing) stop("SYNTAX ISSUE - Setting matrixMult in apollo_control is only valid for models without mixing!")
   
+  if(is.null(apollo_control$overridePanel)){
+    apollo_control$overridePanel <- FALSE
+    if(debug) apollo_print("Missing setting for overridePanel in apollo_control, set to default of FALSE.")
+  }
   
+  if(is.null(apollo_control$preventOverridePanel)){
+    apollo_control$preventOverridePanel <- FALSE
+    if(debug) apollo_print("Missing setting for preventOverridePanel in apollo_control, set to default of FALSE.")
+  }
+
+  if(is.null(apollo_control$noModification)){
+    apollo_control$noModification <- FALSE
+    if(debug) apollo_print("Missing setting for noModification in apollo_control, set to default of FALSE.")
+  }
   
   allVars <- c("modelName", "modelDescr", "indivID", "mixing", "nCores", "seed", "HB", 
                "noValidation", "noDiagnostics", "weights", "workInLogs", "panelData", 
                "cpp","subMaxV", "analyticGrad", "matrixMult", "debug", "analyticGrad_manualSet",
-               "outputDirectory", "calculateLLC")
+               "outputDirectory", "calculateLLC", "overridePanel", "preventOverridePanel", "noModification")
   unknownVars <- names(apollo_control)[!( names(apollo_control) %in% allVars )]
   if(length(unknownVars)>0){
-    apollo_print(paste0("Variable(s) {", paste(unknownVars, collapse=", "), "} were not recognised in apollo_control and will be ignored. Check ?apollo_control for a list of valid control variables."))
+    apollo_print(paste0("Variable(s) {", paste(unknownVars, collapse=", "), "} were not recognised in apollo_control and will be ignored. Check ?apollo_control for a list of valid control variables."), type="w")
   }
   
   if(is.null(apollo_control$subMaxV)) apollo_control$subMaxV <- TRUE

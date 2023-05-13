@@ -44,8 +44,8 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   
   apollo_control <- apollo_inputs[["apollo_control"]]
   
-  if(apollo_control$HB==TRUE) stop('Function apollo_avgInterDraws should not be used when apollo_control$HB==TRUE!')
-  if(!apollo_control$mixing) stop('No mixing used in model!')
+  if(apollo_control$HB==TRUE) stop('SYNTAX ISSUE - Function apollo_avgInterDraws should not be used when apollo_control$HB==TRUE!')
+  if(!apollo_control$mixing) stop('SYNTAX ISSUE - Function apollo_avgInterDraws should not be used when no mixing used in model!')
   
   inputIsList <- is.list(P)
   
@@ -68,12 +68,12 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   # ############################### #
   
   if(functionality=="gradient"){
-    if(!is.list(P)) stop("Input P should be a list with at least one component (called model)!")
+    if(!is.list(P)) stop("INTERNAL ISSUE - Input P should be a list with at least one component (called model)!")
     if("model" %in% names(P)) P <- P$model
-    if(is.null(P$like) || is.null(P$grad)) stop("Missing like and/or grad elements inside components!")
-    if(apollo_control$workInLogs && apollo_control$analyticGrad) stop("Setting workInLogs cannot be used in conjunction with analyticGrad!")
+    if(is.null(P$like) || is.null(P$grad)) stop("INTERNAL ISSUE - Missing like and/or grad elements inside components!")
+    if(apollo_control$workInLogs && apollo_control$analyticGrad) stop("INCORRECT FUNCTION/SETTING USE - Setting workInLogs cannot be used in conjunction with analyticGrad!")
     
-    if(!is.matrix(P$like)) stop("No inter-draws to average over!")
+    if(!is.matrix(P$like)) stop("SPECIFICATION ISSUE - No inter-draws to average over!")
     P$like <- rowMeans(P$like)
     P$grad <- lapply(P$grad, function(p) if(is.matrix(p)) rowMeans(p) else p)
     return(P)
@@ -84,9 +84,9 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   # ######################################## #
   
   if(functionality %in% c("zero_LL", "shares_LL")){
-    if(inputIsList && is.null(P[["model"]])) stop('Element called model is missing in list P!')
+    if(inputIsList && is.null(P[["model"]])) stop('SYNTAX ISSUE - Element called model is missing in list P!')
     if(is.list(P)){
-      if(any(sapply(P, function(p) is.array(p) && length(dim(p))==3))) stop('Intra-individual draws still present to average over!')
+      if(any(sapply(P, function(p) is.array(p) && length(dim(p))==3))) stop('SPECIFICATION ISSUE - Intra-individual draws still present to average over!')
       P <- lapply(P, function(p) if(is.matrix(p)) rowMeans(p) else p)
     }
     if(is.matrix(P)) P <- rowMeans(P) 
@@ -98,11 +98,11 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   # ########################################### #
   
   if(functionality %in% c("estimate", "validate")){
-    if(nIndiv!=pRows) stop("Observations from the same individual must be combined (i.e. multiplied) before averaging over inter-individual draws.")
-    if(inputIsList && is.null(P[["model"]])) stop('Element called model is missing in list P!')
+    if(nIndiv!=pRows) stop("SPECIFICATION ISSUE - Observations from the same individual must be combined (i.e. multiplied) before averaging over inter-individual draws.")
+    if(inputIsList && is.null(P[["model"]])) stop('SPECIFICATION ISSUE - Element called model is missing in list P!')
     if(inputIsList) P <- P[["model"]]
-    if(is.vector(P) && !apollo_control$workInLogs ) stop('No Inter-individuals draws to average over!')
-    if(is.array(P) && length(dim(P))==3) stop('Intra-individual draws still present to average over!')
+    if(is.vector(P) && !apollo_control$workInLogs ) stop('SPECIFICATION ISSUE - No Inter-individuals draws to average over!')
+    if(is.array(P) && length(dim(P))==3) stop('SPECIFICATION ISSUE - Intra-individual draws still present to average over!')
     if(is.matrix(P)) P <- rowMeans(P)
     if(inputIsList) P <- list(model=P)
     return(P)
@@ -113,11 +113,11 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   # ############################# #
   
   if(functionality=="output"){
-    if(nIndiv!=pRows) stop("Observations from the same individual must be combined (i.e. multiplied) before averaging over inter-individual draws.")
-    if(inputIsList && is.null(P[["model"]])) stop('Element called model is missing in list P!')
+    if(nIndiv!=pRows) stop("SPECIFICATION ISSUE - Observations from the same individual must be combined (i.e. multiplied) before averaging over inter-individual draws.")
+    if(inputIsList && is.null(P[["model"]])) stop('SPECIFICATION ISSUE - Element called model is missing in list P!')
     if(!inputIsList) P <- list(model=P)
     for(j in 1:length(P)){
-      if(is.array(P[[j]]) & length(dim(P[[j]]))==3) stop('Intra-individual draws still present to average over!')
+      if(is.array(P[[j]]) & length(dim(P[[j]]))==3) stop('SPECIFICATION ISSUE - Intra-individual draws still present to average over!')
       if(is.matrix(P[[j]])) P[[j]]=rowMeans(P[[j]])
     }
     if(!inputIsList) P <- P[[1]]
@@ -132,17 +132,17 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
     nInter <- apollo_inputs$apollo_draws$interNDraws
     if(!inputIsList){
       if(is.matrix(P) && ncol(P)==nInter) output=rowMeans(P)
-      if(is.array(P) && length(dim(P))==3) stop('Intra-individual draws still present to average over!')
+      if(is.array(P) && length(dim(P))==3) stop('SPECIFICATION ISSUE - Intra-individual draws still present to average over!')
       return(output)
     } else {
       #output_list=P
       for(j in 1:length(P)){
         if(is.list(P[[j]])){
           for(k in 1:length(P[[j]])){
-            if(is.array(P[[j]][[k]]) && length(dim(P[[j]][[k]]))==3) stop('Intra-individual draws still present to average over!')
+            if(is.array(P[[j]][[k]]) && length(dim(P[[j]][[k]]))==3) stop('SPECIFICATION ISSUE - Intra-individual draws still present to average over!')
             if(is.matrix(P[[j]][[k]]) && ncol(P[[j]][[k]])==nInter) P[[j]][[k]]=rowMeans(P[[j]][[k]])
           }}else{
-            if(is.array(P[[j]]) && length(dim(P[[j]]))==3) stop('Intra-individual draws still present to average over!')
+            if(is.array(P[[j]]) && length(dim(P[[j]]))==3) stop('SPECIFICATION ISSUE - Intra-individual draws still present to average over!')
             if(is.matrix(P[[j]]) && ncol(P[[j]])==nInter) P[[j]]=rowMeans(P[[j]])
           }
       }
@@ -155,11 +155,11 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   # ################################### #
   
   if(functionality=="conditionals"){
-    if(nIndiv!=pRows) stop("Observations from the same individual must be combined (i.e. multiplied) before averaging over inter-individual draws.")
-    if(inputIsList && is.null(P[["model"]])) stop('Element called model is missing in list P!')
+    if(nIndiv!=pRows) stop("SPECIFICATION ISSUE - Observations from the same individual must be combined (i.e. multiplied) before averaging over inter-individual draws.")
+    if(inputIsList && is.null(P[["model"]])) stop('SPECIFICATION ISSUE - Element called model is missing in list P!')
     if(inputIsList) P <- P[["model"]]
-    #if(!is.array(P)) stop('No draws present to average over!')
-    if(is.array(P) & length(dim(P))==3) stop('Intra-individual draws still present to average over!')
+    #if(!is.array(P)) stop('SPECIFICATION ISSUE - No draws present to average over!')
+    if(is.array(P) & length(dim(P))==3) stop('SPECIFICATION ISSUE - Intra-individual draws still present to average over!')
     if(inputIsList) P <- list(model=P)
     return(P)
   }

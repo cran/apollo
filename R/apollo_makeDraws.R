@@ -31,12 +31,12 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   if(!apollo_control$mixing) return(NA)
   
   if(is.null(d$antithetic)) antithetic=FALSE else antithetic=d$antithetic
-  if(!length(antithetic)==1 || !is.logical(antithetic)) stop("Setting \"antithetic\" should be a logical value.")
+  if(!length(antithetic)==1 || !is.logical(antithetic)) stop("SYNTAX ISSUE - Setting \"antithetic\" should be a logical value.")
 
   # ################################## #
   #### Input validation             ####
   # ################################## #
-  if(d$interNDraws==1 | d$intraNDraws==1) stop("Number of draws should be greater than 1.")
+  if(d$interNDraws==1 | d$intraNDraws==1) stop("SYNTAX ISSUE - Number of draws should be greater than 1.")
   
   testEGen <- rep(FALSE, 5)
   testEUsr    <- !is.null(d$interDrawsType) && d$interDrawsType!="" && length(d$interDrawsType)==1 && ( !(tolower(d$interDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka')) && exists(d$interDrawsType, envir=globalenv()) )
@@ -67,24 +67,24 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
     d$intraNormDraws=c()
   }
   
-  if(!apollo_inputs$apollo_control$panelData & d$intraNDraws>0) stop("\nIntra-person draws are used without a panel structure. This is not allowed!")
-  if(antithetic && (testEUsr | testAUsr)) stop("\nAntithetic draws cannot be used with user provided draws!")
+  if(!apollo_inputs$apollo_control$panelData & d$intraNDraws>0) stop("INCORRECT FUNCTION/SETTING USE - Intra-person draws are used without a panel structure. This is not allowed!")
+  if(antithetic && (testEUsr | testAUsr)) stop("INCORRECT FUNCTION/SETTING USE - Antithetic draws cannot be used with user provided draws!")
   # Validate input
   if(!testEUsr & !all(testEGen) & !testAUsr & !all(testAGen)){
-    if(!testEGen[1] | !testAGen[1]) stop("Type of draws must be 'halton', 'mlhs', 'pmc', 'sobol','sobolOwen','sobolFaureTezuka' or 'sobolOwenFaureTezuka' to generate draws, or the name of a variable containing user generated draws.")
-    if(!testEGen[2] | !testAGen[2]) stop("Number of draws must be a positive integer.")
-    if(!testEGen[5] | !testAGen[5]) stop("No names for the draws were specified.")
+    if(!testEGen[1] | !testAGen[1]) stop("SYNTAX ISSUE - Type of draws must be 'halton', 'mlhs', 'pmc', 'sobol','sobolOwen','sobolFaureTezuka' or 'sobolOwenFaureTezuka' to generate draws, or the name of a variable containing user generated draws.")
+    if(!testEGen[2] | !testAGen[2]) stop("SYNTAX ISSUE - Number of draws must be a positive integer.")
+    if(!testEGen[5] | !testAGen[5]) stop("SYNTAX ISSUE - No names for the draws were specified.")
   }
   
   allNames=c(d$interUnifDraws, d$interNormDraws,d$intraUnifDraws, d$intraNormDraws)
-  if(length(allNames)>length(unique(allNames))) stop("The same name was used for multiple sets of draws!")
+  if(length(allNames)>length(unique(allNames))) stop("SYNTAX ISSUE - The same name was used for multiple sets of draws!")
   
   test <- c("interDrawsType", "interNDraws", "interUnifDraws", "interNormDraws", 
             "intraDrawsType", "intraNDraws", "intraUnifDraws", "intraNormDraws",
             "antithetic")
   test <- names(d) %in% test
   if(any(!test)){
-    txt <- paste0("Some elements in apollo_draws (", paste0(names(d)[!test], collapse=", "),
+    txt <- paste0("SYNTAX ISSUE - Some elements in apollo_draws (", paste0(names(d)[!test], collapse=", "),
                   ") are not recognised as valid settings.")
     stop(txt)
   }
@@ -93,7 +93,7 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   countHalton=0
   if(!is.na(d$interDrawsType)&&(tolower(d$interDrawsType)=='halton')) countHalton=countHalton+length(c(d$interUnifDraws, d$interNormDraws))
   if(!is.na(d$intraDrawsType)&&(tolower(d$intraDrawsType)=='halton')) countHalton=countHalton+length(c(d$intraUnifDraws, d$intraNormDraws))
-  if(countHalton>5) apollo_print(paste("Your model is using Halton draws in", countHalton, "dimensions. You should consider a different type of draws to avoid issues with collinearity!"), highlight=TRUE)
+  if(countHalton>5) apollo_print(paste("Your model is using Halton draws in", countHalton, "dimensions. You should consider a different type of draws to avoid issues with collinearity!"), pause=5, type="w")
   
   
   # ################################## #
@@ -167,11 +167,11 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
     draws <- get(d$interDrawsType, envir=globalenv())
 
     # Validate input
-    if( !is.list(draws) ) stop("Draws provided by user must be contained in a list.")
+    if( !is.list(draws) ) stop("INPUT ISSUE - Draws provided by user must be contained in a list.")
     for(i in draws ){
-      if(!is.matrix(i)) stop("At least one element of ", d$interDrawsType, " is not a matrix.")
-      if(nrow(i)!=nIndiv) stop("At least one element of ", d$interDrawsType, " does not have as many rows as individuals.")
-      if(ncol(i)!=nInter) stop("At least one element of ", d$interDrawsType, " does not have ", nInter, " columns.")
+      if(!is.matrix(i)) stop("INPUT ISSUE - At least one element of ", d$interDrawsType, " is not a matrix.")
+      if(nrow(i)!=nIndiv) stop("INPUT ISSUE - At least one element of ", d$interDrawsType, " does not have as many rows as individuals.")
+      if(ncol(i)!=nInter) stop("INPUT ISSUE - At least one element of ", d$interDrawsType, " does not have ", nInter, " columns.")
     }
     
     # Turn uniform to standard normal if applicable
@@ -190,11 +190,11 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
     draws <- get(d$intraDrawsType, envir=globalenv())
 
     # Validate input
-    if( !is.list(draws) ) stop("Draws provided by user must be contained in a list.")
+    if( !is.list(draws) ) stop("INPUT ISSUE - Draws provided by user must be contained in a list.")
     for(i in draws ){
-      if(!is.matrix(i)) stop("At least one element of ", d$interDrawsType, " is not a matrix.")
-      if(nrow(i)!=nObs) stop("At least one element of ", d$interDrawsType, " does not have as many rows as observations.")
-      if(ncol(i)!=nIntra) stop("At least one element of ", d$intraDrawsType, " does not have ", nIntra, " columns.")
+      if(!is.matrix(i)) stop("INPUT ISSUE - At least one element of ", d$interDrawsType, " is not a matrix.")
+      if(nrow(i)!=nObs) stop("INPUT ISSUE - At least one element of ", d$interDrawsType, " does not have as many rows as observations.")
+      if(ncol(i)!=nIntra) stop("INPUT ISSUE - At least one element of ", d$intraDrawsType, " does not have ", nIntra, " columns.")
     }
     
     # Turn uniform to standard normal if applicable

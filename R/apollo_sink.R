@@ -23,13 +23,13 @@ apollo_sink <- function(apollo_inputs=NULL){
   # Try to fetch apollo_inputs if it is missing
   if(is.null(apollo_inputs)) apollo_inputs <- tryCatch(get('apollo_inputs', envir=parent.frame(), inherits=FALSE),
                                                        error=function(e) NULL)
-  if(is.null(apollo_inputs)) stop('apollo_inputs could not be retrieved')
+  if(is.null(apollo_inputs)) stop('INTERNAL ISSUE - apollo_inputs could not be retrieved')
   
   # Check apollo_inputs has everything needed
   test <- is.list(apollo_inputs) && !is.null(apollo_inputs$apollo_control)
   test <- test && !is.null(apollo_inputs$apollo_control$outputDirectory) && is.character(apollo_inputs$apollo_control$outputDirectory)
   test <- test && !is.null(apollo_inputs$apollo_control$modelName) && is.character(apollo_inputs$apollo_control$modelName)
-  if(!test) stop('apollo_inputs is corrupted')
+  if(!test) stop('INTERNAL ISSUE - apollo_inputs is corrupted')
   
   # Do sink()
   f <- paste0(apollo_inputs$apollo_control$outputDirectory, 

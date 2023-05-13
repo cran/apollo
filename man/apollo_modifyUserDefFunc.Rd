@@ -9,7 +9,8 @@ apollo_modifyUserDefFunc(
   apollo_fixed,
   apollo_probabilities,
   apollo_inputs,
-  validate = TRUE
+  validate = TRUE,
+  noModification = FALSE
 )
 }
 \arguments{
@@ -49,6 +50,8 @@ be estimated. Must receive three arguments:
 results do not match, then the original functions are 
 returned, and \code{success} is set to \code{FALSE} inside 
 the returned list.}
+
+\item{noModification}{Logical. If TRUE, loop expansion etc are skipped.}
 }
 \value{
 List with four elements: apollo_probabilities, apollo_randCoeff, 

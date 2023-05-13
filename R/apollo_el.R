@@ -8,7 +8,7 @@
 #'                     \item \strong{\code{alternatives}}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
 #'                     \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
 #'                     \item \strong{\code{choiceVars}}: List of numeric vectors. Contain choices for each position of the ranking. The list must be ordered with the best choice first, second best second, etc. It will usually be a list of columns from the database. Use value -1 if a stage does not apply for a given observations (e.g. when some individuals have shorter rankings).
-#'                     \item \strong{\code{componentName}}: Character. Name given to model component.
+#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                     \item \strong{\code{utilities}}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
 #'                     \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
 #'                     \item \strong{\code{scales}}: List of vectors. Scale factors of each Logit model. At least one element should be normalized to 1. If omitted, scale=1 for all positions is assumed.
@@ -62,7 +62,7 @@ apollo_el <- function(el_settings, functionality){
   if(functionality=="validate"){
     apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
     apollo_modelList <- c(apollo_modelList, el_settings$componentName)
-    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", el_settings$componentName,
+    if(anyDuplicated(apollo_modelList)) stop("SPECIFICATION ISSUE - Duplicated componentName found (", el_settings$componentName,
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
@@ -148,10 +148,10 @@ apollo_el <- function(el_settings, functionality){
         }
         
         if(!apollo_inputs$silent & data) for(a in 1:inputs$nAlt){
-          if(sum(choicematrix[4,a,])==0) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'))
-          if(choicematrix[4,a,1]==1) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'))
+          if(sum(choicematrix[4,a,])==0) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'), type="w")
+          if(choicematrix[4,a,1]==1) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'), type="w")
         }
-        #if(inputs$avail_set==TRUE & !apollo_inputs$silent & data) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'))
+        #if(inputs$avail_set==TRUE & !apollo_inputs$silent & data) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'), type="i")
       
         return(invisible(TRUE))
     }
@@ -211,8 +211,8 @@ apollo_el <- function(el_settings, functionality){
     
     testL <- el_settings$probs_EL(el_settings)
     if(any(!el_settings$rows)) testL <- apollo_insertRows(testL, el_settings$rows, 1)
-    if(all(testL==0)) stop("All observations have zero probability at starting value for model component \"", el_settings$componentName,"\"")
-    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("Some observations have zero probability at starting value for model component \"", el_settings$componentName,"\"", sep=""))
+    if(all(testL==0)) stop("CALCULATION ISSUE - All observations have zero probability at starting value for model component \"", el_settings$componentName,"\"")
+    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("Some observations have zero probability at starting value for model component \"", el_settings$componentName,"\"", sep=""), type="i")
     return(invisible(testL))
   }
   

@@ -34,7 +34,7 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   # # # # # # # # # # # # #
   
   if(apollo_inputs$apollo_control$nCores==1) cl <- NA else {
-    if(debug) apollo_print('Creating cluster...')
+    if(!silent) apollo_print('Creating cluster...')
     # Creates cluster and also deletes database and draws from apollo_inputs in 
     # here and in .GlobalEnv
     cl <- apollo_makeCluster(apollo_probabilities, apollo_inputs, silent=silent, 
@@ -69,13 +69,14 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     ### SINGLE CORE
     
     apollo_logLike <- function(bVar, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE, logP=TRUE){
-      if(sumLL && !logP) stop("sumLL=TRUE cannot be used alongside logP=FALSE")
+      if(sumLL && !logP) stop("INTERNAL ISSUE - sumLL=TRUE cannot be used alongside logP=FALSE")
       # Return iteration count, if requested
       if(getNIter) return(nIter)
       # Calculate LL
       b  <- c(bVar, bFixedVal)
       ll <- apollo_probabilities(b, apollo_inputs, functionality="estimate")
       if(!workInLogs && logP) ll <- log(ll) # condition used to be workInLogs & panelData
+      if(workInLogs && !logP) ll <- exp(ll) # 
       sumll <- sum(ll)
       # Keep count of iterations and write them to file, if requested
       if(countIter || writeIter){
@@ -101,7 +102,7 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     
     # Clean up parent environment and check that cluster exists
     rm(apollo_inputs, apollo_probabilities, apollo_beta, apollo_fixed, apollo_estSet, panelData)
-    if(length(cl)==1 && is.na(cl)) stop("Cluster is missing on 'apollo_makeLogLike' despite nCores>1.")
+    if(length(cl)==1 && is.na(cl)) stop("INTERNAL ISSUE - Cluster is missing on 'apollo_makeLogLike' despite nCores>1.")
 
     # Function to be run on each thread
     apollo_parProb <- function(b){
@@ -112,7 +113,7 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     
     # Loglike
     apollo_logLike <- function(bVar, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE, logP=TRUE){
-      if(sumLL && !logP) stop("sumLL=TRUE cannot be used alongside logP=FALSE")
+      if(sumLL && !logP) stop("INTERNAL ISSUE - sumLL=TRUE cannot be used alongside logP=FALSE")
       # Return iteration count, if requested
       if(getNIter) return(nIter)
       # Calculate LL
@@ -120,6 +121,7 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
       ll <- parallel::clusterCall(cl=cl, fun=apollo_parProb, b=b)
       ll <- unlist(ll)
       if(!workInLogs && logP) ll <- log(ll) # condition used to be workInLogs & panelData
+      if(workInLogs && !logP) ll <- exp(ll) # 
       sumll <- sum(ll)
       # Keep count of iterations and write them to file, if requested
       if(countIter || writeIter){
@@ -177,16 +179,26 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   if(debug) apollo_print('Preparing pre-processing report')
   f <- function(){
     name <- grep("_settings$", names(apollo_inputs), value=TRUE)
-    grad  <- c(); mType <- c()
+    grad  <- c(); mType <- c(); countAlt  <- c()
     for(i in name){
       grad  <- c(grad , apollo_inputs[[i]]$gradient)
       mType <- c(mType, apollo_inputs[[i]]$modelType)
+      ### 26 April
+      countAlt <- c(countAlt, apollo_inputs[[i]]$nAlt) 
+      ###
     }
     name <- substr(name, 1, nchar(name)-nchar("_settings"))
-    return( list(name=name, grad=grad, mType=mType) )
+    return( list(name=name, grad=grad, mType=mType, countAlt = countAlt) )
   }
   if(!anyNA(cl)) tmp <- parallel::clusterCall(cl, function(f) {environment(f) <- globalenv(); f()}, f)[[1]] else tmp <- f()
   if(length(tmp$name)>0 && length(tmp$name)==length(tmp$mType)) mType <- setNames(tmp$mType, tmp$name) else mType <- NULL
+  ### 26 April
+  # models with nAlt - exclude LC from this for now, should do as the models are class specific, but will not work if the class specific models are not in P
+  if(!is.null(mType)&&!is.null(tmp$countAlt)){
+    #countAlt <- setNames(tmp$countAlt, tmp$name[tolower(mType) %in% c("mnl", "nl", "cnl", "el", "dft", "lc", "rrm", "ol", "op")])
+    countAlt <- setNames(tmp$countAlt, tmp$name[tolower(mType) %in% c("mnl", "nl", "cnl", "el", "dft", "rrm", "ol", "op")]) 
+  }
+  ###
   rm(f)
   if(debug){
     if(length(tmp$name)==0) apollo_print("No pre-processing performed") else {
@@ -224,7 +236,7 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   }
   if(!anyNA(cl)){
     nObsTot <- parallel::clusterCall(cl, function(f) {environment(f) <- globalenv(); f()}, f)
-    if(!all(sapply(nObsTot, length)==length(nObsTot[[1]]))) stop('Model components are inconsistent across workers. Try seting apollo_control$nCores=1')
+    if(!all(sapply(nObsTot, length)==length(nObsTot[[1]]))) stop('INTERNAL ISSUE - Model components are inconsistent across workers. Try seting apollo_control$nCores=1')
     nObsTot <- Reduce('+', nObsTot)
   } else nObsTot <- f()
   rm(f)

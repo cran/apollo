@@ -5,20 +5,51 @@
 #' @param txt Character, what to print.
 #' @param nSignifD Optional numeric integer. Minimum number of significant digits when printing numeric matrices. Default is 4.
 #' @param widthLim Optional numeric integer. Minimum width (in characters) of each column when printing numeric matrices. Default is 11
-#' @param highlight Optional logical. If TRUE, the message will be highlighted and will pause excecution for 5 seconds.
+#' @param pause Scalar integer. Number of seconds the execution will pause after printing the message. Default is 0.
+#' @param type Character. "t" for regular text (default), "w" for warning, "i" for information.
 #' @return Nothing
 #' @export
-apollo_print <- function(txt, nSignifD=4, widthLim=11, highlight=FALSE){
-  # If highlighted
-  if(highlight){ cat(paste0(rep('#', getOption("width")-1), collapse='')); cat('\n')}
+apollo_print <- function(txt, nSignifD=4, widthLim=11, pause=0, type="t"){
   
-  # If character
-  if(is.character(txt)) writeLines(strwrap(txt, exdent=2))
+  ### Validate input
+  test <- is.numeric(pause) && is.vector(pause) && length(pause)==1
+  if(!test) stop("INTERNAL ISSUE - Argument 'pause' must be a scalar integer.")
+  pause <- as.integer(round(pause,0))
+  test <- is.character(type) && is.vector(type) && length(type)==1 && type %in% c("t", "w", "i")
+  if(!test) stop("INTERNAL ISSUE - Argument 'type' must be characters 't', 'w', or 'i'.")
+  test <- is.character(txt) || is.matrix(txt)
+  if(!test) stop("INTERNAL ISSUE - Argument 'txt' must be a matrix or a character")
   
-  #if(is.vector(txt)) writeLines(strwrap(paste0(txt, collapse=", ")))
+  # If txt is character
+  if(is.character(txt)){
+    if(type=="t") writeLines(strwrap(txt, exdent=2))
+    if(type=="w"){
+      # Attach WARNING in red text and yellow background
+      ###txt <- strwrap(paste0("WARNING: ", txt), exdent=2)
+      txt <- strwrap(txt, exdent=2)
+      #if(nchar(txt[1])>8) txt[1] <- substr(txt[1], 9, nchar(txt[1]))
+      txt <- paste(txt, collapse="\n")
+      # Print to screen
+      #cat(cli::make_ansi_style("#ddcc77", bg=TRUE)( cli::make_ansi_style("#882255", bg=FALSE)("WARNING:") ),
+      #    txt, "\n", sep="")
+      cat(cli::make_ansi_style("#ddcc77", bg=TRUE)( cli::make_ansi_style("#882255", bg=FALSE)("WARNING:") ),
+          txt, "\n", sep=" ")
+    }
+    if(type=="i"){
+      # Attach INFORMATION in red text and yellow background
+      ###txt <- strwrap(paste0("INFORMATION: ", txt), exdent=2)
+      txt <- strwrap(txt, exdent=2)
+      #if(nchar(txt[1])>12) txt[1] <- substr(txt[1], 13, nchar(txt[1]))
+      txt <- paste(txt, collapse="\n")
+      # Print to screen
+      cat(cli::bg_br_black(cli::col_br_white("INFORMATION:")),
+          txt, "\n", sep=" ")
+    }
+  }
   
   # If matrix
   if(is.matrix(txt)){
+    if(type=="w") cat(cli::make_ansi_style("#ddcc77", bg=TRUE)( cli::make_ansi_style("#882255", bg=FALSE)("WARNING:") ), "\n")
     if(is.numeric(txt)){ # If numeric matrix
       # Initialise
       M  <- txt
@@ -47,11 +78,12 @@ apollo_print <- function(txt, nSignifD=4, widthLim=11, highlight=FALSE){
   }
   
   # If highlighted
-  if(highlight){
-    cat("\n... current process will resume in 5 seconds unless interrupted by the user\n")
-    cat(paste0(rep('#', getOption("width")-1-5), collapse=''))
-    for(i in 1:5){ Sys.sleep(1); cat('#')}
-    cat('\n')
-  } 
+  if(pause>0){
+    cat("\n")
+    txt <- paste0("Current process will resume in ", pause, " seconds unless interrupted by the user")
+    cat(paste(strwrap(txt, indent=2, exdent=2), collapse="\n"))
+    for(i in 1:pause){ Sys.sleep(1); cat('.')}
+    cat("\n\n")
+  }
   return(invisible(NULL))
 }

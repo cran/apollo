@@ -34,18 +34,18 @@ apollo_mixConditionals=function(model, apollo_probabilities, apollo_inputs){
   apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
   
   
-  if(is.function(apollo_inputs$apollo_lcPars)) stop("The function \'apollo_conditionals\' is not applicable for models containing latent class components!")
+  if(is.function(apollo_inputs$apollo_lcPars)) stop("INCORRECT FUNCTION/SETTING USE - The function \'apollo_conditionals\' is not applicable for models containing latent class components!")
   
   if(is.null(apollo_control$HB)) apollo_control$HB=FALSE
-  if(apollo_control$HB) stop("The function \'apollo_conditionals\' is not applicable for models estimated using HB!") 
+  if(apollo_control$HB) stop("INCORRECT FUNCTION/SETTING USE - The function \'apollo_conditionals\' is not applicable for models estimated using HB!") 
   
   if(is.null(apollo_control$workInLogs)) apollo_control$workInLogs=FALSE
-  if(apollo_control$workInLogs) stop("The function \'apollo_conditionals\' is not applicable for models using the workInLogs setting!") 
+  if(apollo_control$workInLogs) stop("INCORRECT FUNCTION/SETTING USE - The function \'apollo_conditionals\' is not applicable for models using the workInLogs setting!") 
   
-  if(!apollo_control$mixing) stop("Conditionals can only be estimated for mixture models!")
-  if(anyNA(draws)) stop("Random draws have not been specified despite setting mixing=TRUE")
+  if(!apollo_control$mixing) stop("INCORRECT FUNCTION/SETTING USE - Conditionals can only be calculated for mixture models!")
+  if(anyNA(draws)) stop("INCORRECT FUNCTION/SETTING USE - Random draws have not been specified despite setting mixing=TRUE")
   
-  if(apollo_draws$interNDraws==0) stop("This function is only for models that incorporate inter-individual draws!")
+  if(apollo_draws$interNDraws==0) stop("INCORRECT FUNCTION/SETTING USE - This function is only for models that incorporate inter-individual draws!")
   if(apollo_draws$intraNDraws>0) cat("Your model contains intra-individual draws which will be averaged over for conditionals!\n")
   
   

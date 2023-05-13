@@ -30,13 +30,13 @@ apollo_readBeta=function(apollo_beta, apollo_fixed, inputModelName, overwriteFix
   filename = paste0(outputDirectory, inputModelName, "_estimates.csv", collapse='')
   if(!file.exists(filename)) filename = paste0(inputModelName,"_estimates.csv", collapse='')
   if(!file.exists(filename)){
-    if(outputDirectory=='') stop('File ', filename, ' not found in working directory.') else 
-      stop('File ', filename, ' not found in working directory, nor in ', outputDirectory, '.') 
+    if(outputDirectory=='') stop('INPUT ISSUE - File ', filename, ' not found in working directory.') else 
+      stop('INPUT ISSUE - File ', filename, ' not found in working directory, nor in ', outputDirectory, '.') 
   }
   input_apollo_beta = tryCatch(utils::read.csv(filename), 
                                warning=function(w) x=FALSE,
                                error=function(e) x=FALSE)
-  if(is.logical(input_apollo_beta) && input_apollo_beta==FALSE) stop("Could not open file ",filename) 
+  if(is.logical(input_apollo_beta) && input_apollo_beta==FALSE) stop("INPUT ISSUE - Could not open file ",filename) 
   
   if(overwriteFixed!=FALSE) overwriteFixed=TRUE
 

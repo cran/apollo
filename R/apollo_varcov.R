@@ -24,6 +24,7 @@
 #'                            \item \strong{\code{functionality}}: Character. Can be either 
 #'                            \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 #'                          }
+#'                          \item \strong{\code{BHHH_matrix}}: Matrix. Optional input, providing the BHHH matrix so it does not get recalculated.
 #'                          \item \strong{\code{hessianRoutine}}: Character. Name of routine used to calculate the Hessian. Valid values are \code{"analytic"}, \code{"numDeriv"}, \code{"maxLik"} or \code{"none"} to avoid estimating the Hessian and covariance matrix.
 #'                          \item \strong{\code{numDeriv_settings}}: List. Additional arguments to the Richardson method used by numDeriv to calculate the Hessian. See argument \code{method.args} in \link[numDeriv]{grad} for more details.
 #'                          \item \strong{\code{scaleBeta}}: Logical. If TRUE (default), parameters are scaled by their own value before calculating the Hessian to increase numerical stability. However, the output is de-scaled, so they are in the same scale as the \code{apollo_beta} argument.
@@ -50,20 +51,20 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
   # # # # # # #  # # # # #
   
   ### Load default settings and perform checks on them
-  if(!is.list(varcov_settings)) stop('Argument "varcov_settings" must be a list.')
+  if(!is.list(varcov_settings)) stop('SYNTAX ISSUE - Argument "varcov_settings" must be a list.')
   default <- list(hessianRoutine='analytic', scaleBeta=TRUE, numDeriv_settings=list())
   for(i in names(default)) if(is.null(varcov_settings[[i]])) varcov_settings[[i]] <- default[[i]]
   # At least one of apollo_grad, apollo_logLike or apollo_inputs must be provided
   test <- is.function(varcov_settings$apollo_grad) || is.function(varcov_settings$apollo_logLike)
   test <- test || (is.function(varcov_settings$apollo_probabilities) && is.list(varcov_settings$apollo_inputs))
-  if(!test) stop('Argument varcov_settings must contain at least one of the following: "apollo_logLike", "apollo_grad" or ("apollo_probabilities" and "apollo_inputs").')
+  if(!test) stop('SYNTAX ISSUE - Argument varcov_settings must contain at least one of the following: "apollo_logLike", "apollo_grad" or ("apollo_probabilities" and "apollo_inputs").')
   # Routine can only be 'analytic','numDeriv', 'maxLik', or 'none'
   test <- varcov_settings$hessianRoutine %in% c('analytic','numDeriv', 'maxLik', 'none')
-  if(!test) stop('Setting "hessianRoutine" must take one of the following values: "analytic", "numDeriv", "maxLik" or "none".')
+  if(!test) stop('SYNTAX ISSUE - Setting "hessianRoutine" must take one of the following values: "analytic", "numDeriv", "maxLik" or "none".')
   # If numeric routine is requested, apollo_logLike or apollo_inputs must be available
   test <- varcov_settings$hessianRoutine %in% c('numDeriv', 'maxLik')
   test <- test && !is.list(varcov_settings$apollo_inputs) && !is.function(varcov_settings$apollo_logLike)
-  if(test) stop('Cannot use numeric routine ("numDeriv" or "maxLik") if only the analytical gradient is given ("apollo_grad").')
+  if(test) stop('SYNTAX ISSUE - Cannot use numeric routine ("numDeriv" or "maxLik") if only the analytical gradient is given ("apollo_grad").')
   # If apollo_control$analyticGrad is FALSE, then no analytic routine is possible, and it defaults to numeric.
   aGrad <- FALSE # value of apollo_control$analyticGrad (wherever that is stored)
   if(is.function(varcov_settings$apollo_grad)) aGrad <- TRUE else {
@@ -98,7 +99,7 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
   ### If hessianRoutine=='none', return dummyVCM
   if(hessianRoutine=="none"){
     varInd <- which(!(names(apollo_beta) %in% apollo_fixed))
-    if(length(varInd)==0) stop('All parameters are fixed. Covariance matrix does not exist.')
+    if(length(varInd)==0) stop('SYNTAX ISSUE - All parameters are fixed. Covariance matrix does not exist.')
     L <- list(hessian     = dummyVCM[varInd, varInd, drop=FALSE], 
               varcov      = dummyVCM[varInd, varInd, drop=FALSE], 
               se          = diag(dummyVCM), 
@@ -123,7 +124,7 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
                                          apollo_estSet        = list(estimationRoutine='bhhh'))
     apollo_grad <- NULL
   }
-  if(!is.function(apollo_logLike)) stop('Creation of log-likelihood function (apollo_logLike) failed. Varcov matrix cannot be calculated.')
+  if(!is.function(apollo_logLike)) stop('CALCULATION ISSUE - Creation of log-likelihood function (apollo_logLike) failed. Varcov matrix cannot be calculated.')
   
   ### If apollo_grad is not provided, but analytic gradient is requested, then construct analytical gradient
   test <- !is.function(apollo_grad) && hessianRoutine=='analytic'
@@ -165,6 +166,13 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
       if(!environment(apollo_logLike)$singleCore) parallel::clusterCall(cl=environment(apollo_logLike)$cl, 
                                                                         fun=setSMulti, s=s)
     }
+  ### NEW 9 May
+  }else{
+    oneCore <- environment(apollo_logLike)$singleCore
+    if( oneCore) s <- environment(apollo_logLike)$apollo_inputs$apollo_scaling
+    if(!oneCore) s <- parallel::clusterEvalQ(cl=environment(apollo_logLike)$cl,
+                                             apollo_inputs$apollo_scaling)[[1]]
+    apollo_beta[names(s)] <- apollo_beta[names(s)]/s
   }
   
   
@@ -239,7 +247,7 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
   
   ### Check result
   if(!silent && (is.null(H) || (length(H)==1 && is.na(H))) ){
-    apollo_print("ERROR: Hessian could not be calculated.")
+    apollo_print("Hessian could not be calculated.", type="w")
     methodUsed <- c(methodUsed, 'Failed')
   } 
   if(is.matrix(H)){
@@ -247,14 +255,31 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
     colnames(H) <- names(beta_var_val)
     rownames(H) <- names(beta_var_val)
     # De-scale Hessian
-    if(varcov_settings$scaleBeta) for(i in names(scaling)){
-      H[i,] <- H[i,]/scaling[i]
-      H[,i] <- H[,i]/scaling[i]
-    }
+    if(varcov_settings$scaleBeta){
+      for(i in names(scaling)){
+        H[i,] <- H[i,]/scaling[i]
+        H[,i] <- H[,i]/scaling[i]
+      }
+    ### new bit 9 May 2023
+      }else{
+        oneCore <- environment(apollo_logLike)$singleCore
+        if( oneCore) s <- environment(apollo_logLike)$apollo_inputs$apollo_scaling
+        if(!oneCore) s <- parallel::clusterEvalQ(cl=environment(apollo_logLike)$cl,
+                                                 apollo_inputs$apollo_scaling)[[1]]
+        
+      if(any(s!=1)){
+        for(i in names(s)){
+          scale=s[i]
+          H[i,] <- H[i,]/scale[i]
+          H[,i] <- H[,i]/scale[i]
+        }
+      }
+      }
+    ####
     # Check invertibility
     invertible <- tryCatch(is.matrix(solve(H)), error=function(e) FALSE)
     if(!invertible){
-      if(!silent) apollo_print('ERROR: Singular Hessian, cannot calculate s.e.')
+      if(!silent) apollo_print('Singular Hessian, cannot calculate s.e.', type="w")
       tryCatch({
         outD <- tryCatch(environment(apollo_logLike)$apollo_inputs$apollo_control$outputDirectory,
                          error=function(e) ".")
@@ -267,9 +292,9 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
     }
     # Calculate eigenvalues
     eigValue <- tryCatch(eigen(H, only.values=TRUE)$values, error=function(e) return(NA))
-    if(!silent && is.complex(eigValue)) apollo_print('WARNING: Some eigenvalues of the Hessian are complex, indicating that the Hessian is not symmetrical.')
+    if(!silent && is.complex(eigValue)) apollo_print('Some eigenvalues of the Hessian are complex, indicating that the Hessian is not symmetrical.', type="w")
     if(!silent && !anyNA(eigValue) && !is.complex(eigValue)){
-      if(any(eigValue>0)) apollo_print("WARNING: Some eigenvalues of the Hessian are positive, indicating convergence to a saddle point!") 
+      if(any(eigValue>0)) apollo_print("Some eigenvalues of the Hessian are positive, indicating convergence to a saddle point!", type="w") 
       if(all(eigValue<0)) apollo_print(paste0("Negative definite Hessian with maximum eigenvalue: ",round(max(eigValue),6)))
     }
   }
@@ -279,7 +304,17 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
   # # # # # # # # # # # # # # # # #
   
   ### De-scale model$estimate from the hessian scaling
-  if(varcov_settings$scaleBeta) apollo_beta[names(scaling)] <- apollo_beta[names(scaling)]*scaling
+  if(varcov_settings$scaleBeta){
+    apollo_beta[names(scaling)] <- apollo_beta[names(scaling)]*scaling
+    ### new bit 9 May 2023
+  }else{
+    oneCore <- environment(apollo_logLike)$singleCore
+    if( oneCore) s <- environment(apollo_logLike)$apollo_inputs$apollo_scaling
+    if(!oneCore) s <- parallel::clusterEvalQ(cl=environment(apollo_logLike)$cl,
+                                             apollo_inputs$apollo_scaling)[[1]]
+    if(any(s!=1)) apollo_beta[names(s)] <- apollo_beta[names(s)]*s
+  }
+  ####
   
   ### Create dummy matrix without fixed params
   varInd <- which(!(names(apollo_beta) %in% apollo_fixed))
@@ -298,38 +333,48 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
   }
   
   ### Calculate scores
-  if(!silent) apollo_print('Computing score matrix...')
   bVar       <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
   newScaling <- setNames(rep(1, length(bVar)), names(bVar))
-  # Remove hessian scaling
-  # If using analytic
-  if(hessianRoutine=='analytic'){
+  if(is.null(varcov_settings$BHHH_matrix)){
+    if(!silent) apollo_print('Computing score matrix...')
     # Remove hessian scaling
-    if(varcov_settings$scaleBeta){
+    # If using analytic
+    if(hessianRoutine=='analytic'){
+      # Remove hessian scaling
+      ### 9 May - should always do this, not just if scaleBeta, even if scaling is just 1
+      ###if(varcov_settings$scaleBeta){
       singleCore <- environment(apollo_grad)$singleCore
       if( singleCore) environment(apollo_grad)$apollo_inputs$apollo_scaling <- newScaling
       if(!singleCore) parallel::clusterCall(cl=environment(apollo_grad)$cl, fun=setSMulti, s=newScaling)
-    }
-    # Calculate scores
-    score <- apollo_grad(bVar)
-  } else { # If using numeric
-    # Remove hessian scaling
-    if(varcov_settings$scaleBeta){
+      ###}
+      # Calculate scores
+      score <- apollo_grad(bVar)
+    } else { # If using numeric
+      # Remove hessian scaling
+      ### 9 May - should always do this, not just if scaleBeta, even if scaling is just 1
+      ###if(varcov_settings$scaleBeta){
       singleCore <- environment(apollo_logLike)$singleCore
       if( singleCore) environment(apollo_logLike)$apollo_inputs$apollo_scaling <- newScaling
       if(!singleCore) parallel::clusterCall(cl=environment(apollo_logLike)$cl, fun=setSMulti, s=newScaling)
+      ###}
+      # Calculate scores
+      score <- numDeriv::jacobian(apollo_logLike, bVar)
     }
-    # Calculate scores
-    score <- numDeriv::jacobian(apollo_logLike, bVar)
+    BHHH_matrix=var(score)*nrow(score)
+  }else{
+    BHHH_matrix=varcov_settings$BHHH_matrix
   }
+
   
   ### Calculate robust variance-covariance matrix, s.e. and correlation matrix
-  if(is.matrix(H) && is.matrix(score)){
+  #if(is.matrix(H) && is.matrix(score)){
+  if(is.matrix(H) && is.matrix(BHHH_matrix)){
     #bread <- solve(-H)
     #meat  <- split(score, rep(1:nrow(score), ncol(score)))
     #meat  <- Reduce('+', lapply(meat, function(r) r%*%t(r))) # it should include /nrow(score) but with it, it doesn't work.
     bread  <- varcov
-    meat   <- var(score)*nrow(score) # not sure why the *nrow(score) but without it, it doesn't work.
+    #meat   <- var(score)*nrow(score) # not sure why the *nrow(score) but without it, it doesn't work.
+    meat   <- BHHH_matrix
     robvarcov     <- bread %*% meat %*% bread
     robse         <- sqrt(diag(robvarcov))
     robcorrmat    <- tryCatch(robvarcov/(robse%*%t(robse)) , error=function(e) return(dummyVCM_small))
@@ -361,6 +406,9 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
   if(varcov_settings$scaleBeta) L$hessianScaling <- scaling else {
     L$hessianScaling <- environment(apollo_logLike)$apollo_inputs$apollo_scaling
   }
-  if(is.matrix(H) && !is.complex(eigValue)) L$eigValue = round(max(eigValue),6)
+  if(is.matrix(H)){
+    L$hessianEigenValue = eigValue
+    if(!is.complex(eigValue)) L$eigValue = round(max(eigValue),6)
+  }
   return(L)
 }

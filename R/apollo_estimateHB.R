@@ -123,12 +123,13 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
         names(apollo_HB$gMAXCOEF)=names(apollo_HB$svN)
         apollo_test_beta[dists_sb] <- apollo_HB$gMINCOEF[dists_sb]+(apollo_HB$gMAXCOEF[dists_sb]-apollo_HB$gMINCOEF[dists_sb])/(1+exp(-apollo_HB$svN[dists_sb]))
       }
+      rm(dists_normal, dists_lnp, dists_lnn, dists_cnp, dists_cnn, dists_sb)
     }
     apollo_probabilities(apollo_test_beta, apollo_inputs, functionality="validate")
     testLL = apollo_probabilities(apollo_test_beta, apollo_inputs, functionality="estimate")
     if(!workInLogs) testLL=log(testLL)
     # Maybe here we could return the value of the likelihood and print and error with cat, instead of simply stopping
-    if(anyNA(testLL)) stop('Log-likelihood calculation fails at starting values!')
+    if(anyNA(testLL)) stop('CALCULATION ISSUE - Log-likelihood calculation fails at starting values!')
     ### Test for unused parameters
     #apollo_beta_base=apollo_beta+0.001
     apollo_beta_base=apollo_test_beta+(!(names(apollo_beta)%in%(apollo_fixed)))*0.001*runif(length(apollo_beta))
@@ -151,7 +152,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
       }
       if(is.na(test1_LL)) test1_LL <- base_LL + 1 # Avoids errors if test1_LL is NA
       if(is.na(test2_LL)) test2_LL <- base_LL + 2 # Avoids errors if test2_LL is NA
-      if(base_LL==test1_LL & base_LL==test2_LL) stop("Parameter ",p," does not influence the log-likelihood of your model!")
+      if(base_LL==test1_LL & base_LL==test2_LL) stop("SPECIFICATION ISSUE - Parameter ",p," does not influence the log-likelihood of your model!")
     }
     
   }
@@ -161,7 +162,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   # ################################## #
   ### Check that apollo_fixed hasn't changed since calling apollo_validateInputs
   tmp <- tryCatch( get("apollo_fixed", envir=globalenv()), error=function(e) 1 )
-  if( length(tmp)>0 && any(tmp %in% c(apollo_HB$gVarNamesFixed, apollo_HB$gVarNamesNormal)) ) stop("apollo_fixed seems to have changed since calling apollo_inputs.")
+  if( length(tmp)>0 && any(tmp %in% c(apollo_HB$gVarNamesFixed, apollo_HB$gVarNamesNormal)) ) stop("INTERNAL ISSUE - apollo_fixed seems to have changed since calling apollo_inputs.")
   
   ### Function masking apollo_probabilities and compatible with RSGHB
   gFix <- apollo_HB$gVarNamesFixed
@@ -177,10 +178,53 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   ### Second checkpoint
   time2 <- Sys.time()
   
-  currentWD <- getwd()
+  # ### Change ids to numeric ones if necessary
+  # if(!is.numeric(database[,apollo_control$indivID])){
+  #   originalID <- database[,apollo_control$indivID]
+  #   idDict <- unique(originalID)
+  #   idDict <- stats::setNames(1:length(idDict), idDict)
+  #   database[,apollo_control$indivID] <- idDict[originalID]
+  #   apollo_inputs$database[,apollo_control$indivID] <- idDict[originalID]
+  # }
+  
+  ### Actual estimation with RSGHB
+  ## removed 2 May
+  currentWD <- getwd()  
   if(dir.exists(apollo_inputs$apollo_control$outputDirectory)) setwd(apollo_inputs$apollo_control$outputDirectory)
   model <- RSGHB::doHB(apollo_HB_likelihood, database, apollo_HB)
   setwd(currentWD)
+  
+  ### Rename RSGHB components in model object
+  if(!is.null(model$A)) names(model)[which(names(model)=="A")]="HB_iterations_means"
+  if(!is.null(model$B)) names(model)[which(names(model)=="B")]="HB_indiv_draws_means"
+  if(!is.null(model$Bsd)) names(model)[which(names(model)=="Bsd")]="HB_indiv_draws_sd"
+  if(!is.null(model$C)) names(model)[which(names(model)=="C")]="HB_posterior_means"
+  if(!is.null(model$Csd)) names(model)[which(names(model)=="Csd")]="HB_posterior_sd"
+  if(!is.null(model$D)) names(model)[which(names(model)=="D")]="HB_iterations_covar"
+  if(!is.null(model$F)) names(model)[which(names(model)=="F")]="HB_iterations_non_random"
+  if(!is.null(model$params.fixed)) names(model)[which(names(model)=="params.fixed")]="HB_names_nonrandom_params"
+  if(!is.null(model$params.vary)) names(model)[which(names(model)=="params.vary")]="HB_names_random_params"
+  if(!is.null(model$iter.detail)) names(model)[which(names(model)=="iter.detail")]="HB_iterations_detail"
+  if(!is.null(model$cmcLLout)) model$cmcLLout=NULL
+  if(!is.null(model$cmcRLHout)) model$cmcRLHout=NULL
+  if(!is.null(model$distributions)) model$distributions=NULL
+  #if(!is.null(model$gNCREP)) model$gNCREP=NULL
+  #if(!is.null(model$gNEREP)) model$gNEREP=NULL
+  if(!is.null(model$gNOBS)) model$gNOBS=NULL
+  if(!is.null(model$gNP)) model$gNP=NULL
+  if(!is.null(model$gSeed)) model$gSeed=NULL
+  if(!is.null(model$gSIGDIG)) model$gSIGDIG=NULL
+  if(!is.null(model$llf)) model$llf=NULL
+  if(!is.null(model$ll0)) model$llo=NULL
+  
+  
+  
+  
+  # ### Change ids back to the original ones
+  # if(!is.numeric(originalID)){
+  #   database[,apollo_control$indivID]               <- originalID
+  #   apollo_inputs$database[,apollo_control$indivID] <- originalID
+  # }
   
   ### Third checkpoint
   time3 <- Sys.time()
@@ -235,32 +279,35 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   model$apollo_fixed <- apollo_fixed
   model$estimationRoutine <- "Hierarchical Bayes"
   
-  if(!is.null(model$F)){
-    tmp <- coda::geweke.diag(model$F[,2:(ncol(model$F))], frac1=0.1, frac2=0.5)[[1]]
-    names(tmp) <- model$params.fixed
-    model$F_convergence=tmp
+  if(!is.null(model$HB_iterations_non_random)){
+    tmp <- coda::geweke.diag(model$HB_iterations_non_random[,2:(ncol(model$HB_iterations_non_random))], frac1=0.1, frac2=0.5)[[1]]
+    names(tmp) <- model$HB_names_nonrandom_params
+    model$HB_Geweke_test_non_random=tmp
+    rm(tmp)
   }
-  if(!is.null(model$A)){
-    tmp <- coda::geweke.diag(model$A[,2:(ncol(model$A))], frac1=0.1, frac2=0.5)[[1]]
-    model$A_convergence=tmp
+  if(!is.null(model$HB_iterations_means)){
+    tmp <- coda::geweke.diag(model$HB_iterations_means[,2:(ncol(model$HB_iterations_means))], frac1=0.1, frac2=0.5)[[1]]
+    model$HB_Geweke_test_means=tmp
+    rm(tmp)
   }
-  if(!is.null(model$D)){
+  if(!is.null(model$HB_iterations_covar)){
     # This assumes the matrix is square
     tmp <- c()
-    for(i in 1:dim(model$D)[1]) for(j in 1:i){
-      if(i==1 & j==1) Dmatrix <- as.matrix(model$D[i,j,]) else Dmatrix <- cbind(Dmatrix, as.vector(model$D[i,j,]))
-      tmp <- c(tmp, paste(colnames(model$A)[i+1],colnames(model$A)[j+1], sep="_"))
+    for(i in 1:dim(model$HB_iterations_covar)[1]) for(j in 1:i){
+      if(i==1 & j==1) Dmatrix <- as.matrix(model$HB_iterations_covar[i,j,]) else Dmatrix <- cbind(Dmatrix, as.vector(model$HB_iterations_covar[i,j,]))
+      tmp <- c(tmp, paste(colnames(model$HB_iterations_means)[i+1],colnames(model$HB_iterations_means)[j+1], sep="_"))
     }
     colnames(Dmatrix) <- tmp
     tmp <- coda::geweke.diag(Dmatrix, frac1=0.1, frac2=0.5)[[1]]
-    model$D_convergence=tmp
+    model$HB_Geweke_test_covar=tmp
+    rm(tmp)
   }
   
   if(length(apollo_HB$gVarNamesFixed)>0 | length(model$apollo_fixed)>0){
     if(length(apollo_HB$gVarNamesFixed)>0){
       non_random=matrix(0,nrow=length(apollo_HB$gVarNamesFixed),2)
-      non_random[,1]=colMeans(model$F)[2:ncol(model$F)]
-      non_random[,2]=apply(model$F,FUN=stats::sd,2)[2:ncol(model$F)]
+      non_random[,1]=colMeans(model$HB_iterations_non_random)[2:ncol(model$HB_iterations_non_random)]
+      non_random[,2]=apply(model$HB_iterations_non_random,FUN=stats::sd,2)[2:ncol(model$HB_iterations_non_random)]
       rownames(non_random)=apollo_HB$gVarNamesFixed}
     if(length(model$apollo_fixed)>0){
       if(length(apollo_HB$gVarNamesFixed)>0){
@@ -273,35 +320,36 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
     }
     colnames(non_random)=c("Mean","SD")
     originalOrder <- names(model$apollo_beta)[names(model$apollo_beta) %in% rownames(non_random)]
-    model$chain_non_random=non_random[originalOrder,,drop=FALSE]
+    model$HB_chains_non_random=non_random[originalOrder,,drop=FALSE]
+    rm(non_random)
   }
   
-  apollo_HB$gVarNamesFixed <- model$params.fixed
-  apollo_HB$gVarNamesNormal <- model$params.vary
+  apollo_HB$gVarNamesFixed <- model$HB_names_nonrandom_params
+  apollo_HB$gVarNamesNormal <- model$HB_names_random_params
   if(any(!is.null(apollo_HB$gVarNamesNormal)) && length(apollo_HB$gVarNamesNormal)>0){
     random_mean     = matrix(0,nrow=length(apollo_HB$gVarNamesNormal),2)
-    random_mean[,1] = colMeans(model$A)[2:ncol(model$A)]
-    random_mean[,2] = apply(model$A,FUN=stats::sd,2)[2:ncol(model$A)]
+    random_mean[,1] = colMeans(model$HB_iterations_means)[2:ncol(model$HB_iterations_means)]
+    random_mean[,2] = apply(model$HB_iterations_means,FUN=stats::sd,2)[2:ncol(model$HB_iterations_means)]
     rownames(random_mean)=apollo_HB$gVarNamesNormal
     colnames(random_mean)=c("Mean","SD")
-    model$chain_random_mean=random_mean
+    model$HB_chains_normals_means=random_mean
     
-    random_cov_mean           = apply(model$D,FUN=mean,c(1,2))
-    random_cov_sd             = apply(model$D,FUN=stats::sd,c(1,2))
+    random_cov_mean           = apply(model$HB_iterations_covar,FUN=mean,c(1,2))
+    random_cov_sd             = apply(model$HB_iterations_covar,FUN=stats::sd,c(1,2))
     rownames(random_cov_mean) = apollo_HB$gVarNamesNormal
     colnames(random_cov_mean) = apollo_HB$gVarNamesNormal
-    model$chain_random_cov_mean=random_cov_mean
+    model$HB_chains_normals_mean_of_covar=random_cov_mean
     
     rownames(random_cov_sd) = apollo_HB$gVarNamesNormal
     colnames(random_cov_sd) = apollo_HB$gVarNamesNormal
-    model$chain_random_cov_sd=random_cov_sd
+    model$HB_chains_normals_sd_of_covar=random_cov_sd
     
     posterior=matrix(0,nrow=length(apollo_HB$gVarNamesNormal),2)
-    posterior[,1]=colMeans(model$C)[3:ncol(model$C)]
-    posterior[,2]=apply(model$C,FUN=stats::sd,2)[3:ncol(model$C)]
+    posterior[,1]=colMeans(model$HB_posterior_means)[3:ncol(model$HB_posterior_means)]
+    posterior[,2]=apply(model$HB_posterior_means,FUN=stats::sd,2)[3:ncol(model$HB_posterior_means)]
     rownames(posterior)=apollo_HB$gVarNamesNormal
-    model$posterior_mean=posterior
-    colnames(model$posterior_mean)=c("Mean","SD")
+    model$HB_posterior_means_summary=posterior
+    colnames(model$HB_posterior_means_summary)=c("Mean","SD")
     
     ### create matrix of draws from distributions
     
@@ -311,6 +359,8 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
     pars = length(meanA)
     covMat=as.matrix(covMat)
     Ndraws=mvtnorm::rmvnorm(draws,meanA,covMat,method="chol")
+    ### add names if only single random coeff (bug fix 3 Sept)
+    if(length(meanA)==1) colnames(Ndraws)=rownames(random_mean)
     for(i in 1:pars){
       if(apollo_HB$gDIST[i]==6){
         Ndraws[,i]=apollo_HB$gMINCOEF+(apollo_HB$gMAXCOEF[i]-apollo_HB$gMINCOEF[i])*1/(1+exp(-Ndraws[,i]))
@@ -334,22 +384,22 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   if(length(scaling)>0 && !anyNA(scaling)){
     for(s in 1:length(scaling)){
       ss=names(scaling)[s]
-      if(ss%in%colnames(model$C)) model$C[,ss]=scaling[s]*model$C[,ss]
-      if(ss%in%colnames(model$Csd)) model$Csd[,ss]=scaling[s]*model$Csd[,ss]
-      if(ss%in%colnames(model$F)) model$F[,ss]=scaling[s]*model$F[,ss]
+      if(ss%in%colnames(model$HB_posterior_means)) model$HB_posterior_means[,ss]=scaling[s]*model$HB_posterior_means[,ss]
+      if(ss%in%colnames(model$HB_posterior_sd)) model$HB_posterior_sd[,ss]=scaling[s]*model$HB_posterior_sd[,ss]
+      if(ss%in%colnames(model$HB_iterations_non_random)) model$HB_iterations_non_random[,ss]=scaling[s]*model$HB_iterations_non_random[,ss]
       if(any(!is.null(apollo_HB$gVarNamesNormal)) && length(apollo_HB$gVarNamesNormal)>0){if(ss%in%colnames(Ndraws)) Ndraws[,ss]=scaling[s]*Ndraws[,ss]}
-      if(ss%in%rownames(model$chain_non_random)) model$chain_non_random[ss,]=scaling[s]*model$chain_non_random[ss,]
-      if(ss%in%rownames(model$posterior_mean)) model$posterior_mean[ss,]=scaling[s]*model$posterior_mean[ss,]
+      if(ss%in%rownames(model$HB_chains_non_random)) model$HB_chains_non_random[ss,]=scaling[s]*model$HB_chains_non_random[ss,]
+      if(ss%in%rownames(model$HB_posterior_means_summary)) model$HB_posterior_means_summary[ss,]=scaling[s]*model$HB_posterior_means_summary[ss,]
     }
     model$scaling <- scaling
   }
   
   if(any(!is.null(apollo_HB$gVarNamesNormal)) && length(apollo_HB$gVarNamesNormal)>0){
-    model$random_coeff_summary=cbind(colMeans(Ndraws),apply(Ndraws,2,sd))
-    colnames(model$random_coeff_summary)=c("Mean","SD")
+    model$HB_random_params_mean_sd=cbind(colMeans(Ndraws),apply(Ndraws,2,sd))
+    colnames(model$HB_random_params_mean_sd)=c("Mean","SD")
     if(length(apollo_HB$gVarNamesNormal)>1){
-      model$random_coeff_covar=cov(Ndraws)
-      model$random_coeff_corr=cor(Ndraws)
+      model$HB_random_params_covar=cov(Ndraws)
+      model$HB_random_params_corr=cor(Ndraws)
     }
   }
   
@@ -368,16 +418,18 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   names(nObsPerIndiv) <- indiv
   
   
-  if(is.null(model$chain_non_random)){
+  if(is.null(model$HB_chains_non_random)){
     fc1 <- NULL
   }else{
-    fc1 <- stats::setNames(as.list(model$chain_non_random[,1]),names(model$chain_non_random[,1]))
+    ###fc1 <- stats::setNames(as.list(model$HB_chains_non_random[,1]),names(model$HB_chains_non_random[,1]))
+    ### cgabge 7 Feb 2023
+    fc1 <- stats::setNames(as.list(model$HB_chains_non_random[,1]),rownames(model$HB_chains_non_random))
   }
   
-  if(is.null(model$C)){
+  if(is.null(model$HB_posterior_means)){
     b1 <- NULL
   }else{
-    M=model$C[,-c(1,2),drop=FALSE]
+    M=model$HB_posterior_means[,-c(1,2),drop=FALSE]
     M1 <- matrix(0, nrow=nObs, ncol=ncol(M))
     r1 <- 1
     for(i in 1:nIndiv){
@@ -391,11 +443,11 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   
   # Report if the probs have been censored
   if(exists("apollo_HBcensor", envir=globalenv()) && !apollo_inputs$silent){
-    apollo_print(paste0('WARNING: RSGHB has censored the probabilities. ',
+    apollo_print(paste0('RSGHB has censored the probabilities. ',
                         'Please note that in at least some iterations RSGHB has ',
                         'avoided numerical issues by left censoring the ',
                         'probabilities. This has the side effect of zero or ',
-                        'negative probabilities not leading to failures!'))
+                        'negative probabilities not leading to failures!'), type="w")
     rm("apollo_HBcensor", envir=globalenv())
   }
   
@@ -480,11 +532,9 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   model$AIC <- -2*model$maximum + 2*nFreeParams
   model$BIC <- -2*model$maximum + nFreeParams*log(ifelse(!is.null(model$nObsTot), model$nObsTot, model$nObs))
   model$nFreeParams <- nFreeParams
-  model$nnonrandom <- nFreeParams-random_means-random_covar
-  model$nrandom_means <- random_means
-  model$nrandom_covar <- random_covar
-  
-  ### End new calculations for log-likelihood (29 Jan 2022)
+  model$HB_n_nonrandom <- nFreeParams-random_means-random_covar
+  model$HB_n_random_means <- random_means
+  model$HB_n_random_covar <- random_covar
   
   ### Fourth checkpoint
   time4 <- Sys.time()

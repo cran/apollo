@@ -51,13 +51,13 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   apollo_inputs$nRep <- prediction_settings$nRep # Copy nRep into apollo_inputs
   
   # Validate input
-  if(!is.null(model$apollo_control$HB) && model$apollo_control$HB && runs>1) stop("The calculation of confidence intervals for \'apollo_prediction\' is not applicables for models estimated using HB!") 
-  if(!is.null(model$apollo_control$mixing) && model$apollo_control$mixing) apollo_print("Your model contains continuous random parameters. apollo_prediction will perform averaging across draws for these. For predictions at the level of individual draws, please call the apollo_probabilities function using model$estimate as the parameters, and with functionality=\"raw\".")
+  if(!is.null(model$apollo_control$HB) && model$apollo_control$HB && runs>1) stop("INCORRECT FUNCTION/SETTING USE - The calculation of confidence intervals for \'apollo_prediction\' is not applicables for models estimated using HB!") 
+  if(!is.null(model$apollo_control$mixing) && model$apollo_control$mixing) apollo_print("Your model contains continuous random parameters. apollo_prediction will perform averaging across draws for these. For predictions at the level of individual draws, please call the apollo_probabilities function using model$estimate as the parameters, and with functionality=\"raw\".", type="i")
   HB = !is.null(model$apollo_control$HB) && model$apollo_control$HB
-  if(!HB && (!is.numeric(model$estimate) | !is.vector(model$estimate) | is.null(names(model$estimate))))  stop("The \'model$estimates\' object should be a named vector for models not estimated using HB!")   
+  if(!HB && (!is.numeric(model$estimate) | !is.vector(model$estimate) | is.null(names(model$estimate))))  stop("SYNTAX ISSUE - The \'model$estimates\' object should be a named vector for models not estimated using HB!")   
   if(HB){
     nObs  <- nrow(apollo_inputs$database)
-    if(any(!(lengths(model$estimate)%in%c(1,nObs)))) stop("\nFor models estimated using HB, the \'model$estimate\' object needs to have one entry per row in the database for each random parameter, and a single value for each fixed parameter. This is not the case here, likely because the prediction data is different from the estimation data. Please restructure \'model$estimate\' accordingly!")
+    if(any(!(lengths(model$estimate)%in%c(1,nObs)))) stop("INPUT ISSUE - For models estimated using HB, the \'model$estimate\' object needs to have one entry per row in the database for each random parameter, and a single value for each fixed parameter. This is not the case here, likely because the prediction data is different from the estimation data. Please restructure \'model$estimate\' accordingly!")
   }
   
   ### Warn the user in case elements in apollo_inputs are different from those in the global environment
@@ -85,7 +85,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   
   # Keep only the requested component, if a component name is given
   if(!is.na(modelComponent)){
-    if(is.null(predictions[[modelComponent]])) stop('A component named "', modelComponent, '" does not exist!')
+    if(is.null(predictions[[modelComponent]])) stop('SYNTAX ISSUE - A component named "', modelComponent, '" does not exist!')
     predictions <- predictions[modelComponent]
   }
   
@@ -114,7 +114,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   
   ### change 8 August
   if(!is.null(apollo_inputs$apollo_control$weights)){
-  apollo_print(c("\n","Weights have been defined in apollo_control, and these will be applied to predictions too. If you want unweighted predictions despite your model using weights in estimation, you can replace the vector of weights by a vector of 1s"))
+  apollo_print(c("\n","Weights have been defined in apollo_control, and these will be applied to predictions too. If you want unweighted predictions despite your model using weights in estimation, you can replace the vector of weights by a vector of 1s"), , type="i")
   }
   ### end change
   
@@ -217,7 +217,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   #### Prediction with multiple runs ####
   
   # Create confidence intervals by drawing from parameters asymptotic distributions
-  if(anyNA(model$robvarcov)) stop('Cannot calculate confidence intervals if parameters covariance matrix contains NA values.')
+  if(anyNA(model$robvarcov)) stop('CALCULATION ISSUE - Cannot calculate confidence intervals if the covariance matrix contains NA values.')
   if(is.null(apollo_inputs$apollo_control$seed)) set.seed(13 + 1) else set.seed(apollo_inputs$apollo_control$seed + 1)
   beta_draws = mvtnorm::rmvnorm(n     = runs, 
                                 mean  = apollo_beta[!(names(apollo_beta)%in%apollo_fixed)], 
@@ -236,7 +236,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
     if(!silent) apollo_print(paste0("Predicting for set of draws ", r, "/", runs, "..."))
     br = c(beta_draws[r,], apollo_beta[apollo_fixed])[names(apollo_beta)]
     Pr = apollo_probabilities(br, apollo_inputs, functionality="prediction")
-    if(!is.list(Pr)) stop('apollo_probabilities(..., functionality="prediction") did not return a list, as expected')
+    if(!is.list(Pr)) stop('CALCULATION ISSUE - apollo_probabilities(..., functionality="prediction") did not return a list as expected')
     for(m in names(predictions)){
       if(is.list(Pr[[m]])) Pr[[m]] <- do.call(cbind, Pr[[m]])
       ans[[m]]$draws[,,r] <- Pr[[m]]

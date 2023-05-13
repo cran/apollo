@@ -38,6 +38,7 @@
 #'                 results do not match, then the original functions are 
 #'                 returned, and \code{success} is set to \code{FALSE} inside 
 #'                 the returned list.
+#' @param noModification Logical. If TRUE, loop expansion etc are skipped.
 #' @return List with four elements: apollo_probabilities, apollo_randCoeff, 
 #'         apollo_lcPars and a dummy called success (TRUE if modification was
 #'         successful, FALSE if not. FALSE will be only be returnes if
@@ -45,7 +46,7 @@
 #' @export
 apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed, 
                                      apollo_probabilities, apollo_inputs, 
-                                     validate=TRUE){
+                                     validate=TRUE, noModification=FALSE){
   silent <- apollo_inputs$silent
   debug  <- apollo_inputs$apollo_control$debug
   
@@ -55,8 +56,8 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   
   ### Check for apollo_prepareProb() and return() in apollo_probabilities
   tmp  <- deparse(apollo_probabilities)
-  if(!any(grepl("apollo_prepareProb", tmp))) stop("Your 'apollo_probabilities' function should include a call to 'apollo_prepareProb'!")
-  if(!any(grepl("return", tmp))) stop("Your 'apollo_probabilities' function should include a 'return' statement at the end, usually 'return(P)'!")
+  if(!any(grepl("apollo_prepareProb", tmp))) stop("SYNTAX ISSUE - The 'apollo_probabilities' function should include a call to 'apollo_prepareProb'!")
+  if(!any(grepl("return", tmp))) stop("SYNTAX ISSUE - The 'apollo_probabilities' function should include a 'return' statement at the end, usually 'return(P)'!")
   
   ### Check that names of params in apollo_beta, database, apollo_randCoeff & apollo_lcPars are not re-defined
   tmp <- as.character(body(apollo_probabilities))
@@ -67,12 +68,12 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   for(i in names(apollo_beta)){
     test <- grep(paste0("^",i,"="), tmp)
     test <- c(test, grep(paste0("^",i,"<-"), tmp))
-    if(length(test)>0) stop("Parameter ", i, " from apollo_beta was re-defined ",
+    if(length(test)>0) stop("SYNTAX ISSUE - Parameter ", i, " from apollo_beta was re-defined ",
                             "inside apollo_probabilities. This is not allowed.")
   }
   for(i in names(apollo_inputs$database)){
     test <- grep(paste0("^",i,"(=|<-)"), tmp)
-    if(length(test)>0) stop("Variable ", i, " from database is re-defined ", 
+    if(length(test)>0) stop("SYNTAX ISSUE - Variable ", i, " from database is re-defined ", 
                             "inside apollo_probabilities. This is not allowed")
   }; rm(i, test)
   #check for apollo_randCoeff
@@ -83,7 +84,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     rnd <- rnd(apollo_beta, apollo_inputs)
     for(i in names(rnd)){
       test <- grep(paste0('^', i, '=|^', i, '<-'), tmp)
-      if(length(test)>0) stop("Parameter ", i, " from apollo_randCoeff was re-defined ",
+      if(length(test)>0) stop("SYNTAX ISSUE - Parameter ", i, " from apollo_randCoeff was re-defined ",
                               "inside apollo_probabilities. This is not allowed.")
     }; rm(env, i, test)
   }
@@ -96,7 +97,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     lcp <- names(lcp(apollo_beta, apollo_inputs))
     for(i in lcp){
       test <- grep(paste0('^', i, '=|^', i, '<-'), tmp)
-      if(length(test)>0) stop("Parameter ", i, " from apollo_lcPars was re-defined ",
+      if(length(test)>0) stop("SYNTAX ISSUE - Parameter ", i, " from apollo_lcPars was re-defined ",
                               "inside apollo_probabilities. This is not allowed.")
     }; rm(env, lcp, i, test)
   }; if(exists('rnd')) rm(rnd)
@@ -107,7 +108,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     tmp <- as.character(body(apollo_probabilities))
     tmp <- gsub("apollo_inputs$database", " ", tmp, fixed=TRUE)
     tmp <- grep("database", tmp, fixed=TRUE)
-    if(length(tmp)>0) stop("The database object is 'attached' and elements should thus be called",
+    if(length(tmp)>0) stop("SYNTAX ISSUE - The database object is 'attached' and elements should thus be called",
                            " directly in apollo_probabilities without the 'database$' prefix.")
     rm(tmp)
   }
@@ -119,7 +120,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   if(test){
     tmp <- as.character(body(apollo_probabilities))
     tmp <- grep('apollo_weighting', tmp, fixed=TRUE)
-    if(length(tmp)==0) stop('When using weights, apollo_weighting should be called inside apollo_probabilities.')
+    if(length(tmp)==0) stop('SYNTAX ISSUE - When using weights, apollo_weighting should be called inside apollo_probabilities.')
     rm(tmp)
   }; rm(w)
   
@@ -131,7 +132,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
                       names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)])
   test <- is.vector(apollo_inputs$apollo_scaling) && is.numeric(apollo_inputs$apollo_scaling)
   test <- test && !is.null(names(apollo_inputs$apollo_scaling)) && !anyNA(apollo_inputs$apollo_scaling)
-  if(test){
+  if(!test){
     # If the user did not provide any scaling
     # (apollo_inputs$apollo_scaling is NULL, NA, or doesn't have names)
     apollo_inputs$apollo_scaling <- scaling
@@ -141,26 +142,26 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     # Check that all scaling correspond to existing parameters
     if(!all(names(apollo_inputs$apollo_scaling) %in% names(apollo_beta))){
       txt <- names(apollo_inputs$apollo_scaling)[!(names(apollo_inputs$apollo_scaling) %in% names(apollo_beta))]
-      stop(paste0("Some parameters included in 'scaling' (", paste0(txt, collapse=", "), 
+      stop(paste0("SYNTAX ISSUE - Some parameters included in 'scaling' (", paste0(txt, collapse=", "), 
                   ") are not included in 'apollo_beta'."))
     }
     # Check for duplicates
     if(anyDuplicated(names(apollo_inputs$apollo_scaling))){
       txt <- names(apollo_inputs$apollo_scaling)[duplicated(names(apollo_inputs$apollo_scaling))]
-      stop(paste0("The \"scaling\" setting contains duplicate elements (", paste0(txt, collapse=", "), ")."))
+      stop(paste0("SYNTAX ISSUE - The \"scaling\" setting contains duplicate elements (", paste0(txt, collapse=", "), ")."))
     }
     # Copy user provided scales into "scaling"
     scaling[names(apollo_inputs$apollo_scaling)] <- apollo_inputs$apollo_scaling
     # Check no fixed params are scaled
-    if(any(names(scaling) %in% apollo_fixed)) stop("Parameters in 'apollo_fixed' should not be included in 'scaling'")
+    if(any(names(scaling) %in% apollo_fixed)) stop("SYNTAX ISSUE - Parameters in 'apollo_fixed' should not be included in 'scaling'")
     # Check there are no negative scaling values. If there are, take their abs value.
     if(any(scaling<0)){
       scaling <- abs(scaling)
       txt <- 'Some negative values in "scaling" were replaced by their absolute value'
-      if(!silent) apollo_print(paste0('WARNING: ', txt, '.')) else warning(txt)
-    }; if(any(scaling<=0)) stop('All terms in "scaling" should be strictly positive!')
+      if(!silent) apollo_print(paste0(txt, '.'), type="w") else warning(txt)
+    }; if(any(scaling<=0)) stop('SYNTAX ISSUE - All terms in "scaling" should be strictly positive!')
     txt <- "During estimation, parameters will be scaled using the values in estimate_settings$scaling"
-    if(!all(scaling==1)){ if(!silent) apollo_print(txt) else warning(txt)}
+    if(!all(scaling==1)){ if(!silent) apollo_print(paste0(txt, '.'), type="w") else warning(txt)}
     rm(txt)
     apollo_inputs$apollo_scaling <- scaling
     apollo_inputs$manualScaling  <- TRUE
@@ -174,28 +175,73 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   
   if(!silent) apollo_print("Preparing user-defined functions.")
   
-  ### Evaluate apollo_probabilities before changes, return immediately if it doesn't work
-  if(validate){
-    apollo_beta_shifted <- apollo_beta + 0.0001
-    test1 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), 
-                      error=function(e) if(grepl("not found",e$message)) stop(e) else NULL )
-    if(anyNA(test1)) test1 <- NULL
-    if(is.null(test1)) return(list(apollo_probabilities = apollo_probabilities, 
-                                   apollo_randCoeff     = apollo_inputs$apollo_randCoeff, 
-                                   apollo_lcPars        = apollo_inputs$apollo_lcPars,
-                                   apollo_scaling       = setNames(rep(1, length(apollo_inputs$apollo_scaling)),
-                                                                   names(apollo_inputs$apollo_scaling)), 
-                                   success              = FALSE))
-  }
+  ### Store unaltered version of functions in case modification fails
+  apollo_probabilities_ORIG <- apollo_probabilities
+  apollo_randCoeff_ORIG     <- apollo_inputs$apollo_randCoeff
+  apollo_lcPars_ORIG        <- apollo_inputs$apollo_lcPars
   
   ### Insert componentName if missing
   if(debug) apollo_print("- Inserting component name in apollo_probabilities")
   apollo_probabilities <- apollo_insertComponentName(apollo_probabilities)
   
-  ### Store unaltered version of functions in case modification fails
+  ### Evaluate apollo_probabilities before changes, return immediately if it doesn't work
+  # NOTE: We should simplify this by calling apollo_validate BEFORE modifying the functions.
+  #       But to do that, we would need to either not check for component names
+  #       or insert the component names beforehand. Or call apollo_probabilities(..., "validate")
+  #       right here.
+  if(validate || noModification){
+    apollo_beta_shifted <- apollo_beta + 0.0001
+    test1 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), 
+                      error=function(e) NULL )
+    if(anyNA(test1)) test1 <- NULL
+    test <- is.null(test1) || noModification
+    if(test) return(list(apollo_probabilities = apollo_probabilities, # returns version with names inserted
+                         apollo_randCoeff     = apollo_randCoeff_ORIG, 
+                         apollo_lcPars        = apollo_lcPars_ORIG,
+                         #apollo_scaling       = setNames(rep(1, length(apollo_inputs$apollo_scaling)),
+                         #                               names(apollo_inputs$apollo_scaling)), 
+                         apollo_scaling       = apollo_inputs$apollo_scaling,
+                         success              = FALSE))
+  }
+  ### Update ORIG version to keep changes so far
+  apollo_probabilities_ORIG <- apollo_probabilities
+  
+  ### Change c to list if using OL
+  if(debug) apollo_print("- Replacing tau=c(...) by tau=list(...) in calls to apollo_ol.")
+  test <- any(grepl("apollo_ol", as.character(body(apollo_probabilities))))
+  if(test) apollo_probabilities <- apollo_insertOLList(apollo_probabilities)
+  test <- is.function(apollo_inputs$apollo_randCoeff) && 
+    apollo_inputs$apollo_control$mixing && 
+    any(grepl("apollo_ol", as.character(body(apollo_inputs$apollo_randCoeff))))
+  if(test) apollo_inputs$apollo_lcPars <- apollo_insertOLList(apollo_inputs$apollo_lcPars)
+  test <- is.function(apollo_inputs$apollo_lcPars) &&
+    any(grepl("apollo_ol", as.character(body(apollo_inputs$apollo_lcPars))))
+  if(test) apollo_inputs$apollo_lcPars <- apollo_insertOLList(apollo_inputs$apollo_lcPars)
+  ### Evaluate apollo_probabilities after current changes, return immediately if it doesn't work
+  if(validate){
+    test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
+    test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
+    if(!test){
+      # If they are different or evaluation of test2 failed, then undo changes
+      apollo_print(paste0("The output of 'apollo_probabilities' has changed", 
+                          " after the optimisation of the code carried out by Apollo.", 
+                          " This indicates a problem. Please contact the", 
+                          " developers for assistance!"),  pause=5, type="w")
+      return(list(apollo_probabilities = apollo_probabilities_ORIG, 
+                  apollo_randCoeff     = apollo_randCoeff_ORIG, 
+                  apollo_lcPars        = apollo_lcPars_ORIG,
+                  #apollo_scaling       = setNames(rep(1, length(apollo_inputs$apollo_scaling)),
+                  #                                names(apollo_inputs$apollo_scaling)), 
+                  apollo_scaling       = apollo_inputs$apollo_scaling,
+                  success              = FALSE))
+    }
+  }
+  ### Update ORIG version to keep changes so far
   apollo_probabilities_ORIG <- apollo_probabilities
   apollo_randCoeff_ORIG     <- apollo_inputs$apollo_randCoeff
   apollo_lcPars_ORIG        <- apollo_inputs$apollo_lcPars
+  
   
   ### Expand loop
   if(is.function(apollo_inputs$apollo_randCoeff) && apollo_inputs$apollo_control$mixing){
@@ -214,6 +260,31 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   tmp <- tryCatch( apollo_expandLoop(apollo_probabilities, apollo_inputs), error=function(e) NULL)
   if(is.function(tmp)) apollo_probabilities <- tmp
   rm(tmp)
+  
+  ### Evaluate apollo_probabilities after current changes, return immediately if it doesn't work
+  if(validate){
+    test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
+    test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
+    if(!test){
+      # If they are different or evaluation of test2 failed, then undo changes
+      apollo_print(paste0("The output of 'apollo_probabilities' has changed", 
+                          " after the optimisation of the code carried out by Apollo.", 
+                          " This indicates a problem. Please contact the", 
+                          " developers for assistance!"),  pause=5, type="w")
+      return(list(apollo_probabilities = apollo_probabilities_ORIG, 
+                  apollo_randCoeff     = apollo_randCoeff_ORIG, 
+                  apollo_lcPars        = apollo_lcPars_ORIG,
+                  #apollo_scaling       = setNames(rep(1, length(apollo_inputs$apollo_scaling)),
+                  #                                names(apollo_inputs$apollo_scaling)), 
+                  apollo_scaling       = apollo_inputs$apollo_scaling,
+                  success              = FALSE))
+    }
+  }
+  ### Update ORIG version to keep changes so far
+  apollo_probabilities_ORIG <- apollo_probabilities
+  apollo_randCoeff_ORIG     <- apollo_inputs$apollo_randCoeff
+  apollo_lcPars_ORIG        <- apollo_inputs$apollo_lcPars
   
   ### Insert scaling (only if no apollo_inputs$apollo_scaling is found inside)
   test <- as.character(body(apollo_probabilities))
@@ -234,9 +305,60 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     }
   }
   
+  ### Evaluate apollo_probabilities after current changes, return immediately if it doesn't work
+  if(validate){
+    apollo_beta_shifted[names(apollo_inputs$apollo_scaling)] <- apollo_beta_shifted[names(apollo_inputs$apollo_scaling)]/apollo_inputs$apollo_scaling
+    test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
+    test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
+    if(!test){
+      # If they are different or evaluation of test2 failed, then undo changes
+      apollo_print(paste0("The output of 'apollo_probabilities' has changed", 
+                          " after the optimisation of the code carried out by Apollo.", 
+                          " This indicates a problem. Please contact the", 
+                          " developers for assistance!"), pause=5, type="w")
+      return(list(apollo_probabilities = apollo_probabilities_ORIG, 
+                  apollo_randCoeff     = apollo_randCoeff_ORIG, 
+                  apollo_lcPars        = apollo_lcPars_ORIG,
+                  #apollo_scaling       = setNames(rep(1, length(apollo_inputs$apollo_scaling)),
+                  #                                names(apollo_inputs$apollo_scaling)), 
+                  apollo_scaling       = apollo_inputs$apollo_scaling,
+                  success              = FALSE))
+    }
+  }
+  ### Update ORIG version to keep changes so far
+  apollo_probabilities_ORIG <- apollo_probabilities
+  apollo_randCoeff_ORIG     <- apollo_inputs$apollo_randCoeff
+  apollo_lcPars_ORIG        <- apollo_inputs$apollo_lcPars
+  
   ### Introduce quotes into apollo_rrm
   if(debug) apollo_print("- Inserting quotes in settings for apollo_rrm (if present)")
   apollo_probabilities <- apollo_insertRRMQuotes(apollo_probabilities)
+  
+  ### Evaluate apollo_probabilities after current changes, return immediately if it doesn't work
+  if(validate){
+    test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
+    test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
+    if(!test){
+      # If they are different or evaluation of test2 failed, then undo changes
+      apollo_print(paste0("The output of 'apollo_probabilities' has changed", 
+                          " after the optimisation of the code carried out by Apollo.", 
+                          " This indicates a problem. Please contact the", 
+                          " developers for assistance!"), pause=5, type="w")
+      return(list(apollo_probabilities = apollo_probabilities_ORIG, 
+                  apollo_randCoeff     = apollo_randCoeff_ORIG, 
+                  apollo_lcPars        = apollo_lcPars_ORIG,
+                  #apollo_scaling       = setNames(rep(1, length(apollo_inputs$apollo_scaling)),
+                  #                                names(apollo_inputs$apollo_scaling)), 
+                  apollo_scaling       = apollo_inputs$apollo_scaling,
+                  success              = FALSE))
+    }
+  }
+  ### Update ORIG version to keep changes so far
+  apollo_probabilities_ORIG <- apollo_probabilities
+  apollo_randCoeff_ORIG     <- apollo_inputs$apollo_randCoeff
+  apollo_lcPars_ORIG        <- apollo_inputs$apollo_lcPars
   
   ### Introduce 'function()' at the beginning of definitions (only if using analytic gradients)
   if(debug) apollo_print('- Inserting function() in user-defined functions')
@@ -255,7 +377,6 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   
   ### Evaluate apollo_probabilities after changes and compare to result before them
   if(validate){
-    apollo_beta_shifted[names(apollo_inputs$apollo_scaling)] <- apollo_beta_shifted[names(apollo_inputs$apollo_scaling)]/apollo_inputs$apollo_scaling
     test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
     test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
     test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
@@ -263,14 +384,14 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
       # If they are different or evaluation of test2 failed, then undo changes
       apollo_print(paste0("The output of 'apollo_probabilities' has changed", 
                    " after the optimisation of the code carried out by Apollo.", 
-                   " This indicates a problem, and the unoptimised and unscaled", 
-                   " version will be used instead. Please contact the", 
-                   " developers for assistance!"), highlight=TRUE)
+                   " This indicates a problem. Please contact the", 
+                   " developers for assistance!"), pause=5, type="w")
       return(list(apollo_probabilities = apollo_probabilities_ORIG, 
                   apollo_randCoeff     = apollo_randCoeff_ORIG, 
                   apollo_lcPars        = apollo_lcPars_ORIG,
-                  apollo_scaling       = setNames(rep(1, length(apollo_inputs$apollo_scaling)),
-                                                  names(apollo_inputs$apollo_scaling)), 
+                  #apollo_scaling       = setNames(rep(1, length(apollo_inputs$apollo_scaling)),
+                  #                                names(apollo_inputs$apollo_scaling)), 
+                  apollo_scaling       = apollo_inputs$apollo_scaling,
                   success              = FALSE))
     }
   }
@@ -306,6 +427,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   return(list(apollo_probabilities = apollo_probabilities, 
               apollo_randCoeff     = apollo_inputs$apollo_randCoeff, 
               apollo_lcPars        = apollo_inputs$apollo_lcPars, 
-              apollo_scaling       = apollo_inputs$apollo_scaling, 
+              apollo_scaling       = apollo_inputs$apollo_scaling,
+              manualScaling        = apollo_inputs$manualScaling, 
               success              = TRUE))
 }

@@ -46,9 +46,9 @@ apollo_unconditionals <- function(model, apollo_probabilities, apollo_inputs){
   if(is.null(apollo_control$HB)) apollo_control$HB=FALSE
   HB               = apollo_control$HB
   
-  if(HB) stop("The function \'apollo_unconditionals\' is not applicable for models estimated using HB!") 
-  #if(continuous & latentClass) stop("The function \'apollo_unconditionals\' is not applicable for models combining continuous mixtures with latent class components!")
-  if(!(continuous|latentClass)) stop("The function \'apollo_unconditionals\' requires either a model using continuous mixtures and/or a latent class model!")
+  if(HB) stop("INCORRECT FUNCTION/SETTING USE - The function \'apollo_unconditionals\' is not applicable for models estimated using HB!") 
+  #if(continuous & latentClass) stop("INCORRECT FUNCTION/SETTING USE - The function \'apollo_unconditionals\' is not applicable for models combining continuous mixtures with latent class components!")
+  if(!(continuous|latentClass)) stop("INCORRECT FUNCTION/SETTING USE - The function \'apollo_unconditionals\' requires either a model using continuous mixtures and/or a latent class model!")
   if(continuous & latentClass){
     ans <- list()
     ans[["continuous" ]] <- apollo_mixUnconditionals(model, apollo_probabilities, apollo_inputs)

@@ -11,7 +11,7 @@
 #'                       \item \strong{attrValues}: A named list with as many elements as alternatives. Each element is itself a named list of vectors of the alternative attributes for each observation (usually a column from the database). All alternatives must have the same attributes (can be set to zero if not relevant).
 #'                       \item \strong{attrWeights}: A named list with as many elements as attributes, or fewer. Each element is the weight of the attribute, and can be a scalar, a vector with as many elements as observations, or a matrix/array if random. They should add up to one for each observation and draw (if present), and will be re-scaled if they do not. \code{attrWeights} and \code{attrScalings} are incompatible, and they should not be both defined for an attribute. Default is 1 for all attributes.
 #'                       \item \strong{\code{choiceVar}}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
-#'                       \item \strong{\code{componentName}}: Character. Name given to model component.
+#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                       \item \strong{procPars}: A list containing the four DFT 'process parameters'
 #'                          \itemize{
 #'                            \item \strong{error_sd}: Numeric scalar or vector. The standard deviation of the the error term in each timestep.
@@ -76,7 +76,7 @@ apollo_dft = function(dft_settings,functionality){
   if(functionality=="validate"){
     apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
     apollo_modelList <- c(apollo_modelList, dft_settings$componentName)
-    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", dft_settings$componentName,
+    if(anyDuplicated(apollo_modelList)) stop("SPECIFICATION ISSUE - Duplicated componentName found (", dft_settings$componentName,
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
@@ -174,7 +174,7 @@ apollo_dft = function(dft_settings,functionality){
           }
           dim(attrScalingsM) <- c(dft_settings$nObs,dft_settings$nAttrs*dft_settings$nAlt)
         } else {
-          if (dft_settings$attrScalings!=1) stop("If you are not using dft_settings$attrScalings for model component \"",
+          if (dft_settings$attrScalings!=1) stop("SYNTAX ISSUE - If you are not using dft_settings$attrScalings for model component \"",
                                                  dft_settings$componentName,"\", please set it to 1")
           attrScalingsM <- array(1,c(dft_settings$nObs,dft_settings$nAttrs*dft_settings$nAlt))
         }
@@ -288,7 +288,7 @@ apollo_dft = function(dft_settings,functionality){
           attrScalingsM<-array(attrScalingsM,c(dft_settings$nObs*Dim2Length,dft_settings$nAttrs*dft_settings$nAlt))
         } else {
           attrScalingsM<-array(1,c(dft_settings$nObs*Dim2Length,dft_settings$nAttrs))
-          if (dft_settings$attrScalings!=1) stop("If you are not using dft_settings$attrScalings for model component \"",
+          if (dft_settings$attrScalings!=1) stop("SYNTAX ISSUE - If you are not using dft_settings$attrScalings for model component \"",
                                                  dft_settings$componentName,"\", please set it to 1")
         }
         
@@ -563,7 +563,7 @@ apollo_dft = function(dft_settings,functionality){
           attrScalingsM<-array(attrScalingsM,c(dft_settings$nObs*Dim2Length*Dim3Length,dft_settings$nAttrs*dft_settings$nAlt))
         } else {
           attrScalingsM<-array(1,c(dft_settings$nObs*Dim2Length,dft_settings$nAttrs))
-          if (dft_settings$attrScalings!=1) stop("If you are not using dft_settings$attrScalings for model component \"",
+          if (dft_settings$attrScalings!=1) stop("SYNTAX ISSUE - If you are not using dft_settings$attrScalings for model component \"",
                                                  dft_settings$componentName,"\", please set it to 1")
         }
         
@@ -751,9 +751,9 @@ apollo_dft = function(dft_settings,functionality){
         choicematrix[4,!is.finite(choicematrix[4,])] <- 0
         
         if(!apollo_inputs$silent & data){
-          if(any(choicematrix[4,]==0)) apollo_print("WARNING: some alternatives are never chosen in your data!")
-          if(any(choicematrix[4,]==1)) apollo_print("WARNING: some alternatives are always chosen when available!")
-          #if(inputs$avail_set) apollo_print(paste0("WARNING: Availability not provided (or some elements are NA). Full availability assumed."))
+          if(any(choicematrix[4,]==0)) apollo_print("Some alternatives are never chosen in your data!", type="w")
+          if(any(choicematrix[4,]==1)) apollo_print("Some alternatives are always chosen when available!", type="w")
+          #if(inputs$avail_set) apollo_print("WARNING: Availability not provided (or some elements are NA). Full availability assumed.", type="w")
           apollo_print("\n")
           apollo_print(paste0('Overview of choices for ', toupper(inputs$modelType), ' model component ', 
                               ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
@@ -761,12 +761,12 @@ apollo_dft = function(dft_settings,functionality){
         }
       
       if(!apollo_inputs$silent & data){
-        txt <- 'Notice: Not all of the attributes given in "attrValues" are named in "attrScalings" or "attrWeights". These will consequently be ignored.'
-        if(inputs$warn1) apollo_print(txt)
-        txt <- 'Notice: Not all of the alternatives given in "altStart" are named in "alternatives". These will consequently be ignored.'
-        if(inputs$warn2) apollo_print(txt)
-        txt <- 'Notice: A list was not supplied for "altStart". Starting values for all alternatives will be set to zero.'
-        if(inputs$warn3) apollo_print(txt)
+        txt <- 'Not all of the attributes given in "attrValues" are named in "attrScalings" or "attrWeights". These will consequently be ignored.'
+        if(inputs$warn1) apollo_print(txt, type="i")
+        txt <- 'Not all of the alternatives given in "altStart" are named in "alternatives". These will consequently be ignored.'
+        if(inputs$warn2) apollo_print(txt, type="i")
+        txt <- 'A list was not supplied for "altStart". Starting values for all alternatives will be set to zero.'
+        if(inputs$warn3) apollo_print(txt, type="i")
       }
       
       
@@ -850,9 +850,9 @@ apollo_dft = function(dft_settings,functionality){
     
     testL = dft_settings$probs_DFT(dft_settings, all=FALSE)
     if(any(!dft_settings$rows)) testL <- apollo_insertRows(testL, dft_settings$rows, 1) # insert excluded rows with value 1
-    if(all(testL==0)) stop('All observations have zero probability at starting value for model component "', dft_settings$componentName,'"')
+    if(all(testL==0)) stop('CALCULATION ISSUE - All observations have zero probability at starting value for model component "', dft_settings$componentName,'"')
     if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0('Some observations have zero probability at starting value for model component "', 
-                                                                   dft_settings$componentName, '"'))
+                                                                   dft_settings$componentName, '"'), type="w")
     return(invisible(testL))
   }
   
@@ -964,6 +964,8 @@ calculateDFTProbs<-function(choiceVar,attribs, avail, altStart, attrWeights, att
   if(any(diag(MVN[[2]]<=0))) {P=0;return(P)} 
   
   P=mnormt::pmnorm(x=c(MVN[1][[1]]),varcov=MVN[2][[1]])  
+  #if(P<10^-300) P=10^-300
+  if(!is.na(P) && (P<10^-300)) P=10^-300
   
   return(P)
 }

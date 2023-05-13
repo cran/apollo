@@ -41,13 +41,13 @@ apollo_basTest = function(model1,model2){
       filename = paste0(outputDirectory, modeluse, "_output.txt", collapse='')
       if(!file.exists(filename)) filename = paste0(modeluse,"_output.txt", collapse='')
       if(!file.exists(filename)){
-        if(outputDirectory=='') stop('File ', filename, ' not found in working directory.') else 
-          stop('File ', filename, ' not found in working directory, nor in ', outputDirectory, '.') 
+        if(outputDirectory=='') stop('INPUT ISSUE - File ', filename, ' not found in working directory.') else 
+          stop('INPUT ISSUE - File ', filename, ' not found in working directory, nor in ', outputDirectory, '.') 
       } 
       lines = tryCatch(readLines(filename), 
                        warning=function(w) x=FALSE,
                        error=function(e) x=FALSE)
-      if(is.logical(lines) && lines==FALSE) stop("Could not open file ",filename) 
+      if(is.logical(lines) && lines==FALSE) stop("INPUT ISSUE - Could not open file ",filename) 
       
       ### Read file
       id <- grepl(paste0("Model name"), lines)
@@ -60,10 +60,10 @@ apollo_basTest = function(model1,model2){
       if(any(id)){
         value=lines[which(id)] 
       } else {
-        stop("No adjusted rho2 found in ",filename)
+        stop("INPUT ISSUE - No adjusted rho2 found in ",filename)
       }
       position=gregexpr(pattern=":",value)[[1]][1]
-      if(((substr(value,position+1,nchar(value))))==" Not applicable") stop("No adjusted rho2 found in ",filename)
+      if(((substr(value,position+1,nchar(value))))==" Not applicable") stop("INPUT ISSUE - No adjusted rho2 found in ",filename)
 
       id1 <- grepl("LL\\(final, whole model)", lines)
       id2 <- grepl("LL\\(final)", lines) 
@@ -72,7 +72,7 @@ apollo_basTest = function(model1,model2){
       } else if(any(id2)){
         value=lines[which(id2)] 
       } else {
-        stop("No final LL found in ",filename)
+        stop("INPUT ISSUE - No final LL found in ",filename)
       }
       position=gregexpr(pattern=":",value)[[1]][1]
       LL[[i]]=as.double(substr(value,position+1,nchar(value)))
@@ -84,7 +84,7 @@ apollo_basTest = function(model1,model2){
       } else if(any(id2)){
         value=lines[which(id2)] 
       } else {
-        stop("No LL(0) found in ",filename)
+        stop("INPUT ISSUE - No LL(0) found in ",filename)
       }
       position=gregexpr(pattern=":",value)[[1]][1]
       LL0[[i]]=as.double(substr(value,position+1,nchar(value)))
@@ -93,7 +93,7 @@ apollo_basTest = function(model1,model2){
       if(any(id)){
         value=lines[which(id)] 
       } else {
-        stop("Number of estimated parameters not found in ",filename)
+        stop("INPUT ISSUE - Number of estimated parameters not found in ",filename)
       }
       position=gregexpr(pattern=":",value)[[1]][1]
       k[[i]]=as.double(substr(value,position+1,nchar(value)))
@@ -101,14 +101,14 @@ apollo_basTest = function(model1,model2){
     } else {
       modelNames[[i]]=modeluse$apollo_control$modelName
       test <- !is.null(modeluse$modelTypeList) && all(tolower(modeluse$modelTypeList) %in% c("mnl", "nl", "cnl", "el", "dft", "lc", "rrm"))
-      if(!test) stop("Adjusted rho2 calculation not possible for model ",paste0(modeluse$apollo_control$modelName))
+      if(!test) stop("INTERNAL ISSUE - Adjusted rho2 calculation not possible for model ",paste0(modeluse$apollo_control$modelName))
       if(is.null(modeluse$maximum)){
-        stop("No LL found in ",paste0(modeluse$apollo_control$modelName))
+        stop("INPUT ISSUE - No LL found in ",paste0(modeluse$apollo_control$modelName))
       } else {
         LL[[i]]=modeluse$maximum  
       }
       if(is.null(modeluse$LL0) || anyNA(modeluse$LL0[1])){
-        stop("No LL(0) found in ",paste0(modeluse$apollo_control$modelName))
+        stop("INPUT ISSUE - No LL(0) found in ",paste0(modeluse$apollo_control$modelName))
       } else {
         LL0[[i]]=modeluse$LL0[1]
       }      
@@ -119,7 +119,7 @@ apollo_basTest = function(model1,model2){
     }
   }
 
-  if(round(LL0[[1]],2)!=round(LL0[[2]],2)) stop("The two models to be compared do not have the same LL(0). This suggests they were not estimated on the same data!")
+  if(round(LL0[[1]],2)!=round(LL0[[2]],2)) stop("INPUT ISSUE - The two models to be compared do not have the same LL(0). This suggests they were not estimated on the same data!")
   
   adjrho=list(1-(LL[[1]]-k[[1]])/LL0[[1]],
               1-(LL[[2]]-k[[2]])/LL0[[2]])
@@ -144,7 +144,7 @@ apollo_basTest = function(model1,model2){
   colnames(output)=c("LL0","LL","par","adj.rho2")
   rownames(output)=c(unlist(modelNames),"Difference")
   
-  if(output[3,3]<0) stop("Test not run as better fitting model has fewer parameters!")
+  if(output[3,3]<0) stop("SPECIFICATION ISSUE - Test not run as better fitting model has fewer parameters!")
   p=pnorm(-sqrt(-2*output[3,4]*output[1,1]+output[3,3]))
   
   if(flag_reverse){
@@ -154,6 +154,6 @@ apollo_basTest = function(model1,model2){
   print(output)
   apollo_print("\n")
   apollo_print(paste0("p-value for Ben-Akiva & Swait test: ",formatC(p)))
-  
+  apollo_print("\nThe p-value from the test is returned insibly as an output from this function. Calling the function via result=apollo_basTest(...) will save this output in an object called result (or otherwise named object).", type="i")
   return(invisible(p))
 }

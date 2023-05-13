@@ -7,10 +7,10 @@
 #' @export
 apollo_insertComponentName <- function(e){
   # Validate input
-  if(is.null(e)) stop('Argument "e" must be a function, a call , or a value')
+  if(is.null(e)) stop('INTERNAL ISSUE - Argument "e" must be a function, a call , or a value')
   if(is.function(e)){eOrig <- e; e <- body(e)} else eOrig <- NULL
   if(is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) || is.complex(e)) return(e)
-  if(!is.call(e)) stop('Argument "e" must be a call')
+  if(!is.call(e)) stop('INTERNAL ISSUE - Argument "e" must be a call')
   
   # Figure out if e is a call of the type: x <- apollo_<model>(...)
   test <- FALSE

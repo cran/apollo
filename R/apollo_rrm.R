@@ -1,15 +1,19 @@
 #' Calculates Random Regret Minimisation model probabilities
 #'
-#' Calculates the probabilities of a Multinomial Logit model and can also perform other operations based on the value of the \code{functionality} argument.
+#' Calculates the probabilities of a Random Regret Minimisation model and can also perform other operations based on the value of the \code{functionality} argument.
 #'
 #' @param rrm_settings List of inputs of the RRM model. It should contain the following.
 #'                     \itemize{
 #'                       \item \strong{\code{alternatives}}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
 #'                       \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
 #'                       \item \strong{\code{choiceVar}}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
-#'                       \item \strong{\code{utilities}}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
+#'                       \item \strong{\code{rum_inputs}}: Named list of (optional) deterministic utilities. Utilities of the alternatives to be included in combined RUM-RRM models. Names of elements must match those in \code{alternatives.}
+#'                       \item \strong{\code{regret_inputs}}: Named list of regret functions. This should contain one list per attribute, where these lists themselves contain two vectors, namely a vector of attributes (at the alternative level) and parameters (either generic or attribute specific). Zeros can be used for omitted attributes for some alternatives. The order for each attribute needs to be the same as the order in \code{alternatives.}.
+#'                       \item \strong{\code{regret_scale}}: Named list of regret scales. This should have the same length as 'rrm_settings$regret_inputs' or be a single entry in the case of a generic scale parameter across regret attributes.
+#'                       \item \strong{\code{choiceset_scaling}}: Vector. One entry per row in the database, often set to 2 divided by the number of available alternatives.
+#'                       \item \strong{\code{utilities}}: Named list of deterministic utilities. Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
 #'                       \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
-#'                       \item \strong{\code{componentName}}: Character. Name given to model component.
+#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                     }
 #' @param functionality Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
 #'                      \itemize{
@@ -62,7 +66,7 @@ apollo_rrm <- function(rrm_settings, functionality){
   if(functionality=="validate"){
     apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
     apollo_modelList <- c(apollo_modelList, rrm_settings$componentName)
-    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", rrm_settings$componentName,
+    if(anyDuplicated(apollo_modelList)) stop("SPECIFICATION ISSUE - Duplicated componentName found (", rrm_settings$componentName,
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
@@ -75,15 +79,15 @@ apollo_rrm <- function(rrm_settings, functionality){
     rrm_settings <- apollo_inputs[[paste0(rrm_settings$componentName, "_settings")]]
   } else { 
     ### Do pre-processing
-    if(is.null(names(rrm_settings))) stop('All elements inside the inputs lists for model components must be named, e.g. rrm_settings=list(alternatives=c(...), avail=...).')
-    if(is.null(rrm_settings[["componentName"]])) stop('The settings of at least one model component is missing the mandatory "componentName" object.')
+    if(is.null(names(rrm_settings))) stop('SYNTAX ISSUE - All elements inside the inputs lists for model components must be named, e.g. rrm_settings=list(alternatives=c(...), avail=...).')
+    if(is.null(rrm_settings[["componentName"]])) stop('SYNTAX ISSUE - The settings of at least one model component is missing the mandatory "componentName" object.')
     # functionality
     test <- functionality %in% c("estimate","prediction","validate","zero_LL","shares_LL","conditionals","output","raw","preprocess", "components", "gradient", "report")
-    if(!test) stop("Non-permissable setting for \"functionality\" for model component \"",rrm_settings$componentName,"\"")
+    if(!test) stop("SYNTAX ISSUE - Non-permissable setting for \"functionality\" for model component \"",rrm_settings$componentName,"\"")
     
     # Check for mandatory inputs
     mandatory <- c("alternatives", "choiceVar", "regret_inputs")
-    for(i in mandatory) if(!(i %in% names(rrm_settings))) stop('The inputs list for model component "', rrm_settings$componentName, 
+    for(i in mandatory) if(!(i %in% names(rrm_settings))) stop('SYNTAX ISSUE - The inputs list for model component "', rrm_settings$componentName, 
                                                                '" needs to include an object called "', i,'"!')
     # Check for optional inputs (avail and rows)
     if(is.null(rrm_settings[["rows"]])) rrm_settings[["rows"]]="all"
@@ -107,25 +111,25 @@ apollo_rrm <- function(rrm_settings, functionality){
     ### Format checks
     # alternatives
     test <- is.vector(rrm_settings$alternatives) & !is.null(names(rrm_settings$alternatives))
-    if(!test) stop("The \"alternatives\" argument for model component \"",rrm_settings$componentName,"\" needs to be a named vector")
+    if(!test) stop("SYNTAX ISSUE - The \"alternatives\" argument for model component \"",rrm_settings$componentName,"\" needs to be a named vector")
     # avail
     test <- is.list(rrm_settings$avail) || (length(rrm_settings$avail)==1 && rrm_settings$avail==1)
-    if(!test) stop("The \"avail\" argument for model component \"",rrm_settings$componentName,"\" needs to be a list or set to 1")
+    if(!test) stop("SYNTAX ISSUE - The \"avail\" argument for model component \"",rrm_settings$componentName,"\" needs to be a list or set to 1")
     if(is.list(rrm_settings$avail)){
       lenA <- sapply(rrm_settings$avail, function(v) ifelse(is.array(v), dim(v)[1], length(v)) )
       test <- all(lenA==rrm_settings$nObs | lenA==1)
-      if(!test) stop("All entries in \"avail\" for model component \"",rrm_settings$componentName,"\" need to be a scalar or a vector with one entry per observation in the \"database\"")
+      if(!test) stop("SYNTAX ISSUE - All entries in \"avail\" for model component \"",rrm_settings$componentName,"\" need to be a scalar or a vector with one entry per observation in the \"database\"")
     }
     # choiceVar
     test <- is.vector(rrm_settings$choiceVar) && (length(rrm_settings$choiceVar)==rrm_settings$nObs || length(rrm_settings$choiceVar)==1)
-    if(!test) stop("The \"choiceVar\" argument for model component \"",rrm_settings$componentName,"\" needs to be a scalar or a vector with one entry per observation in the \"database\"")
+    if(!test) stop("SYNTAX ISSUE - The \"choiceVar\" argument for model component \"",rrm_settings$componentName,"\" needs to be a scalar or a vector with one entry per observation in the \"database\"")
     
     # rows
     test <- is.vector(rrm_settings$rows)
     test <- test && ( is.logical(rrm_settings$rows) || all(rrm_settings$rows %in% 0:1) )
     test <- test && length(rrm_settings$rows)==rrm_settings$nObs
     test <- test || ( is.character(rrm_settings$rows) && length(rrm_settings$rows)==1 && rrm_settings$rows=="all" )
-    if(!test) stop("The 'rows' argument for model component '", rrm_settings$componentName, 
+    if(!test) stop("SYNTAX ISSUE - The 'rows' argument for model component '", rrm_settings$componentName, 
                    "' needs to be \"all\" or a vector of logical statements or 0/1 entries", 
                    " with one entry per observation in the 'database'")
     if( all(rrm_settings$rows %in% c(0,1)) ) (rrm_settings$rows <- rrm_settings$rows>0)
@@ -138,7 +142,7 @@ apollo_rrm <- function(rrm_settings, functionality){
     }
     
     ### Check that avail is available for all alternatives
-    if(!all(rrm_settings$altnames %in% names(rrm_settings$avail))) stop("The names of the alternatives for model component \"", rrm_settings$componentName,"\" do not match those in \"avail\".")
+    if(!all(rrm_settings$altnames %in% names(rrm_settings$avail))) stop("SYNTAX ISSUE - The names of the alternatives for model component \"", rrm_settings$componentName,"\" do not match those in \"avail\".")
     
     ### Reorder availabilities
     rrm_settings$avail <- rrm_settings$avail[rrm_settings$altnames]
@@ -158,6 +162,7 @@ apollo_rrm <- function(rrm_settings, functionality){
     }
     isText <- isText && (is.null(rrm_settings$regret_inputs) || 
                            (is.list(rrm_settings$regret_scale) && all(sapply(rrm_settings$regret_scale, is.character))))
+
     ### If rum & regret inputs are not all text, make them text and run pre-processing
     if(!isText){
       ap <- tryCatch(get("apollo_probabilities", envir=parent.frame(), inherits=TRUE),
@@ -166,7 +171,7 @@ apollo_rrm <- function(rrm_settings, functionality){
                      error=function(e) NULL)
       af <- tryCatch(get("apollo_fixed", envir=parent.frame(), inherits=TRUE),
                      error=function(e) NULL)
-      if(is.null(ap) || is.null(ab) || is.null(af)) stop("Could not fetch apollo_probabilities", 
+      if(is.null(ap) || is.null(ab) || is.null(af)) stop("INTERNAL ISSUE - Could not fetch apollo_probabilities", 
                                                          " or apollo_beta when pre-processing", 
                                                          " RRM component")
       tmpSilent <- apollo_inputs$silent
@@ -181,7 +186,7 @@ apollo_rrm <- function(rrm_settings, functionality){
       newSet <- ap(ab, apollo_inputs, functionality="preprocess")
       test <- is.list(newSet) && !is.null(names(newSet))
       test <- test && (paste0(rrm_settings[["componentName"]], "_settings") %in% names(newSet))
-      if(!test) stop("Could not pre-process RRM component")
+      if(!test) stop("INTERNAL ISSUE - Could not pre-process RRM component")
       newSet <- newSet[[paste0(rrm_settings[["componentName"]], "_settings")]]
       if(functionality=="preprocess") return(newSet)
       apollo_inputs$silent <- tmpSilent
@@ -195,29 +200,33 @@ apollo_rrm <- function(rrm_settings, functionality){
         names(rrm_settings$rum_inputs) = rrm_settings$altnames  
       }
       ### check names
-      if(any(!(names(rrm_settings$rum_inputs)%in%rrm_settings$altnames))) stop("Some inputs in 'rrm_settings$rum_inputs' use names for alternatives not defined in rrm_settings$alternatives!")
+      if(any(!(names(rrm_settings$rum_inputs)%in%rrm_settings$altnames))) stop("INTERNAL ISSUE - Some inputs in 'rrm_settings$rum_inputs' use names for alternatives not defined in rrm_settings$alternatives!")
       ### add missing parts to RUM part
       if(length(rrm_settings$rum_inputs)<length(rrm_settings$altnames)){
         missing_alts = subset(rrm_settings$altnames,!(rrm_settings$altnames%in%names(rrm_settings$rum_inputs)))
         for(j in missing_alts) rrm_settings$rum_inputs[[j]]="0"}
       ### check format of regret_inputs
-      if(!is.list(rrm_settings$regret_inputs)) stop("The element 'rrm_settings$regret_inputs' needs to be a list!")
+      if(!is.list(rrm_settings$regret_inputs)) stop("SYNTAX ISSUE - The element 'rrm_settings$regret_inputs' needs to be a list!")
       for(s in 1:length(rrm_settings$regret_inputs)){
         ### check that all entries in regret_inputs are lists with x and b
-        if(!(length(rrm_settings$regret_inputs[[s]])&&(all(c("x","b")%in%names(rrm_settings$regret_inputs[[s]]))))) stop("The element ",names(rrm_settings$regret_inputs)[s]," in 'rrm_settings$regret_inputs' needs to be a list with two elements, named 'x' and 'b'!")
+        if(!(length(rrm_settings$regret_inputs[[s]])&&(all(c("x","b")%in%names(rrm_settings$regret_inputs[[s]]))))) stop("SYNTAX ISSUE - The element ",names(rrm_settings$regret_inputs)[s]," in 'rrm_settings$regret_inputs' needs to be a list with two elements, named 'x' and 'b'!")
         ### check that length of all x entries is equal to the number of alternatives
-        if(!(length(rrm_settings$regret_inputs[[s]][["x"]])==length(rrm_settings$altnames))) stop("The element ",names(rrm_settings$regret_inputs)[s],"$x in 'rrm_settings$regret_inputs' needs to have the same length as the number of alternatives in your model. If attribute ",names(rrm_settings$regret_inputs)[s]," is not used for a specific alternative, you should use \"0\" for the corresponding entry!")
+        if(!(length(rrm_settings$regret_inputs[[s]][["x"]])==length(rrm_settings$altnames))) stop("SYNTAX ISSUE - The element ",names(rrm_settings$regret_inputs)[s],"$x in 'rrm_settings$regret_inputs' needs to have the same length as the number of alternatives in your model. If attribute ",names(rrm_settings$regret_inputs)[s]," is not used for a specific alternative, you should use \"0\" for the corresponding entry!")
         ### check that length of all b entries is 1 or equal to the number of alternatives
-        if(!(length(rrm_settings$regret_inputs[[s]][["b"]])%in%c(1,length(rrm_settings$altnames)))) stop("The element ",names(rrm_settings$regret_inputs)[s],"$b in 'rrm_settings$regret_inputs' needs to either have the same length as the number of alternatives in your model or be a single entry in the case of generic parameters!")
+        if(!(length(rrm_settings$regret_inputs[[s]][["b"]])%in%c(1,length(rrm_settings$altnames)))) stop("SYNTAX ISSUE - The element ",names(rrm_settings$regret_inputs)[s],"$b in 'rrm_settings$regret_inputs' needs to either have the same length as the number of alternatives in your model or be a single entry in the case of generic parameters!")
         ### expand all b entries to the be the same length as x
         if(length(rrm_settings$regret_inputs[[s]][["b"]])==1) rrm_settings$regret_inputs[[s]][["b"]]=rep(rrm_settings$regret_inputs[[s]][["b"]],length(rrm_settings$altnames))
       }
       ### check for missing scale part
       if(is.null(rrm_settings$regret_scale)) rrm_settings$regret_scale="1"
       ### check for length of scale part
-      if(!(length(rrm_settings$regret_scale)%in%c(1,length(rrm_settings$regret_inputs)))) stop("The element regret_scale in 'rrm_settings' needs to either have the same length as 'the number 'rrm_settings$regret_inputs'or be a single entry in the case of a generic scale parameter across regret attributes!")
+      if(!(length(rrm_settings$regret_scale)%in%c(1,length(rrm_settings$regret_inputs)))) stop("SYNTAX ISSUE - The element regret_scale in 'rrm_settings' needs to either have the same length as 'rrm_settings$regret_inputs' or be a single entry in the case of a generic scale parameter across regret attributes!")
       ### expand scale to be the same length as regret_inputs
       if(length(rrm_settings$regret_scale)==1) rrm_settings$regret_scale=rep(rrm_settings$regret_scale,length(rrm_settings$regret_inputs))
+      
+      ### 25 Jan added choiceset_scaling
+      ### check for missing choiceset_scaling
+      if(is.null(rrm_settings$choiceset_scaling)) rrm_settings$choiceset_scaling="1"
       
       ### initialise regret function by starting with the RUM part (which may be just be zeros)
       rrm_settings$regrets = rrm_settings$rum_inputs
@@ -230,7 +239,9 @@ apollo_rrm <- function(rrm_settings, functionality){
           J=subset(J,!(J%in%i))
           for(j in J){
             ### availabilities need to be used twice, once inside the log to avoid numerical issues depending on coding of unavailable options, and once outside to ensure that unavailable options don't contribute to regret
-            rrm_settings$regrets[[i]]=paste0(rrm_settings$regrets[[i]]," - ",rrm_settings$regret_scale[[k]]," * rrm_settings$avail[[\"",rrm_settings$altnames[j],"\"]]* log(1+exp(1/",rrm_settings$regret_scale[[k]],"*(rrm_settings$avail[[\"",rrm_settings$altnames[j],"\"]]*(",rrm_settings$regret_inputs[[k]]$b[[j]],"*",rrm_settings$regret_inputs[[k]]$x[[j]],")-(",rrm_settings$regret_inputs[[k]]$b[[i]],"*",rrm_settings$regret_inputs[[k]]$x[[i]],"))))")
+            ### 25 Jan 2023 - added avail for i inside the comparison
+            ### 25 Jan 2023 - added choiceset scaling
+            rrm_settings$regrets[[i]]=paste0(rrm_settings$regrets[[i]]," - ",rrm_settings$choiceset_scaling," * ",rrm_settings$regret_scale[[k]]," * rrm_settings$avail[[\"",rrm_settings$altnames[j],"\"]]* log(1+exp(1/",rrm_settings$regret_scale[[k]],"*(rrm_settings$avail[[\"",rrm_settings$altnames[j],"\"]]*(",rrm_settings$regret_inputs[[k]]$b[[j]],"*",rrm_settings$regret_inputs[[k]]$x[[j]],")-rrm_settings$avail[[\"",rrm_settings$altnames[i],"\"]]*(",rrm_settings$regret_inputs[[k]]$b[[i]],"*",rrm_settings$regret_inputs[[k]]$x[[i]],"))))")
             #rrm_settings$regrets[[i]]=paste0(rrm_settings$regrets[[i]]," + ",rrm_settings$regret_scale[k]," * log(1+exp(1/",rrm_settings$regret_scale[k],"*(rrm_settings$avail[[\"",rrm_settings$altnames[j],"\"]]*",rrm_settings$regret_inputs[[k]]$b[j],"*",rrm_settings$regret_inputs[[k]]$x[j],"-",rrm_settings$regret_inputs[[k]]$b[i],"*",rrm_settings$regret_inputs[[k]]$x[i],")))")
           }
         }
@@ -286,6 +297,7 @@ apollo_rrm <- function(rrm_settings, functionality){
           P <- lapply(rrm_settings$regrets, "/", denom)
           if(any(sapply(P, anyNA))){
             P <- lapply(P, function(p){p[is.na(p)] <- 1; return(p)} )
+            P <- mapply('*', P, rrm_settings$avail, SIMPLIFY = FALSE)
             sP <- Reduce("+", P)
             P <- lapply(P, "/", sP)
           }
@@ -323,9 +335,9 @@ apollo_rrm <- function(rrm_settings, functionality){
         choicematrix[4,!is.finite(choicematrix[4,])] <- 0
         
         if(!apollo_inputs$silent & data){
-          if(any(choicematrix[4,]==0)) apollo_print("WARNING: some alternatives are never chosen in your data!")
-          if(any(choicematrix[4,]==1)) apollo_print("WARNING: some alternatives are always chosen when available!")
-          #if(inputs$avail_set) apollo_print(paste0("WARNING: Availability not provided (or some elements are NA). Full availability assumed."))
+          if(any(choicematrix[4,]==0)) apollo_print("Some alternatives are never chosen in your data!", type="w")
+          if(any(choicematrix[4,]==1)) apollo_print("Some alternatives are always chosen when available!", type="w")
+          #if(inputs$avail_set) apollo_print("Availability not provided (or some elements are NA). Full availability assumed.", type="i")
           apollo_print("\n")
           apollo_print(paste0('Overview of choices for RRM model component ', 
                               ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
@@ -366,11 +378,15 @@ apollo_rrm <- function(rrm_settings, functionality){
 
   ### Execute regrets (makes sure we are now working with vectors/matrices/arrays and not functions)
   if(any(sapply(rrm_settings$regrets, is.function))){
+    avail_backup=rrm_settings$avail
+    rrm_settings$avail=lapply(rrm_settings$avail,apollo_insertRows,r=rrm_settings$rows,val=1)
     e <- environment()
     rrm_settings$regrets = lapply(rrm_settings$regrets, function(f){
       if(is.function(f)){ environment(f) <- e; return(f()) } else return(f)
     } )
     rm(e)
+    rrm_settings$avail=avail_backup
+    rm(avail_backup)
     #cat("\n dim(regrets)=", paste0(sapply(rrm_settings$regrets, length), collapse=", "), "\n", sep="")
   } 
   rrm_settings$regrets <- lapply(rrm_settings$regrets, function(r) if(is.matrix(r) && ncol(r)==1) as.vector(r) else r)
@@ -385,33 +401,33 @@ apollo_rrm <- function(rrm_settings, functionality){
   
   if(functionality=="validate"){
     # Check that alternatives are named in altcodes and regrets
-    if(is.null(rrm_settings$altnames) || is.null(rrm_settings$altcodes) || is.null(names(rrm_settings$regrets))) stop("Alternatives for model component \"",rrm_settings$componentName,"\" must be named, both in 'alternatives' and 'regrets'.")
+    if(is.null(rrm_settings$altnames) || is.null(rrm_settings$altcodes) || is.null(names(rrm_settings$regrets))) stop("SYNTAX ISSUE - Alternatives for model component \"",rrm_settings$componentName,"\" must be named, both in 'alternatives' and 'regrets'.")
     
     if(!apollo_inputs$apollo_control$noValidation){
       # Check there are no repeated alternatives names
-      if(length(unique(rrm_settings$altnames))!=length(rrm_settings$altnames)) stop('Names of alternatives must be unique. Check definition of "alternatives".')
+      if(length(unique(rrm_settings$altnames))!=length(rrm_settings$altnames)) stop('SYNTAX ISSUE - Names of alternatives must be unique. Check definition of "alternatives".')
       
       # Check that there are at least two alternatives
       minAlts <- 2
-      if(rrm_settings$nAlt<minAlts) stop("Model component \"",rrm_settings$componentName,"\"  requires at least ", minAlts, " alternatives")
+      if(rrm_settings$nAlt<minAlts) stop("SYNTAX ISSUE - Model component \"",rrm_settings$componentName,"\"  requires at least ", minAlts, " alternatives")
       
       # Check that choice vector is not empty
-      if(length(rrm_settings$choiceVar)==0) stop("Choice vector is empty for model component \"",rrm_settings$componentName,"\"")
+      if(length(rrm_settings$choiceVar)==0) stop("SYNTAX ISSUE - Choice vector is empty for model component \"",rrm_settings$componentName,"\"")
       
-      if(rrm_settings$nObs==0) stop("No data for model component \"",rrm_settings$componentName,"\"")
+      if(rrm_settings$nObs==0) stop("SYNTAX ISSUE - No data for model component \"",rrm_settings$componentName,"\"")
       
       # Check regrets and avail elements are named correctly
-      if(!all(rrm_settings$altnames %in% names(rrm_settings$regrets))) stop("The names of the alternatives for model component \"",rrm_settings$componentName,"\" do not match those in \"regrets\".")
-      if(!all(rrm_settings$altnames %in% names(rrm_settings$avail))) stop("The names of the alternatives for model component \"",rrm_settings$componentName,"\" do not match those in \"avail\".")
+      if(!all(rrm_settings$altnames %in% names(rrm_settings$regrets))) stop("SYNTAX ISSUE - The names of the alternatives for model component \"",rrm_settings$componentName,"\" do not match those in \"regrets\".")
+      if(!all(rrm_settings$altnames %in% names(rrm_settings$avail))) stop("SYNTAX ISSUE - The names of the alternatives for model component \"",rrm_settings$componentName,"\" do not match those in \"avail\".")
       
       # Check that there are no values in the choice column for undefined alternatives
       rrm_settings$choiceLabs <- unique(rrm_settings$choiceVar)
-      if(!all(rrm_settings$choiceLabs %in% rrm_settings$altcodes)) stop("The data contains values for \"choiceVar\" for model component \"",rrm_settings$componentName,"\" that are not included in \"alternatives\".")
+      if(!all(rrm_settings$choiceLabs %in% rrm_settings$altcodes)) stop("SYNTAX ISSUE - The data contains values for \"choiceVar\" for model component \"",rrm_settings$componentName,"\" that are not included in \"alternatives\".")
       
       # check that all availabilities are either 0 or 1
-      for(i in 1:length(rrm_settings$avail)) if( !all(unique(rrm_settings$avail[[i]]) %in% 0:1) ) stop("Some availability values for model component \"",rrm_settings$componentName,"\" are not 0 or 1.")
+      for(i in 1:length(rrm_settings$avail)) if( !all(unique(rrm_settings$avail[[i]]) %in% 0:1) ) stop("SYNTAX ISSUE - Some availability values for model component \"",rrm_settings$componentName,"\" are not 0 or 1.")
       # check that at least 2 alternatives are available in at least one observation
-      if(max(Reduce('+',rrm_settings$avail))==1) stop("Only one alternative is available for each observation for model component \"",rrm_settings$componentName,"!")
+      if(max(Reduce('+',rrm_settings$avail))==1) stop("CALCULATION ISSUE - Only one alternative is available for each observation for model component \"",rrm_settings$componentName,"!")
       # check that nothing unavailable is chosen
       for(j in 1:rrm_settings$nAlt) if(any(rrm_settings$choiceVar==rrm_settings$altcodes[j] & rrm_settings$avail[[j]]==0)){
         txt <-  paste0('WARNING: The data contains cases where alternative ', rrm_settings$altnames[j], 
@@ -424,7 +440,7 @@ apollo_rrm <- function(rrm_settings, functionality){
       # Check that no available alternative has regret = NA
       # Requires setting non available alternatives utility to 0 first
       rrm_settings$regrets <- mapply(function(r,a) apollo_setRows(r, !a, 0), rrm_settings$regrets, rrm_settings$avail, SIMPLIFY=FALSE)
-      if(!all(sapply(rrm_settings$regrets, function(r) all(is.finite(r))))) stop('Some regrets for model component "',
+      if(!all(sapply(rrm_settings$regrets, function(r) all(is.finite(r))))) stop('CALCULATION ISSUE - Some regrets for model component "',
                                                                      rrm_settings$componentName, 
                                                                      '" contain values that are not finite numbers!')
     } 
@@ -433,8 +449,8 @@ apollo_rrm <- function(rrm_settings, functionality){
     
     testL = rrm_settings$probs_RRM(rrm_settings, all=FALSE)
     if(any(!rrm_settings$rows)) testL <- apollo_insertRows(testL, rrm_settings$rows, 1)
-    if(all(testL==0)) stop("All observations have zero probability at starting value for model component \"",rrm_settings$componentName,"\"")
-    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("Some observations have zero probability at starting value for model component \"",rrm_settings$componentName,"\"", sep=""))
+    if(all(testL==0)) stop("CALCULATION ISSUE - All observations have zero probability at starting value for model component \"",rrm_settings$componentName,"\"")
+    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("Some observations have zero probability at starting value for model component \"",rrm_settings$componentName,"\"", sep=""), type="i")
     return(invisible(testL))
   }
   
@@ -496,10 +512,10 @@ apollo_rrm <- function(rrm_settings, functionality){
   
   if(functionality=="gradient"){
     # Verify everything necessary is available
-    if(is.null(rrm_settings$dR) || !all(sapply(rrm_settings$dR, is.function))) stop("Analytical gradient could not be calculated. Please set apollo_control$analyticGrad=FALSE.")
+    if(is.null(rrm_settings$dR) || !all(sapply(rrm_settings$dR, is.function))) stop("INTERNAL ISSUE - Analytical gradient could not be calculated. Please set apollo_control$analyticGrad=FALSE.")
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
-                            error=function(e) stop("apollo_rrm could not fetch apollo_beta for gradient estimation."))
-    if(is.null(apollo_inputs$database)) stop("apollo_rrm could not fetch apollo_inputs$database for gradient estimation.")
+                            error=function(e) stop("INTERNAL ISSUE - apollo_rrm could not fetch apollo_beta for gradient estimation."))
+    if(is.null(apollo_inputs$database)) stop("INTERNAL ISSUE - apollo_rrm could not fetch apollo_inputs$database for gradient estimation.")
     
     # Calculate probabilities and derivatives of utilities for all alternatives
     P    <- rrm_settings$probs_RRM(rrm_settings, all=TRUE)

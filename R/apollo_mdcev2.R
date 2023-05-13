@@ -8,7 +8,7 @@
 #'                         \item \strong{\code{alternatives}}: Character vector. Names of alternatives, elements must match the names in list 'utilities'.
 #'                         \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
 #'                         \item \strong{\code{budget}}: Numeric vector. Budget for each observation.
-#'                         \item \strong{\code{componentName}}: Character. Name given to model component.
+#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                         \item \strong{\code{continuousChoice}}: Named list of numeric vectors. Amount of consumption of each alternative. One element per alternative, as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
 #'                         \item \strong{\code{cost}}: Named list of numeric vectors. Price of each alternative. One element per alternative, each one as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
 #'                         \item \strong{\code{gamma}}: Named list. Gamma parameters for each alternative, excluding any outside good. As many elements as inside good alternatives.
@@ -66,7 +66,7 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
   if(functionality=="validate"){
     apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
     apollo_modelList <- c(apollo_modelList, mdcev_settings$componentName)
-    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", mdcev_settings$componentName,
+    if(anyDuplicated(apollo_modelList)) stop("SPECIFICATION ISSUE - Duplicated componentName found (", mdcev_settings$componentName,
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
@@ -283,8 +283,8 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
     
     testL = mdcev_settings$probs_MDCEV(mdcev_settings)
     if(any(!mdcev_settings$rows)) testL <- apollo_insertRows(testL, mdcev_settings$rows, 1)
-    if(all(testL==0)) stop("All observations have zero probability at starting value for model component \"",mdcev_settings$componentName,"\"")
-    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("Some observations have zero probability at starting value for model component \"",mdcev_settings$componentName,"\"", sep=""))
+    if(all(testL==0)) stop("CALCULATION ISSUE - All observations have zero probability at starting value for model component \"",mdcev_settings$componentName,"\"")
+    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("Some observations have zero probability at starting value for model component \"",mdcev_settings$componentName,"\"", sep=""), type="i")
     return(invisible(testL))
   }
   
@@ -319,12 +319,12 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
     rm(mdcev_settings)
     
     # Check that sigma is not random
-    if(!is.vector(s$sigma)) stop("Forecasting not available for MDCEV with random sigma")
+    if(!is.vector(s$sigma)) stop("INCORRECT FUNCTION/SETTING USE - Forecasting not available for MDCEV with random sigma")
     
     # Generate draws for Gumbel error components
     if(!is.null(apollo_inputs$apollo_control$seed)) seed <- apollo_inputs$apollo_control$seed + 5 else seed <- 13 + 5
     set.seed(seed)
-    if (apollo_inputs$apollo_draws$interNDraws!=s$nRep) stop("Need same number of inter-draws as nRep!")### SH
+    if (apollo_inputs$apollo_draws$interNDraws!=s$nRep) stop("SYNTAX ISSUE - Need same number of inter-draws as nRep!")### SH
     tmp1 <- -log(-log(apollo_mlhs(s$nRep, s$nAlt, s$nObs)))
     epsL <- vector(mode="list", length=s$nRep)
     tmp2 <- (0:(s$nObs-1))*s$nRep

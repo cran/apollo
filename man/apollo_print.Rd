@@ -4,7 +4,7 @@
 \alias{apollo_print}
 \title{Prints message to terminal}
 \usage{
-apollo_print(txt, nSignifD = 4, widthLim = 11, highlight = FALSE)
+apollo_print(txt, nSignifD = 4, widthLim = 11, pause = 0, type = "t")
 }
 \arguments{
 \item{txt}{Character, what to print.}
@@ -13,7 +13,9 @@ apollo_print(txt, nSignifD = 4, widthLim = 11, highlight = FALSE)
 
 \item{widthLim}{Optional numeric integer. Minimum width (in characters) of each column when printing numeric matrices. Default is 11}
 
-\item{highlight}{Optional logical. If TRUE, the message will be highlighted and will pause excecution for 5 seconds.}
+\item{pause}{Scalar integer. Number of seconds the execution will pause after printing the message. Default is 0.}
+
+\item{type}{Character. "t" for regular text (default), "w" for warning, "i" for information.}
 }
 \value{
 Nothing

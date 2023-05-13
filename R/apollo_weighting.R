@@ -25,14 +25,14 @@
 apollo_weighting=function(P, apollo_inputs, functionality){
   
   # ################################## #
-  #### validate, preprocess, report ####
+  #### preprocess, report           ####
   # ################################## #
   if(functionality %in% c("preprocess", "report")) return(P)
   
   # ####################################### #
   #### Basic checks and useful variables ####
   # ####################################### #
-  if(is.null(apollo_inputs$apollo_control$weights)) stop('Call to apollo_weighting performed without a weights variable defined in apollo_control!')
+  if(is.null(apollo_inputs$apollo_control$weights)) stop('INCORRECT FUNCTION/SETTING USE - Call to apollo_weighting performed without a weights variable defined in apollo_control!')
   w     <- apollo_inputs$database[, apollo_inputs$apollo_control$weights]
   wInd  <- apollo_firstRow(w, apollo_inputs)
   nObs  <- nrow(apollo_inputs$database)
@@ -44,10 +44,11 @@ apollo_weighting=function(P, apollo_inputs, functionality){
     isVec <- is.vector(p)
     isMat <- is.matrix(p)
     isCub <- is.array(p) && length(dim(p))==3
-    if(!isVec && !isMat && !isCub) stop('An element of P is not a numeric vector, matrix or cube (3-dim array)')
+    if(!isVec && !isMat && !isCub) stop('INTERNAL ISSUE - An element of P is not a numeric vector, matrix or cube (3-dim array)')
     if(isVec) nR <- length(p) else nR <- dim(p)[1]
     #if(nR==nObs){ if(!apollo_inputs$apollo_control$workInLogs) return(p^w) else return(w*p) }
-    if(nR==nObs) return(p^w)
+    #if(nR==nObs) return(p^w) 3
+    if(nR==nObs){ if(!apollo_inputs$apollo_control$workInLogs) return(p^w) else return(w*p) }# BUG FIX DP 08/03/2023
     if(nR==nInd){ if(!apollo_inputs$apollo_control$workInLogs) return(p^wInd) else return(wInd*p) }
     warning('An element of P did not have as many rows as observations or individuals, so it was not weighted.')
     return(p)
@@ -58,7 +59,7 @@ apollo_weighting=function(P, apollo_inputs, functionality){
     if(is.list(p)  ) ans <- sapply(p, nRows)
     if(is.array(p) ) ans <- dim(p)[1]
     if(is.vector(p)) ans <- length(p)
-    if(ans==-1) stop('An element of P did not have as many rows as observations or individuals, so it was not weighted.')
+    if(ans==-1) stop('INTERNAL ISSUE - An element of P did not have as many rows as observations or individuals, so it was not weighted.')
     return(ans)
   }
   
@@ -70,10 +71,11 @@ apollo_weighting=function(P, apollo_inputs, functionality){
     nRows <- unlist(lapply(P, nRows))
     iInd  <- apollo_firstRow(indiv, apollo_inputs)
     test1 <- all(nRows %in% c(1, nObs, nInd))
-    if(!test1) stop('Some elements in "P" have the wrong number of rows (different to 1, nIndiv and nObs).')
-    txt <- 'When applying weights at the individual level, weights should be the same for all observations of each individual.'
+    if(!test1) stop('INTERNAL ISSUE - Some elements in "P" have the wrong number of rows (different to 1, nIndiv and nObs).')
+    txt <- 'INTERNAL ISSUE - When applying weights at the individual level, weights should be the same for all observations of each individual.'
     if(any(nRows==nInd)) for(i in 1:nInd) if(!all(w[indiv==iInd[i]]==wInd[i])) stop(txt)
     rm(txt)
+    P <- lapply(P, wf)
     return(P)
   }
   
@@ -95,7 +97,7 @@ apollo_weighting=function(P, apollo_inputs, functionality){
       isVec <- is.vector(p)
       isMat <- is.matrix(p)
       isCub <- is.array(p) && length(dim(p))==3
-      if(!isVec && !isMat && !isCub) stop('An element of P is not a numeric vector, matrix or cube (3-dim array)')
+      if(!isVec && !isMat && !isCub) stop('INTERNAL ISSUE - An element of P is not a numeric vector, matrix or cube (3-dim array)')
       if(isVec) nR <- length(p) else nR <- dim(p)[1]
       if(nR==nObs) return(w*p)
       if(nR==nInd) return(wInd*p)
@@ -111,11 +113,11 @@ apollo_weighting=function(P, apollo_inputs, functionality){
   # ############## #
   if(functionality=='gradient'){
     # preliminary check
-    if(!is.list(P)) stop("Input P should be a list with at least one component (called model)!")
-    if(apollo_inputs$apollo_control$workInLogs && apollo_inputs$apollo_control$analyticGrad) stop("Setting workInLogs cannot be used in conjunction with analyticGrad!")
+    if(!is.list(P)) stop("INTERNAL ISSUE - Input P should be a list with at least one component (called model)!")
+    if(apollo_inputs$apollo_control$workInLogs && apollo_inputs$apollo_control$analyticGrad) stop("INTERNAL ISSUE - Setting workInLogs cannot be used in conjunction with analyticGrad!")
     if(!is.null(names(P)) && all(names(P) %in% c('like', 'grad'))){
       # there are no model components
-      if(is.null(P$like) || is.null(P$grad)) stop("Missing like and/or grad elements inside components when calculating gradient!")
+      if(is.null(P$like) || is.null(P$grad)) stop("INTERNAL ISSUE - Missing like and/or grad elements inside components when calculating gradient!")
       nR <- nRows(P$like); W <- 1
       if(nR==nObs) W <- w
       if(nR==nInd) W <- wInd
@@ -125,7 +127,7 @@ apollo_weighting=function(P, apollo_inputs, functionality){
     } else {
       # there are multiple model components
       for(m in 1:length(P)){
-        if(is.null(P[[m]]$like) || is.null(P[[m]]$grad)) stop("Missing like and/or grad elements inside components when calculating gradient!")
+        if(is.null(P[[m]]$like) || is.null(P[[m]]$grad)) stop("INTERNAL ISSUE - Missing like and/or grad elements inside components when calculating gradient!")
         nR <- nRows(P$like); W <- 1
         if(nR==nObs) W <- w
         if(nR==nInd) W <- wInd

@@ -47,12 +47,12 @@ apollo_combineModels=function(P, apollo_inputs, functionality, components=NULL, 
   #### load and check inputs, prepare variables that are used elsewhere ####
   # ###################################################################### #
   
-  if(!is.null(P[["model"]])) stop("A component called model already exists in P before calling apollo_combineModels!")
-  if(length(P)==1) stop("No need to call apollo_combineModels for models with only one component!")
+  if(!is.null(P[["model"]])) stop("SPECIFICATION ISSUE - A component called model already exists in P before calling apollo_combineModels!")
+  if(length(P)==1) stop("SPECIFICATION ISSUE - No need to call apollo_combineModels for models with only one component!")
   
   elements = names(P)
   if(is.null(elements) || length(unique(elements))<length(elements)){
-    stop("For models using multiple components, all components in P must be named and all names must be unique!")
+    stop("SPECIFICATION ISSUE - For models using multiple components, all components in P must be named and all names must be unique!")
   }
   
   
@@ -68,9 +68,9 @@ apollo_combineModels=function(P, apollo_inputs, functionality, components=NULL, 
   #### Drop unused components ####
   # ############################ #
   if(!is.null(components)){
-    if(!is.character(components)) stop('Argument "components", if provided, should be a character vector.')
+    if(!is.character(components)) stop('SYNTAX ISSUE - Argument "components", if provided, should be a character vector.')
     if(length(components)==1) components <- grep(components, names(P), value=TRUE)
-    if(!all(components %in% names(P))) stop('Elements', paste0(components[-which(components %in% names(P))], collapse=', '),
+    if(!all(components %in% names(P))) stop('SYNTAX ISSUE - Elements', paste0(components[-which(components %in% names(P))], collapse=', '),
                                             ' do not exist in "P".')
     P <- P[components]
   }
@@ -82,11 +82,11 @@ apollo_combineModels=function(P, apollo_inputs, functionality, components=NULL, 
   
   if(functionality=="gradient"){
     # Checks
-    if(!is.list(P)) stop("Input P should be a list with at least one component")
-    if(any(sapply(P, function(p) is.null(p$like) || is.null(p$grad)))) stop("Some components are missing the like and/or grad elements")
-    if(apollo_inputs$apollo_control$workInLogs && apollo_inputs$apollo_control$analyticGrad) stop("workInLogs cannot be used in conjunction with analyticGrad")
+    if(!is.list(P)) stop("INTERNAL ISSUE - Input P should be a list with at least one component")
+    if(any(sapply(P, function(p) is.null(p$like) || is.null(p$grad)))) stop("INTERNAL ISSUE - Some components are missing the like and/or grad elements")
+    if(apollo_inputs$apollo_control$workInLogs && apollo_inputs$apollo_control$analyticGrad) stop("INCORRECT FUNCTION/SETTING USE - workInLogs cannot be used in conjunction with analyticGrad")
     K <- length(P[[1]]$grad) # number of parameters
-    if(any(sapply(P, function(p) length(p$grad))!=K)) stop("Dimensions of gradients from different components imply different number of parameters")
+    if(any(sapply(P, function(p) length(p$grad))!=K)) stop("INTERNAL ISSUE - Dimensions of gradients from different components imply different number of parameters")
     
     # Remove zeros from components' likelihoods
     for(i in 1:length(P)) P[[i]]$like[P[[i]]$like==0] <- 1e-50

@@ -25,8 +25,8 @@
 #' @return Nothing
 #' @export
 apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTest_settings){
-  if(is.null(sharesTest_settings[["alternatives"]])) stop("The sharesTest_settings list needs to include an object called \"alternatives\"!")
-  if(is.null(sharesTest_settings[["choiceVar"]])) stop("The sharesTest_settings list needs to include an object called \"choiceVar\"!")
+  if(is.null(sharesTest_settings[["alternatives"]])) stop("SYNTAX ISSUE - The sharesTest_settings list needs to include an object called \"alternatives\"!")
+  if(is.null(sharesTest_settings[["choiceVar"]])) stop("SYNTAX ISSUE - The sharesTest_settings list needs to include an object called \"choiceVar\"!")
   if(is.null(sharesTest_settings[["subsamples"]])) sharesTest_settings[["subsamples"]]=NA
   if(is.null(sharesTest_settings[["modelComponent"]])) sharesTest_settings$modelComponent="model"
   if(is.null(sharesTest_settings[["newAlts"]])) sharesTest_settings$newAlts=NULL  ### 31 Oct
@@ -45,8 +45,8 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
   if(!is.null(newAlts)){
    nAlts = ncol(predictedShares) - 3
    nObs  = nrow(predictedShares)
-   if(any(lapply(newAlts,nrow)!=nObs) ) stop("Some components in sharesTestSettings$newAlts do not have number of rows equal to that in the database!")
-   if(any(lapply(newAlts,ncol)!=nAlts)) stop("Some components in sharesTestSettings$newAlts do not have number of columns equal to the number of alternatives in the model!")
+   if(any(lapply(newAlts,nrow)!=nObs) ) stop("SYNTAX ISSUE - Some components in sharesTestSettings$newAlts do not have number of rows equal to that in the database!")
+   if(any(lapply(newAlts,ncol)!=nAlts)) stop("SYNTAX ISSUE - Some components in sharesTestSettings$newAlts do not have number of columns equal to the number of alternatives in the model!")
   }
   
   #### predictedShares=predictedShares[,-ncol(predictedShares)] ### removed
@@ -62,7 +62,7 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
     choiceVar <- choiceVar[rows]
     subsamples <- lapply(subsamples, function(x) x[rows])
     predictedShares <- predictedShares[rows,]
-    apollo_print("Warning: Predicted values contain NA. This could be due to using the rows setting in the model. These observations will be ommited from the analysis.")
+    apollo_print("Predicted values contain NA. This could be due to using the rows setting in the model. These observations will be ommited from the analysis.", type="w")
   }
   
   # 18/02/2021 Made this conditional, as it is no longer needed due to predictedShares being a data.frame
@@ -81,7 +81,7 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
     if(all(ux %in% 0:1) || is.logical(ux)) return(TRUE)
     return(FALSE)
   }
-  txt <- "Subsamples must be defined by logical (boolean) or dummy (0/1) variables."
+  txt <- "SYNTAX ISSUE - Subsamples must be defined by logical (boolean) or dummy (0/1) variables."
   if(is.data.frame(categories) || is.list(categories)){
     if(!all(sapply(categories, isValid))) stop(txt)
   }
@@ -97,8 +97,8 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
   #  categories=list()
   #  categories[["All data"]]=rep(1,length(trueShares[[1]]))
   #} else {
-    if(!all(names(alternatives) %in% names(predictedShares))) stop("\nPredicted choice probabilities should be provided for all alternatives.")
-    if(any(lapply(categories,sum)==0)) stop("\nSome subsamples are empty!)")
+    if(!all(names(alternatives) %in% names(predictedShares))) stop("SYNTAX ISSUE - Predicted choice probabilities should be provided for all alternatives.")
+    if(any(lapply(categories,sum)==0)) stop("INPUT ISSUE - Some subsamples are empty!)")
     if(!any(lapply(categories,sum)==length(trueShares[[1]])) & !any(lapply(categories,length)==1)) categories[["All data"]]=rep(1,length(trueShares[[1]]))
   #}
   
@@ -140,7 +140,7 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
       output=output[-3,]
       print(round(output,3))
       if(output[1,k+1]!=sum(categories[[j]])){
-        cat("\nWarning: the totals in the final column are not equal to the number of observations!")
+        cat("\nWARNING: the totals in the final column are not equal to the number of observations!")
         cat("\nThis is normal if you're working with only a subset of possible alternatives in the columns.\n")
       }
       out[[j]] <- output
@@ -164,8 +164,8 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
 
     temp=Reduce("+",newAlts)
     for(j in 1:ncol(temp)){
-      if(min(temp[,j])<1) cat("\nWarning: there are cases in your data where alternative",names(alternatives)[j],"does not form part of any of the new alternatives in sharesTestSettings$newAlts")
-      if(max(temp[,j])>1) cat("\nWarning: there are cases in your data where alternative",names(alternatives)[j],"forms part of more than one of the new alternatives in sharesTestSettings$newAlts")
+      if(min(temp[,j])<1) cat("\nWARNING: there are cases in your data where alternative",names(alternatives)[j],"does not form part of any of the new alternatives in sharesTestSettings$newAlts")
+      if(max(temp[,j])>1) cat("\nWARNING: there are cases in your data where alternative",names(alternatives)[j],"forms part of more than one of the new alternatives in sharesTestSettings$newAlts")
     }
     
     iterations=length(categories)
@@ -200,7 +200,7 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
       output=output[-3,]
       print(round(output,3))
       if(output[1,k+1]!=sum(categories[[j]])){
-        cat("\nWarning: the totals in the final column are not equal to the number of observations!")
+        cat("\nWARNING: the totals in the final column are not equal to the number of observations!")
         cat("\nThis is normal if you're working with only a subset of possible alternatives in the columns.\n")
       }
       out[[j]] <- output
@@ -208,5 +208,6 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
   
   }
   
+  apollo_print("\nThe outputs from this function are also returned insibly as an output. Calling the function via result=apollo_sharesTest(...) will save this output in an object called result (or otherwise named object).", type="i")
   return(invisible(out))
 }

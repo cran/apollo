@@ -49,8 +49,7 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   ### Check that no models without analytical gradient are used in apollo_probabilities
   if(is.function(apollo_probabilities)){
     tmp <- as.character(body(apollo_probabilities))
-    #txt <- c("apollo_lc|apollo_dft|apollo_mdcev|apollo_el|apollo_nl|apollo_cnl|apollo_mdcnev")
-    txt <- c("apollo_dft|apollo_mdcev|apollo_el|apollo_nl|apollo_cnl|apollo_mdcnev")
+    txt <- c("apollo_dft|apollo_mdcev|apollo_el|apollo_nl|apollo_cnl|apollo_mdcnev|apollo_op|apollo_emdc1|apollo_emdc2|apollo_emdc")
     tmp <- grep(txt, tmp)
     if(length(tmp)>0){
       if(debug) apollo_print("Analytic gradient cannot be built because models with undefined gradient are used inside apollo_probabilities.")
@@ -86,8 +85,11 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
     if(length(compNames)>0) dVAvail <- setNames(dVAvail, compNames)
     rm(compNames, i)
   }
-  compList <- apollo_inputs$apolloLog$listOfNames
-  if( length(dVAvail)==0 || !all(compList %in% names(dVAvail)) ){
+  
+  #compList <- apollo_inputs$apolloLog$listOfNames
+  
+  #if( length(dVAvail)==0 || !all(compList %in% names(dVAvail)) ){
+  if( length(dVAvail)==0 || any(!dVAvail)){
     #txt <- paste0("Some model components cannot be pre-processed. ",
     #              "Numeric gradients will be used")
     txt <- paste('Apollo was not able to compute analytical gradients for your model.',
@@ -98,11 +100,11 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
                  'Apollo forum (http://www.apollochoicemodelling.com/forum)',
                  'on how to solve this issue. If you do, please post your',
                  'code and data (if not confidential).')
-    if(!silent) apollo_print(txt, highlight=TRUE)
+    if(!silent) apollo_print(txt,  pause=5, type="i")
     return(NULL)
   } 
   if( !all(dVAvail) ) return(NULL)
-  rm(compList)
+  #rm(compList)
   
   
   # # # # # # # # # # # # # # # # #
@@ -148,7 +150,7 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   #### Test gradient function  ####
   # # # # # # # # # # # # # # # # #
   
-  if(!is.null(grad) && (validateGrad || !is.null(apollo_logLike))){
+  if(!is.null(grad) && validateGrad && !is.null(apollo_logLike)){
     if(debug) apollo_print(c("\n", "Validating gradient function..."))
     b0_disturbance <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
     # Calculate analytical gradient
@@ -202,8 +204,8 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
         return(NULL)
       }; rm(test)
     }
-    
-  }; rm(b0_disturbance)
+    rm(b0_disturbance)
+  } 
   
   
   return(grad)

@@ -13,11 +13,13 @@ apollo_modelOutput(model, modelOutput_settings = NA)
 \itemize{
   \item \strong{\code{printChange}}: Logical. TRUE for printing difference between starting values and estimates. FALSE by default.
   \item \strong{\code{printClassical}}: Logical. TRUE for printing classical standard errors. TRUE by default.
-  \item \strong{\code{printCorr}}: Logical. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
-  \item \strong{\code{printCovar}}: Logical. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. FALSE by default.
+  \item \strong{\code{printCorr}}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. For Bayesian estimation, this setting is used for the covariane of random parameters. FALSE by default.
+  \item \strong{\code{printCovar}}: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. For Bayesian estimation, this setting is used for the correlation of random parameters. FALSE by default.
   \item \strong{\code{printDataReport}}: Logical. TRUE for printing summary of choices in database and other diagnostics. FALSE by default.
   \item \strong{\code{printFixed}}: Logical. TRUE for printing fixed parameters among estimated parameter. TRUE by default.
   \item \strong{\code{printFunctions}}: Logical. TRUE for printing apollo_control, apollo_randCoeff (when available), apollo_lcPars (when available) and apollo_probabilities. FALSE by default.
+  \item \strong{\code{printHBconvergence}}: Boolean. TRUE for printing Geweke convergence tests. FALSE by default.                               
+  \item \strong{\code{printHBiterations}}: Boolean. TRUE for printing an iterations report for HB estimation. TRUE by default.                               
   \item \strong{\code{printModelStructure}}: Logical. TRUE for printing model structure. TRUE by default.
   \item \strong{\code{printOutliers}}: Logical or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
   \item \strong{\code{printPVal}}: Logical or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.

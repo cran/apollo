@@ -7,7 +7,7 @@
 #'                       \item \strong{\code{alternatives}}: Character vector. Names of alternatives, elements must match the names in list 'utilities'.
 #'                       \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
 #'                       \item \strong{\code{choiceShares}}: Named list of numeric vectors. Share allocated to each alternative. One element per alternative, as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
-#'                       \item \strong{\code{componentName}}: Character. Name given to model component.
+#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                       \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
 #'                       \item \strong{\code{utilities}}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
 #'                     }
@@ -61,7 +61,7 @@ apollo_fmnl <- function(fmnl_settings, functionality){
   if(functionality=="validate"){
     apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
     apollo_modelList <- c(apollo_modelList, fmnl_settings$componentName)
-    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", fmnl_settings$componentName,
+    if(anyDuplicated(apollo_modelList)) stop("SPECIFICATION ISSUE - Duplicated componentName found (", fmnl_settings$componentName,
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
@@ -178,10 +178,10 @@ apollo_fmnl <- function(fmnl_settings, functionality){
           
           # Print warnings
           for(a in 1:inputs$nAlt){
-            if(choicematrix[2,a]==0) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'))
-            if(choicematrix[4,a]==1) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is always given the full choice share when available in model component "', inputs$componentName, '".'))
+            if(choicematrix[2,a]==0) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'), type="w")
+            if(choicematrix[4,a]==1) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is always given the full choice share when available in model component "', inputs$componentName, '".'), type="w")
           }
-          #if(inputs$avail_set==TRUE & !apollo_inputs$silent) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'))
+          #if(inputs$avail_set==TRUE & !apollo_inputs$silent) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'), type="w")
         }
       
         return(invisible(TRUE))
@@ -234,7 +234,7 @@ apollo_fmnl <- function(fmnl_settings, functionality){
   
   if(functionality=="validate"){
     # Check that alternatives are named in altcodes and V
-    if(is.null(fmnl_settings$altnames) || is.null(fmnl_settings$altcodes) || is.null(names(fmnl_settings$V))) stop("Alternatives for model component \"",fmnl_settings$componentName,"\" must be named, both in 'alternatives' and 'utilities'.")
+    if(is.null(fmnl_settings$altnames) || is.null(fmnl_settings$altcodes) || is.null(names(fmnl_settings$V))) stop("SYNTAX ISSUE - Alternatives for model component \"",fmnl_settings$componentName,"\" must be named, both in 'alternatives' and 'utilities'.")
     
     if(!apollo_inputs$apollo_control$noValidation) apollo_validate(fmnl_settings, modelType, 
                                                                    functionality, apollo_inputs)
@@ -243,8 +243,8 @@ apollo_fmnl <- function(fmnl_settings, functionality){
     
     testL = fmnl_settings$probs_fmnl(fmnl_settings, all=FALSE)
     if(any(!fmnl_settings$rows)) testL <- apollo_insertRows(testL, fmnl_settings$rows, 1)
-    if(all(testL==0)) stop("All observations have zero probability at starting value for model component \"",fmnl_settings$componentName,"\"")
-    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("Some observations have zero probability at starting value for model component \"",fmnl_settings$componentName,"\"", sep=""))
+    if(all(testL==0)) stop("CALCULATION ISSUE - All observations have zero probability at starting value for model component \"",fmnl_settings$componentName,"\"")
+    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("Some observations have zero probability at starting value for model component \"",fmnl_settings$componentName,"\"", sep=""), type="i")
     return(invisible(testL))
   }
   
@@ -305,10 +305,10 @@ apollo_fmnl <- function(fmnl_settings, functionality){
   
   if(functionality=="gradient"){
    # Verify everything necessary is available
-   if(is.null(fmnl_settings$dV) || !all(sapply(fmnl_settings$dV, is.function))) stop("Analytical gradient could not be calculated. Please set apollo_control$analyticGrad=FALSE.")
+   if(is.null(fmnl_settings$dV) || !all(sapply(fmnl_settings$dV, is.function))) stop("INTERNAL ISSUE - Analytical gradient could not be calculated. Please set apollo_control$analyticGrad=FALSE.")
    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
-                           error=function(e) stop("apollo_fmnl could not fetch apollo_beta for gradient estimation."))
-   if(is.null(apollo_inputs$database)) stop("apollo_fmnl could not fetch apollo_inputs$database for gradient estimation.")
+                           error=function(e) stop("INTERNAL ISSUE - apollo_fmnl could not fetch apollo_beta for gradient estimation."))
+   if(is.null(apollo_inputs$database)) stop("INTERNAL ISSUE - apollo_fmnl could not fetch apollo_inputs$database for gradient estimation.")
    
    # Calculate probabilities and derivatives of utilities for all alternatives
    P    <- fmnl_settings$probs_fmnl(fmnl_settings, all=TRUE)

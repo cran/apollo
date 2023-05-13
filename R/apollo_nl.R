@@ -14,7 +14,7 @@
 #'                       \item \strong{\code{alternatives}}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
 #'                       \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
 #'                       \item \strong{\code{choiceVar}}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
-#'                       \item \strong{\code{componentName}}: Character. Name given to model component.
+#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                       \item \strong{\code{nlNests}}: List of numeric scalars or vectors. Lambda parameters for each nest. Elements must be named with the nest name. The lambda at the root is automatically fixed to 1 if not provided by the user.
 #'                       \item \strong{\code{nlStructure}}: Named list of character vectors. As many elements as nests, it must include the "root". Each element contains the names of the nests or alternatives that belong to it. Element names must match those in \code{nlNests}.
 #'                       \item \strong{\code{utilities}}: Named list of deterministic utilities . Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
@@ -67,7 +67,7 @@ apollo_nl <- function(nl_settings, functionality){
   if(functionality=="validate"){
     apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
     apollo_modelList <- c(apollo_modelList, nl_settings$componentName)
-    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", nl_settings$componentName,
+    if(anyDuplicated(apollo_modelList)) stop("SPECIFICATION ISSUE - Duplicated componentName found (", nl_settings$componentName,
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
@@ -172,9 +172,9 @@ apollo_nl <- function(nl_settings, functionality){
         choicematrix[4,!is.finite(choicematrix[4,])] <- 0
         
         if(!apollo_inputs$silent & data){
-          if(any(choicematrix[4,]==0)) apollo_print("WARNING: some alternatives are never chosen in your data!")
-          if(any(choicematrix[4,]>=100)) apollo_print("WARNING: some alternatives are always chosen when available!")
-          #if(inputs$avail_set) apollo_print(paste0("WARNING: Availability not provided (or some elements are NA). Full availability assumed."))
+          if(any(choicematrix[4,]==0)) apollo_print("Some alternatives are never chosen in your data!", type="w")
+          if(any(choicematrix[4,]>=100)) apollo_print("Some alternatives are always chosen when available!", type="w")
+          #if(inputs$avail_set) apollo_print("Availability not provided (or some elements are NA). Full availability assumed.", type="w")
           apollo_print("\n")
           apollo_print(paste0('Overview of choices for ', toupper(inputs$modelType), ' model component ', 
                               ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
@@ -185,7 +185,7 @@ apollo_nl <- function(nl_settings, functionality){
         if(param){
           if(!apollo_inputs$silent & data) apollo_print('\n') # 
           if(!apollo_inputs$silent){
-            # Warning for automatic setting of root nesting parameter
+            # WARNING for automatic setting of root nesting parameter
             if(inputs$root_set) apollo_print("Notice: Root lambda parameter set to 1.")
             # Identifying nest's parents
             nestAbove <- unique(lapply(inputs$ancestors, '[', -1))
@@ -206,7 +206,11 @@ apollo_nl <- function(nl_settings, functionality){
                   l  <- inputs$nlNests[[nlStructure[[component]][j]]]
                   #n0 <- nestAbove[nlStructure[[component]][j]]
                   #if(n0=='Inf') l0 <- 1 else l0 <- inputs$nlNests[[n0]]
-                  cat("\n",space,"-Nest: ", nlStructure[[component]][j], " (",round(l,4), ")", sep="")
+                  if(length(l)>1){
+                    cat("\n",space,"-Nest: ", nlStructure[[component]][j], " (distributed, mean: ",mean(l),")", sep="")  
+                  }else{
+                    cat("\n",space,"-Nest: ", nlStructure[[component]][j], " (",round(l,4), ")", sep="")
+                  }
                   #if(any(l<0 | l0<l)) cat(' WARNING: nest param. should be between 0 and ', round(l0,4), '.', sep='')
                   print_tree_level(nlStructure, nlStructure[[component]][j], preceding_nest_layer+1, space)
                 }
@@ -220,11 +224,12 @@ apollo_nl <- function(nl_settings, functionality){
             for(i in names(inputs$nlNests)){
               l  <- inputs$nlNests[[i]]
               if(i=='root') l0 <- 1 else l0 <- inputs$nlNests[[ nestAbove[i] ]]
-              if(any(l<0 | l0<l)){
-                txt <- paste0('WARNING: The nesting parameter for nest "', i, '" should be between 0 and ', round(l0,4))
+              #if(any(l<0 | l0<l)){
+              if(length(l)==1 && any(l<0 | l0<l)){
+                txt <- paste0('The nesting parameter for nest "', i, '" should be between 0 and ', round(l0,4))
                 if(i!='root') txt <- paste0(txt, ' (the nesting parameter for nest "', nestAbove[i], '")')
                 txt <- paste0(txt, ', yet its value is ', round(l, 4), '.')
-                cat('\n'); apollo_print(txt)
+                cat('\n'); apollo_print(txt, type="w")
               }
             }
           }
@@ -293,8 +298,8 @@ apollo_nl <- function(nl_settings, functionality){
     
     testL=nl_settings$probs_NL(nl_settings)
     if(any(!nl_settings$rows)) testL <- apollo_insertRows(testL, nl_settings$rows, 1) # insert excluded rows with value 1
-    if(all(testL==0)) stop('All observations have zero probability at starting value for model component "', nl_settings$componentName,'"')
-    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0('Some observations have zero probability at starting value for model component "', nl_settings$componentName,'"'))
+    if(all(testL==0)) stop('CALCULATION ISSUE - All observations have zero probability at starting value for model component "', nl_settings$componentName,'"')
+    if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0('Some observations have zero probability at starting value for model component "', nl_settings$componentName,'"'), type="i")
     return(invisible(testL))
   }
   

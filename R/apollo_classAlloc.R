@@ -6,8 +6,8 @@
 #'                     \itemize{
 #'                       \item \strong{\code{utilities}}: Named list of deterministic utilities . Utilities of the classes in class allocation model. Names of elements must match those in \code{avail}, if provided.
 #'                       \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of classes, one element per class Names of elements must match those in \code{classes}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
-#'                       \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
-#'                       \item \strong{\code{componentName}}: Character. Name given to model component.
+#'                       \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}. 
+#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                     }
 #' @return The returned object depends on the value of argument \code{functionality}, which it fetches from the calling stack (see \link{apollo_validateInputs}).
 #'         \itemize{
@@ -48,7 +48,7 @@ apollo_classAlloc <- function(classAlloc_settings){
   if(functionality=="validate"){
     apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
     apollo_modelList <- c(apollo_modelList, classAlloc_settings$componentName)
-    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", classAlloc_settings$componentName,
+    if(anyDuplicated(apollo_modelList)) stop("SPECIFICATION ISSUE - Duplicated componentName found (", classAlloc_settings$componentName,
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
@@ -142,7 +142,7 @@ apollo_classAlloc <- function(classAlloc_settings){
     #if(!apollo_inputs$apollo_control$noDiagnostics) apollo_diagnostics(classAlloc_settings, modelType, apollo_inputs)
     
     testL = classAlloc_settings$probs_MNL(classAlloc_settings)
-    #if(all(testL==0)) stop("All observations have zero probability at starting value for model component \"",classAlloc_settings$componentName,"\"")
+    #if(all(testL==0)) stop("CALCULATION ISSUE - All observations have zero probability at starting value for model component \"",classAlloc_settings$componentName,"\"")
     #if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("Some observations have zero probability at starting value for model component \"",classAlloc_settings$componentName,"\"", sep=""))
     return(invisible(testL))
   }
@@ -176,10 +176,10 @@ apollo_classAlloc <- function(classAlloc_settings){
   
   if(functionality=="gradient"){
     # Verify everything necesary is available
-    if(is.null(classAlloc_settings$dV) || !all(sapply(classAlloc_settings$dV, is.function))) stop("Analytical gradient could not be calculated. Please set apollo_control$analyticGrad=FALSE.")
+    if(is.null(classAlloc_settings$dV) || !all(sapply(classAlloc_settings$dV, is.function))) stop("INTERNAL ISSUE - Analytical gradient could not be calculated. Please set apollo_control$analyticGrad=FALSE.")
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
-                            error=function(e) stop("apollo_mnl could not fetch apollo_beta for gradient estimation."))
-    if(is.null(apollo_inputs$database)) stop("apollo_mnl could not fetch apollo_inputs$database for gradient estimation.")
+                            error=function(e) stop("INTERNAL ISSUE - apollo_mnl could not fetch apollo_beta for gradient estimation."))
+    if(is.null(apollo_inputs$database)) stop("INTERNAL ISSUE - apollo_mnl could not fetch apollo_inputs$database for gradient estimation.")
     # Calculate probabilities and derivatives of utilities for all alternatives
     P <- classAlloc_settings$probs_MNL(classAlloc_settings)
     e <- list2env(c(as.list(apollo_beta), apollo_inputs$database, list(apollo_inputs=apollo_inputs)), hash=TRUE)

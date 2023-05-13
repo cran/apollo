@@ -15,20 +15,20 @@
 apollo_validateData=function(database, apollo_control, silent){
   
   if(any(is.na(database))){
-    txt <- paste0("WARNING: Your database contains some entries that are NA. ", 
+    txt <- paste0("Your database contains some entries that are NA. ", 
                   "This may well be intentional, but be advised that if ", 
                   "these entries are used in your model, the behaviour may ", 
                   "be unexpected. You can stop the process by pressing the ", 
                   "\"Escape\" key.")
-    apollo_print(txt, highlight=TRUE)}
+    apollo_print(txt, pause=0, type="w")}
   
   test <- apollo_control$indivID %in% names(database)
-  if(!test) stop("Column indicated in indivID in apollo_control not found in ", 
+  if(!test) stop("INPUT ISSUE - Column indicated in indivID in apollo_control not found in ", 
                  "database. Use valid column name!")
   
   test <- apollo_control$panelData
   test <- test && length(unique(database[,apollo_control$indivID]))==nrow(database)
-  if(test) stop("Setting panelData in apollo_control is TRUE despite only ", 
+  if(test) stop("INCORRECT FUNCTION/SETTING USE - Setting panelData in apollo_control is TRUE despite only ", 
                 "having one observation per individual in the data!")
   
   # Drop unused levels from factor variables
@@ -42,7 +42,7 @@ apollo_validateData=function(database, apollo_control, silent){
     range = which(IDs==i)
     if(max(range)-min(range)+1 != length(range)) flagContiguous=FALSE
   }
-  if(!flagContiguous) stop("All rows for the same individual should be next ", 
+  if(!flagContiguous) stop("INPUT ISSUE - All rows for the same individual should be next ", 
                            "to each other in the data!")
   
   
@@ -51,7 +51,7 @@ apollo_validateData=function(database, apollo_control, silent){
     test <- ("ID" %in% names(database)) && apollo_control$indivID!="ID"
     if(test) apollo_print(paste0("Apollo found a column called ID in your ", 
                                  "database. RSGHB will use this as individual ",
-                                 "id during HB estimation."))
+                                 "id during HB estimation."), type="i")
     test <- "ID" %in% names(database)
     if(!test) database$ID = database[,apollo_control$indivID]
   }
@@ -64,7 +64,7 @@ apollo_validateData=function(database, apollo_control, silent){
   # Check existence of weights
   if(!is.null(apollo_control$weights)){
     test <- apollo_control$weights %in% names(database)
-    if(!test) stop("Column ", apollo_control$weights, " not found in the ", 
+    if(!test) stop("INPUT ISSUE - Column ", apollo_control$weights, " not found in the ", 
                    "database despite being defined as weights in ", 
                    "apollo_control.")
   }

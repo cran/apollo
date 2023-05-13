@@ -26,6 +26,7 @@ apollo_validateInputs(
 
 \item{apollo_control}{List. Options controlling the running of the code. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
+  \item \strong{\code{analyticGrad}}: Boolean. TRUE to use analytical gradients during parameter estimation, if they are available. FALSE to use numerical gradients. - TRUE by default.
   \item \strong{\code{calculateLLC}}: Boolean. TRUE if user wants to calculate LL at constants (if applicable). - TRUE by default.
   \item \strong{\code{HB}}: Boolean. TRUE if using RSGHB for Bayesian estimation of model.
   \item \strong{\code{indivID}}: Character. Name of column in the database with each decision maker's ID.

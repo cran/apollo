@@ -13,7 +13,7 @@
 #' @return List of object, one per random component and one for the class allocation probabilities.
 #' @export
 apollo_lcUnconditionals <- function(model, apollo_probabilities, apollo_inputs){
-  if(!is.function(apollo_inputs$apollo_lcPars)) stop("This function is for latent class models. For other models use \"apollo_unconditionals\".")
+  if(!is.function(apollo_inputs$apollo_lcPars)) stop("SYNTAX ISSUE - This function is for latent class models. For other models use \"apollo_unconditionals\".")
   if(is.null(apollo_inputs$silent)) silent = FALSE else silent = apollo_inputs$silent
   apollo_beta  = model$estimate
   apollo_fixed = model$apollo_fixed
@@ -32,7 +32,7 @@ apollo_lcUnconditionals <- function(model, apollo_probabilities, apollo_inputs){
   apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
   
   if(is.null(apollo_control$HB)) apollo_control$HB=FALSE
-  if(apollo_control$HB) stop("The function \'apollo_lcUnconditionals\' is not applicables for models estimated using HB!") 
+  if(apollo_control$HB) stop("INCORRECT FUNCTION/SETTING USE - The function \'apollo_lcUnconditionals\' is not applicables for models estimated using HB!") 
   
   # Calculate randCoeff if necessary
   toAttach  <- c(as.list(apollo_beta), apollo_inputs$database)

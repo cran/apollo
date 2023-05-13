@@ -46,7 +46,7 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
   # ###################################################################### #
 
   apollo_control = apollo_inputs[["apollo_control"]]
-  if(apollo_control$HB==TRUE) stop('Function apollo_panelProd should not be used when apollo_control$HB==TRUE!')
+  if(apollo_control$HB==TRUE) stop('INCORRECT FUNCTION/SETTING USE - Function apollo_panelProd should not be used when apollo_control$HB==TRUE!')
   
   inputIsList <- is.list(P)
   indivID <- apollo_inputs$database[, apollo_control$indivID]
@@ -60,7 +60,7 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
   if(functionality%in%c("components","prediction","preprocess","raw", "report")) return(P)
   
   # Additional check
-  if(!apollo_control$panelData) stop('Panel data setting not used, so multiplying over choices using apollo_panelProd not applicable!')
+  if(!apollo_control$panelData) stop('INCORRECT FUNCTION/SETTING USE - Panel data setting not used, so multiplying over choices using apollo_panelProd not applicable!')
   
   # ########################################## #
   #### functionality="gradient"             ####
@@ -68,18 +68,21 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
 
   if(functionality=="gradient"){
     # Checks
-    if(!is.list(P)) stop("Input P should be a list with at least one component (called model)")
+    if(!is.list(P)) stop("INTERNAL ISSUE - Input P should be a list with at least one component (called model)")
     if("model" %in% names(P)) P <- P$model
-    if(is.null(P$like) || is.null(P$grad)) stop("Missing like and/or grad elements inside components")
-    if(apollo_control$workInLogs && apollo_control$analyticGrad) stop("workInLogs cannot be used in conjunction with analyticGrad")
+    if(is.null(P$like) || is.null(P$grad)) stop("INTERNAL ISSUE - Missing like and/or grad elements inside components")
+    if(apollo_control$workInLogs && apollo_control$analyticGrad) stop("INTERNAL ISSUE - workInLogs cannot be used in conjunction with analyticGrad")
     
     # Remove zeros from P$like
     P$like[P$like==0] <- 1e-50 #1e-100 #1e-16 #1e-300
     
+    ### untransformed return if panelProd is overriden
+    if(!apollo_control$overridePanel){
     # Average gradient respecting product rule
     tmp <- apollo_panelProd(P$like, apollo_inputs, "estimate")
     P$grad <- lapply(P$grad, function(g) tmp*rowsum(g/P$like, group=indivID, reorder=FALSE))
     P$like <- tmp
+    }
     return(P)
   }
   
@@ -89,7 +92,7 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
   
   if(functionality %in% c('zero_LL', 'shares_LL')){
     if(!inputIsList) P <- list(model=P)
-    if(any(sapply(P, function(p) is.array(p) && length(dim(p)==3)))) stop('Need to average over intra-individual draws first before multiplying over choices!')
+    if(any(sapply(P, function(p) is.array(p) && length(dim(p)==3)))) stop('SPECIFICATION ISSUE - Need to average over intra-individual draws first before multiplying over choices!')
     for(j in 1:length(P)){
       test <- is.vector(P[[j]]) && length(P[[j]])==length(indivID)
       test <- test || is.matrix(P[[j]]) && nrow(P[[j]])==length(indivID)
@@ -108,20 +111,26 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
   # ########################################################### #
   
   if(functionality %in% c("estimate", "conditionals","output","validate")){
-    if(inputIsList && is.null(P[["model"]])) stop("The list \"P\" should contain an element called \"model\"!")
+    ### Standarise input
+    if(inputIsList && is.null(P[["model"]])) stop("SYNTAX ISSUE - The list \"P\" should contain an element called \"model\"!")
     if(functionality %in% c("estimate", "conditionals","validate") && inputIsList) P <- P["model"]  ### only keep the model element, but P is still a list
     if(!inputIsList) P <- list(model=P)
+    ### If panel must be overriden, return without multiplying rows
+    if(functionality=="estimate" && apollo_control$overridePanel){
+      if(apollo_control$workInLogs) return(lapply(P, log)) else return(P) # DP fix 02/03/2023
+    } 
+    ###
     for(j in 1:length(P)){
-      if(is.array(P[[j]]) && length(dim(P[[j]]))==3) stop('Need to average over intra-individual draws first before multiplying over choices!')
+      if(is.array(P[[j]]) && length(dim(P[[j]]))==3) stop('SPECIFICATION ISSUE - Need to average over intra-individual draws first before multiplying over choices!')
       if(is.vector(P[[j]]) || (is.matrix(P[[j]]) && !apollo_control$workInLogs) ){
-        if(is.vector(P[[j]]) && length(P[[j]])==length(unique(indivID))) stop('You attempted to call the function apollo_panelProd at a stage where the probabilities are already at the individual level!')
-        if(is.matrix(P[[j]]) && nrow(P[[j]])==length(unique(indivID))) stop('You attempted to call the function apollo_panelProd at a stage where the probabilities are already at the individual level!')
+        if(is.vector(P[[j]]) && length(P[[j]])==length(unique(indivID))) stop('SPECIFICATION ISSUE - You attempted to call the function apollo_panelProd at a stage where the probabilities are already at the individual level!')
+        if(is.matrix(P[[j]]) && nrow(P[[j]])==length(unique(indivID))) stop('SPECIFICATION ISSUE - You attempted to call the function apollo_panelProd at a stage where the probabilities are already at the individual level!')
         P[[j]] <- rowsum(log(P[[j]]), group=indivID, reorder=FALSE)
         if(!apollo_control$workInLogs) P[[j]] <- exp(P[[j]])
       }
       if(apollo_control$panelData && is.matrix(P[[j]]) && apollo_control$workInLogs && nrow(P[[j]])==length(indivID)){
         # approach to use if working in logs with mixing
-        if(is.matrix(P[[j]]) && nrow(P[[j]])==length(unique(indivID))) stop('You attempted to call the function apollo_panelProd at a stage where the probabilities are already at the individual level!')
+        if(is.matrix(P[[j]]) && nrow(P[[j]])==length(unique(indivID))) stop('SPECIFICATION ISSUE - You attempted to call the function apollo_panelProd at a stage where the probabilities are already at the individual level!')
         B    <- rowsum(log(P[[j]]), group=indivID, reorder=FALSE) # nIndiv x nDraws
         Bbar <- apply(B, MARGIN=1, function(r) mean(r[is.finite(r)]) ) # nIndiv x 1 ### FIX: 15/5/2020
         P[[j]] <- ifelse(is.finite(Bbar), Bbar + log( rowMeans(exp(B-Bbar)) ), -Inf) # nIndiv x 1 ### FIX 18/5/2020

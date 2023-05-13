@@ -8,7 +8,7 @@
 #'                         \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
 #'                         \item \strong{\code{alternatives}}: Character vector. Names of alternatives, elements must match the names in list 'utilities'.
 #'                         \item \strong{\code{budget}}: Numeric vector. Budget for each observation.
-#'                         \item \strong{\code{componentName}}: Character. Name given to model component.
+#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                         \item \strong{\code{continuousChoice}}: Named list of numeric vectors. Amount of consumption of each alternative. One element per alternative, as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
 #'                         \item \strong{\code{cost}}: Named list of numeric vectors. Price of each alternative. One element per alternative, each one as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
 #'                         \item \strong{\code{gamma}}: Named list. Gamma parameters for each alternative, including for the outside good. As many elements as alternatives.
@@ -67,7 +67,7 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
   if(functionality=="validate"){
     apollo_modelList <- tryCatch(get("apollo_modelList", envir=parent.frame(), inherits=FALSE), error=function(e) c())
     apollo_modelList <- c(apollo_modelList, mdcnev_settings$componentName)
-    if(anyDuplicated(apollo_modelList)) stop("Duplicated componentName found (", mdcnev_settings$componentName,
+    if(anyDuplicated(apollo_modelList)) stop("SPECIFICATION ISSUE - Duplicated componentName found (", mdcnev_settings$componentName,
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
@@ -241,10 +241,10 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
           
           # Print warnings
           for(a in 1:inputs$nAlt){
-            if(choicematrix[2,a]==0) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'))
-            if(choicematrix[2,a]==choicematrix[1,a] && inputs$altnames[a]!=inputs$outside) apollo_print(paste0('WARNING: Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'))
+            if(choicematrix[2,a]==0) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'), type="w")
+            if(choicematrix[2,a]==choicematrix[1,a] && inputs$altnames[a]!=inputs$outside) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'), type="w")
           }
-          #if(inputs$avail_set==TRUE & !apollo_inputs$silent) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'))
+          #if(inputs$avail_set==TRUE & !apollo_inputs$silent) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'), type="i")
         }
         
         if(!apollo_inputs$silent & param){
@@ -359,10 +359,10 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
     
     testL = mdcnev_settings$probs_MDCNEV(mdcnev_settings)
     if(any(!mdcnev_settings$rows)) testL <- apollo_insertRows(testL, mdcnev_settings$rows, 1)
-    if(all(testL==0)) stop('All observations have zero probability at starting value for model component "', 
+    if(all(testL==0)) stop('CALCULATION ISSUE - All observations have zero probability at starting value for model component "', 
                            mdcnev_settings$componentName,'"')
     if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0('Some observations have zero probability at starting value for model component "', 
-                                          mdcnev_settings$componentName,'"'))
+                                          mdcnev_settings$componentName,'"'), type="i")
     return(invisible(testL))
   }
   
@@ -395,7 +395,7 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
     rm(mdcnev_settings)
     
     # Check that sigma is not random
-    if(!is.vector(s$sigma)) stop('Forecasting not available for random sigma in models component ', 
+    if(!is.vector(s$sigma)) stop('INCORRECT FUNCTION/SETTING USE - Forecasting not available for random sigma in models component ', 
                                  s$componentName)
     
     # Generate draws for correlated gumbel error components

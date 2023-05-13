@@ -16,7 +16,7 @@ apollo_dft(dft_settings, functionality)
  \item \strong{attrValues}: A named list with as many elements as alternatives. Each element is itself a named list of vectors of the alternative attributes for each observation (usually a column from the database). All alternatives must have the same attributes (can be set to zero if not relevant).
  \item \strong{attrWeights}: A named list with as many elements as attributes, or fewer. Each element is the weight of the attribute, and can be a scalar, a vector with as many elements as observations, or a matrix/array if random. They should add up to one for each observation and draw (if present), and will be re-scaled if they do not. \code{attrWeights} and \code{attrScalings} are incompatible, and they should not be both defined for an attribute. Default is 1 for all attributes.
  \item \strong{\code{choiceVar}}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
- \item \strong{\code{componentName}}: Character. Name given to model component.
+ \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
  \item \strong{procPars}: A list containing the four DFT 'process parameters'
     \itemize{
       \item \strong{error_sd}: Numeric scalar or vector. The standard deviation of the the error term in each timestep.

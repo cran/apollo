@@ -38,9 +38,10 @@
 #' @export
 apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
   # Validate inputs
-  if(!is.function(f)) stop('Argument "f" should be a function.')
+  if(!is.function(f)) stop('INTERNAL ISSUE - Argument "f" should be a function.')
   
   ## Check if input is a single value
+#func  is.val <- function(e) if(is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) || is.complex(e)) return(TRUE) else return(FALSE)
   is.val <- function(e) if(is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) || is.complex(e)) return(TRUE) else return(FALSE)
   
   # Vector to store the elements that are yet to be turned into functions
@@ -53,7 +54,7 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
   asFunctionDef <- function(e){
     isCall <- is.call(e)
     isVal  <- is.val(e)
-    if(!isCall & !isVal) stop('Argument "e" must be a language object (a call or a symbol).')
+    if(!isCall & !isVal) stop('INTERNAL ISSUE - Argument "e" must be a language object (a call or a symbol).')
     if(isCall && (e[[1]]=="function" || e[[1]]=="eval")) return(e)
     if(isCall && e[[1]]=="list"){
       for(i in 2:length(e)) e[[i]] <- asFunctionDef(e[[i]])
@@ -94,14 +95,14 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
   ## If elemNames="*", then all elements of listNames are turned into functions.
   ## If an elemListNames is defined as another variable, then it adds it to the pendingVars vector
   #listElem2Func <- function(listNames, elemNames=NULL, elemListNames=NULL, e=NULL, from=1, to=Inf){
-  #  if(is.null(e)) stop('Argument "e" cannot be NULL.')
+  #  if(is.null(e)) stop('INTERNAL ISSUE - Argument "e" cannot be NULL.')
   #  if(is.function(e)) e <- body(e)
   #  if(is.val(e) || from>length(e)) return(e)
-  #  if(!is.call(e)) stop('Argument "e" must be a call')
-  #  if(is.null(elemNames) && is.null(elemListNames)) stop('Arguments "elemNames" and "elemListNames" cannot be both NULL.')
-  #  if(!is.character(listNames)) stop('Argument "listNames" must be a character vector')
-  #  if(!is.null(elemNames) && !is.character(elemNames)) stop('Argument "elemNames", if provided, must be a character vector')
-  #  if(!is.null(elemListNames) && !is.character(elemListNames)) stop('Argument "elemListNames", if provided, must be a character vector')
+  #  if(!is.call(e)) stop('INTERNAL ISSUE - Argument "e" must be a call')
+  #  if(is.null(elemNames) && is.null(elemListNames)) stop('INTERNAL ISSUE - Arguments "elemNames" and "elemListNames" cannot be both NULL.')
+  #  if(!is.character(listNames)) stop('INTERNAL ISSUE - Argument "listNames" must be a character vector')
+  #  if(!is.null(elemNames) && !is.character(elemNames)) stop('INTERNAL ISSUE - Argument "elemNames", if provided, must be a character vector')
+  #  if(!is.null(elemListNames) && !is.character(elemListNames)) stop('INTERNAL ISSUE - Argument "elemListNames", if provided, must be a character vector')
   #  to <- min(to, length(e))
   #  for(i in from:to){
   #    # Is an assignment
@@ -161,10 +162,10 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
   listElem2Func <- function(e, listNames, elemNames=NULL, elemListNames=NULL){
     # Checks
     if(is.function(e)) e <- body(e)
-    if(is.null(elemNames) && is.null(elemListNames)) stop('Arguments "elemNames" and "elemListNames" cannot be both NULL.')
-    if(!is.character(listNames)) stop('Argument "listNames" must be a character vector')
-    if(!is.null(elemNames) && !is.character(elemNames)) stop('Argument "elemNames", if provided, must be a character vector')
-    if(!is.null(elemListNames) && !is.character(elemListNames)) stop('Argument "elemListNames", if provided, must be a character vector')
+    if(is.null(elemNames) && is.null(elemListNames)) stop('INTERNAL ISSUE - Arguments "elemNames" and "elemListNames" cannot be both NULL.')
+    if(!is.character(listNames)) stop('INTERNAL ISSUE - Argument "listNames" must be a character vector')
+    if(!is.null(elemNames) && !is.character(elemNames)) stop('INTERNAL ISSUE - Argument "elemNames", if provided, must be a character vector')
+    if(!is.null(elemListNames) && !is.character(elemListNames)) stop('INTERNAL ISSUE - Argument "elemListNames", if provided, must be a character vector')
     # Case 1: value
     if(is.val(e)) return(e)
     # Case 2: L$x <- ... with x a single element
@@ -217,10 +218,10 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
   replaceInModelCall <- function(fName, elemNames=NULL, listNames=NULL, e=NULL){
     if(is.function(e)) e <- body(e)
     if(is.val(e)) return(e)
-    if(!is.call(e)) stop('Argument "e" must be a language object')
+    if(!is.call(e)) stop('INTERNAL ISSUE - Argument "e" must be a language object')
     if(is.null(elemNames) & is.null(listNames)) return(e)
-    if(!is.null(elemNames) && !is.character(elemNames)) stop('Argument "elemNames" must be a character vector')
-    if(!is.null(listNames) && !is.character(listNames)) stop('Argument "listNames" must be a character vector')
+    if(!is.null(elemNames) && !is.character(elemNames)) stop('INTERNAL ISSUE - Argument "elemNames" must be a character vector')
+    if(!is.null(listNames) && !is.character(listNames)) stop('INTERNAL ISSUE - Argument "listNames" must be a character vector')
     # Check if 'e' is a call to fName
     test <- e[[1]]==fName
     if(test) if(!is.null(names(e)) && names(e)[2]=="functionality") setPos <- 3 else setPos <- 2
@@ -278,7 +279,7 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
       eOrig <- e
       e <- body(e)
     } 
-    if(is.null(elemNames) & is.null(listNames)) stop('Arguments "elemNames" and "listNames" cannot both be NULL')
+    if(is.null(elemNames) & is.null(listNames)) stop('INTERNAL ISSUE - Arguments "elemNames" and "listNames" cannot both be NULL')
     
     # Replace elements in function call
     e <- replaceInModelCall(fName, elemNames, listNames, e)
@@ -289,7 +290,7 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
       # Sort
       pend <- sort(pendingVars) # sort by base list name, e.g. c(L1$a, L1$b$*, L2$a, ...)
       pend <- strsplit(pend, "\\$") # this is a list, e.g. list(c(L1, a), c(L1, b, *), c(L2, a), ...)
-      if(any(sapply(pend, length)>3)) stop("There are pending elements with more than 2 levels of depth")
+      if(any(sapply(pend, length)>3)) stop("INTERNAL ISSUE - There are pending elements with more than 2 levels of depth")
       if(length(pend)>1){
         tmp1 <- unique(sapply(pend, function(p) p[1])) # unique list names
         tmp  <- vector(mode="list", length=length(tmp1))
@@ -339,7 +340,7 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
     if(is.function(e)) e <- body(e)
     if(is.symbol(e)){ if(as.character(e)=='while') return(TRUE) else return(FALSE) }
     if(is.val(e)) return(FALSE)
-    if(!is.call(e)) stop('Argument "e" must be a language object')
+    if(!is.call(e)) stop('INTERNAL ISSUE - Argument "e" must be a language object')
     if(is.call(e) && length(e)>0){
       ans <- rep(FALSE, length(e))
       for(i in 1:length(e)) if(!is.null(e[[i]])){
@@ -353,7 +354,7 @@ apollo_insertFunc <- function(f, like=TRUE, randCoeff=FALSE, lcPars=FALSE){
   if(randCoeff){
     e <- body(f)
     if(is.val(e)) return(f)
-    if(!is.call(e)) stop('The body of argument "f" is not a call')
+    if(!is.call(e)) stop('INTERNAL ISSUE - The body of argument "f" is not a call')
     ## Introduce 'function ()'
     for(i in 1:length(e)){
       test1 <- is.call(e[[i]]) && length(e[[i]])==2 && e[[i]][[1]]=="return"

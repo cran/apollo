@@ -136,23 +136,23 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
   ### Validate arguments
   apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
   estimationRoutine <- tolower(estimationRoutine)
-  if( !(estimationRoutine %in% c("bfgs","bhhh", "nr")) ) stop("Invalid estimationRoutine. Use 'bfgs', 'bhhh', or 'nr'.")
-  if( (length(apollo_fixed) > 0) & any(!(apollo_fixed %in% names(apollo_beta))) ) stop("Some parameters included in 'apollo_fixed' are not included in 'apollo_beta'")
+  if( !(estimationRoutine %in% c("bfgs","bgw","bhhh", "nr")) ) stop("SYNTAX ISSUE - Invalid estimationRoutine. Use 'bfgs', 'bgw', 'bhhh', or 'nr'.")
+  if( (length(apollo_fixed) > 0) & any(!(apollo_fixed %in% names(apollo_beta))) ) stop("SPECIFICATION ISSUE - Some parameters included in 'apollo_fixed' are not included in 'apollo_beta'")
   maxIterations <- round(maxIterations,0)
-  if(maxIterations < 1) stop("Need at least one iteration!")
+  if(maxIterations < 1) stop("SPECIFICATION ISSUE - Need at least one iteration!")
   if(workInLogs != TRUE) workInLogs=FALSE
-  if(is.numeric(nRep) && nRep<0) stop("nRep must be a positive integer.")
+  if(is.numeric(nRep) && nRep<0) stop("SPECIFICATION ISSUE - nRep must be a positive integer.")
   if(apollo_control$mixing){
-    if(anyNA(apollo_draws)) stop("Argument 'apollo_draws' must be provided when estimating mixture models.")
-    if(!is.function(apollo_randCoeff)) stop("Argument 'apollo_randCoeff' must be provided when estimating mixture models.")
+    if(anyNA(apollo_draws)) stop("SPECIFICATION ISSUE - Argument 'apollo_draws' must be provided when estimating mixture models.")
+    if(!is.function(apollo_randCoeff)) stop("SPECIFICATION ISSUE - Argument 'apollo_randCoeff' must be provided when estimating mixture models.")
   }
   if(!anyNA(samples)){
     if(is.data.frame(samples)) samples <- as.matrix(samples)
     samples <- samples[, !(colnames(samples) %in% c(apollo_control$indivID, 'apollo_sequence'))]
-    if(!is.matrix(samples)) stop("The 'samples' argument must be a matrix.")
-    if(nrow(samples)!=nrow(database)) stop("The 'samples' matrix must have as many rows as the database.")
-    if(any(samples<0)) stop("The 'samples' matrix must only contain non-negative integers.")
-    if(ncol(samples)<2) stop("The 'samples' matrix must have at least two columns.")
+    if(!is.matrix(samples)) stop("SYNTAX ISSUE - The 'samples' argument must be a matrix.")
+    if(nrow(samples)!=nrow(database)) stop("SYNTAX ISSUE - The 'samples' matrix must have as many rows as the database.")
+    if(any(samples<0)) stop("SYNTAX ISSUE - The 'samples' matrix must only contain non-negative integers.")
+    if(ncol(samples)<2) stop("SYNTAX ISSUE - The 'samples' matrix must have at least two columns.")
   }
   test <- is.character(outputDirectory)
   test <- test && substr(outputDirectory, nchar(outputDirectory), nchar(outputDirectory)) %in% c('/', '\\')
@@ -268,15 +268,16 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
                              apollo_inputs2, estimate_settings)
     
     # Check convergence
-    succesfulEstimation <- FALSE
+    successfulEstimation <- FALSE
     if(exists("model")){
-      if(estimationRoutine=="bfgs" & model$code==0) succesfulEstimation <- TRUE
-      if(estimationRoutine=="bhhh" & (model$code %in% c(2,8)) ) succesfulEstimation <- TRUE
-      if(estimationRoutine=="nr" && model$code<=2) succesfulEstimation <- TRUE
+      if(estimationRoutine=="bfgs" & model$code==0) successfulEstimation <- TRUE
+      if(estimationRoutine=="bgw"  & model$code %in% c(3,4,5,6)) successfulEstimation <- TRUE
+      if(estimationRoutine=="bhhh" & (model$code %in% c(2,8)) ) successfulEstimation <- TRUE
+      if(estimationRoutine=="nr" && model$code<=2) successfulEstimation <- TRUE
     }
     
     # Write results
-    if(succesfulEstimation){
+    if(successfulEstimation){
       
       # Closes clusters if using multicore
       #if(exists('cl') & apollo_control$nCores>1) parallel::stopCluster(cl)
@@ -351,6 +352,7 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
   if(!silent) apollo_print(paste0("Bootstrap processing time: ", format(timeTaken)))
   #output_matrix <- cbind(paramStack, llStack, nObs=nObsStack)
   #if(!silent) apollo_print("Bootstrap covariance matrix produced")
+  apollo_print("\nA list containing the estimates, covariance matrix and log-likelihood values is returned insibly as an output from this function. Calling the function via result=apollo_bootstrap(...) will save this output in an object called result (or otherwise named object).", type="i")
   return(invisible(list(estimates=paramStack[includeRow,],
                         varcov=Sigma,
                         LL=llStack[,ncol(llStack)])))

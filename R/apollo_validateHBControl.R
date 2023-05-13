@@ -32,6 +32,7 @@
 #'                                                    \item \strong{\code{"N"}}: Normal.
 #'                                                    \item \strong{\code{"NR"}}: Fixed (as in non-random) parameter.
 #'                                                  }
+#'                     \item \strong{\code{nodiagnostics}}: Boolean. Turn off pre-estimation diagnostics for RSGHB. Set to TRUE by default.
 #'                   }
 #' @param apollo_beta Named numeric vector. Names and values for parameters.
 #' @param apollo_fixed Character vector. Names (as defined in \code{apollo_beta}) of parameters whose value should not change during estimation.
@@ -42,16 +43,18 @@
 #' @export
 apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_control, silent=FALSE){
   
+  if(is.null(apollo_HB$nodiagnostics)) apollo_HB$nodiagnostics=TRUE
+  
   # Validate inputs
-  if(!("hbDist" %in% names(apollo_HB))) stop("No hbDist element in apollo_HB.")
+  if(!("hbDist" %in% names(apollo_HB))) stop("SYNTAX ISSUE - No hbDist element in apollo_HB.")
   
   if(any(apollo_HB$hbDist=="DNE")) apollo_HB$hbDist[which(apollo_HB$hbDist=="DNE")]="NR"
   
   hbDist <- apollo_HB$hbDist
-  if(length(apollo_beta)!=length(hbDist)) stop("Argument hbDist has different length than apollo_beta.")
+  if(length(apollo_beta)!=length(hbDist)) stop("SYNTAX ISSUE - Argument hbDist has different length than apollo_beta.")
   
   hbDist_nonest = hbDist[(names(apollo_beta) %in% apollo_fixed)]
-  if(any(!(hbDist_nonest%in%c("F","NR","DNE")))) stop("Only non-random parameters should be included in apollo_fixed for HB estimation, other constraints need to be accommodated in fixedA and fixedD!")
+  if(any(!(hbDist_nonest%in%c("F","NR","DNE")))) stop("SYNTAX ISSUE - Only non-random parameters should be included in apollo_fixed for HB estimation, other constraints need to be accommodated in fixedA and fixedD!")
   
   # Translate rnd param distributions into RSGHB coding
   map <- c("NR"=0, "F"=0, "N"=1, "LN+"=2, "LN-"=3, "CN+"=4, "CN-"=5, "JSB"=6)
@@ -87,7 +90,7 @@ apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_c
   ### Translates fixedA to RSGHB coding
   fA <- apollo_HB$fixedA
   if(!is.null(fA) && is.vector(fA)  && is.numeric(fA) && !is.null(names(fA))){
-    if(!all(names(fA) %in% apollo_HB$gVarNamesNormal)) stop("Some names in fixedA do not match the names of random parameters.")
+    if(!all(names(fA) %in% apollo_HB$gVarNamesNormal)) stop("SYNTAX ISSUE - Some names in fixedA do not match the names of random parameters.")
     apollo_HB$fixedA <- rep(NA, length(apollo_HB$gVarNamesNormal))
     for(i in 1:length(fA)){
       j <- which(apollo_HB$gVarNamesNormal==names(fA)[i])
@@ -98,7 +101,7 @@ apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_c
   ### Translates fixedD to RSGHB coding
   fD <- apollo_HB$fixedD
   if(!is.null(fD) && is.vector(fD)  && is.numeric(fD) && !is.null(names(fD))){
-    if(!all(names(fD) %in% apollo_HB$gVarNamesNormal)) stop("Some names in fixedD do not match the names of random parameters.")
+    if(!all(names(fD) %in% apollo_HB$gVarNamesNormal)) stop("SYNTAX ISSUE - Some names in fixedD do not match the names of random parameters.")
     apollo_HB$fixedD <- rep(NA, length(apollo_HB$gVarNamesNormal))
     for(i in 1:length(fD)){
       j <- which(apollo_HB$gVarNamesNormal==names(fD)[i])
@@ -107,12 +110,12 @@ apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_c
   }; rm(fD)
   
   ### Additional checks
-  if(!is.null(apollo_HB$fixedA) && length(apollo_HB$fixedA)!=length(apollo_HB$gVarNamesNormal)) stop("fixedA has a different length than gVarNamesNormal inside apollo_HB")
-  if(!is.null(apollo_HB$fixedD) && length(apollo_HB$fixedD)!=length(apollo_HB$gVarNamesNormal)) stop("fixedD has a different length than gVarNamesNormal inside apollo_HB")
+  if(!is.null(apollo_HB$fixedA) && length(apollo_HB$fixedA)!=length(apollo_HB$gVarNamesNormal)) stop("SYNTAX ISSUE - fixedA has a different length than gVarNamesNormal inside apollo_HB")
+  if(!is.null(apollo_HB$fixedD) && length(apollo_HB$fixedD)!=length(apollo_HB$gVarNamesNormal)) stop("SYNTAX ISSUE - fixedD has a different length than gVarNamesNormal inside apollo_HB")
   if(any(hbDist_est==6)){
-    if(is.null(apollo_HB$gMINCOEF) | is.null(apollo_HB$gMAXCOEF)) stop("JSB distribution in use, but gMINCOEF or gMAXCOEF not defined in apollo_HB")
-    if(!is.null(apollo_HB$gMINCOEF) && length(apollo_HB$gMINCOEF)!=length(apollo_HB$gVarNamesNormal)) stop("gMINCOEF has a different length than gVarNamesNormal inside apollo_HB")
-    if(!is.null(apollo_HB$gMAXCOEF) && length(apollo_HB$gMAXCOEF)!=length(apollo_HB$gVarNamesNormal)) stop("gMINCOEF has a different length than gVarNamesNormal inside apollo_HB")
+    if(is.null(apollo_HB$gMINCOEF) | is.null(apollo_HB$gMAXCOEF)) stop("SYNTAX ISSUE - JSB distribution in use, but gMINCOEF or gMAXCOEF not defined in apollo_HB")
+    if(!is.null(apollo_HB$gMINCOEF) && length(apollo_HB$gMINCOEF)!=length(apollo_HB$gVarNamesNormal)) stop("SYNTAX ISSUE - gMINCOEF has a different length than gVarNamesNormal inside apollo_HB")
+    if(!is.null(apollo_HB$gMAXCOEF) && length(apollo_HB$gMAXCOEF)!=length(apollo_HB$gVarNamesNormal)) stop("SYNTAX ISSUE - gMINCOEF has a different length than gVarNamesNormal inside apollo_HB")
   }
   
   ### Process constraints.
@@ -130,16 +133,16 @@ apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_c
         test <- test & t0[2] %in% 1:2
         #test <- test & ( 0 <= t0[3] & t0[3]<length(theta_est) )
         test <- test & ( 0 <= t0[3] & t0[3]<=length(nam) )
-        if(!test) stop(paste0("Incorrect format for constraintsNorm element c(", t0, ")."))
+        if(!test) stop(paste0("SYNTAX ISSUE - Incorrect format for constraintsNorm element c(", t0, ")."))
         if(!silent) apollo_print(paste0(nam[t0[1]], ifelse(t0[2]==1, " < ", " > "), ifelse(t0[3]==0, 0, nam[t0[3]]), "\n", sep=""))
       }
     } else { # If in new format, e.g: c("b1<b2","b3>b5")
       # Validate input
-      if(length(apollo_HB$constraintsNorm)<1) stop("constraintsNorm, if included, should be at least one element long")
-      if(!is.character(apollo_HB$constraintsNorm)) stop("constraintsNorm, if included, should be a character vector")
-      if(!all(grepl("[<>]", apollo_HB$constraintsNorm))) stop("constraintsNorm, if included, must contain constraints written as 'param1>param2', 'param1<param2', 'param1>0' or 'param1<0'")
-      if(any(grepl("=", apollo_HB$constraintsNorm))) stop("constraintsNorm does not support equality (=), greater or equal (>=), or less or equal (<=) constraints")
-      if(length(apollo_fixed)>0) for(f in apollo_fixed) if(any(grepl(f,apollo_HB$constraintsNorm))) stop("constraintsNorm, if included, should not include any fixed parameter")
+      if(length(apollo_HB$constraintsNorm)<1) stop("SYNTAX ISSUE - constraintsNorm, if included, should be at least one element long")
+      if(!is.character(apollo_HB$constraintsNorm)) stop("SYNTAX ISSUE - constraintsNorm, if included, should be a character vector")
+      if(!all(grepl("[<>]", apollo_HB$constraintsNorm))) stop("SYNTAX ISSUE - constraintsNorm, if included, must contain constraints written as 'param1>param2', 'param1<param2', 'param1>0' or 'param1<0'")
+      if(any(grepl("=", apollo_HB$constraintsNorm))) stop("SYNTAX ISSUE - constraintsNorm does not support equality (=), greater or equal (>=), or less or equal (<=) constraints")
+      if(length(apollo_fixed)>0) for(f in apollo_fixed) if(any(grepl(f,apollo_HB$constraintsNorm))) stop("SYNTAX ISSUE - constraintsNorm, if included, should not include any fixed parameter")
       # Translate constraints
       translated <- list()
       apollo_HB$constraintsNorm <- gsub(" ", "", apollo_HB$constraintsNorm) # remove white spaces
@@ -147,12 +150,12 @@ apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_c
         con<- apollo_HB$constraintsNorm[i]
         t0 <- gregexpr("[<>]", con)[[1]][1]
         t1 <- substr(con, 1, t0-1)
-        if(t1=="0") stop(paste0("Constraint ", con, " should have zero in the right hand side"))
+        if(t1=="0") stop(paste0("SYNTAX ISSUE - Constraint ", con, " should have zero in the right hand side"))
         t2 <- substr(con, t0, t0)
         t3 <- substr(con, t0+1, nchar(con))
         t0 <- c(0,0,0)
-        #if(!all(c(t1,t3) %in% c(gVarNamesFixed, gVarNamesNormal, "0"))) stop(paste0("Constraint ", con, " includes invalid variable names"))
-        if(!all(c(t1,t3) %in% c(gVarNamesNormal, "0"))) stop(paste0("Constraint ", con, " includes invalid variable names (only random params allowed)"))
+        #if(!all(c(t1,t3) %in% c(gVarNamesFixed, gVarNamesNormal, "0"))) stop(paste0("SYNTAX ISSUE - Constraint ", con, " includes invalid variable names"))
+        if(!all(c(t1,t3) %in% c(gVarNamesNormal, "0"))) stop(paste0("SYNTAX ISSUE - Constraint ", con, " includes invalid variable names (only random params allowed)"))
         #t0[1] <- which(names(theta_est)==t1)
         t0[1] <- which(gVarNamesNormal==t1)
         t0[2] <- ifelse(t2=="<", 1, 2)

@@ -56,7 +56,7 @@ apollo_mixEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_in
   tmp <- names(default)[!(names(default) %in% names(mixEM_settings))] # options missing in estimate_settings
   for(i in tmp) mixEM_settings[[i]] <- default[[i]]
   test <- is.list(mixEM_settings) && !is.null(mixEM_settings$postEM) && (mixEM_settings$postEM %in% 0:2)
-  if(!test) stop('Setting "postEM" inside argument "mixEM_settings" can only take values 0, 1 or 2.')
+  if(!test) stop('SYNTAX ISSUE - Setting "postEM" inside argument "mixEM_settings" can only take values 0, 1 or 2.')
   
   
   ### Extract variables from apollo_input
@@ -91,15 +91,15 @@ apollo_mixEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_in
   if(is.function(apollo_inputs$apollo_lcPars)) apollo_lcPars_ORIG <- apollo_inputs$apollo_lcPars
   
   # Constraints are not supported. It would require altering the constraints based on which parameters are fixed
-  if(!is.null(estimate_settings$constraints)) stop('Constraints are not supported')
+  if(!is.null(estimate_settings$constraints)) stop('INCORRECT FUNCTION/SETTING USE - Constraints are not supported with EM')
   
   ### Validate inputs
-  if(apollo_inputs$apollo_control$mixing==FALSE) stop("The apollo_mixEM function cannot be used for models that do not include continuous random parameters!")
-  if(apollo_inputs$apollo_control$HB==TRUE) stop("The apollo_mixEM function cannot be used with Bayesian estimation!")
-  if(!is.na(apollo_inputs$apollo_lcPars)) stop("The apollo_mixEM function cannot be used for models that use latent classes!")
-  if(apollo_inputs$apollo_draws$intraNDraws!=0) stop("The apollo_mixEM function cannot be used for models using intra-individual draws!")
-  if(!is.null(apollo_inputs$apollo_draws$interUnifDraws)) stop("The apollo_mixEM function cannot be used for models using uniform draws!")
-  if(!apollo_inputs$apollo_draws$interDrawsType%in%c("halton","mlhs","pmc","sobol","sobolOwen","sobolFaureTezuka","sobolOwenFaureTezuka")) stop("The apollo_mixEM function cannot be used for models importing user defined draws!")
+  if(apollo_inputs$apollo_control$mixing==FALSE) stop("INCORRECT FUNCTION/SETTING USE - The apollo_mixEM function cannot be used for models that do not include continuous random parameters!")
+  if(apollo_inputs$apollo_control$HB==TRUE) stop("INCORRECT FUNCTION/SETTING USE - The apollo_mixEM function cannot be used with Bayesian estimation!")
+  if(!is.na(apollo_inputs$apollo_lcPars)) stop("INCORRECT FUNCTION/SETTING USE - The apollo_mixEM function cannot be used for models that use latent classes!")
+  if(apollo_inputs$apollo_draws$intraNDraws!=0) stop("INCORRECT FUNCTION/SETTING USE - The apollo_mixEM function cannot be used for models using intra-individual draws!")
+  if(!is.null(apollo_inputs$apollo_draws$interUnifDraws)) stop("INCORRECT FUNCTION/SETTING USE - The apollo_mixEM function cannot be used for models using uniform draws!")
+  if(!apollo_inputs$apollo_draws$interDrawsType%in%c("halton","mlhs","pmc","sobol","sobolOwen","sobolFaureTezuka","sobolOwenFaureTezuka")) stop("INCORRECT FUNCTION/SETTING USE - The apollo_mixEM function cannot be used for models importing user defined draws!")
   if(!(length(transforms)==1 && is.na(transforms))){ # check that length of transforms matches apollo_randCoeff
     rndCoeff <- apollo_inputs$apollo_randCoeff
     environment(rndCoeff) <- list2env(c(as.list(apollo_beta), apollo_inputs$database, apollo_inputs$draws), 
@@ -107,10 +107,10 @@ apollo_mixEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_in
     rndCoeff <- rndCoeff(apollo_beta, apollo_inputs)
     test <- length(rndCoeff)==length(transforms)
     rm(rndCoeff)
-    if(!test) stop('The length of "transforms" needs to be the same as the number of random parameters')
+    if(!test) stop('SYNTAX ISSUE - The length of "transforms" needs to be the same as the number of random parameters')
   }
   
-  apollo_print("The use of apollo_mixEM has a number of requirements. No checks are run for these, so the user needs to ensure these conditions are met by their model:")
+  apollo_print("The use of apollo_mixEM has a number of requirements. No checks are run for these, so the user needs to ensure these conditions are met by their model:", type="i")
   apollo_print("1: This function is only suitable for single component models, i.e. no use of apollo_combineModels or manual multiplication of model components.")
   apollo_print("2: All parameters need to be random, and a full covariance matrix needs to be estimated/specified in apollo_randCoeff.")
   apollo_print("3: All random parameters need to be based on Normal distributions or transformations thereof.")
@@ -143,16 +143,16 @@ apollo_mixEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_in
   test <- test || (length(apollo_inputs$apollo_scaling)==1 && is.na(apollo_inputs$apollo_scaling))
   if(test) apollo_inputs$apollo_scaling <- setNames(rep(1, length(apollo_beta)-length(apollo_fixed)), 
                                                     names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)])
-  if(any(!(names(apollo_inputs$apollo_scaling) %in% names(apollo_beta)))) stop("Some parameters included in 'scaling' are not included in 'apollo_beta'")
-  if(any((names(apollo_inputs$apollo_scaling) %in% apollo_fixed))) stop("Parameters in 'apollo_fixed' should not be included in 'scaling'")
+  if(any(!(names(apollo_inputs$apollo_scaling) %in% names(apollo_beta)))) stop("SYNTAX ISSUE - Some parameters included in 'scaling' are not included in 'apollo_beta'")
+  if(any((names(apollo_inputs$apollo_scaling) %in% apollo_fixed))) stop("SYNTAX ISSUE - Parameters in 'apollo_fixed' should not be included in 'scaling'")
   if(any(apollo_inputs$apollo_scaling<0)){
     apollo_inputs$apollo_scaling <- abs(apollo_inputs$apollo_scaling)
     txt <- 'WARNING: Some values in "scaling" were negative, they were replaced by their absolute value.'
     if(!silent) apollo_print(txt) else warning('Some negative values in "scaling" were replaced by their absolute value')
   }
-  if(any(apollo_inputs$apollo_scaling<=0)) stop('All terms in "scaling" should be strictly positive!')
-  txt <- "During estimation, parameters will be scaled using the values in estimate_settings$scaling"
-  if(!all(apollo_inputs$apollo_scaling==1)){ if(!silent) apollo_print(txt) else warning(txt)}
+  if(any(apollo_inputs$apollo_scaling<=0)) stop('SYNTAX ISSUE - All terms in "scaling" should be strictly positive!')
+  txt <- "WARNING: During estimation, parameters will be scaled using the values in estimate_settings$scaling"
+  if(!all(apollo_inputs$apollo_scaling==1)){ if(!silent) apollo_print(txt) else warning("During estimation, parameters will be scaled using the values in estimate_settings$scaling")}
   rm(txt)
   
   ### Scale apollo_probabilities, apollo_randCoeff and apollo_lcPars, and names components in apollo_probabilities

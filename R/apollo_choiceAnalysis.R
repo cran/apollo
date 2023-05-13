@@ -22,7 +22,7 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
   if(is.null(choiceAnalysis_settings[["printToScreen"]])) choiceAnalysis_settings[["printToScreen"]]=TRUE
   if(is.null(choiceAnalysis_settings[["rows"]])) choiceAnalysis_settings[["rows"]]="all"
   tmp <- c("alternatives", "choiceVar", "explanators")
-  for(i in tmp) if(is.null(choiceAnalysis_settings[[i]])) stop("The choiceAnalysis_settings list needs to include an object called \"",i,"\"!")
+  for(i in tmp) if(is.null(choiceAnalysis_settings[[i]])) stop("SYNTAX ISSUE - The choiceAnalysis_settings list needs to include an object called \"",i,"\"!")
   
   ### Validate control & data as this function can be run before validateInputs
   apollo_control <- apollo_validateControl(database, apollo_control, silent=TRUE)
@@ -42,7 +42,7 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
   rows         = choiceAnalysis_settings[["rows"]]
   
   ### Filter rows
-  if(!is.vector(rows)) stop("Argument 'rows', when provided, must be a boolean vector or the words 'all'.")
+  if(!is.vector(rows)) stop("SYNTAX ISSUE - Argument 'rows', when provided, must be a boolean vector or the words 'all'.")
   if(length(rows)==1 && rows=="all") rows <- rep(TRUE, nrow(database))
   if(any(!rows)){
     database <- database[rows,]
@@ -54,14 +54,14 @@ apollo_choiceAnalysis=function(choiceAnalysis_settings, apollo_control, database
   }
   
   ### Make sure there are no strange values in choiceVar
-  if(!all(choiceVar %in% alternatives)) stop('Some values in "choiceVar" are not defined in "alternatives".')
+  if(!all(choiceVar %in% alternatives)) stop('SYNTAX ISSUE - Some values in "choiceVar" are not defined in "alternatives".')
   
   ### Check for unchosen and unavailable choices
   #for(j in alternatives){
   for(j in 1:length(alternatives)){
-    if(sum(choiceVar==alternatives[j])==0) apollo_print(paste0("Warning: Alternative ",names(alternatives)[j]," never chosen in your data."))
+    if(sum(choiceVar==alternatives[j])==0) apollo_print(paste0("WARNING: Alternative ",names(alternatives)[j]," never chosen in your data."))
     if(is.list(avail)&&(length(avail[[j]])!=1)){
-     if(any((choiceVar==alternatives[j])&(avail[[j]]==0))) stop(paste0("Your data contains rows where alternative ",names(alternatives)[j]," is chosen when not available!"))
+     if(any((choiceVar==alternatives[j])&(avail[[j]]==0))) stop(paste0("INPUT ISSUE - Your data contains rows where alternative ",names(alternatives)[j]," is chosen when not available!"))
     }
   }
   

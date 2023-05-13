@@ -21,7 +21,7 @@ apollo_attach=function(apollo_beta, apollo_inputs){
   # ############################# #
   
   test <- ((is.vector(apollo_beta) && is.numeric(apollo_beta)) || is.list(apollo_beta)) || !is.null(names(apollo_beta))
-  if(!test) stop("The apollo_beta argument needs to be a named numeric vector or list!")
+  if(!test) stop("SYNTAX ISSUE - The apollo_beta argument needs to be a named numeric vector or list!")
   
   apollo_control   = apollo_inputs[["apollo_control"]]
   database         = apollo_inputs[["database"]]
@@ -52,8 +52,8 @@ apollo_attach=function(apollo_beta, apollo_inputs){
   # ################################ #
 
   if(apollo_control$HB==FALSE && apollo_control$mixing){
-    if(anyNA(draws)) stop("Random draws have not been specified despite setting apollo_control$mixing==TRUE!")
-    if(!is.function(apollo_randCoeff)) stop("apollo_randCoeff function has not been defined despite setting apollo_control$mixing==TRUE!")
+    if(anyNA(draws)) stop("INPUT ISSUE - Random draws have not been specified despite setting apollo_control$mixing==TRUE!")
+    if(!is.function(apollo_randCoeff)) stop("INPUT ISSUE - apollo_randCoeff function has not been defined despite setting apollo_control$mixing==TRUE!")
     if("draws" %in% search()) detach("draws")
     attach(draws,warn.conflicts=FALSE)
     randcoeff = apollo_randCoeff(apollo_beta, apollo_inputs)
@@ -74,10 +74,10 @@ apollo_attach=function(apollo_beta, apollo_inputs){
     if("lcpars" %in% search()) detach("lcpars")
     ### If class_specific>0, keep only class_specific
     if(!is.null(apollo_inputs[['class_specific']]) && apollo_inputs$class_specific>0){
-      if(is.null(lcpars[['pi_values']])) stop('"apollo_lcPars" should return a list with an element called "pi_values" containing the allocation probabilities for each class')
+      if(is.null(lcpars[['pi_values']])) stop('SYNTAX ISSUE - "apollo_lcPars" should return a list with an element called "pi_values" containing the allocation probabilities for each class')
       nClass <- length(lcpars$pi_values)
-      if(!all(sapply(lcpars, is.list))) stop('"apollo_lcPars" should return a list, all of whose elements must be lists as well')
-      if(!all(sapply(lcpars,length)==nClass)) stop('"apollo_lcPars" should return a list, all of whose elements must be lists with the same length')
+      if(!all(sapply(lcpars, is.list))) stop('SYNTAX ISSUE - "apollo_lcPars" should return a list, all of whose elements must be lists as well')
+      if(!all(sapply(lcpars,length)==nClass)) stop('SYNTAX ISSUE - "apollo_lcPars" should return a list, all of whose elements must be lists with the same length')
       for(i in 1:length(lcpars)) lcpars[[i]] <- lcpars[[i]][apollo_inputs$class_specific]
     }
     attach(lcpars,warn.conflicts=FALSE)
