@@ -9,7 +9,7 @@ apollo_outOfSample(
   apollo_fixed,
   apollo_probabilities,
   apollo_inputs,
-  estimate_settings = list(estimationRoutine = "bfgs", maxIterations = 200, writeIter =
+  estimate_settings = list(estimationRoutine = "bgw", maxIterations = 200, writeIter =
     FALSE, hessianRoutine = "none", printLevel = 3L, silent = TRUE),
   outOfSample_settings = list(nRep = 10, validationSize = 0.1, samples = NA, rmse = NULL)
 )

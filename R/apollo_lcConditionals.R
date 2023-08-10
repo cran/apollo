@@ -64,7 +64,14 @@ apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
       if(rP>rL) pi <- apollo_firstRow(pi, apollo_inputs)
       if(rP<rL && is.vector(pi)) pi <- rep(pi, each=nObsPerIndiv)
     }
-    post_pi[[s]] = pi*L[[s]]/L[["model"]]
+    if(is.list(L[[s]])){
+      if(!is.null(L[[s]]$model)){
+        L[[s]]=L[[s]]$model
+      }else{
+        stop("SPECIFICATION ISSUE: the within class probabilities are lists that do not contain an entry called model!")
+      }
+    }
+      post_pi[[s]] = pi*L[[s]]/L[["model"]]
   }; rm(pi, rL, rP)
   
   ### Prepare output

@@ -38,6 +38,7 @@
 #'         }
 #' @export
 #' @importFrom stats qnorm
+#' @importFrom Rsolnp solnp
 apollo_emdc1 <- function(emdc_settings, functionality="estimate"){
   # Rename input if necessary
   map <- c(X = "continuousChoice", B = "budget", A = "avail", 

@@ -1,5 +1,5 @@
-year <- 2019
-note <- sprintf("R package version %s", meta$Version)
+year <- format(Sys.time(), "%Y")
+note <- sprintf("Package version %s", meta$Version)
 bibentry(bibtype = "Article",
          title   = "Apollo: a flexible, powerful and customisable freeware package for choice model estimation and application",
          author  = c(person("Stephane", "Hess"), person("David", "Palma")),
@@ -11,7 +11,6 @@ bibentry(bibtype = "Article",
 bibentry(bibtype = "Manual",
          title   = "Apollo: a flexible, powerful and customisable freeware package for choice model estimation and application",
          author  = c(person("Stephane", "Hess"), person("David", "Palma")),
-         organization = "Choice Modelling Centre",
          year    = year,
          note    = note,
          url     = "http://www.ApolloChoiceModelling.com")

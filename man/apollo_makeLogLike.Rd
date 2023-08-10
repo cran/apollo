@@ -9,7 +9,7 @@ apollo_makeLogLike(
   apollo_fixed,
   apollo_probabilities,
   apollo_inputs,
-  apollo_estSet = list(estimationRoutine = "BFGS"),
+  apollo_estSet = list(estimationRoutine = "bgw"),
   cleanMemory = FALSE
 )
 }

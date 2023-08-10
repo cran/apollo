@@ -22,7 +22,7 @@ apollo_insertComponentName <- function(e){
   test <- test && (as.character(e[[3]][[1]]) %in% c('apollo_mnl', 'apollo_el', 'apollo_nl', 
                                                     'apollo_cnl',  'apollo_ol', 'apollo_op', 
                                                     'apollo_dft', 'apollo_normalDensity', 
-                                                    'apollo_mdcev', 'apollo_mdcnev', 'apollo_lc',
+                                                    'apollo_mdcev', 'apollo_mdcnev', 'apollo_ownModel','apollo_lc',
                                                     "apollo_fmnl"))
   
   # If e is NOT of the type: x <- apollo_<model>(...)

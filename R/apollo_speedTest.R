@@ -108,7 +108,7 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
       U <- t(apollo_mlhs(nRep, length(theta_var_val), 1))
       deltaTheta <- theta_max - theta_min
       
-      apollo_estSet  <- list(estimationRoutine="bfgs", maxIterations=2, writeIter=FALSE, hessianRoutine="none", printLevel=0, silent=FALSE)
+      apollo_estSet  <- list(estimationRoutine="bgw", maxIterations=2, writeIter=FALSE, hessianRoutine="none", printLevel=0, silent=FALSE)
       apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, apollo_estSet)
       
       t0 <- Sys.time()

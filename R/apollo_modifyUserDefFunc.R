@@ -54,13 +54,24 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   #### Checks ####
   # # # #  # # # # 
   
-  ### Check for apollo_prepareProb() and return() in apollo_probabilities
+  ### Check for apollo_attach in apollo_probabilities
   tmp  <- deparse(apollo_probabilities)
+  usesAttach <- FALSE
+  if(any(grepl("apollo_attach", tmp))) usesAttach <- TRUE
+  if(!usesAttach && !silent) apollo_print("You are not using apollo_attach, this may affect performance and capabilities", type="w", pause=5)
+  
+  ### Check for apollo_prepareProb() and return() in apollo_probabilities
   if(!any(grepl("apollo_prepareProb", tmp))) stop("SYNTAX ISSUE - The 'apollo_probabilities' function should include a call to 'apollo_prepareProb'!")
   if(!any(grepl("return", tmp))) stop("SYNTAX ISSUE - The 'apollo_probabilities' function should include a 'return' statement at the end, usually 'return(P)'!")
   
-  ### Check that names of params in apollo_beta, database, apollo_randCoeff & apollo_lcPars are not re-defined
+  ### Check that apollo_beta is not called, unless not using attach
   tmp <- as.character(body(apollo_probabilities))
+  if(usesAttach && any(grepl("apollo_beta[", tmp, fixed=TRUE))){
+    stop("SYNTAX ISSUE - The apollo_beta object is 'attached' and elements should thus be called",
+         " directly in apollo_probabilities without the 'apollo_beta[...]' syntax.")
+  }
+  
+  ### Check that names of params in apollo_beta, database, apollo_randCoeff & apollo_lcPars are not re-defined
   tmp <- gsub("(", "", tmp, fixed=TRUE)
   tmp <- gsub(")", "", tmp, fixed=TRUE)
   tmp <- gsub(" ", "", tmp, fixed=TRUE)
@@ -109,7 +120,8 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     tmp <- gsub("apollo_inputs$database", " ", tmp, fixed=TRUE)
     tmp <- grep("database", tmp, fixed=TRUE)
     if(length(tmp)>0) stop("SYNTAX ISSUE - The database object is 'attached' and elements should thus be called",
-                           " directly in apollo_probabilities without the 'database$' prefix.")
+                           " directly in apollo_probabilities without the 'database$' prefix. If there is a specific",
+                           " reason for doing so, the  'apollo_inputs$database$' prefix has to be used.")
     rm(tmp)
   }
   
@@ -168,7 +180,45 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   }
   rm(scaling)
   
+  # # # # # # # # # # # # # # # # # # # # #
+  #### Create testing values for beta ####
+  # # # # # # # # # # # # # # # # # # # # #
   
+  if(!apollo_inputs$apollo_control$HB){
+    apollo_beta_shifted <- apollo_beta + 0.0001  
+  }else{
+    apollo_HB=apollo_inputs$apollo_HB
+    apollo_test_beta=apollo_beta
+    if(!is.null(apollo_HB$gVarNamesFixed)){
+      r <- ( names(apollo_beta) %in% apollo_HB$gVarNamesFixed )
+      r <- names(apollo_beta)[r]
+      apollo_test_beta[r] <- apollo_HB$FC[r]
+    }
+    if(!is.null(apollo_HB$gVarNamesNormal)){
+      r <- ( names(apollo_beta) %in% apollo_HB$gVarNamesNormal )
+      r <- names(apollo_beta)[r]
+      dists_normal=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==1])
+      dists_lnp=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==2])
+      dists_lnn=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==3])
+      dists_cnp=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==4])
+      dists_cnn=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==5])
+      dists_sb=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==6])
+      if(length(dists_normal)>0) apollo_test_beta[dists_normal] <- apollo_HB$svN[dists_normal]
+      if(length(dists_lnp)>0) apollo_test_beta[dists_lnp] <- exp(apollo_HB$svN[dists_lnp])
+      if(length(dists_lnn)>0) apollo_test_beta[dists_lnn] <- -exp(apollo_HB$svN[dists_lnn])
+      if(length(dists_cnp)>0) apollo_test_beta[dists_cnp] <- apollo_HB$svN[dists_cnp]*(apollo_HB$svN[dists_cnp]>0)
+      if(length(dists_cnn)>0) apollo_test_beta[dists_cnn] <- apollo_HB$svN[dists_cnn]*(apollo_HB$svN[dists_cnn]<0)
+      if(length(dists_sb)>0){
+        names(apollo_HB$gMINCOEF)=names(apollo_HB$svN)
+        names(apollo_HB$gMAXCOEF)=names(apollo_HB$svN)
+        apollo_test_beta[dists_sb] <- apollo_HB$gMINCOEF[dists_sb]+(apollo_HB$gMAXCOEF[dists_sb]-apollo_HB$gMINCOEF[dists_sb])/(1+exp(-apollo_HB$svN[dists_sb]))
+      }
+      rm(dists_normal, dists_lnp, dists_lnn, dists_cnp, dists_cnn, dists_sb)
+    }
+    apollo_beta_shifted <- apollo_test_beta + 0.0001  
+    rm(apollo_test_beta)
+  }
+
   # # # # # # # # # # # #
   #### Modifications ####
   # # # # # # # # # # # #
@@ -190,18 +240,27 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   #       or insert the component names beforehand. Or call apollo_probabilities(..., "validate")
   #       right here.
   if(validate || noModification){
-    apollo_beta_shifted <- apollo_beta + 0.0001
+    #apollo_beta_shifted <- apollo_beta + 0.0001
     test1 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), 
-                      error=function(e) NULL )
+                      error=function(e) if(grepl("not found|ISSUE|INCORRECT",e,fixed=FALSE)){
+                        stop(e)
+                      }else{
+                        NULL
+                      } )
     if(anyNA(test1)) test1 <- NULL
     test <- is.null(test1) || noModification
-    if(test) return(list(apollo_probabilities = apollo_probabilities, # returns version with names inserted
-                         apollo_randCoeff     = apollo_randCoeff_ORIG, 
-                         apollo_lcPars        = apollo_lcPars_ORIG,
-                         #apollo_scaling       = setNames(rep(1, length(apollo_inputs$apollo_scaling)),
-                         #                               names(apollo_inputs$apollo_scaling)), 
-                         apollo_scaling       = apollo_inputs$apollo_scaling,
-                         success              = FALSE))
+    if(test){
+      apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed in initial testing.",
+                          " Your model may still run, but this indicates a potential problem. Please contact the", 
+                          " developers for assistance!"),  pause=5, type="w")
+      return(list(apollo_probabilities = apollo_probabilities, # returns version with names inserted
+                  apollo_randCoeff     = apollo_randCoeff_ORIG, 
+                  apollo_lcPars        = apollo_lcPars_ORIG,
+                  #apollo_scaling       = setNames(rep(1, length(apollo_inputs$apollo_scaling)),
+                  #                               names(apollo_inputs$apollo_scaling)), 
+                  apollo_scaling       = apollo_inputs$apollo_scaling,
+                  success              = FALSE))
+    } 
   }
   ### Update ORIG version to keep changes so far
   apollo_probabilities_ORIG <- apollo_probabilities
@@ -224,9 +283,8 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
-      apollo_print(paste0("The output of 'apollo_probabilities' has changed", 
-                          " after the optimisation of the code carried out by Apollo.", 
-                          " This indicates a problem. Please contact the", 
+      apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed during syntax checking.", 
+                          " Your model may still run, but this indicates a potential problem. Please contact the", 
                           " developers for assistance!"),  pause=5, type="w")
       return(list(apollo_probabilities = apollo_probabilities_ORIG, 
                   apollo_randCoeff     = apollo_randCoeff_ORIG, 
@@ -268,9 +326,8 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
-      apollo_print(paste0("The output of 'apollo_probabilities' has changed", 
-                          " after the optimisation of the code carried out by Apollo.", 
-                          " This indicates a problem. Please contact the", 
+      apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed during loop expansion.", 
+                          " Your model may still run, but this indicates a potential problem. Please contact the", 
                           " developers for assistance!"),  pause=5, type="w")
       return(list(apollo_probabilities = apollo_probabilities_ORIG, 
                   apollo_randCoeff     = apollo_randCoeff_ORIG, 
@@ -313,10 +370,9 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
-      apollo_print(paste0("The output of 'apollo_probabilities' has changed", 
-                          " after the optimisation of the code carried out by Apollo.", 
-                          " This indicates a problem. Please contact the", 
-                          " developers for assistance!"), pause=5, type="w")
+      apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed after inserting parameter scaling.", 
+                          " Your model may still run, but this indicates a potential problem. Please contact the", 
+                          " developers for assistance!"),  pause=5, type="w")
       return(list(apollo_probabilities = apollo_probabilities_ORIG, 
                   apollo_randCoeff     = apollo_randCoeff_ORIG, 
                   apollo_lcPars        = apollo_lcPars_ORIG,
@@ -342,10 +398,9 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
-      apollo_print(paste0("The output of 'apollo_probabilities' has changed", 
-                          " after the optimisation of the code carried out by Apollo.", 
-                          " This indicates a problem. Please contact the", 
-                          " developers for assistance!"), pause=5, type="w")
+      apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed after additional syntax processing.", 
+                          " Your model may still run, but this indicates a potential problem. Please contact the", 
+                          " developers for assistance!"),  pause=5, type="w")
       return(list(apollo_probabilities = apollo_probabilities_ORIG, 
                   apollo_randCoeff     = apollo_randCoeff_ORIG, 
                   apollo_lcPars        = apollo_lcPars_ORIG,
@@ -382,10 +437,9 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
-      apollo_print(paste0("The output of 'apollo_probabilities' has changed", 
-                   " after the optimisation of the code carried out by Apollo.", 
-                   " This indicates a problem. Please contact the", 
-                   " developers for assistance!"), pause=5, type="w")
+      apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed after inserting functions.", 
+                          " Your model may still run, but this indicates a potential problem. Please contact the", 
+                          " developers for assistance!"),  pause=5, type="w")
       return(list(apollo_probabilities = apollo_probabilities_ORIG, 
                   apollo_randCoeff     = apollo_randCoeff_ORIG, 
                   apollo_lcPars        = apollo_lcPars_ORIG,

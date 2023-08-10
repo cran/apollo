@@ -37,9 +37,10 @@ apollo_expandLoop <- function(f, apollo_inputs){
     # Case 3: expression
     if( !test1 && !test2 && (is.call(e) || is.expression(e)) ){
       isAssign <- length(e)==3 && is.symbol(e[[1]]) && (as.character(e[[1]]) %in% c('<-', '='))
+      isDollar <- is.call(e) && length(e)==3 && is.symbol(e[[1]]) && as.character(e[[1]])=='$'
       for(i in 1:length(e)) if(!is.null(e[[i]])){
         isFuncArg <- i==2 && is.symbol(e[[i-1]]) && as.character(e[[i-1]])=="function"
-        if(!isFuncArg) e[[i]] <- replaceByDef(e[[i]], defs, rightSide=(rightSide | (isAssign & i==3)))
+        if(!isFuncArg && !(isDollar && i==3)) e[[i]] <- replaceByDef(e[[i]], defs, rightSide=(rightSide | (isAssign & i==3)))
       }
     } 
     # Return
@@ -219,25 +220,6 @@ apollo_expandLoop <- function(f, apollo_inputs){
     }
     if(!isF) return(e) else {body(f) <- e; return(f)}
   }
-  
-  #replaceDollar <- function(e){
-  #  # Chek if input is a function
-  #  if(is.function(e)){ eOrig <- e; e <- body(e)} else eOrig=NULL
-  #  # Case 1: just a value
-  #  if(is.val(e)) return(e)
-  #  # Case 2: L$x or L[['x']] or L[["x"]]
-  #  test2 <- is.call(e) && length(e)==3 && is.symbol(e[[1]]) && as.character(e[[1]])=='$'
-  #  test2 <- test2 && is.val(e[[3]]) && is.symbol(e[[2]])
-  #  if(test2) tmp  <- paste0(as.character(e[[2]]), '$', as.character(e[[3]]))
-  #  test2 <- test2 && (tmp %in% names(defs))
-  #  if(test2 && rightSide) e <- defs[[tmp]]
-  #  # Case 3: an expression
-  #  test2 <- (is.call(e) || is.expression(e)) && !test
-  #  if(test2) for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- evalIndex(e[[i]], env=env)
-  #  return(e)
-  #  # Return
-  #  if(!is.null(eOrig)){ body(eOrig) <- q; return(eOrig)} else return(e)
-  #}
   
   ### Fetch apollo_beta
   apollo_beta <- tryCatch(get('apollo_beta', envir=parent.frame(1), inherits=FALSE),

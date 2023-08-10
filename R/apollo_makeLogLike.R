@@ -21,7 +21,7 @@
 #' @return apollo_logLike function.
 #' @export
 apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, 
-                               apollo_estSet=list(estimationRoutine='BFGS'), cleanMemory=FALSE){
+                               apollo_estSet=list(estimationRoutine='bgw'), cleanMemory=FALSE){
   
   if(!is.null(apollo_inputs$silent)) silent <- apollo_inputs$silent else silent <- FALSE
   if(!is.null(apollo_inputs$apollo_control$debug)) debug <- apollo_inputs$apollo_control$debug else debug <- FALSE
@@ -55,7 +55,9 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
   bFixedVal  <- apollo_beta[apollo_fixed]
   workInLogs <- apollo_inputs$apollo_control$workInLogs
   estAlg     <- apollo_estSet$estimationRoutine
-  analyticGrad <- apollo_inputs$apollo_control$analyticGrad
+  analyticGrad    <- apollo_inputs$apollo_control$analyticGrad
+  apollo_scaling  <- apollo_inputs$apollo_scaling
+  outputDirectory <- apollo_inputs$apollo_control$outputDirectory
   
   ### Iterations count
   if(analyticGrad) nIter <- 1 else nIter <- -1
@@ -84,13 +86,29 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
           # If using analytic gradient, assume a new iteration if the LL improved
           newIter <- is.finite(sumll) && (sumll > preLL)
           if(countIter && newIter) nIter <<- nIter + 1
-          if(writeIter && newIter) apollo_writeTheta(b, sumll, modelName)
+          if(writeIter && newIter){
+            if(!logP){
+              apollo_writeTheta(b, sum(log(ll)), modelName, 
+                                apollo_scaling, outputDirectory, apollo_beta)
+            }else{
+              apollo_writeTheta(b, sum(ll), modelName, 
+                                apollo_scaling, outputDirectory, apollo_beta)  
+            }
+          } 
           if(newIter) preLL <<- sumll
         } else {
           # If using numeric gradient, assume new iteration if the parameters haven't changed since last call
           newIter <- all(bVar==lastB)
           if(countIter && newIter) nIter <<- nIter + 1
-          if(writeIter && newIter) apollo_writeTheta(b, sumll, modelName)
+          if(writeIter && newIter){
+            if(!logP){
+              apollo_writeTheta(b, sum(log(ll)), modelName, 
+                                apollo_scaling, outputDirectory, apollo_beta)
+            }else{
+              apollo_writeTheta(b, sum(ll), modelName, 
+                                apollo_scaling, outputDirectory, apollo_beta)  
+            }
+          }
           lastB <<- bVar
         }
       }
@@ -101,7 +119,7 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
     ### MULTI CORE
     
     # Clean up parent environment and check that cluster exists
-    rm(apollo_inputs, apollo_probabilities, apollo_beta, apollo_fixed, apollo_estSet, panelData)
+    rm(apollo_inputs, apollo_probabilities, apollo_fixed, apollo_estSet, panelData)
     if(length(cl)==1 && is.na(cl)) stop("INTERNAL ISSUE - Cluster is missing on 'apollo_makeLogLike' despite nCores>1.")
 
     # Function to be run on each thread
@@ -129,13 +147,29 @@ apollo_makeLogLike <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
           # If using analytic gradient, assume a new iteration if the LL improved
           newIter <- is.finite(sumll) && (sumll > preLL)
           if(countIter && newIter) nIter <<- nIter + 1
-          if(writeIter && newIter) apollo_writeTheta(b, sumll, modelName)
+          if(writeIter && newIter){
+            if(!logP){
+              apollo_writeTheta(b, sum(log(ll)), modelName, 
+                                apollo_scaling, outputDirectory, apollo_beta)
+            }else{
+              apollo_writeTheta(b, sum(ll), modelName, 
+                                apollo_scaling, outputDirectory, apollo_beta)  
+            }
+          }
           if(newIter) preLL <<- sumll
         } else {
           # If using numeric gradient, assume new iteration if the parameters haven't changed since last call
           newIter <- all(bVar==lastB)
           if(countIter && newIter) nIter <<- nIter + 1
-          if(writeIter && newIter) apollo_writeTheta(b, sumll, modelName)
+          if(writeIter && newIter){
+            if(!logP){
+              apollo_writeTheta(b, sum(log(ll)), modelName, 
+                                apollo_scaling, outputDirectory, apollo_beta)
+            }else{
+              apollo_writeTheta(b, sum(ll), modelName, 
+                                apollo_scaling, outputDirectory, apollo_beta)  
+            }
+          }
           lastB <<- bVar
         }
       }

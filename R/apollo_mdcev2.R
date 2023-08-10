@@ -8,9 +8,10 @@
 #'                         \item \strong{\code{alternatives}}: Character vector. Names of alternatives, elements must match the names in list 'utilities'.
 #'                         \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
 #'                         \item \strong{\code{budget}}: Numeric vector. Budget for each observation.
-#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
+#'                         \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                         \item \strong{\code{continuousChoice}}: Named list of numeric vectors. Amount of consumption of each alternative. One element per alternative, as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
 #'                         \item \strong{\code{cost}}: Named list of numeric vectors. Price of each alternative. One element per alternative, each one as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
+#'                         \item \strong{\code{fastPred}}: Boolean scalar. TRUE to mix parameter draws with repetition draws. This is formally incorrect, but a good a approximation to the true prediction, and much faster. FALSE by default.
 #'                         \item \strong{\code{gamma}}: Named list. Gamma parameters for each alternative, excluding any outside good. As many elements as inside good alternatives.
 #'                         \item \strong{\code{nRep}}: Numeric scalar. Number of simulations of the whole dataset used for forecasting. The forecast is the average of these simulations. Default is 100.
 #'                         \item \strong{\code{outside}}: Character. Optional name of the outside good.
@@ -70,6 +71,9 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
                                              "). Names must be different for each component.")
     assign("apollo_modelList", apollo_modelList, envir=parent.frame())
   }
+  
+  #### replace utilities by V if used
+  if(!is.null(mdcev_settings[["utilities"]])) names(mdcev_settings)[which(names(mdcev_settings)=="utilities")]="V"
   
   # ############################### #
   #### Load or do pre-processing ####
@@ -199,6 +203,45 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
       return(P)
     }
     
+    mdcev_settings$mdcev_diagnostics <- function(inputs, apollo_inputs, data=TRUE, param=TRUE){
+      
+      
+      # Table describing dependent variable
+      choicematrix <- matrix(0, nrow=4, ncol=inputs$nAlt, 
+                             dimnames=list(c("Times available","Observations in which chosen",
+                                             "Average consumption when available",
+                                             "Average consumption when chosen"),
+                                           inputs$altnames))
+      for(a in 1:inputs$nAlt){
+        choicematrix[1,a] <- ifelse(length(inputs$avail[[a]])==1 && inputs$avail[[a]]==1, 
+                                    inputs$nObs, sum(inputs$avail[[a]]) )
+        choicematrix[2,a] <- sum(inputs$discrete_choice[[a]])
+        choicematrix[3,a] <- ifelse(choicematrix[1,a]>0, sum(inputs$continuousChoice[[a]])/choicematrix[1,a], 0)
+        choicematrix[4,a] <- ifelse(choicematrix[2,a]>0, sum(inputs$continuousChoice[[a]])/choicematrix[2,a], 0)
+      }
+      # Print table
+      if(!apollo_inputs$silent & data){
+        apollo_print("\n")
+        apollo_print(paste0('Overview of choices for ', toupper(inputs$modeltype), ' model component ', 
+                            ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
+        print(round(choicematrix,2))
+        
+        # Print warnings
+        for(a in 1:inputs$nAlt){
+          if(choicematrix[2,a]==0) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'), type="w")
+          if(choicematrix[2,a]==choicematrix[1,a] && inputs$altnames[a]!=inputs$outside) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'), type="w")
+        }
+        #if(inputs$avail_set==TRUE & !apollo_inputs$silent) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'), type="i")
+      }
+      
+      #### return ####
+      return(invisible(TRUE))
+    }
+    
+    
+    # Store model type
+    mdcev_settings$modelType <- modelType
+    
     # Construct necessary input for gradient (including gradient of utilities)
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
                             error=function(e) return(NULL))
@@ -268,6 +311,7 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
     mdcev_settings$alpha <- lapply(mdcev_settings$alpha, apollo_keepRows, r=mdcev_settings$rows)
     mdcev_settings$gamma <- lapply(mdcev_settings$gamma, apollo_keepRows, r=mdcev_settings$rows)
     mdcev_settings$sigma <- apollo_keepRows(mdcev_settings$sigma, r=mdcev_settings$rows)
+    mdcev_settings$nObs  <- sum(mdcev_settings$rows)
   }
   
   # ############################## #
@@ -279,7 +323,7 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
     if(test) apollo_validate(mdcev_settings, modelType, functionality, apollo_inputs)
     
     test <- !apollo_inputs$apollo_control$noDiagnostics
-    if(test) apollo_diagnostics(mdcev_settings, modelType, apollo_inputs)
+    if(test) mdcev_settings$mdcev_diagnostics(mdcev_settings, apollo_inputs)
     
     testL = mdcev_settings$probs_MDCEV(mdcev_settings)
     if(any(!mdcev_settings$rows)) testL <- apollo_insertRows(testL, mdcev_settings$rows, 1)
@@ -298,9 +342,9 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
     return(P)
   }
   
-  # ################################################## #
-  #### functionality="estimate/conditionals/output" ####
-  # ################################################## #
+  # ############################################################# #
+  #### functionality="estimate/conditionals/output/components" ####
+  # ############################################################# #
   
   if(functionality %in% c("estimate","conditionals", "output", "components")){
     L <- mdcev_settings$probs_MDCEV(mdcev_settings)
@@ -313,7 +357,6 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
   # #################################### #
   
   if(functionality %in% c("prediction","raw")){
-    cat("\n Running new version of code!\n")
     # Change name to mdcev_settings to "s"
     s <- mdcev_settings
     rm(mdcev_settings)
@@ -324,7 +367,6 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
     # Generate draws for Gumbel error components
     if(!is.null(apollo_inputs$apollo_control$seed)) seed <- apollo_inputs$apollo_control$seed + 5 else seed <- 13 + 5
     set.seed(seed)
-    if (apollo_inputs$apollo_draws$interNDraws!=s$nRep) stop("SYNTAX ISSUE - Need same number of inter-draws as nRep!")### SH
     tmp1 <- -log(-log(apollo_mlhs(s$nRep, s$nAlt, s$nObs)))
     epsL <- vector(mode="list", length=s$nRep)
     tmp2 <- (0:(s$nObs-1))*s$nRep
@@ -366,7 +408,7 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
     step1 <- ceiling(s$nRep/10)
     step2 <- ceiling(s$nRep/2)
     
-    # Expand avail and cost
+    # Expand avail, cost and budget
     avail <- sapply(s$avail, function(a) if(length(a)==1) rep(a, s$nObs) else a)
     cost  <- sapply(s$cost , function(x) if(length(x)==1) rep(x, s$nObs) else x)
     if(length(s$budget)==1) budget <- rep(s$budget, s$nObs) else budget <- s$budget
@@ -374,7 +416,7 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
     ### Simulate prediction
     if(!is.null(apollo_inputs$silent)) silent <- apollo_inputs$silent else silent <- FALSE
     if(!silent) cat("0%")
-    s$nRep=1 ### SH
+    if(s$fastPred) s$nRep <- 1
     if(s$hasOutside){
       for(r in 1:s$nRep){
         X    <- 0*X
@@ -382,8 +424,8 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
           Xintra <- 0*X
           for(iIntra in 1:nIntra){
             # Extract appropiate values
-            ### phiP <- extractDraw(s$sigma, iInter, iIntra)*epsL[[r]] ### SH
-            phiP <- extractDraw(s$sigma, iInter, iIntra)*epsL[[iInter]]
+            phiP <- extractDraw(s$sigma, iInter, iIntra)
+            if(s$fastPred) phiP <- phiP*epsL[[iInter]] else phiP <- phiP*epsL[[r]]
             phiP <- exp(extractDraw(s$V, iInter, iIntra) + phiP)*avail/cost
             gamma<- extractDraw(s$gamma, iInter, iIntra)
             alpha<- extractDraw(s$alpha, iInter, iIntra)
@@ -440,8 +482,8 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
           Xintra <- 0*X
           for(iIntra in 1:nIntra){
             # Extract appropiate values
-            ### phiP <- extractDraw(s$sigma, iInter, iIntra)*epsL[[r]] ### SH
-            phiP <- extractDraw(s$sigma, iInter, iIntra)*epsL[[iInter]]
+            phiP <- extractDraw(s$sigma, iInter, iIntra)
+            if(s$fastPred) phiP <- phiP*epsL[[iInter]] else phiP <- phiP*epsL[[r]]
             phiP <- exp(extractDraw(s$V, iInter, iIntra) + phiP)*avail/cost
             gamma<- extractDraw(s$gamma, iInter, iIntra)
             alpha<- extractDraw(s$alpha, iInter, iIntra)
@@ -513,8 +555,8 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
   if(functionality=='report'){
     P <- list()
     apollo_inputs$silent <- FALSE
-    P$data  <- capture.output(apollo_diagnostics(mdcev_settings, modelType, apollo_inputs, param=FALSE))
-    P$param <- capture.output(apollo_diagnostics(mdcev_settings, modelType, apollo_inputs, data =FALSE))
+    P$data  <- capture.output(mdcev_settings$mdcev_diagnostics(mdcev_settings, apollo_inputs, param=FALSE))
+    P$param <- capture.output(mdcev_settings$mdcev_diagnostics(mdcev_settings, apollo_inputs, data =FALSE))
     return(P)
   }
   

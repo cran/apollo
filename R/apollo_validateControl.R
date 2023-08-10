@@ -66,15 +66,17 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   }
   
   if(apollo_control$HB & (!is.null(apollo_control$mixing) && apollo_control$mixing!=FALSE)){
-    apollo_control$mixing <- FALSE
-    if(!silent) apollo_print("HB set to TRUE in apollo_control, so mixing set to FALSE")
+    #apollo_control$mixing <- FALSE
+    #if(!silent) apollo_print("HB set to TRUE in apollo_control, so mixing set to FALSE")
+    stop("INCORRECT FUNCTION/SETTING USE: The setting 'apollo_control$mixing' cannot be set to TRUE when 'apollo_control$HB==TRUE'")
   }
   
   if(apollo_control$HB) apollo_control$mixing <- FALSE
   
   if(apollo_control$HB==TRUE & apollo_control$nCores > 1){
-    apollo_control$nCores <- 1
-    if(!silent) apollo_print("nCores set to 1 in apollo_control for Bayesian estimation")
+    #apollo_control$nCores <- 1
+    #if(!silent) apollo_print("nCores set to 1 in apollo_control for Bayesian estimation")
+    stop("INCORRECT FUNCTION/SETTING USE: Only single core estimation is possible with HB. The setting 'apollo_control$nCores' cannot be larger than 1 when 'apollo_control$HB==TRUE'")
   }
   
   if(is.null(apollo_control$noValidation)){
@@ -138,23 +140,31 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   }
   
   if(is.null(apollo_control$analyticGrad)){
-    apollo_control$analyticGrad <- TRUE
-    if(debug) apollo_print("Missing setting for analyticGrad in apollo_control, set to default of TRUE")
-    apollo_control$analyticGrad_manualSet <- FALSE
+    if(!apollo_control$HB){
+      apollo_control$analyticGrad <- TRUE
+      if(debug) apollo_print("Missing setting for analyticGrad in apollo_control, set to default of TRUE")
+      apollo_control$analyticGrad_manualSet <- FALSE
+    }else{
+      apollo_control$analyticGrad <- FALSE
+      if(debug) apollo_print("Missing setting for analyticGrad in apollo_control, set to FALSE as using HB")
+      apollo_control$analyticGrad_manualSet <- FALSE
+    }
   } else {
     test <- is.logical(apollo_control$analyticGrad) && length(apollo_control$analyticGrad)==1
     if(!test) stop("SYNTAX ISSUE - Setting analyticGrad in apollo_control should be a single logical value")
     apollo_control$analyticGrad_manualSet <- TRUE
   }
   
-  if(apollo_control$HB){
-    apollo_control$analyticGrad <- FALSE
-    if(debug) apollo_print("Analytic gradients cannot be used with setting HB")
+  if(apollo_control$HB && apollo_control$analyticGrad){
+    #apollo_control$analyticGrad <- FALSE
+    #if(debug) apollo_print("Analytic gradients cannot be used with setting HB")
+    stop("INCORRECT FUNCTION/SETTING USE: The setting 'apollo_control$analyticGrad' cannot be set to TRUE when 'apollo_control$HB==TRUE'")
   } 
   
-  if(apollo_control$workInLogs){
+  if(apollo_control$workInLogs && apollo_control$analyticGrad){
     apollo_control$analyticGrad <- FALSE
-    if(debug) apollo_print("Analytic gradients cannot be used with setting workInLogs")
+    if(apollo_control$analyticGrad_manualSet) stop("INCORRECT FUNCTION/SETTING USE: The setting 'apollo_control$analyticGrad' cannot be set to TRUE when 'apollo_control$workInLogs==TRUE'")
+    if(!silent) apollo_print("Analytic gradients cannot be used with setting workInLogs")
   } 
   
   if(is.null(apollo_control$matrixMult)){

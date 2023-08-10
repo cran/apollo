@@ -68,7 +68,7 @@
 #' @importFrom stats cov
 apollo_bootstrap <- function(apollo_beta, apollo_fixed,
                              apollo_probabilities, apollo_inputs,
-                             estimate_settings=list(estimationRoutine="bfgs",
+                             estimate_settings=list(estimationRoutine="bgw",
                                                     maxIterations=200,
                                                     writeIter=FALSE,
                                                     hessianRoutine="none",
@@ -86,7 +86,7 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
     if(!is.null(estimate_settings$maxLik_settings$printLevel)) estimate_settings$printLevel <- estimate_settings$maxLik_settings$printLevel
     if(!is.null(estimate_settings$maxLik_settings$iterlim)) estimate_settings$maxIterations <- estimate_settings$maxLik_settings$iterlim
   }
-  default <- list(estimationRoutine="bfgs", maxIterations=200, writeIter=FALSE, 
+  default <- list(estimationRoutine="bgw", maxIterations=200, writeIter=FALSE, 
                   hessianRoutine="none", printLevel=2L, silent=FALSE, maxLik_settings=list())
   tmp <- names(default)[!(names(default) %in% names(estimate_settings))] # options missing in estimate_settings
   for(i in tmp) estimate_settings[[i]] <- default[[i]]

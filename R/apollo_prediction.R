@@ -52,7 +52,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   
   # Validate input
   if(!is.null(model$apollo_control$HB) && model$apollo_control$HB && runs>1) stop("INCORRECT FUNCTION/SETTING USE - The calculation of confidence intervals for \'apollo_prediction\' is not applicables for models estimated using HB!") 
-  if(!is.null(model$apollo_control$mixing) && model$apollo_control$mixing) apollo_print("Your model contains continuous random parameters. apollo_prediction will perform averaging across draws for these. For predictions at the level of individual draws, please call the apollo_probabilities function using model$estimate as the parameters, and with functionality=\"raw\".", type="i")
+  if(!is.null(model$apollo_control$mixing) && model$apollo_control$mixing && !silent) apollo_print("Your model contains continuous random parameters. apollo_prediction will perform averaging across draws for these. For predictions at the level of individual draws, please call the apollo_probabilities function using model$estimate as the parameters, and with functionality=\"raw\".", type="i")
   HB = !is.null(model$apollo_control$HB) && model$apollo_control$HB
   if(!HB && (!is.numeric(model$estimate) | !is.vector(model$estimate) | is.null(names(model$estimate))))  stop("SYNTAX ISSUE - The \'model$estimates\' object should be a named vector for models not estimated using HB!")   
   if(HB){
@@ -94,7 +94,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   for(m in 1:length(predictions)){
     M <- predictions[[m]]
     if(length(M)==1 && is.na(M)){
-      apollo_print(paste0("Predictions do not exist for model component ", names(predictions)[m]))
+      if(!silent) apollo_print(paste0("Predictions do not exist for model component ", names(predictions)[m]))
       noPred <- c(noPred, m)
     } 
     if(is.list(M)){
@@ -108,13 +108,18 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   }; rm(M)
   if(length(noPred)>0) predictions <- predictions[-noPred]
   if(length(predictions)==0){
-    apollo_print('Sorry, no predictions to return.')
+    if(!silent) apollo_print('Sorry, no predictions to return.')
     return(NULL)
   }
   
   ### change 8 August
   if(!is.null(apollo_inputs$apollo_control$weights)){
-  apollo_print(c("\n","Weights have been defined in apollo_control, and these will be applied to predictions too. If you want unweighted predictions despite your model using weights in estimation, you can replace the vector of weights by a vector of 1s"), , type="i")
+    txt <- paste("Weights have been defined in apollo_control,", 
+                 "and these will be applied to predictions too.",
+                 "If you want unweighted predictions despite your",
+                 "model using weights in estimation, you can replace",
+                 "the vector of weights by a vector of 1s")
+    if(!silent) apollo_print(txt, type="i")
   }
   ### end change
   
@@ -142,8 +147,8 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         M <- M[,-(1:2),drop=FALSE] # remove ID and Observation
         # Print it a format appropriate to the model type
         if(modelComponentType %in% c('mdcev','mdcnev')){ # MDCEV
-          if(!singleElement) apollo_print(paste0("Aggregated predictions (continuous consumption, discrete choices, and expenditure) at model estimates for model component: ", names(predictions)[m]))
-          if(singleElement) apollo_print("Aggregated predictions (continuous consumption, discrete choices, and expenditure) at model estimates")
+          if(!singleElement & !silent) apollo_print(paste0("Aggregated predictions (continuous consumption, discrete choices, and expenditure) at model estimates for model component: ", names(predictions)[m]))
+          if( singleElement & !silent) apollo_print("Aggregated predictions (continuous consumption, discrete choices, and expenditure) at model estimates")
           K  <- as.integer(ncol(M)/6)
           Kn <- colnames(M)[1:K]
           Kn <- substr(Kn, 1, nchar(Kn)-10)
@@ -172,8 +177,8 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
           rm(W)
         }
         if(modelComponentType=='normd'){ # Normal density
-          if(!singleElement) apollo_print(paste0("Summary of predicted demand at model estimates for model component: ", names(predictions)[m]))
-          if(singleElement) apollo_print("Summary of predicted demand at model estimates")
+          if(!singleElement & !silent) apollo_print(paste0("Summary of predicted demand at model estimates for model component: ", names(predictions)[m]))
+          if( singleElement & !silent) apollo_print("Summary of predicted demand at model estimates")
           M    <- unlist(M)
           tmp  <- c('min', '1stQ', 'median', 'mean', '3rdQ', 'max', 'aggregate')
           tmp2 <- quantile(M, probs=c(0, .25, .5, .5, .75, 1, 1), na.rm=TRUE)
@@ -188,8 +193,8 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
           if(!is.numeric(w)) M <- matrix(tmp2, nrow=1, ncol=length(tmp), dimnames=list(names(predictions)[m], tmp))
         }
         if(!(modelComponentType %in% c('mdcev', 'mdcnev', 'normd'))){ # Discrete choice
-          if(!singleElement) apollo_print(paste0("Prediction at model estimates for model component: ", names(predictions)[m]))
-          if(singleElement) apollo_print("Prediction at model estimates")
+          if(!singleElement & !silent) apollo_print(paste0("Prediction at model estimates for model component: ", names(predictions)[m]))
+          if( singleElement & !silent) apollo_print("Prediction at model estimates")
           if(tolower(colnames(M)[ncol(M)])=='chosen') M <- M[,-ncol(M)]
           if(is.numeric(w)) M <- rbind(`Un-weighted aggregate`=  colSums(M/w, na.rm=TRUE), 
                                        `Un-weighted average`  = colMeans(M/w, na.rm=TRUE), 
@@ -199,7 +204,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         ##print(M, digits=4)
         print(round(M,2))
         
-        apollo_print("\n")
+        if(!silent) apollo_print("\n")
       }
       txt <- "The output from apollo_prediction is a "
       if(length(predictions)==1) txt <- paste0(txt, "matrix containing the predictions at the estimated values.") else {
@@ -207,7 +212,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
                       'model component, the list element is given by a matrix ',
                       'containing the predictions at the estimated values.')
       }
-      apollo_print(txt)
+      if(!silent) apollo_print(txt)
     }
     if(is.list(predictions) && length(predictions)==1) predictions=predictions[[1]]
     return(predictions)
@@ -256,8 +261,8 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
       } else modelComponentType <- 'default'
       # Print summary of prediction in appropriate format to each model type
       if(modelComponentType %in% c('mdcev','mdcnev')){
-        if(!singleElement) apollo_print(paste0("Aggregated predictions (continuous consumption, discrete choices, and expenditure) for model component: ", names(predictions)[m]))
-        if(singleElement) apollo_print(paste0("Aggregated predictions (continuous consumption, discrete choices, and expenditure)"))
+        if(!singleElement & !silent) apollo_print(paste0("Aggregated predictions (continuous consumption, discrete choices, and expenditure) for model component: ", names(predictions)[m]))
+        if( singleElement & !silent) apollo_print(paste0("Aggregated predictions (continuous consumption, discrete choices, and expenditure)"))
         M <- ans[[m]]$at_estimates[,-(1:2)]
         K <- as.integer(ncol(M)/6)
         Kn <- colnames(M)[1:K]
@@ -274,8 +279,8 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         print(M, digits=4)
       }
       if(modelComponentType=='normd'){
-        if(!singleElement) apollo_print(paste0("Summary of aggregated predicted demand for model component: ", names(predictions)[m]))
-        if(singleElement) apollo_print(paste0("Summary of aggregated predicted demand"))
+        if(!singleElement & !silent) apollo_print(paste0("Summary of aggregated predicted demand for model component: ", names(predictions)[m]))
+        if( singleElement & !silent) apollo_print(paste0("Summary of aggregated predicted demand"))
         # mean, median, aggregate \ at estimates, std.dev., quantile 0.025, quantile 0.975
         M <- matrix(NA, nrow=3, ncol=4, dimnames=list(c('Mean', 'Median', 'Aggregate'), 
                                                       c("At estimates", "Std.dev.", "Quantile 0.025", "Quantile 0.975")))
@@ -294,8 +299,8 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         print(M, digits=4)
       }
       if(!(modelComponentType %in% c('mdcev', 'mdcnev', 'normd'))){
-        if(!singleElement) apollo_print(paste0("Aggregated prediction for model component: ", names(predictions)[m]))
-        if(singleElement) apollo_print(paste0("Aggregated prediction"))
+        if(!singleElement & !silent) apollo_print(paste0("Aggregated prediction for model component: ", names(predictions)[m]))
+        if( singleElement & !silent) apollo_print(paste0("Aggregated prediction"))
         est <- colSums(ans[[m]]$at_estimates[,-(1:2)], na.rm=TRUE)
         agg <- apply(ans[[m]]$draws, MARGIN=c(2,3), sum, na.rm=TRUE)
         std <- apply(agg, MARGIN=1, sd, na.rm=TRUE)
@@ -308,8 +313,8 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         print(tmp, digits=4)
         
         cat('\n')
-        if(!singleElement) apollo_print(paste0("Average prediction for model component: ", names(predictions)[m]))
-        if(singleElement) apollo_print(paste0("Average prediction"))
+        if(!singleElement & !silent) apollo_print(paste0("Average prediction for model component: ", names(predictions)[m]))
+        if( singleElement & !silent) apollo_print(paste0("Average prediction"))
         est <- colMeans(ans[[m]]$at_estimates[,-(1:2)], na.rm=TRUE)
         avg <- apply(ans[[m]]$draws, MARGIN=c(2,3), mean, na.rm=TRUE)
         std <- apply(avg, MARGIN=1, sd, na.rm=TRUE)
@@ -321,7 +326,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         if(tolower(rownames(tmp)[nrow(tmp)])=='chosen') tmp <- tmp[-nrow(tmp),]
         print(tmp, digits=4)
       }
-      apollo_print("\n")
+      if(!silent) apollo_print("\n")
     }
     
     # Final message explaining format of output
@@ -337,7 +342,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
                     'a data.frame containing the predictions at the estimated values, and an array ', 
                     'with predictions for different values of the parameters drawn from their ',
                     'asymptotic distribution.')    }
-    apollo_print(txt)
+    if(!silent) apollo_print(txt)
   }
   if(length(ans)==1) ans=ans[[1]]
   return(ans)

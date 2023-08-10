@@ -65,8 +65,13 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   } else {
     if(functionality=="preprocess"){
       # Do preprocessing
+      countOutcomes <- function(L){ # Count number of outcomes inside EACH class
+        if(!is.list(L)) return(0)
+        if("rows" %in% names(L)) return(sum(L$rows))
+        for(i in names(L)) return( sum(sapply(L, countOutcomes)) )
+      }
       lc_settings <- list(componentName = lc_settings$componentName,
-                          LCNObs        = max(sapply(lc_settings$inClassProb, function(m_settings) sum(m_settings$rows))), 
+                          LCNObs        = max(sapply(lc_settings$inClassProb, countOutcomes)), 
                           LCCompNames   = names(lc_settings$inClassProb),
                           modelType     = 'LC',
                           gradient      = TRUE,
@@ -218,8 +223,8 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
     
     # Calculate inClassProb*classProb
     nIndiv <- length(unique(get(apollo_control$indivID)))                                      ## FIX DP 18/05/2020
-    f <- function(x) (is.vector(x) && length(x)==nIndiv) || (is.array(x) && dim(x)[1]==nIndiv) ## FIX DP 13/08/2021
-    panelProdApplied <- sapply(inClassProb, f)                                                 ## FIX DP 13/08/2021
+    checkForPanel <- function(x) (is.vector(x) && length(x)==nIndiv) || (is.array(x) && dim(x)[1]==nIndiv) ## FIX DP 13/08/2021
+    panelProdApplied <- sapply(inClassProb, checkForPanel)                                                 ## FIX DP 13/08/2021
     if(apollo_control$workInLogs && all(panelProdApplied)){                                    ## FIX DP 18/05/2020
       # Assuming panelProd was applied inside each class, inClassProb is log(P[ns])            ## FIX DP 18/05/2020
       Bbar <- Reduce("+", inClassProb)/length(inClassProb)

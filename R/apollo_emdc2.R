@@ -97,7 +97,6 @@ apollo_emdc2 <- function(emdc_settings, functionality="estimate"){
   }
   
   # Re-order arguments
-  B     <- B # this prevents a NOTE when checking the package.
   V0    <- V0# this prevents a NOTE when checking the package.
   nRep  <- nRep  # this prevents a NOTE when checking the package.
   nIter <- nIter # this prevents a NOTE when checking the package.

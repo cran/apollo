@@ -28,18 +28,19 @@
 #'                                  \item \strong{\code{bootstrapSE}}: Numeric. Number of bootstrap samples to calculate standard errors. Default is 0, meaning no bootstrap s.e. will be calculated. Number must zero or a positive integer. Only used if \code{apollo_control$estMethod!="HB"}.
 #'                                  \item \strong{\code{bootstrapSeed}}: Numeric scalar (integer). Random number generator seed to generate the bootstrap samples. Only used if \code{bootstrapSE>0}. Default is 24.
 #'                                  \item \strong{\code{constraints}}: Character vector. Linear constraints on parameters to estimate. For example \code{c('b1>0', 'b1 + 2*b2>1')}. Only \code{>}, \code{<} and \code{=} can be used. Inequalities cannot be mixed with equality constraints, e.g. \code{c(b1-b2=0, b2>0)} will fail. All parameter names must be on the left side. Fixed parameters cannot go into constraints. Alternatively, constraints can be defined as in \link[maxLik]{maxLik}. Constraints can only be used with maximum likelihood estimation and the BFGS routine in particular.
-#'                                  \item \strong{\code{estimationRoutine}}: Character. Estimation method. Can take values "bfgs", "bgw", "bhhh", or "nr". Used only if \code{apollo_control$HB} is FALSE. Default is "bfgs".
+#'                                  \item \strong{\code{estimationRoutine}}: Character. Estimation method. Can take values "bfgs", "bgw", "bhhh", or "nr". Used only if \code{apollo_control$HB} is FALSE. Default is "bgw".
 #'                                  \item \strong{\code{hessianRoutine}}: Character. Name of routine used to calculate the Hessian of the log-likelihood function after estimation. Valid values are \code{"analytic"} (default), \code{"numDeriv"} (to use the numeric routine in package numDeric), \code{"maxLik"} (to use the numeric routine in packahe maxLik), and \code{"none"} to avoid calculating the Hessian and the covariance matrix. Only used if \code{apollo_control$HB=FALSE}.
 #'                                  \item \strong{\code{maxIterations}}: Numeric. Maximum number of iterations of the estimation routine before stopping. Used only if \code{apollo_control$HB} is FALSE. Default is 200.
 #'                                  \item \strong{\code{maxLik_settings}}: List. Additional settings for maxLik. See argument \code{control} in \link[maxLik]{maxBFGS}, \link[maxLik]{maxBHHH} and \link[maxLik]{maxNM} for more details. Only used for maximum likelihood estimation.
-#'                                  \item \strong{\code{numDeriv_settings}}: List. Additional arguments to the Richardson method used by numDeriv to calculate the Hessian. See argument \code{method.args} in \link[numDeriv]{grad} for more details.
+#'                                  \item \strong{\code{numDeriv_method}}: Character. Method used for numerical differentiation when calculating the covariance matrix. Can be \code{"Richardson"} or \code{"simple"}, Only used if analytic gradients are available. See argument \code{method} in \link[numDeriv]{grad} for more details.
+#'                                  \item \strong{\code{numDeriv_settings}}: List. Additional arguments to the method used by numDeriv to calculate the Hessian. See argument \code{method.args} in \link[numDeriv]{grad} for more details.
 #'                                  \item \strong{\code{printLevel}}: Higher values render more verbous outputs. Can take values 0, 1, 2 or 3. Ignored if apollo_control$HB is TRUE. Default is 3.
 #'                                  \item \strong{\code{scaleAfterConvergence}}: Logical. Used to increase numerical precision of convergence. If TRUE, parameters are scaled to 1 after convergence, and the estimation is repeated from this new starting values. Results are reported scaled back, so it is a transparent process for the user. Default is TRUE.
 #'                                  \item \strong{\code{scaleHessian}}: Logical. If TRUE, parameters are scaled to 1 for Hessian estimation. Default is TRUE.
 #'                                  \item \strong{\code{scaling}}: Named vector. Names of elements should match those in \code{apollo_beta}. Optional scaling for parameters. If provided, for each parameter \code{i}, \code{(apollo_beta[i]/scaling[i])} is optimised, but \code{scaling[i]*(apollo_beta[i]/scaling[i])} is used during estimation. For example, if parameter b3=10, while b1 and b2 are close to 1, then setting \code{scaling = c(b3=10)} can help estimation, specially the calculation of the Hessian. Reports will still be based on the non-scaled parameters.
 #'                                  \item \strong{\code{silent}}: Logical. If TRUE, no information is printed to the console during estimation. Default is FALSE.
 #'                                  \item \strong{\code{validateGrad}}: Logical. If TRUE, the analytical gradient (if used) is compared to the numerical one. Default is TRUE.
-#'                                  \item \strong{\code{writeIter}}: Logical. Writes value of the parameters in each iteration to a csv file. Works only if \code{estimation_routine="bfgs"}. Default is TRUE.
+#'                                  \item \strong{\code{writeIter}}: Logical. Writes value of the parameters in each iteration to a csv file. Works only if \code{estimation_routine=="bfgs"|"bgw"}. Default is TRUE.
 #'                                 }
 #' @return model object
 #' @export
@@ -64,9 +65,10 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   apollo_detach()
   
   ### Set missing settings to default values
-  default <- list(estimationRoutine="bfgs", maxIterations=200, writeIter=TRUE, 
+  default <- list(estimationRoutine="bgw", maxIterations=200, writeIter=TRUE, 
                   hessianRoutine="analytic", printLevel=3L, constraints=NULL, 
-                  maxLik_settings=NULL, numDeriv_settings=list(), scaling=NA, 
+                  maxLik_settings=NULL, numDeriv_method="Richardson", 
+                  numDeriv_settings=list(), scaling=NA, 
                   bootstrapSE=0, bootstrapSeed=24, silent=FALSE, 
                   scaleHessian=TRUE, scaleAfterConvergence=TRUE,
                   validateGrad=TRUE,
@@ -91,18 +93,36 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                   maxFunctionEvals = 3*estimate_settings$maxIterations,
                   silent           = estimate_settings$silent,
                   outputDirectory  = apollo_inputs$apollo_control$outputDirectory,
+                  modelName        = apollo_inputs$apollo_control$modelName,
                   printLevel       = estimate_settings$printLevel, 
                   printNonDefaultSettings = FALSE, 
                   printStartingValues     = FALSE,
-                  printFinalResults       = FALSE)
+                  printFinalResults       = FALSE,
+                  writeIter               = estimate_settings$writeIter,
+                  writeIterMode           = "overWrite",
+                  userScaleVector         = NULL)
+  
   if(length(estimate_settings$bgw_settings)==1 && is.na(estimate_settings$bgw_settings)) estimate_settings$bgw_settings <- default
   tmp <- names(default)[!(names(default) %in% names(estimate_settings$bgw_settings))] # options missing in estimate_settings
   for(i in tmp) estimate_settings$bgw_settings[[i]] <- default[[i]]
   rm(default, tmp)
+  #estimate_settings$bgw_settings$writeIter = FALSE ### FORCING BGW TO NOT WRITE ITERATIONS, EVEN IF REQUESTED
   
   if(exists("i")) rm(i)
   apollo_inputs$apollo_scaling <- estimate_settings$scaling
   apollo_inputs$scaling <- NULL
+  
+  ## change estimationRoutine to its lower case equivalent also inside estimate_settings which is used in some places
+  estimate_settings$estimationRoutine = tolower( estimate_settings[["estimationRoutine"]] )
+  
+  ### if using BGW, put scaling into BGW, and avoid Apollo scaling, remembering that BGW uses inverse Apollo scaling!
+  if(estimate_settings$estimationRoutine=="bgw" && !all(is.na(apollo_inputs$apollo_scaling))){
+    if(!is.null(estimate_settings$bgw_settings$scalingMethod) && estimate_settings$bgw_settings$scalingMethod!="userScaling") stop("SYNTAX ISSUE - bgw_settings$scalingMethod needs to be set to 'userScaling' when providing a scaling vector!")
+    estimate_settings$bgw_settings$scalingMethod = "userScaling"
+    estimate_settings$bgw_settings$userScaleVector = 1/apollo_inputs$apollo_scaling
+    apollo_inputs$apollo_scaling=setNames(rep(1, length(apollo_beta)-length(apollo_fixed)), 
+                                          names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)])
+  }
   
   ### Warn the user in case elements in apollo_inputs are different from those in the global environment
   apollo_compareInputs(apollo_inputs)
@@ -157,6 +177,10 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   if(length(unique(names(apollo_beta)))<length(apollo_beta)) stop("INPUT ISSUE - The \"apollo_beta\" argument contains duplicate elements")
   if(length(unique(apollo_fixed))<length(apollo_fixed)) stop("INPUT ISSUE - The \"apollo_fixed\" argument contains duplicate elements")
   if(!all(apollo_fixed %in% names(apollo_beta))) stop("INPUT ISSUE - Some parameters included in 'apollo_fixed' are not included in 'apollo_beta'.")
+  
+  # Check numDeriv_settings
+  test <- estimate_settings[["numDeriv_method"]] %in% c("Richardson", "simple")
+  if(!test) stop("SYNTAX ISSUE - Setting 'numDeriv_method' must be one of 'Richardson' or 'simple'.")
   
   # Check bootstrap settings
   if(!is.numeric(bootstrapSE) || length(bootstrapSE)!=1 || bootstrapSE<0) stop("SYNTAX ISSUE - 'bootstrapSE' is not zero or a positive integer.")
@@ -244,7 +268,8 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   }
   
   ### Check if any of the fixed parameters are not zero
-  if(length(apollo_fixed)>0){
+  if(!apollo_control$noValidation){
+    if(length(apollo_fixed)>0){
     fixed_params=apollo_beta[apollo_fixed]
     if(any(!(fixed_params%in%c(0,1)))){
       tmp=names(fixed_params[!(fixed_params%in%c(0,1))])
@@ -253,6 +278,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                     ' in \'apollo_fixed\' ', ifelse(one,'is ', 'are '),' constrained to ', ifelse(one,'a value ', 'values '),' other than zero or one. This may be intentional. ',
                     'If not, stop this function by pressing the "Escape" key and adjust the starting values accordingly.')
       apollo_print(txt, pause=5, type="w")
+    }
     }
   }
 
@@ -279,6 +305,12 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                                 apollo_inputs, validate=TRUE, 
                                 noModification=apollo_control$noModification)
   
+  ### check if scaling was inserted
+  tmp <- as.character(body(L$apollo_probabilities))
+  tmp <- grep("apollo_inputs$apollo_scaling", tmp, fixed=TRUE)
+  scaling_failure=FALSE
+  if(length(tmp)==0) scaling_failure=TRUE
+
   ### Update functions if modification was successful, or fall back if not
   #if(L$success){
     apollo_probabilities           <- L$apollo_probabilities
@@ -286,6 +318,12 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     apollo_inputs$apollo_lcPars    <- L$apollo_lcPars
     apollo_inputs$apollo_scaling   <- L$apollo_scaling
     apollo_inputs$manualScaling    <- L$manualScaling
+    if(scaling_failure){
+      apollo_inputs$apollo_scaling=setNames(rep(1, length(apollo_beta)-length(apollo_fixed)), 
+                                            names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)])
+      estimate_settings$scaleHessian=FALSE
+      scaleAfterConvergence=FALSE
+    } 
   #} else {
   # apollo_inputs$apollo_scaling   <- L$apollo_scaling
   # apollo_inputs$manualScaling    <- all(L$apollo_scaling==1)
@@ -331,8 +369,8 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   #### Validation of likelihood function ####
   # ####################################### #
   
-  # Scale starting parameters (this should always happen)
-  if(length(apollo_inputs$apollo_scaling)>0 && !anyNA(apollo_inputs$apollo_scaling)){
+  # Scale starting parameters (this should always happen except with BGW)
+  if(estimate_settings$estimationRoutine!="bgw" && length(apollo_inputs$apollo_scaling)>0 && !anyNA(apollo_inputs$apollo_scaling)){
     r <- names(apollo_beta) %in% names(apollo_inputs$apollo_scaling)
     r <- names(apollo_beta)[r]
     apollo_beta[r] <- apollo_beta[r]/apollo_inputs$apollo_scaling[r]
@@ -460,7 +498,11 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     tmp <- paste0(apollo_inputs$apollo_control$outputDirectory,apollo_inputs$apollo_control$modelName, "_iterations.csv")
     txt <- paste0('Could not delete old ', tmp, ' file. New iterations will be written after old ones.')
     if(file.exists(tmp)) tryCatch(file.remove(tmp), error=function(e) apollo_print(txt))
-    if(is.function(grad)) apollo_writeTheta(apollo_beta, sum(testLL), apollo_inputs$apollo_control$modelName)
+    if(is.function(grad)) apollo_writeTheta(apollo_beta, sum(testLL), 
+                                            apollo_inputs$apollo_control$modelName, 
+                                            apollo_inputs$apollo_scaling, 
+                                            apollo_inputs$apollo_control$outputDirectory, 
+                                            apollo_beta)
     rm(tmp, txt)
   }
   
@@ -536,7 +578,8 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   if(successfulEstimation && scaleAfterConvergence && all(model$estimate!=0)){
     if(!silent) apollo_print(paste0('Additional convergence test using scaled estimation. Parameters will be scaled by ', 
                                     'their current estimates and additional iterations will be performed.'))
-    # De-scale non-fixed parameters
+    if(estimate_settings$estimationRoutine!="bgw"){
+      # De-scale non-fixed parameters
     b <- model$estimate
     b[names(apollo_inputs$apollo_scaling)] <- apollo_inputs$apollo_scaling*b[names(apollo_inputs$apollo_scaling)]
     # De-scale constraints if defined
@@ -545,20 +588,29 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     if(hasEqConst) for(a in colnames(constraints$eqA)) constraints$eqA[,a] <- constraints$eqA[,a]/apollo_inputs$apollo_scaling[a]
     if(hasIneqConst) for(a in colnames(constraints$ineqA)) constraints$ineqA[,a] <- constraints$ineqA[,a]/apollo_inputs$apollo_scaling[a]
     # Update scaling inside apollo_logLike and in this environment
-    apollo_scaling_backup=apollo_inputs$apollo_scaling
-    apollo_inputs$apollo_scaling <- abs(b)
-    if(apollo_control$nCores==1) environment(apollo_logLike)$apollo_inputs$apollo_scaling <- abs(b) else {
-      ns <- abs(b)
-      parallel::clusterExport(environment(apollo_logLike)$cl, 'ns', envir=environment())
-      parallel::clusterEvalQ(environment(apollo_logLike)$cl, {apollo_inputs$apollo_scaling <- ns; rm(ns)})
+      apollo_scaling_backup=apollo_inputs$apollo_scaling
+      apollo_inputs$apollo_scaling <- abs(b)
+      environment(apollo_logLike)$apollo_scaling <- abs(b)
+      if(apollo_control$nCores==1) environment(apollo_logLike)$apollo_inputs$apollo_scaling <- abs(b) else {
+        ns <- abs(b)
+        parallel::clusterExport(environment(apollo_logLike)$cl, 'ns', envir=environment())
+        parallel::clusterEvalQ(environment(apollo_logLike)$cl, {apollo_inputs$apollo_scaling <- ns; rm(ns)})
+      }
+      # Update scaling of constraints, if needed
+      if(hasEqConst) for(a in colnames(constraints$eqA)) constraints$eqA[,a] <- constraints$eqA[,a]*apollo_inputs$apollo_scaling[a]
+      if(hasIneqConst) for(a in colnames(constraints$ineqA)) constraints$ineqA[,a] <- constraints$ineqA[,a]*apollo_inputs$apollo_scaling[a]
+    }else{
+      b <- model$estimate
+      bgw_settings$scalingMethod = "userScaling"
+      ### remember that BGW uses inverse Apollo scaling
+      bgw_settings$userScaleVector = 1/abs(b)
+      #apollo_inputs$apollo_scaling=setNames(rep(1, length(apollo_inputs$apollo_scaling)), 
+      #                                      names(apollo_inputs$apollo_scaling))
     }
-    # Update scaling of constraints, if needed
-    if(hasEqConst) for(a in colnames(constraints$eqA)) constraints$eqA[,a] <- constraints$eqA[,a]*apollo_inputs$apollo_scaling[a]
-    if(hasIneqConst) for(a in colnames(constraints$ineqA)) constraints$ineqA[,a] <- constraints$ineqA[,a]*apollo_inputs$apollo_scaling[a]
-    # Check that new starting LL is the same than convergence one
+    # Check that new starting LL is the same as convergence one
     test1 <- model$maximum
     test2 <- tryCatch(
-      apollo_logLike(b/abs(b), countIter=FALSE, sumLL=TRUE, writeIter=FALSE, getNIter=FALSE),
+      apollo_logLike(b/apollo_inputs$apollo_scaling, countIter=FALSE, sumLL=TRUE, writeIter=FALSE, getNIter=FALSE),
       error=function(e) NA)
     # Estimate again only if new starting LL matches maximum LL
     test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
@@ -569,7 +621,8 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
       if(!is.null(maxLik_settings$printLevel) && maxLik_settings$printLevel==3) maxLik_settings$printLevel <- 2
       if(estimationRoutine=="bgw"){
         f <- function(b) apollo_logLike(b, logP=FALSE, countIter=FALSE, writeIter=FALSE)
-        model <- tryCatch(bgw::bgw_mle(calcR=f, betaStart=b/abs(b), calcJ=grad, bgw_settings=bgw_settings), 
+        bgw_settings$writeIterMode="append"
+        model <- tryCatch(bgw::bgw_mle(calcR=f, betaStart=b, calcJ=grad, bgw_settings=bgw_settings), 
                           error=function(e) NA)
         if(is.list(model)) model$nIter <- model$iterations else rm(model)
         rm(f)
@@ -599,17 +652,21 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
       }
       if(!successfulEstimation_scaled){
         apollo_print("The estimation of the scaled model failed, and the unscaled version will be returned instead.")
+        estimate_settings$scaleHessian <- FALSE
         model <- model_prescaling
-        apollo_inputs$apollo_scaling=apollo_scaling_backup
+        if(estimate_settings$estimationRoutine!="bgw"){
+          apollo_inputs$apollo_scaling=apollo_scaling_backup
         if(apollo_control$nCores==1) environment(apollo_logLike)$apollo_inputs$apollo_scaling <- apollo_scaling_backup else {
           ns <- apollo_scaling_backup
           parallel::clusterExport(environment(apollo_logLike)$cl, 'ns', envir=environment())
           parallel::clusterEvalQ(environment(apollo_logLike)$cl, {apollo_inputs$apollo_scaling <- ns; rm(ns)})
           rm(ns)
         }
+        }
       }
     } else {
       apollo_print("The scaling of the model led to differences in the results, and was thus not used. This is unexpected. You may want to contact the developers.", pause=5, type="w")
+      estimate_settings$scaleHessian <- FALSE
       apollo_inputs$apollo_scaling=apollo_scaling_backup
       if(apollo_control$nCores==1) environment(apollo_logLike)$apollo_inputs$apollo_scaling <- apollo_scaling_backup else {
         ns <- apollo_scaling_backup
@@ -701,13 +758,15 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     cat("\n")
     if(!is.null(model$estimate)){
       tmp <- c(model$estimate, apollo_beta[apollo_fixed])[names(apollo_beta)]
-      tmp[names(apollo_inputs$apollo_scaling)] <- apollo_inputs$apollo_scaling*tmp[names(apollo_inputs$apollo_scaling)]
+      if(estimate_settings$estimationRoutine!="bgw"){
+        tmp[names(apollo_inputs$apollo_scaling)] <- apollo_inputs$apollo_scaling*tmp[names(apollo_inputs$apollo_scaling)]
+      }
       if(is.null(model$BHHHse)||all(is.na(model$BHHHse))){
         apollo_print("Estimated parameters:")
         tmp <- matrix(tmp, nrow=length(tmp), ncol=1, dimnames=list(names(tmp), 'Estimate'))
       }else{
         apollo_print("Estimated parameters with approximate standard errors from BHHH matrix:")
-        tmp <- matrix(cbind(tmp,model$BHHHse,tmp/model$BHHHse), nrow=length(tmp), ncol=3, dimnames=list(names(tmp), c('Estimate','BHHH se','BHH t-ratio')))
+        tmp <- matrix(cbind(tmp,model$BHHHse,tmp/model$BHHHse), nrow=length(tmp), ncol=3, dimnames=list(names(tmp), c('Estimate','BHHH se','BHH t-ratio (0)')))
       }
       apollo_print(tmp); rm(tmp)
     } else apollo_print("Estimated parameters: Not available.")
@@ -755,7 +814,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     model$avgCP <- setNames(P, indiv)
   }
   
-  if(exists("model_prescaling")){
+  if(exists("model_prescaling") && successfulEstimation_scaled){
     model$nIterPrescaling <- model_prescaling$nIter
     model$nIterPostscaling <- model$nIter
   } else {
@@ -949,6 +1008,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                             varcov_settings=list(BHHH_matrix       = model$BHHH_matrix,
                                                  hessianRoutine    = estimate_settings$hessianRoutine,
                                                  scaleBeta         = estimate_settings$scaleHessian, 
+                                                 numDeriv_method   = estimate_settings$numDeriv_method, 
                                                  numDeriv_settings = estimate_settings$numDeriv_settings,
                                                  apollo_logLike    = apollo_logLike,
                                                  apollo_grad       = grad))
@@ -956,6 +1016,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     varcov <- apollo_varcov(apollo_beta=b, apollo_fixed, 
                             varcov_settings=list(hessianRoutine    = estimate_settings$hessianRoutine,
                                                  scaleBeta         = estimate_settings$scaleHessian, 
+                                                 numDeriv_method   = estimate_settings$numDeriv_method, 
                                                  numDeriv_settings = estimate_settings$numDeriv_settings,
                                                  apollo_logLike    = apollo_logLike,
                                                  apollo_grad       = grad))
@@ -1134,6 +1195,10 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   # model$timeEst   <- as.numeric(difftime(time3,time2,units='secs'))
   model$timePost  <- as.numeric(difftime(time4,time3,units='secs'))
 
+  if(estimationRoutine=="bgw"){
+    cat("\n")
+    apollo_print("Your model was estimated using the BGW algorithm. Please acknowledge this by citing Bunch et al. (1993) - DOI 10.1145/151271.151279")
+  }
   ### assign apollo class to model
   class(model)<-c("apollo",class(model))  
   return(model)

@@ -130,7 +130,7 @@
 #' @importFrom utils read.csv
 apollo_outOfSample <- function(apollo_beta, apollo_fixed,
                                apollo_probabilities, apollo_inputs,
-                               estimate_settings=list(estimationRoutine="bfgs",
+                               estimate_settings=list(estimationRoutine="bgw",
                                                       maxIterations=200,
                                                       writeIter=FALSE,
                                                       hessianRoutine="none",
@@ -141,7 +141,7 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
                                                          samples=NA, 
                                                          rmse=NULL)){
   ### Set missing settings to default values
-  default <- list(estimationRoutine="bfgs", maxIterations=200, writeIter=FALSE, 
+  default <- list(estimationRoutine="bgw", maxIterations=200, writeIter=FALSE, 
                   hessianRoutine="none", printLevel=3L, silent=TRUE)
   tmp <- names(default)[!(names(default) %in% names(estimate_settings))]
   for(i in tmp) estimate_settings[[i]] <- default[[i]]

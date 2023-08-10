@@ -4,7 +4,14 @@
 \alias{apollo_writeTheta}
 \title{Writes the vector [beta,ll] to a file called \code{modelname_iterations.csv}}
 \usage{
-apollo_writeTheta(beta, ll, modelName)
+apollo_writeTheta(
+  beta,
+  ll,
+  modelName,
+  scaling = NULL,
+  outDir = NULL,
+  apollo_beta = NULL
+)
 }
 \arguments{
 \item{beta}{vector of parameters to be written (including fixed ones).}
@@ -12,6 +19,12 @@ apollo_writeTheta(beta, ll, modelName)
 \item{ll}{scalar representing the log-likelihood of the whole model.}
 
 \item{modelName}{Character. Name of the model.}
+
+\item{scaling}{Numeric vector of scales applied to beta}
+
+\item{outDir}{Scalar character. Name of output directory}
+
+\item{apollo_beta}{Named numeric vector of starting values.}
 }
 \value{
 Nothing.

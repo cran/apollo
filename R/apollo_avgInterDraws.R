@@ -57,6 +57,9 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
     if(is.array(P)) pRows <- dim(P)[1] else pRows <- length(P)
   }
   
+  # Fetch panelData. Assume false if not found
+  if(!is.null(apollo_control$panelData)) panelData <- apollo_control$panelData else panelData <- FALSE
+  
   # ############################################### #
   #### functionalities with untransformed return ####
   # ############################################### #
@@ -98,7 +101,7 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   # ########################################### #
   
   if(functionality %in% c("estimate", "validate")){
-    if(nIndiv!=pRows) stop("SPECIFICATION ISSUE - Observations from the same individual must be combined (i.e. multiplied) before averaging over inter-individual draws.")
+    if(panelData && nIndiv!=pRows) stop("SPECIFICATION ISSUE - Observations from the same individual must be combined (i.e. multiplied) before averaging over inter-individual draws.")
     if(inputIsList && is.null(P[["model"]])) stop('SPECIFICATION ISSUE - Element called model is missing in list P!')
     if(inputIsList) P <- P[["model"]]
     if(is.vector(P) && !apollo_control$workInLogs ) stop('SPECIFICATION ISSUE - No Inter-individuals draws to average over!')
@@ -113,7 +116,7 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   # ############################# #
   
   if(functionality=="output"){
-    if(nIndiv!=pRows) stop("SPECIFICATION ISSUE - Observations from the same individual must be combined (i.e. multiplied) before averaging over inter-individual draws.")
+    if(panelData && nIndiv!=pRows) stop("SPECIFICATION ISSUE - Observations from the same individual must be combined (i.e. multiplied) before averaging over inter-individual draws.")
     if(inputIsList && is.null(P[["model"]])) stop('SPECIFICATION ISSUE - Element called model is missing in list P!')
     if(!inputIsList) P <- list(model=P)
     for(j in 1:length(P)){
@@ -155,7 +158,7 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   # ################################### #
   
   if(functionality=="conditionals"){
-    if(nIndiv!=pRows) stop("SPECIFICATION ISSUE - Observations from the same individual must be combined (i.e. multiplied) before averaging over inter-individual draws.")
+    if(panelData && nIndiv!=pRows) stop("SPECIFICATION ISSUE - Observations from the same individual must be combined (i.e. multiplied) before averaging over inter-individual draws.")
     if(inputIsList && is.null(P[["model"]])) stop('SPECIFICATION ISSUE - Element called model is missing in list P!')
     if(inputIsList) P <- P[["model"]]
     #if(!is.array(P)) stop('SPECIFICATION ISSUE - No draws present to average over!')

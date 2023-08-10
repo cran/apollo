@@ -583,6 +583,10 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
       test <- is.vector(inputs[['rawPrediction']]) && is.logical(inputs[['rawPrediction']]) && length(inputs[['rawPrediction']])==1
       if(!test) stop('SYNTAX ISSUE - Argument "rawPrediction", if provided, must be a single logical value.')
     }
+    if(is.null(inputs[["fastPred"]])) inputs[["fastPred"]] <- FALSE else {
+      test <- is.vector(inputs[['fastPred']]) && is.logical(inputs[['fastPred']]) && length(inputs[['fastPred']])==1
+      if(!test) stop('SYNTAX ISSUE - Argument "fastPred", if provided, must be a single logical value.')
+    }
     
     # nRep
     test <- length(inputs[["nRep"]])==1 && inputs[["nRep"]]>0

@@ -85,7 +85,10 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   cat("Model run by ", Sys.info()['user'], " using Apollo ", apolloVersion, 
       " on R ", paste0(version$major, ".", version$minor), 
       " for ", Sys.info()['sysname'], ".\n", sep="")
-  cat("www.ApolloChoiceModelling.com\n\n")
+  cat("Please acknowledge the use of Apollo by citing Hess & Palma (2019)\n")
+  cat("  DOI 10.1016/j.jocm.2019.100170\n")
+  cat("  www.ApolloChoiceModelling.com\n\n")
+  
   cat("Model name                                  : ", model$apollo_control$modelName,"\n", sep="")
   cat("Model description                           : ", model$apollo_control$modelDescr,"\n", sep="")
   cat("Model run at                                : ", paste(model$startTime),"\n", sep="")
@@ -98,14 +101,21 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       anyN <- !isC && any(model$hessianEigenValue<0)
       anyP <- !isC && any(model$hessianEigenValue>0)
       if(isC) txt <- c("Non-symmetrical hessian", "Complex eigenvalues")
-      if(!isC && all(model$hessianEigenValue<0)) txt <- c("Maximum found", "Negative definitive")
+      if(!isC && all(model$hessianEigenValue<0)) txt <- c("Maximum found", "Negative definite")
       if(!isC && anyZ) txt <- c("Inconclusive test", "Some eigenvalues are zero")
-      if(!isC && !anyZ && anyP && anyP) txt <- c("Saddle point found", "Some eigenvalues are positive and others negative")
-      if(!isC && all(model$hessianEigenValue>0)) txt <- c("Minimum found", "Positive definitive")
+      if(!isC && !anyZ && anyN && anyP) txt <- c("Saddle point found", "Some eigenvalues are positive and others negative")
+      if(!isC && all(model$hessianEigenValue>0)) txt <- c("Minimum found", "Positive definite")
       if(isC) txt[3] <- "NA" else txt[3] <- as.character(round(max(model$hessianEigenValue),6))
+      if(!isC && all(model$hessianEigenValue<0)){
+        txt[4] <- as.character(signif(max(model$hessianEigenValue)/min(model$hessianEigenValue),6))
+      }else{
+        txt[4] <- "not calculated (Hessian is not negative definite)"
+      }
       cat("Optimisation diagnosis                      : ", txt[1], "\n", 
           "     hessian properties                     : ", txt[2], "\n", 
-          "     maximum eigenvalue                     : ", txt[3], "\n", sep="")
+          "     maximum eigenvalue                     : ", txt[3], "\n",
+          "     reciprocal of condition number         : ", txt[4], "\n", 
+          sep="")
       rm(isC, anyZ, anyN, anyP, txt)
     } else if(!is.null(model$eigValue) && !anyNA(model$eigValue)){
       cat("Min abs eigenvalue of Hessian               : ",round(min(abs(model$eigValue)),6),"\n")
@@ -271,7 +281,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       
       if(printHBconvergence){
         cat("Chain convergence report (Geweke test)\n\n")
-        if(!is.null(model[["F"]])){
+        if(!is.null(model[["HB_Geweke_test_non_random"]])){
           cat("Fixed (non random) parameters (t-test value for Geweke test)\n")
           #tmp <- coda::geweke.diag(model$HB_iterations_non_random[,2:(ncol(model$HB_iterations_non_random))], frac1=0.1, frac2=0.5)[[1]]
           #names(tmp) <- model$HB_names_nonrandom_params
@@ -279,14 +289,14 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
           print( round(model$HB_Geweke_test_non_random, 4) )
           cat("\n")
         }
-        if(!is.null(model[["A"]])){
+        if(!is.null(model[["HB_Geweke_test_means"]])){
           cat("Random parameters (t-test value for Geweke test)\n")
           #tmp <- coda::geweke.diag(model$HB_iterations_means[,2:(ncol(model$HB_iterations_means))], frac1=0.1, frac2=0.5)[[1]]
           #print( round(tmp, 4) )
           print( round(model$HB_Geweke_test_means, 4) )
           cat("\n")
         }
-        if(!is.null(model[["D"]])){
+        if(!is.null(model[["HB_Geweke_test_covar"]])){
           cat("Covariances of random parameters (t-test value for Geweke test)\n")
           # This assumes the matrix is square
           #tmp <- c()

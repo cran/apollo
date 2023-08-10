@@ -60,7 +60,7 @@ apollo_compareInputs <- function(apollo_inputs){
     na   <- na && is.na(x) && is.na(apollo_inputs$apollo_HB)
     same <- is.list(x) && is.list(apollo_inputs$apollo_HB)
     same <- same && !is.null(names(x)) && !is.null(apollo_inputs$apollo_HB)
-    if(same) for(e in names(x)){
+    if(same) for(e in names(x)[!(names(x)%in%c("fixedA","fixedD","constraintsNorm"))]){
       same <- same && !is.null(apollo_inputs$apollo_HB[[e]])
       same <- same && identical(x[[e]], apollo_inputs$apollo_HB[[e]])
     }

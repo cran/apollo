@@ -63,7 +63,12 @@ apollo_varList <- function(f, apollo_inputs){
     if(test2) e <- defs[[tmp]]
     # Case 3: expression
     if( !test1 && !test2 && (is.call(e) || is.expression(e)) ){
-      for(i in 1:length(e)) if(!is.null(e[[i]])) e[[i]] <- replaceByDef(e[[i]], defs)
+      isDollar <- is.call(e) && length(e)==3 && is.symbol(e[[1]]) && as.character(e[[1]])=='$'
+      for(i in 1:length(e)) if(!is.null(e[[i]])){
+        emptyIndex <- (i>2 && e[[1]]=="[" && e[[i]]=="")
+        if( emptyIndex) e[[i]] <- TRUE
+        if(!emptyIndex && !(isDollar && i==3)) e[[i]] <- replaceByDef(e[[i]], defs)
+      } 
     } 
     # Return
     return(e)
@@ -100,6 +105,8 @@ apollo_varList <- function(f, apollo_inputs){
         }
         if(is.symbol(le)) lTxt <- paste0(as.character(le), lTxt)
       }; rm(le)
+      # If name could not be determined, give up
+      if(lTxt=="") return(defs)
       # Case 2.2: right side is a variable, value or expression
       if(!rList) defs[[lTxt]] <- replaceByDef(getBody(re), defs)
       # Case 2.3: right side is a list defined in place, expand into one entry per element of list

@@ -26,6 +26,7 @@
 #'                          }
 #'                          \item \strong{\code{BHHH_matrix}}: Matrix. Optional input, providing the BHHH matrix so it does not get recalculated.
 #'                          \item \strong{\code{hessianRoutine}}: Character. Name of routine used to calculate the Hessian. Valid values are \code{"analytic"}, \code{"numDeriv"}, \code{"maxLik"} or \code{"none"} to avoid estimating the Hessian and covariance matrix.
+#'                          \item \strong{\code{numDeriv_method}}: Character. Method used for numerical differentiation. Can be \code{"Richardson"} or \code{"simple"}, Only used if analytic gradients are available. See argument \code{method} in \link[numDeriv]{grad} for more details.
 #'                          \item \strong{\code{numDeriv_settings}}: List. Additional arguments to the Richardson method used by numDeriv to calculate the Hessian. See argument \code{method.args} in \link[numDeriv]{grad} for more details.
 #'                          \item \strong{\code{scaleBeta}}: Logical. If TRUE (default), parameters are scaled by their own value before calculating the Hessian to increase numerical stability. However, the output is de-scaled, so they are in the same scale as the \code{apollo_beta} argument.
 #'                        }
@@ -52,8 +53,11 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
   
   ### Load default settings and perform checks on them
   if(!is.list(varcov_settings)) stop('SYNTAX ISSUE - Argument "varcov_settings" must be a list.')
-  default <- list(hessianRoutine='analytic', scaleBeta=TRUE, numDeriv_settings=list())
+  default <- list(hessianRoutine='analytic', scaleBeta=TRUE, numDeriv_method="Richardson", numDeriv_settings=list())
   for(i in names(default)) if(is.null(varcov_settings[[i]])) varcov_settings[[i]] <- default[[i]]
+  # Check numDeriv_settings
+  test <- varcov_settings[["numDeriv_method"]] %in% c("Richardson", "simple")
+  if(!test) stop("SYNTAX ISSUE - Setting 'numDeriv_method' must be one of 'Richardson' or 'simple'.")
   # At least one of apollo_grad, apollo_logLike or apollo_inputs must be provided
   test <- is.function(varcov_settings$apollo_grad) || is.function(varcov_settings$apollo_logLike)
   test <- test || (is.function(varcov_settings$apollo_probabilities) && is.list(varcov_settings$apollo_inputs))
@@ -188,7 +192,9 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
   if(is.null(H) && is.function(apollo_grad) && hessianRoutine=='analytic'){
     methodUsed <- c(methodUsed, 'numerical jacobian of LL analytical gradient')
     if(!silent) apollo_print("Computing covariance matrix using analytical gradient.")
-    i <- 0; k <- length(beta_var_val); I <- 1+8*k; di <- ceiling(I/20);
+    i <- 0; k <- length(beta_var_val)
+    if(varcov_settings$numDeriv_method=="simple") I <- 1 + k else I <- 1 + 8*k
+    di <- ceiling(I/20);
     sumGradLL <- function(theta){
       ans <- colSums( apollo_grad(theta) )
       i <<- i+1
@@ -196,7 +202,9 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
       return(ans)
     }
     if(!silent) cat(" 0%")
-    H <- tryCatch(numDeriv::jacobian(func=sumGradLL, x=beta_var_val, method.args=varcov_settings$numDeriv_settings),
+    H <- tryCatch(numDeriv::jacobian(func=sumGradLL, x=beta_var_val, 
+                                     method=varcov_settings$numDeriv_method, 
+                                     method.args=varcov_settings$numDeriv_settings),
                   error = function(e) return(NA))
     if(!silent) cat('100%')
     if(anyNA(H)){

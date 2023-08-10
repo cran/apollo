@@ -128,12 +128,12 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
   if('tibble' %in% installed.packages()[,"Package"] && tibble::is_tibble(database)) database <- as.data.frame(database)
   
   ### Check if there's everything necessary for mixing
-  if(length(apollo_draws) && is.na(apollo_draws)) apollo_draws <- tryCatch( get("apollo_draws", envir=globalenv()), error=function(e) NA )
+  if(length(apollo_draws)==1 && is.na(apollo_draws)) apollo_draws <- tryCatch( get("apollo_draws", envir=globalenv()), error=function(e) NA )
   if(!is.function(apollo_randCoeff)) apollo_randCoeff <- tryCatch( get("apollo_randCoeff", envir=globalenv()), error=function(e) NA )
   test <- is.list(apollo_draws) && is.function(apollo_randCoeff) && !(is.logical(apollo_control$mixing) && !apollo_control$mixing)
   if(test){
     apollo_control$mixing <- TRUE
-    apollo_print("apollo_draws and apollo_randCoeff were found, so apollo_control$mixing was set to TRUE")
+    if(!silent) apollo_print("apollo_draws and apollo_randCoeff were found, so apollo_control$mixing was set to TRUE")
   }
   
   ### Validate apollo_control, database

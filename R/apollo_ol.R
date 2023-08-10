@@ -150,7 +150,7 @@ apollo_ol  <- function(ol_settings, functionality){
         ol_settings$dV   <- lapply(tmp1, `[[`, 1) # list(dV/db1, dV/db2, ...)
         ol_settings$dTau <- tmp2 # list(b1=list(dt1/db1, dt2/db1, ...), b2=...)
       }; rm(tmp1, tmp2)
-      test <- is.list(ol_settings$dV) && sapply(ol_settings$dV, is.function)
+      test <- is.list(ol_settings$dV) && all(sapply(ol_settings$dV, is.function))
       test <- test && is.list(ol_settings$dTau) 
       test <- test && all(sapply(ol_settings$dTau, sapply, is.function))
       ol_settings$gradient <- test

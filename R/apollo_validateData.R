@@ -14,13 +14,15 @@
 #' @export
 apollo_validateData=function(database, apollo_control, silent){
   
+  if(nrow(database)==0) stop("INPUT ISSUE - database is empty!")
+  
   if(any(is.na(database))){
     txt <- paste0("Your database contains some entries that are NA. ", 
                   "This may well be intentional, but be advised that if ", 
                   "these entries are used in your model, the behaviour may ", 
                   "be unexpected. You can stop the process by pressing the ", 
                   "\"Escape\" key.")
-    apollo_print(txt, pause=0, type="w")}
+    if(!silent) apollo_print(txt, pause=0, type="w")}
   
   test <- apollo_control$indivID %in% names(database)
   if(!test) stop("INPUT ISSUE - Column indicated in indivID in apollo_control not found in ", 
@@ -49,9 +51,9 @@ apollo_validateData=function(database, apollo_control, silent){
   # Rename indivID to "ID" for HB
   if(apollo_control$HB==TRUE){
     test <- ("ID" %in% names(database)) && apollo_control$indivID!="ID"
-    if(test) apollo_print(paste0("Apollo found a column called ID in your ", 
-                                 "database. RSGHB will use this as individual ",
-                                 "id during HB estimation."), type="i")
+    if(test) if(!silent) apollo_print(paste0("Apollo found a column called ID in your ", 
+                                             "database. RSGHB will use this as individual ",
+                                             "id during HB estimation."), type="i")
     test <- "ID" %in% names(database)
     if(!test) database$ID = database[,apollo_control$indivID]
   }
@@ -84,7 +86,7 @@ apollo_validateData=function(database, apollo_control, silent){
                   "NA values in the loglikelihood. If you want to use ", 
                   "these variables, we recommend manually transforming them ", 
                   "into numeric variables.")
-    apollo_print(txt)
+    if(!silent) apollo_print(txt)
   }
   
   

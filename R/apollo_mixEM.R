@@ -49,7 +49,7 @@ apollo_mixEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_in
   ### First checkpoint
   time1 <- Sys.time()
   
-  if(is.na(mixEM_settings) || is.null(mixEM_settings$transforms)) cat("The list \'transforms\' has not been provided in \'mixEM_settings\'. Apollo will assume that all parameters use untransformed Normal distributions.\n\n")
+  if(any(is.na(mixEM_settings)) || is.null(mixEM_settings$transforms)) cat("The list \'transforms\' has not been provided in \'mixEM_settings\'. Apollo will assume that all parameters use untransformed Normal distributions.\n\n")
   ### Set missing settings to default values
   default <- list(EMstoppingCriterion=10^-5, EMmaxIterations=100, postEM=2, silent=FALSE, transforms=NA)
   if(length(mixEM_settings)==1 && is.na(mixEM_settings)) mixEM_settings <- default
@@ -164,7 +164,7 @@ apollo_mixEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_in
   if(test) apollo_inputs$apollo_lcPars <- apollo_insertScaling(apollo_inputs$apollo_lcPars, apollo_inputs$apollo_scaling)
   
   # Scale starting parameters
-  if(length(apollo_inputs$apollo_scaling)>0 && !is.na(apollo_inputs$apollo_scaling)){
+  if(length(apollo_inputs$apollo_scaling)>0 && !any(is.na(apollo_inputs$apollo_scaling))){
     r <- names(apollo_beta) %in% names(apollo_inputs$apollo_scaling)
     r <- names(apollo_beta)[r]
     apollo_beta[r] <- apollo_beta[r]/apollo_inputs$apollo_scaling[r]
@@ -263,7 +263,7 @@ apollo_mixEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_in
   time3 <- Sys.time()
 
   # De-scale parameters
-  if(length(apollo_inputs$apollo_scaling)>0 && !is.na(apollo_inputs$apollo_scaling)){
+  if(length(apollo_inputs$apollo_scaling)>0 && !any(is.na(apollo_inputs$apollo_scaling))){
     r <- names(apollo_beta) %in% names(apollo_inputs$apollo_scaling)
     r <- names(apollo_beta)[r]
     apollo_beta[r] <- apollo_inputs$apollo_scaling[r]*apollo_beta[r]

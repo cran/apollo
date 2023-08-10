@@ -16,7 +16,6 @@ apollo_rrm(rrm_settings, functionality)
   \item \strong{\code{regret_inputs}}: Named list of regret functions. This should contain one list per attribute, where these lists themselves contain two vectors, namely a vector of attributes (at the alternative level) and parameters (either generic or attribute specific). Zeros can be used for omitted attributes for some alternatives. The order for each attribute needs to be the same as the order in \code{alternatives.}.
   \item \strong{\code{regret_scale}}: Named list of regret scales. This should have the same length as 'rrm_settings$regret_inputs' or be a single entry in the case of a generic scale parameter across regret attributes.
   \item \strong{\code{choiceset_scaling}}: Vector. One entry per row in the database, often set to 2 divided by the number of available alternatives.
-  \item \strong{\code{utilities}}: Named list of deterministic utilities. Utilities of the alternatives. Names of elements must match those in \code{alternatives.}
   \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.
   \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 }}

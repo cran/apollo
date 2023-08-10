@@ -28,6 +28,6 @@ apollo_loadModel <- function(modelName){
   fileName <- paste0(outputDirectory, modelName, "_model.rds")
   if(!file.exists(fileName)) fileName <- paste0(getwd(), '/', modelName, "_model.rds")
   model <- tryCatch(readRDS(fileName), error=function(e) stop("INPUT ISSUE - Cannot find or open ", fileName) )
-  cat("\nSuccessfully loaded ",fileName)
+  apollo_print(paste0("Successfully loaded ",fileName))
   return(model)
 }

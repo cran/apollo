@@ -108,7 +108,7 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   database <- apollo_inputs$database # necessary to circumvent deletion of database across the call stack in apollo_estimate
   draws    <- apollo_inputs$draws    # necessary to circumvent deletion of draws across the call stack in apollo_estimate
   apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, 
-                  estimate_settings=list(maxIterations=0, writeIter=FALSE, hessianRoutine="none",silent=TRUE))
+                  estimate_settings=list(maxIterations=1, writeIter=FALSE, hessianRoutine="none",silent=TRUE))
   apollo_inputs$database <- database
   apollo_inputs$draws    <- draws;    rm(draws)
   #apollo_inputs$apollo_control$nCores = tmp
@@ -502,7 +502,7 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   time3 <- Sys.time()
   
   # De-scale parameters
-  if(length(apollo_inputs$apollo_scaling)>0 && !is.na(apollo_inputs$apollo_scaling)){
+  if(length(apollo_inputs$apollo_scaling)>0 && !any(is.na(apollo_inputs$apollo_scaling))){
     r <- names(apollo_beta) %in% names(apollo_inputs$apollo_scaling)
     r <- names(apollo_beta)[r]
     apollo_beta[r] <- apollo_inputs$apollo_scaling[r]*apollo_beta[r]
