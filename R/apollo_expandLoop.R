@@ -15,10 +15,27 @@
 #' 
 #' @param f function (usually \code{apollo_probabilities}) inside which the name of the components are inserted.
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
+#' @param validate Logical. If TRUE, the new function will be validated before being returned
 #' @return A function or an expression (same type as input \code{f})
 #' @export
-apollo_expandLoop <- function(f, apollo_inputs){
+apollo_expandLoop <- function(f, apollo_inputs, validate=TRUE){
   #### Utilities ####
+  
+  if(validate){
+    evalf <- function(f){
+      ans <- tryCatch(f(apollo_beta, apollo_inputs), error=function(e) NA)
+      if(!anyNA(ans) && is.vector(ans)) ans <- sum(ans) # apollo_probabilities
+      if(is.list(ans)){ # apollo_lcPars or apollo_randcoeff
+        matOrVec <- sapply(ans, function(x) is.numeric(x) && (is.vector(x) | is.matrix))
+        ans <- sum(sapply(ans[matOrVec], sum))
+      }
+      test <- is.numeric(ans) && is.vector(ans) && length(ans)==1
+      if(!test) ans <- NA
+      return(ans)
+    }
+    fVal0 <- evalf(f)
+    if(anyNA(fVal0)) validate <- FALSE
+  }
   
   is.val <- function(e) if(is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) || is.complex(e)) return(TRUE) else return(FALSE)
   
@@ -237,11 +254,25 @@ apollo_expandLoop <- function(f, apollo_inputs){
                     hash=TRUE, parent=parent.frame())
   }
   env$apollo_inputs <- apollo_inputs
-  fNew  <- expandLoop(f, defs, env)
-  defs  <- apollo_varList(fNew, apollo_inputs)
-  fNew  <- replaceByDef(fNew, defs)
-  fNew  <- simplify(fNew, defs)
-  fNew  <- simplify(fNew, defs) # up to two levels of loops. Maybe I can add a third, but doesn't make much sense
+  fNew1  <- expandLoop(f, defs, env)
+  if(validate) fVal1 <- evalf(fNew1)
+  # Replace and simplify
+  defs  <- apollo_varList(fNew1, apollo_inputs)
+  fNew2 <- replaceByDef(fNew1, defs)
+  fNew2 <- simplify(fNew2, defs)
+  fNew2 <- simplify(fNew2, defs) # up to two levels (a third may be overkill)
+  if(validate) fVal2 <- evalf(fNew2)
+  # Return
+  if(validate){
+    if(!anyNA(fVal2) && abs(fVal2 - fVal0)<10^-10) return(fNew2)
+    if(!anyNA(fVal1) && abs(fVal1 - fVal0)<10^-10) return(fNew1)
+    return(f)
+  }
+  return(fNew2)
+  
+  test1 <- tryCatch(sum(fNew(apollo_beta, apollo_inputs)), error=function(e) NA) # value before
+  test2 <- tryCatch(sum(fNew2(apollo_beta, apollo_inputs)), error=function(e) NA) # value before
+  if(anyNA(c(test1,test2)) || abs(test1-test2)>10^-10) fNew <- fNew2
   return(fNew)
 }
 

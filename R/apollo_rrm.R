@@ -177,11 +177,15 @@ apollo_rrm <- function(rrm_settings, functionality){
       tmpAnGrad <- apollo_inputs$apollo_control$analyticGrad
       apollo_inputs$silent <- TRUE
       apollo_inputs$apollo_control$analyticGrad <- FALSE
-      L <- apollo_modifyUserDefFunc(ab, af, ap, apollo_inputs, validate=FALSE)
-      apollo_inputs$apollo_lcPars    <- L$apollo_lcPars
-      apollo_inputs$apollo_randCoeff <- L$apollo_randCoeff
-      apollo_inputs$apollo_scaling   <- L$apollo_scaling
-      ap <- L$apollo_probabilities
+      ##
+      #L <- apollo_modifyUserDefFunc(ab, af, ap, apollo_inputs, validate=FALSE)
+      ap <- apollo_insertComponentName(ap)
+      ap <- apollo_insertRRMQuotes(ap)
+      #apollo_inputs$apollo_lcPars    <- L$apollo_lcPars
+      #apollo_inputs$apollo_randCoeff <- L$apollo_randCoeff
+      #apollo_inputs$apollo_scaling   <- L$apollo_scaling
+      #ap <- L$apollo_probabilities
+      ##
       newSet <- ap(ab, apollo_inputs, functionality="preprocess")
       test <- is.list(newSet) && !is.null(names(newSet))
       test <- test && (paste0(rrm_settings[["componentName"]], "_settings") %in% names(newSet))
@@ -191,7 +195,8 @@ apollo_rrm <- function(rrm_settings, functionality){
       apollo_inputs$silent <- tmpSilent
       apollo_inputs$apollo_control$analyticGrad <- tmpAnGrad
       rrm_settings <- newSet
-      rm(ap, ab, af, tmpSilent, tmpAnGrad, L, newSet, test)
+      #rm(ap, ab, af, tmpSilent, tmpAnGrad, L, newSet, test)
+      rm(ap, ab, af, tmpSilent, tmpAnGrad, newSet, test)
     } else {
       ### create empty RUM part if not provided
       if(is.null(rrm_settings$rum_inputs)){

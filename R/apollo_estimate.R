@@ -75,6 +75,10 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                   bgw_settings=list())
   prtLvlMan <- is.list(estimate_settings) && !is.null(estimate_settings$printLevel)
   if(length(estimate_settings)==1 && is.na(estimate_settings)) estimate_settings <- default
+  
+  ### if using HB in apollo_control, set estimationRoutine to HB to avoid using BGW defaults with e.g. scaling
+  if(apollo_inputs$apollo_control$HB) estimate_settings$estimationRoutine="HB"
+  
   if(is.null(estimate_settings$maxLik_settings)){
     estimate_settings$maxLik_settings <- list(printLevel=3, iterlim=200)
     if(!is.null(estimate_settings$printLevel)) estimate_settings$maxLik_settings$printLevel <- estimate_settings$printLevel
@@ -168,7 +172,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   
   ### Validation of input
   apollo_checkArguments(apollo_probabilities, apollo_randCoeff, apollo_lcPars)
-  if( !(estimationRoutine %in% c("bfgs", "bgw", "bhhh", "nr")) ) stop("SYNTAX ISSUE - Invalid estimationRoutine. Use 'bfgs', 'bgw', 'bhhh' or 'nr'.")
+  if( !(estimationRoutine %in% c("bfgs", "bgw", "bhhh", "nr", "hb")) ) stop("SYNTAX ISSUE - Invalid estimationRoutine. Use 'bfgs', 'bgw', 'bhhh', 'hb', or 'nr'.")
   if( !(estimate_settings$hessianRoutine %in% c('analytic', 'numDeriv', 'maxLik', 'none')) ) stop("SYNTAX ISSUE - Invalid hessianRoutine. Use 'analytic', 'numDeriv', 'maxLik' or 'none'.")
   
   # Check apollo_beta and apollo_fixed
@@ -1195,7 +1199,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   # model$timeEst   <- as.numeric(difftime(time3,time2,units='secs'))
   model$timePost  <- as.numeric(difftime(time4,time3,units='secs'))
 
-  if(estimationRoutine=="bgw"){
+  if(estimationRoutine=="bgw" && !silent){
     cat("\n")
     apollo_print("Your model was estimated using the BGW algorithm. Please acknowledge this by citing Bunch et al. (1993) - DOI 10.1145/151271.151279")
   }

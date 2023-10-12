@@ -44,17 +44,17 @@ example, to calculate the ratio between parameters b1 and b2, \code{expression=c
 The second method is to provide the name of a specific operation inside \code{deltaMethod_settings}.
 The following five operations are supported.
 \itemize{
-  \item \strong{\code{sum}}: {Calculates the s.e. of \code{parName1} + \code{parName2}}
-  \item \strong{\code{diff}}: {Calculates the s.e. of \code{parName1} - \code{parName2} and \code{parName2} - \code{parName1}}
-  \item \strong{\code{prod}}: {Calculates the s.e. of \code{parName1}*\code{parName2}}
-  \item \strong{\code{ratio}}: {Calculates the s.e. of \code{parName1}/\code{parName2} and \code{parName2}/\code{parName1}}
-  \item \strong{\code{exp}}: {Calculates the s.e. of \code{exp(parName1)}}
-  \item \strong{\code{logistic}}: {If only \code{parName1} is provided, it calculates the s.e. of
+  \item \strong{\code{sum}}: Calculates the s.e. of \code{parName1} + \code{parName2}
+  \item \strong{\code{diff}}: Calculates the s.e. of \code{parName1} - \code{parName2} and \code{parName2} - \code{parName1}
+  \item \strong{\code{prod}}: Calculates the s.e. of \code{parName1}*\code{parName2}
+  \item \strong{\code{ratio}}: Calculates the s.e. of \code{parName1}/\code{parName2} and \code{parName2}/\code{parName1}
+  \item \strong{\code{exp}}: Calculates the s.e. of \code{exp(parName1)}
+  \item \strong{\code{logistic}}: If only \code{parName1} is provided, it calculates the s.e. of
                   \code{exp(parName1)/(1+exp(parName1))} and \code{1/(1+exp(parName1))}.
                   If \code{parName1} and \code{parName2} are provided, it calculates
-                  \code{exp(par_i)/(1+exp(parName1)+exp(parName2))} for i=1, 2, and 3 (par_3 = 1).}
-  \item \strong{\code{lognormal}}: {Calculates the mean and s.d. of a lognormal distribution based on the mean 
-                   (\code{parName1}) and s.d. (\code{parName2}) of the underlying normal.}
+                  \code{exp(par_i)/(1+exp(parName1)+exp(parName2))} for i=1, 2, and 3 (par_3 = 1).
+  \item \strong{\code{lognormal}}: Calculates the mean and s.d. of a lognormal distribution based on the mean 
+                   (\code{parName1}) and s.d. (\code{parName2}) of the underlying normal.
 }
 
 By default, \code{apollo_deltaMethod} uses the robust covariance matrix. However, the user can change this through the \code{varcov} setting.

@@ -52,6 +52,7 @@ apollo_validateHBControl=function(apollo_HB, apollo_beta, apollo_fixed, apollo_c
   
   hbDist <- apollo_HB$hbDist
   if(length(apollo_beta)!=length(hbDist)) stop("SYNTAX ISSUE - Argument hbDist has different length than apollo_beta.")
+  if(!all(names(apollo_beta)==names(hbDist))) stop("SYNTAX ISSUE - Argument hbDist has differently named elements from apollo_beta (or in a different order).")
   
   hbDist_nonest = hbDist[(names(apollo_beta) %in% apollo_fixed)]
   if(any(!(hbDist_nonest%in%c("F","NR","DNE")))) stop("SYNTAX ISSUE - Only non-random parameters should be included in apollo_fixed for HB estimation, other constraints need to be accommodated in fixedA and fixedD!")

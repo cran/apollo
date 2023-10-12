@@ -83,7 +83,7 @@ apollo_weighting=function(P, apollo_inputs, functionality){
   # ############################################################## #
   #### estimate, zero_LL, conditionals, output, raw, components #### 
   # ############################################################## #
-  if(functionality %in% c('estimate', 'zero_LL', 'conditionals', 'output', 'components')){
+  if(functionality %in% c('estimate', 'zero_LL','shares_LL', 'conditionals', 'output', 'components')){
     P <- lapply(P, wf)
     return(P)
   }

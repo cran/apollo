@@ -40,7 +40,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   silent            = estimate_settings[["silent"]]
   numDeriv_settings = estimate_settings[["numDeriv_settings"]]
   constraints       = estimate_settings[["constraints"]]
-  scaling           = estimate_settings[["scaling"]]
+  scaling           = apollo_inputs$apollo_scaling    #estimate_settings[["scaling"]]
   bootstrapSE       = estimate_settings[["bootstrapSE"]]
   bootstrapSeed     = estimate_settings[["bootstrapSeed"]]
   
@@ -544,5 +544,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   model$timeEst   <- as.numeric(difftime(time3,time2,units='secs'))
   model$timePost  <- as.numeric(difftime(time4,time3,units='secs'))
   
+  ### assign apollo class to model
+  class(model)<-c("apollo",class(model))  
   return(model)
 }

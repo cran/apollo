@@ -173,7 +173,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
       if(!silent) apollo_print(paste0(txt, '.'), type="w") else warning(txt)
     }; if(any(scaling<=0)) stop('SYNTAX ISSUE - All terms in "scaling" should be strictly positive!')
     txt <- "During estimation, parameters will be scaled using the values in estimate_settings$scaling"
-    if(!all(scaling==1)){ if(!silent) apollo_print(paste0(txt, '.'), type="w") else warning(txt)}
+    if(!all(scaling==1)){ if(!silent) apollo_print(paste0(txt, '.'), type="i") else warning(txt)}
     rm(txt)
     apollo_inputs$apollo_scaling <- scaling
     apollo_inputs$manualScaling  <- TRUE

@@ -5,11 +5,11 @@
 #' @param longData data.frame. Data in long format.
 #' @param longToWide_settings List. Contains settings for this function. User input is required for all settings. 
 #'                                \itemize{
-#'                                  \item \strong{code{alternative_column}}: Character. Name of column in long data that contains the names of the alternatives (either numeric or character).
-#'                                  \item \strong{code{alternative_specific_attributes}}: Character vector. Names of columns in long data with attributes that vary across alternatives within an observation.
-#'                                  \item \strong{code{choice_column}}: Character. Name of column in long data that contains the choice.
-#'                                  \item \strong{code{ID_column}}: Character. Name of column in long data that contains the ID of individuals.
-#'                                  \item \strong{code{observation_column}}: Character. Name of column in long data that contains the observation index.
+#'                                  \item \strong{\code{alternative_column}}: Character. Name of column in long data that contains the names of the alternatives (either numeric or character).
+#'                                  \item \strong{\code{alternative_specific_attributes}}: Character vector. Names of columns in long data with attributes that vary across alternatives within an observation.
+#'                                  \item \strong{\code{choice_column}}: Character. Name of column in long data that contains the choice.
+#'                                  \item \strong{\code{ID_column}}: Character. Name of column in long data that contains the ID of individuals.
+#'                                  \item \strong{\code{observation_column}}: Character. Name of column in long data that contains the observation index.
 #'                                }
 #' @return Silently returns a data.frame with the wide format version of the data.
 #'         An overview of the data is printed to screen.

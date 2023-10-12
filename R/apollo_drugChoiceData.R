@@ -25,25 +25,25 @@
 #'   \item{brand_1}{Character. Brand for alternative 1.}
 #'   \item{country_1}{Character. Country of origin for alternative 1.}
 #'   \item{char_1}{Character. Characteristics of alternative 1 (standard, fast acting, or double strength).}
-#'   \item{side_effects_1}{Numeric. Chance of suffering negative side effects with alternative 1.}
+#'   \item{side_effects_1}{Numeric. Chance of suffering negative side effects with alternative 1 (out of 100,000).}
 #'   \item{price_1}{Numeric. Cost of alternative 1 in Pounds sterling (GBP).}
 
 #'   \item{brand_2}{Character. Brand for alternative 2.}
 #'   \item{country_2}{Character. Country of origin for alternative 2.}
 #'   \item{char_2}{Character. Characteristics of alternative 2 (standard, fast acting, or double strength).}
-#'   \item{side_effects_2}{Numeric. Chance of suffering negative side effects with alternative 2.}
+#'   \item{side_effects_2}{Numeric. Chance of suffering negative side effects with alternative 2 (out of 100,000).}
 #'   \item{price_2}{Numeric. Cost of alternative 2 in Pounds sterling (GBP).}
 #'   
 #'   \item{brand_3}{Character. Brand for alternative 3.}
 #'   \item{country_3}{Character. Country of origin for alternative 3.}
 #'   \item{char_3}{Character. Characteristics of alternative 3 (standard, fast acting, or double strength).}
-#'   \item{side_effects_3}{Numeric. Chance of suffering negative side effects with alternative 3.}
+#'   \item{side_effects_3}{Numeric. Chance of suffering negative side effects with alternative 3 (out of 100,000).}
 #'   \item{price_3}{Numeric. Cost of alternative 3 in Pounds sterling (GBP).}
 #'   
 #'   \item{brand_4}{Character. Brand for alternative 4.}
 #'   \item{country_4}{Character. Country of origin for alternative 4.}
 #'   \item{char_4}{Character. Characteristics of alternative 4 (standard, fast acting, or double strength).}
-#'   \item{side_effects_4}{Numeric. Chance of suffering negative side effects with alternative 4.}
+#'   \item{side_effects_4}{Numeric. Chance of suffering negative side effects with alternative 4 (out of 100,000).}
 #'   \item{price_4}{Numeric. Cost of alternative 4 in Pounds sterling (GBP).}
 
 #'   \item{regular_user}{Numeric. 1 if the respondent is a regular user of headache medicine, 0 otherwise.}

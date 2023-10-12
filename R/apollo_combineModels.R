@@ -47,8 +47,8 @@ apollo_combineModels=function(P, apollo_inputs, functionality, components=NULL, 
   #### load and check inputs, prepare variables that are used elsewhere ####
   # ###################################################################### #
   
-  if(!is.null(P[["model"]])) stop("SPECIFICATION ISSUE - A component called model already exists in P before calling apollo_combineModels!")
   if(length(P)==1) stop("SPECIFICATION ISSUE - No need to call apollo_combineModels for models with only one component!")
+  if(!is.null(P[["model"]])) stop("SPECIFICATION ISSUE - A component called model already exists in P before calling apollo_combineModels!")
   
   elements = names(P)
   if(is.null(elements) || length(unique(elements))<length(elements)){

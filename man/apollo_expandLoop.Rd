@@ -4,12 +4,14 @@
 \alias{apollo_expandLoop}
 \title{Expands loops in a function or expression}
 \usage{
-apollo_expandLoop(f, apollo_inputs)
+apollo_expandLoop(f, apollo_inputs, validate = TRUE)
 }
 \arguments{
 \item{f}{function (usually \code{apollo_probabilities}) inside which the name of the components are inserted.}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
+
+\item{validate}{Logical. If TRUE, the new function will be validated before being returned}
 }
 \value{
 A function or an expression (same type as input \code{f})
