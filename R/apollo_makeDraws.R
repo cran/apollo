@@ -39,16 +39,16 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   if(d$interNDraws==1 | d$intraNDraws==1) stop("SYNTAX ISSUE - Number of draws should be greater than 1.")
   
   testEGen <- rep(FALSE, 5)
-  testEUsr    <- !is.null(d$interDrawsType) && d$interDrawsType!="" && length(d$interDrawsType)==1 && ( !(tolower(d$interDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka')) && exists(d$interDrawsType, envir=globalenv()) )
-  testEGen[1] <- !is.null(d$interDrawsType) && d$interDrawsType!="" && length(d$interDrawsType)==1 && (tolower(d$interDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka'))
+  testEUsr    <- !is.null(d$interDrawsType) && all(d$interDrawsType!="") && length(d$interDrawsType)==1 && ( !(tolower(d$interDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka')) && exists(d$interDrawsType, envir=globalenv()) )
+  testEGen[1] <- !is.null(d$interDrawsType) && all(d$interDrawsType!="") && length(d$interDrawsType)==1 && (tolower(d$interDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka'))
   testEGen[2] <- !is.null(d$interNDraws) && is.numeric(d$interNDraws) && d$interNDraws>0
   testEGen[3] <- length(d$interUnifDraws)==0 || is.character(d$interUnifDraws)
   testEGen[4] <- length(d$interNormDraws)==0 || is.character(d$interNormDraws)
   testEGen[5] <- length(c(d$interUnifDraws, d$interNormDraws)) > 0
 
   testAGen <- rep(FALSE, 5)
-  testAUsr    <- !is.null(d$intraDrawsType) && d$intraDrawsType!="" && length(d$intraDrawsType)==1 && ( !(tolower(d$intraDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka')) && exists(d$intraDrawsType, envir=globalenv()) )
-  testAGen[1] <- !is.null(d$intraDrawsType) && d$intraDrawsType!="" && length(d$intraDrawsType)==1 && (tolower(d$intraDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka'))
+  testAUsr    <- !is.null(d$intraDrawsType) && all(d$intraDrawsType!="") && length(d$intraDrawsType)==1 && ( !(tolower(d$intraDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka')) && exists(d$intraDrawsType, envir=globalenv()) )
+  testAGen[1] <- !is.null(d$intraDrawsType) && all(d$intraDrawsType!="") && length(d$intraDrawsType)==1 && (tolower(d$intraDrawsType) %in% c('halton','mlhs','pmc','sobol','sobolowen','sobolfauretezuka','sobolowenfauretezuka'))
   testAGen[2] <- !is.null(d$intraNDraws) && is.numeric(d$intraNDraws) && d$intraNDraws>0
   testAGen[3] <- length(d$intraUnifDraws)==0 || is.character(d$intraUnifDraws)
   testAGen[4] <- length(d$intraNormDraws)==0 || is.character(d$intraNormDraws)

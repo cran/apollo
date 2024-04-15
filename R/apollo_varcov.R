@@ -287,7 +287,10 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
     # Check invertibility
     invertible <- tryCatch(is.matrix(solve(H)), error=function(e) FALSE)
     if(!invertible){
-      if(!silent) apollo_print('Singular Hessian, cannot calculate s.e.', type="w")
+      if(!silent){
+        apollo_print('Singular Hessian, cannot calculate s.e.', type="w")
+        if(any(abs(apollo_beta)>20)) apollo_print("Some of your parameter values are tending to +/- infinity. This could point to an identification issue. If you want to retain these parameters in the model, you may wish to set their value(s) in apollo_beta to the estimated value(s), include the parameter name(s) in apollo_fixed, and re-estimate the model.",type="w")
+      } 
       tryCatch({
         outD <- tryCatch(environment(apollo_logLike)$apollo_inputs$apollo_control$outputDirectory,
                          error=function(e) ".")

@@ -47,7 +47,7 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
   if(!is.list(P)) P=list(model=P)
   ## change 8 July
   #if(is.null(P[["model"]]) && !(functionality %in% c("prediction", "gradient", "preprocess")) ) stop('SYNTAX ISSUE - Element called model is missing in list P!')
-  if(is.null(P[["model"]]) && !(functionality %in% c("prediction", "gradient", "preprocess", "report")) ) stop('SYNTAX ISSUE - Element called model is missing in list P!')
+  if(is.null(P[["model"]]) && !(functionality %in% c("prediction", "gradient", "preprocess", "report", "components","raw")) ) stop('SYNTAX ISSUE - Element called model is missing in list P!')
   ### end change
   panelData <- apollo_inputs$apollo_control$panelData
   nIndiv <- length(unique(apollo_inputs$database[, apollo_inputs$apollo_control$indivID]))

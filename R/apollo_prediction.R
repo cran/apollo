@@ -147,8 +147,8 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         M <- M[,-(1:2),drop=FALSE] # remove ID and Observation
         # Print it a format appropriate to the model type
         if(modelComponentType %in% c('mdcev','mdcnev')){ # MDCEV
-          if(!singleElement & !silent) apollo_print(paste0("Aggregated predictions (continuous consumption, discrete choices, and expenditure) at model estimates for model component: ", names(predictions)[m]))
-          if( singleElement & !silent) apollo_print("Aggregated predictions (continuous consumption, discrete choices, and expenditure) at model estimates")
+          if(!singleElement & !silent) apollo_print(paste0("Aggregated predictions (continuous consumption, discrete choices, and expenditure) at user provided parameters for model component: ", names(predictions)[m]))
+          if( singleElement & !silent) apollo_print("Aggregated predictions (continuous consumption, discrete choices, and expenditure) at user provided parameters")
           K  <- as.integer(ncol(M)/6)
           Kn <- colnames(M)[1:K]
           Kn <- substr(Kn, 1, nchar(Kn)-10)
@@ -177,8 +177,8 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
           rm(W)
         }
         if(modelComponentType=='normd'){ # Normal density
-          if(!singleElement & !silent) apollo_print(paste0("Summary of predicted demand at model estimates for model component: ", names(predictions)[m]))
-          if( singleElement & !silent) apollo_print("Summary of predicted demand at model estimates")
+          if(!singleElement & !silent) apollo_print(paste0("Summary of predicted demand at user provided parameters for model component: ", names(predictions)[m]))
+          if( singleElement & !silent) apollo_print("Summary of predicted demand at user provided parameters")
           M    <- unlist(M)
           tmp  <- c('min', '1stQ', 'median', 'mean', '3rdQ', 'max', 'aggregate')
           tmp2 <- quantile(M, probs=c(0, .25, .5, .5, .75, 1, 1), na.rm=TRUE)
@@ -193,8 +193,8 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
           if(!is.numeric(w)) M <- matrix(tmp2, nrow=1, ncol=length(tmp), dimnames=list(names(predictions)[m], tmp))
         }
         if(!(modelComponentType %in% c('mdcev', 'mdcnev', 'normd'))){ # Discrete choice
-          if(!singleElement & !silent) apollo_print(paste0("Prediction at model estimates for model component: ", names(predictions)[m]))
-          if( singleElement & !silent) apollo_print("Prediction at model estimates")
+          if(!singleElement & !silent) apollo_print(paste0("Prediction at user provided parameters for model component: ", names(predictions)[m]))
+          if( singleElement & !silent) apollo_print("Prediction at user provided parameters")
           if(tolower(colnames(M)[ncol(M)])=='chosen') M <- M[,-ncol(M)]
           if(is.numeric(w)) M <- rbind(`Un-weighted aggregate`=  colSums(M/w, na.rm=TRUE), 
                                        `Un-weighted average`  = colMeans(M/w, na.rm=TRUE), 

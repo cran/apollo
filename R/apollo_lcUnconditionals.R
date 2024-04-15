@@ -55,7 +55,7 @@ apollo_lcUnconditionals <- function(model, apollo_probabilities, apollo_inputs){
   
   # If there are no intraDraws, keep only first row of each individual
   nObs <- nrow(database)
-  if(!is.na(apollo_draws) && apollo_draws$intraNDraws==0) for(i in 1:length(unconditionals)){
+  if(any(!is.na(apollo_draws)) && apollo_draws$intraNDraws==0) for(i in 1:length(unconditionals)){
     if(is.list(unconditionals[[i]])){
       for(j in 1:length(unconditionals[[i]])){
         x <- unconditionals[[i]][[j]]

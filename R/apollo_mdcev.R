@@ -228,7 +228,8 @@ apollo_mdcev <- function(mdcev_settings,functionality){
           # Print warnings
           for(a in 1:inputs$nAlt){
             if(choicematrix[2,a]==0) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is never chosen in model component "', inputs$componentName, '".'), type="w")
-            if(choicematrix[2,a]==choicematrix[1,a] && inputs$altnames[a]!=inputs$outside) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'), type="w")
+            if(choicematrix[2,a]==choicematrix[1,a] && is.na(inputs$outside)) stop(paste0('SPECIFICATION ISSUE - Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '" and should be treated as the outside good.'))
+            if(choicematrix[2,a]==choicematrix[1,a] && !is.na(inputs$outside) && inputs$altnames[a]!=inputs$outside) apollo_print(paste0('Alternative "', inputs$altnames[a], '" is always chosen when available in model component "', inputs$componentName, '".'), type="w")
           }
           #if(inputs$avail_set==TRUE & !apollo_inputs$silent) apollo_print(paste0('Availability not provided (or some elements are NA) for model component ', inputs$componentName,'. Full availability assumed.'), type="i")
         }

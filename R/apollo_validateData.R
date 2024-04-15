@@ -20,8 +20,7 @@ apollo_validateData=function(database, apollo_control, silent){
     txt <- paste0("Your database contains some entries that are NA. ", 
                   "This may well be intentional, but be advised that if ", 
                   "these entries are used in your model, the behaviour may ", 
-                  "be unexpected. You can stop the process by pressing the ", 
-                  "\"Escape\" key.")
+                  "be unexpected.")
     if(!silent) apollo_print(txt, pause=0, type="w")}
   
   test <- apollo_control$indivID %in% names(database)

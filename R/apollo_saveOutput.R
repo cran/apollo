@@ -33,6 +33,7 @@
 #'                               \item \strong{\code{saveCov}}: Boolean. TRUE for saving estimated covariance matrix to a CSV file. FALSE by default.
 #'                               \item \strong{\code{saveHBiterations}}: Boolean. TRUE for including HB iterations in the saved model object. FALSE by default.
 #'                               \item \strong{\code{saveModelObject}}: Boolean. TRUE to save the R model object to a file (use \link{apollo_loadModel} to load it to memory). TRUE by default.
+#'                               \item \strong{\code{saveOld}}: Boolean. If TRUE, existing files are kept with an added OLD suffix. If not, they are overwritten. TRUE by default.
 #'                               \item \strong{\code{writeF12}}: Boolean. TRUE for writing results into an F12 file (ALOGIT format). FALSE by default.
 #'                            }
 #' @return nothing
@@ -59,6 +60,7 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
                   saveCorr         = FALSE, #TRUE,
                   saveHBiterations = FALSE,
                   saveModelObject  = TRUE,
+                  saveOld          = TRUE,
                   writeF12         = FALSE)
   tmp <- names(default)[ !(names(default) %in% names(saveOutput_settings)) ]
   for(i in tmp)  saveOutput_settings[[i]] <- default[[i]]
@@ -77,10 +79,11 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
   saveCorr        = saveOutput_settings[["saveCorr"]]
   saveHBiterations= saveOutput_settings[["saveHBiterations"]]
   saveModelObject = saveOutput_settings[["saveModelObject"]]
+  saveOld         = saveOutput_settings[["saveOld"]]
   writeF12        = saveOutput_settings[["writeF12"]]
   scaling_used    = length(model$scaling)>0 && !anyNA(model$scaling)
   
-  # Check if files exists, and if they do, rename them as OLD
+  # Check if files exists, and if they do, rename them as OLD, or remove if saveOld=FALSE
   modName <- paste0(model$apollo_control$outputDirectory,model$apollo_control$modelName)
   if(file.exists( paste0(modName, "_output.txt") )){
     # Figure out corresponding OLD version
@@ -104,8 +107,13 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
                   "_params_random_corr.csv"
                   )
     for(i in outFiles) if(file.exists(paste0(modName, i))){
-      file.rename(from=paste0(modName, i), to=paste0(modNameOld, i))
-      cat("\nOld result file \"", paste0(modName, i), "\" \n renamed to: \"", paste0(modNameOld, i), "\"", sep="")
+      if(saveOld){
+        file.rename(from=paste0(modName, i), to=paste0(modNameOld, i))
+        cat("\nOld result file \"", paste0(modName, i), "\" \n renamed to: \"", paste0(modNameOld, i), "\"", sep="")
+      }else{
+        file.remove(paste0(modName, i))
+        cat("\nOld result file \"", paste0(modName, i), "\" removed/overwritten", sep="")
+     }
     }
     cat("\n")
   }

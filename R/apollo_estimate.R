@@ -555,7 +555,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   if(exists("model")){
     if(estimationRoutine=="bfgs" & model$code==0) successfulEstimation <- TRUE
     if(estimationRoutine=="bgw"){
-      apollo_print(model$message)
+      if(!silent) apollo_print(model$message)
       if(model$code %in% c(3,4,5,6)) successfulEstimation <- TRUE
     }
     if(estimationRoutine=="bhhh" & (model$code %in% c(2,8)) ) successfulEstimation <- TRUE
@@ -563,7 +563,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     if(is.null(model$maximum) || !is.finite(model$maximum)){
       successfulEstimation <- FALSE
       model$message       <- "Not converged"
-      apollo_print(paste0("The estimation has led to a non-finite log-likelihood. ",
+      if(!silent) apollo_print(paste0("The estimation has led to a non-finite log-likelihood. ",
                           "Although the R optimiser indicates convergence, Apollo ",
                           "does not consider estimation to have been successful."), type="w")
     } 
@@ -645,7 +645,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
       if(exists("model")){
         if(estimationRoutine=="bfgs" & model$code==0) successfulEstimation_scaled <- TRUE
         if(estimationRoutine=="bgw"){
-          apollo_print(model$message)
+          if(!silent) apollo_print(model$message)
           if(model$code %in% c(3,4,5,6)){
             successfulEstimation_scaled <- TRUE
           }
@@ -779,6 +779,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
       apollo_print(paste0("Final LL: " , round(model$maximum, 4)))
     } else apollo_print("Final LL: Not available.")
     apollo_print("\n")
+    if(!successfulEstimation && any(abs(model$estimate)>20)) apollo_print("Your model did not converge properly, and some of your parameter values are tending to +/- infinity. This could point to an identification issue. If you want to retain these parameters in the model, you may wish to set their value(s) in apollo_beta to the estimated value(s), include the parameter name(s) in apollo_fixed, and re-estimate the model.",type="w")
   }
   
   ### If estimation failed, continue only if model exists

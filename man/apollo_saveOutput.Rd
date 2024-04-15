@@ -29,6 +29,7 @@ apollo_saveOutput(model, saveOutput_settings = NA)
    \item \strong{\code{saveCov}}: Boolean. TRUE for saving estimated covariance matrix to a CSV file. FALSE by default.
    \item \strong{\code{saveHBiterations}}: Boolean. TRUE for including HB iterations in the saved model object. FALSE by default.
    \item \strong{\code{saveModelObject}}: Boolean. TRUE to save the R model object to a file (use \link{apollo_loadModel} to load it to memory). TRUE by default.
+   \item \strong{\code{saveOld}}: Boolean. If TRUE, existing files are kept with an added OLD suffix. If not, they are overwritten. TRUE by default.
    \item \strong{\code{writeF12}}: Boolean. TRUE for writing results into an F12 file (ALOGIT format). FALSE by default.
 }}
 }
