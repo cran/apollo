@@ -53,7 +53,9 @@ apollo_mixUnconditionals <- function(model, apollo_probabilities, apollo_inputs)
   }
   
   if(apollo_draws$intraNDraws==0){
-    nObsPerIndiv <- as.vector(table(database[,apollo_control$indivID]))
+    
+    indivID <- database[,apollo_control$indivID]
+    nObsPerIndiv <- setNames(sapply(as.list(unique(indivID)),function(x) sum(indivID==x)),unique(indivID))
     nIndiv       <- length(nObsPerIndiv)
     firstRows    <- rep(1, nIndiv)
     for(i in 2:nIndiv) firstRows[i] <- firstRows[i-1] + nObsPerIndiv[i-1]

@@ -208,6 +208,6 @@ apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTes
   
   }
   
-  apollo_print("\nThe outputs from this function are also returned insibly as an output. Calling the function via result=apollo_sharesTest(...) will save this output in an object called result (or otherwise named object).", type="i")
+  apollo_print("\nThe outputs from this function are also returned invisibly as an output. Calling the function via result=apollo_sharesTest(...) will save this output in an object called result (or otherwise named object).", type="i")
   return(invisible(out))
 }

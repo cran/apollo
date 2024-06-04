@@ -418,6 +418,6 @@ apollo_deltaMethod <- function(model, deltaMethod_settings){
     if(!is.null(deltaMethod_settings[["expression"]])) output=out
     if(!is.null(deltaMethod_settings[["operation"]]))  output=delta_output
   }
-  apollo_print("\nThe results of the Delta method calculations are returned insibly as an output from this function. Calling the function via result=apollo_deltaMethod(...) will save this output in an object called result (or otherwise named object).", type="i")
+  apollo_print("\nThe results of the Delta method calculations are returned invisibly as an output from this function. Calling the function via result=apollo_deltaMethod(...) will save this output in an object called result (or otherwise named object).", type="i")
   return(invisible(output))
 }

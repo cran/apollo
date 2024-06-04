@@ -84,7 +84,7 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
       for(cc in 1:length(inputs$classProb)) class_summary[cc,1] <- mean(inputs$classProb[[cc]])
       if(!apollo_inputs$silent & param){
         apollo_print('\n')
-        apollo_print(paste0('Summary of class allocation for ', toupper(inputs$modeltype), ' model component ', 
+        apollo_print(paste0('Summary of class allocation for ', toupper(inputs$modelType), ' model component ', 
                             ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
         apollo_print(class_summary)
       }
@@ -208,10 +208,12 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
     # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
     if( nRowsInClassProb!=nRowsClassProb & nRowsClassProb!=1 ){
       indivID <- get(apollo_control$indivID) 
-      nObsPerIndiv <- as.vector(table(indivID))
+      nObsPerIndiv <- setNames(sapply(as.list(unique(indivID)),function(x) sum(indivID==x)),unique(indivID))
+        
       if( nRowsInClassProb < nRowsClassProb ){
         # If classProb is calculated at the obs level while the inClassProb is at the indiv level
-        classProb <- lapply(classProb, rowsum, group=indivID)
+        classProb <- lapply(classProb, rowsum, group=indivID, reorder=FALSE)
+        classProb <- lapply(classProb, function(x) if(is.matrix(x) && ncol(x)==1) return(as.vector(x)) else return(x))
         classProb <- lapply(classProb, '/', nObsPerIndiv)
         #if(!apollo_inputs$silent) apollo_print(paste0('Class probabilities for model component "', lc_settings$componentName, 
         #                                              '" averaged across observations of each individual.'))
@@ -245,7 +247,8 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
     # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
     if( nRowsInClassProb!=nRowsClassProb  & nRowsClassProb!=1 ){
       indivID <- get(apollo_control$indivID) 
-      nObsPerIndiv <- as.vector(table(indivID))
+      nObsPerIndiv <- setNames(sapply(as.list(unique(indivID)),function(x) sum(indivID==x)),unique(indivID))
+    
       if( nRowsInClassProb < nRowsClassProb ){
         # If classProb is calculated at the obs level while the inClassProb is at the indiv level
         stop("SPECIFICATION ISSUE - Class-probability variable for model component \"",lc_settings$componentName,"\" has more elements than in-class-probability.")
@@ -321,13 +324,14 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
     # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
     if( nRowsInClassProb!=nRowsClassProb & nRowsClassProb!=1 ){
       indivID <- get(apollo_control$indivID) 
-      nObsPerIndiv <- as.vector(table(indivID))
+      nObsPerIndiv <- setNames(sapply(as.list(unique(indivID)),function(x) sum(indivID==x)),unique(indivID))
+
       if( nRowsInClassProb < nRowsClassProb ){
         # If classProb is calculated at the obs level while the inClassProb is at the indiv level
         for(i in 1:length(classProb)){
-          classProb[[i]]$grad <- lapply(classProb[[i]]$grad, rowsum, group=indivID)
+          classProb[[i]]$grad <- lapply(classProb[[i]]$grad, rowsum, group=indivID, reorder=FALSE)
           classProb[[i]]$grad <- lapply(classProb[[i]]$grad, '/', nObsPerIndiv)
-          classProb[[i]]$like <- rowsum(classProb[[i]]$like, group=indivID)/nObsPerIndiv
+          classProb[[i]]$like <- rowsum(classProb[[i]]$like, group=indivID, reorder=FALSE)/nObsPerIndiv
         }
         #if(!apollo_inputs$silent) apollo_print(paste0('Class probabilities for model component "', lc_settings$componentName, 
         #                                              '" averaged across observations of each individual.'))

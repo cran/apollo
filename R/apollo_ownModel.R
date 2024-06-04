@@ -181,7 +181,7 @@ apollo_ownModel <- function(ownModel_settings, functionality){
     test <- test && apollo_inputs$apollo_control$analyticGrad
     if(is.null(ownModel_settings$gradient)) ownModel_settings$gradient <- FALSE
     if(test){
-      ownModel_settings$dLike    <- apollo_dVdB2(apollo_beta, apollo_inputs, 
+      ownModel_settings$dLike    <- apollo_dVdB(apollo_beta, apollo_inputs, 
                                                  list(ownModel_settings$likelihood))
       if(is.list(ownModel_settings$dLike)){
         ownModel_settings$dLike <- lapply(ownModel_settings$dLike, "[[", 1)

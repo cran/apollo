@@ -14,7 +14,7 @@ apollo_initialise <- function()
   if(sink.number()>0) sink()
   
   ### WARNING if more than six months old
-  releaseDate <- as.POSIXct('2024-04-30', format='%Y-%m-%d')
+  releaseDate <- as.POSIXct('2024-06-03', format='%Y-%m-%d')
   isOld <- as.POSIXct(Sys.Date()) > (releaseDate + 6*30.4*24*60*60)
   #if(isOld) txt2 <- paste0(txt, 
   #if(isOld) txt2 <- paste0('\n\nYour version of Apollo is more than six months old.',
@@ -26,7 +26,7 @@ apollo_initialise <- function()
   
   if(isOld){#cat("\n")
     apollo_print("\n")
-    apollo_print(txt2, pause=5, type="i")
+    apollo_print(txt2, pause=0, type="i")
   } 
   
   cat("Apollo ignition sequence completed\n")

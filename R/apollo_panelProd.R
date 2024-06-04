@@ -86,6 +86,49 @@ apollo_panelProd <- function(P, apollo_inputs, functionality){
     return(P)
   }
   
+  # ############################# #
+  #### functionality="hessian" ####
+  # ############################# #
+  if(functionality=="hessian"){
+    
+    # If there are multiple components, only keep "model"
+    if("model" %in% names(P)) P <- P$model
+    
+    # Remove zeros from P$like
+    P$like[P$like==0] <- 1e-50 #1e-100 #1e-16 #1e-300
+    
+    # Pre-calculate necessary elements for the hessian
+    Lt   <- P[["like"]]
+    Ln   <- apollo_panelProd(Lt, apollo_inputs, "estimate")
+    Ln[Ln==0] <- 1e-50 # Remove zeros from L (is it really necessary?)
+    d1Lt <- P[["grad"]]
+    d1Ln <- lapply(d1Lt, function(g) Ln*rowsum(g/Lt, group=indivID, reorder=FALSE))
+    N    <- dim(d1Ln[[1]])[1]
+    K    <- length(P[["grad"]]) # number of parameters
+    d2Ln <- vector(mode="list", length=K) #array(0,c(N,K,K))
+    
+    # Loop to calculate hessian
+    for(k1 in 1:K){
+      d2Ln[[k1]] <- vector(mode="list", length=K)
+      for(k2 in 1:k1){
+        tmp <- (P[["hess"]][[k1]][[k2]] - d1Lt[[k1]]*d1Lt[[k2]]/Lt)/Lt
+        if(is.array(tmp)=="a") stop("SPECIFICATION ISSUE - ",
+                                    "You must average over intra-individual ",
+                                    "draws before calling apollo_panelProd.")
+        tmp <- rowsum(tmp, group=indivID, reorder=FALSE)
+        if(is.matrix(tmp) && dim(tmp)[2]==1) tmp <- as.vector(tmp)
+        d2Ln[[k1]][[k2]] = d1Ln[[k2]]*d1Ln[[k1]]/Ln + Ln*tmp
+        d2Ln[[k2]][[k1]] = d2Ln[[k1]][[k2]]
+      }
+    }; rm(tmp)
+    
+    H <- list(
+      like = Ln,   # likelihoods L at person level
+      grad = d1Ln, # first derivatives of L at the person level
+      hess = d2Ln) # second derivatives of L at the person level
+    return(H)
+    
+  }
   # ####################################### #
   #### functionality="zero_LL/shares_LL" ####
   # ####################################### #

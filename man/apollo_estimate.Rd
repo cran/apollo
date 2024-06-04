@@ -43,7 +43,7 @@ apollo_estimate(
  \item \strong{\code{scaleHessian}}: Logical. If TRUE, parameters are scaled to 1 for Hessian estimation. Default is TRUE.
  \item \strong{\code{scaling}}: Named vector. Names of elements should match those in \code{apollo_beta}. Optional scaling for parameters. If provided, for each parameter \code{i}, \code{(apollo_beta[i]/scaling[i])} is optimised, but \code{scaling[i]*(apollo_beta[i]/scaling[i])} is used during estimation. For example, if parameter b3=10, while b1 and b2 are close to 1, then setting \code{scaling = c(b3=10)} can help estimation, specially the calculation of the Hessian. Reports will still be based on the non-scaled parameters.
  \item \strong{\code{silent}}: Logical. If TRUE, no information is printed to the console during estimation. Default is FALSE.
- \item \strong{\code{validateGrad}}: Logical. If TRUE, the analytical gradient (if used) is compared to the numerical one. Default is TRUE.
+ \item \strong{\code{validateGrad}}: Logical. If TRUE, the analytical gradient (if used) is compared to the numerical one. Default is FALSE.
  \item \strong{\code{writeIter}}: Logical. Writes value of the parameters in each iteration to a csv file. Works only if \code{estimation_routine=="bfgs"|"bgw"}. Default is TRUE.
 }}
 }

@@ -154,6 +154,6 @@ apollo_basTest = function(model1,model2){
   print(output)
   apollo_print("\n")
   apollo_print(paste0("p-value for Ben-Akiva & Swait test: ",formatC(p)))
-  apollo_print("\nThe p-value from the test is returned insibly as an output from this function. Calling the function via result=apollo_basTest(...) will save this output in an object called result (or otherwise named object).", type="i")
+  apollo_print("\nThe p-value from the test is returned invisibly as an output from this function. Calling the function via result=apollo_basTest(...) will save this output in an object called result (or otherwise named object).", type="i")
   return(invisible(p))
 }

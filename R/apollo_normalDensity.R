@@ -92,7 +92,7 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
     normalDensity_settings$normalDensity_diagnostics <- function(inputs, apollo_inputs, data=TRUE, param=TRUE){
       if(!apollo_inputs$silent & data){
         apollo_print('\n')
-        apollo_print(paste0('Summary statistics for ', toupper(inputs$modeltype), ' model component ', 
+        apollo_print(paste0('Summary statistics for ', toupper(inputs$modelType), ' model component ', 
                             ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
         tmp <- t(as.matrix(summary(inputs$outcomeNormal))); rownames(tmp) <- ""
         print(round(tmp,4))
@@ -112,11 +112,11 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
     test <- test && is.function(normalDensity_settings$sigma)
     normalDensity_settings$gradient <- FALSE
     if(test){
-      tmp <- apollo_dVdB2(apollo_beta, apollo_inputs, list(normalDensity_settings$xNormal))
+      tmp <- apollo_dVdB(apollo_beta, apollo_inputs, list(normalDensity_settings$xNormal))
       normalDensity_settings$dX     <- lapply(tmp, `[[`, 1)
-      tmp <- apollo_dVdB2(apollo_beta, apollo_inputs, list(normalDensity_settings$mu     ))
+      tmp <- apollo_dVdB(apollo_beta, apollo_inputs, list(normalDensity_settings$mu     ))
       normalDensity_settings$dMu    <- lapply(tmp, `[[`, 1)
-      tmp <- apollo_dVdB2(apollo_beta, apollo_inputs, list(normalDensity_settings$sigma  ))
+      tmp <- apollo_dVdB(apollo_beta, apollo_inputs, list(normalDensity_settings$sigma  ))
       normalDensity_settings$dSigma <- lapply(tmp, `[[`, 1)
       tmp <-        all( sapply(normalDensity_settings$dX    , is.function) )
       tmp <- tmp && all( sapply(normalDensity_settings$dMu   , is.function) )

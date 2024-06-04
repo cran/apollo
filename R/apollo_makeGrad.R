@@ -49,7 +49,7 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   ### Check that no models without analytical gradient are used in apollo_probabilities
   if(is.function(apollo_probabilities)){
     tmp <- as.character(body(apollo_probabilities))
-    txt <- c("apollo_dft|apollo_mdcev|apollo_el|apollo_nl|apollo_cnl|apollo_mdcnev|apollo_op|apollo_emdc1|apollo_emdc2|apollo_emdc")
+    txt <- c("apollo_dft|apollo_mdcev|apollo_el|apollo_nl|apollo_cnl|apollo_mdcnev|apollo_op|apollo_emdc1|apollo_emdc2|apollo_emdc|apollo_fnl")
     tmp <- grep(txt, tmp)
     if(length(tmp)>0){
       if(debug) apollo_print("Analytic gradient cannot be built because models with undefined gradient are used inside apollo_probabilities.")
@@ -102,7 +102,7 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
                  '(http://www.apollochoicemodelling.com/forum) on how to', 
                  'solve this issue. If you do, please post your code and',
                  'data (if not confidential).')
-    if(!silent) apollo_print(txt,  pause=5, type="i")
+    if(!silent) apollo_print(txt,  pause=0, type="i")
     return(NULL)
   } 
   if( !all(dVAvail) ) return(NULL)
@@ -156,7 +156,7 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
     if(debug) apollo_print(c("\n", "Validating gradient function..."))
     b0_disturbance <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
     # Calculate analytical gradient
-    gradAn <- tryCatch(grad(b0_disturbance), error=function(e) return(NULL))
+    gradAn <- tryCatch(grad(b0_disturbance), error=function(e) {if(debug) apollo_print(e$message);return(NULL)})
     if(is.null(gradAn) || anyNA(gradAn)){ # If analytical gradient failed
       if(debug) apollo_print("Analytic gradient calculation failed. Defaulting to numeric one.")
       if(debug && !is.null(gradAn) && anyNA(gradAn)){

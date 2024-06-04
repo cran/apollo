@@ -16,6 +16,7 @@ Values \strong{must not be scaled}, and they must include any fixed parameter.}
 the following: \code{apollo_logLike}, \code{apollo_grad} or \code{apollo_inputs} together with \code{apollo_probabilities}.
 \itemize{
   \item \strong{\code{apollo_grad}}: Function to calculate the gradient of the model, as returned by \link{apollo_makeGrad}.
+  \item \strong{\code{apollo_hessian}}: Function to calculate the hessian of the model, as returned by \link{apollo_makeHessian}.
   \item \strong{\code{apollo_inputs}}: List grouping most common inputs. Created by function \link{apollo_validateInputs}.
   \item \strong{\code{apollo_logLike}}: Function to calculate the log-likelihood of the model, as returned by \link{apollo_makeLogLike}.
   \item \strong{\code{apollo_probabilities}}: apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:

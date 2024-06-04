@@ -168,7 +168,7 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
     nIndivs <- length(indivs)
     if(!silent) apollo_print(paste0(nRep, " new datasets will be constructed by randomly sampling ",
                                     nIndivs, " individuals with replacement from the original dataset."))
-    tmp <- as.vector(table(database[,apollo_control$indivID])) # n obs per indiv
+    tmp <- setNames(sapply(as.list(indivs),function(x) sum(database[,apollo_control$indivID]==x)),indivs)
     tmp <- all(tmp==tmp[1]) # TRUE if all indivs have same number of obs
     if(!tmp & !silent) apollo_print(paste0("Not all individuals have the same number of observations, ",
                                            "therefore not all generated datasets may have the same ",
@@ -352,7 +352,7 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
   if(!silent) apollo_print(paste0("Bootstrap processing time: ", format(timeTaken)))
   #output_matrix <- cbind(paramStack, llStack, nObs=nObsStack)
   #if(!silent) apollo_print("Bootstrap covariance matrix produced")
-  apollo_print("\nA list containing the estimates, covariance matrix and log-likelihood values is returned insibly as an output from this function. Calling the function via result=apollo_bootstrap(...) will save this output in an object called result (or otherwise named object).", type="i")
+  apollo_print("\nA list containing the estimates, covariance matrix and log-likelihood values is returned invisibly as an output from this function. Calling the function via result=apollo_bootstrap(...) will save this output in an object called result (or otherwise named object).", type="i")
   return(invisible(list(estimates=paramStack[includeRow,],
                         varcov=Sigma,
                         LL=llStack[,ncol(llStack)])))

@@ -58,7 +58,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   tmp  <- deparse(apollo_probabilities)
   usesAttach <- FALSE
   if(any(grepl("apollo_attach", tmp))) usesAttach <- TRUE
-  if(!usesAttach && !silent) apollo_print("You are not using apollo_attach, this may affect performance and capabilities", type="w", pause=5)
+  if(!usesAttach && !silent) apollo_print("You are not using apollo_attach, this may affect performance and capabilities", type="w", pause=0)
   
   ### Check for apollo_prepareProb() and return() in apollo_probabilities
   if(!any(grepl("apollo_prepareProb", tmp))) stop("SYNTAX ISSUE - The 'apollo_probabilities' function should include a call to 'apollo_prepareProb'!")
@@ -252,7 +252,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     if(test){
       apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed in initial testing.",
                           " Your model may still run, but this indicates a potential problem. Please contact the", 
-                          " developers for assistance!"),  pause=5, type="w")
+                          " developers for assistance!"),  pause=0, type="w")
       return(list(apollo_probabilities = apollo_probabilities, # returns version with names inserted
                   apollo_randCoeff     = apollo_randCoeff_ORIG, 
                   apollo_lcPars        = apollo_lcPars_ORIG,
@@ -280,12 +280,12 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   if(validate){
     test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
     test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
-    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2+0.1)/sum(test1+0.1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
       apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed during syntax checking.", 
                           " Your model may still run, but this indicates a potential problem. Please contact the", 
-                          " developers for assistance!"),  pause=5, type="w")
+                          " developers for assistance!"),  pause=0, type="w")
       return(list(apollo_probabilities = apollo_probabilities_ORIG, 
                   apollo_randCoeff     = apollo_randCoeff_ORIG, 
                   apollo_lcPars        = apollo_lcPars_ORIG,
@@ -323,12 +323,12 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   if(validate){
     test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
     test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
-    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2+0.1)/sum(test1+0.1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
       apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed during loop expansion.", 
                           " Your model may still run, but this indicates a potential problem. Please contact the", 
-                          " developers for assistance!"),  pause=5, type="w")
+                          " developers for assistance!"),  pause=0, type="w")
       return(list(apollo_probabilities = apollo_probabilities_ORIG, 
                   apollo_randCoeff     = apollo_randCoeff_ORIG, 
                   apollo_lcPars        = apollo_lcPars_ORIG,
@@ -367,12 +367,12 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     apollo_beta_shifted[names(apollo_inputs$apollo_scaling)] <- apollo_beta_shifted[names(apollo_inputs$apollo_scaling)]/apollo_inputs$apollo_scaling
     test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
     test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
-    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2+0.1)/sum(test1+0.1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
       apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed after inserting parameter scaling.", 
                           " Your model may still run, but this indicates a potential problem. Please contact the", 
-                          " developers for assistance!"),  pause=5, type="w")
+                          " developers for assistance!"),  pause=0, type="w")
       return(list(apollo_probabilities = apollo_probabilities_ORIG, 
                   apollo_randCoeff     = apollo_randCoeff_ORIG, 
                   apollo_lcPars        = apollo_lcPars_ORIG,
@@ -395,12 +395,12 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   if(validate){
     test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
     test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
-    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2+0.1)/sum(test1+0.1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
       apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed after additional syntax processing.", 
                           " Your model may still run, but this indicates a potential problem. Please contact the", 
-                          " developers for assistance!"),  pause=5, type="w")
+                          " developers for assistance!"),  pause=0, type="w")
       return(list(apollo_probabilities = apollo_probabilities_ORIG, 
                   apollo_randCoeff     = apollo_randCoeff_ORIG, 
                   apollo_lcPars        = apollo_lcPars_ORIG,
@@ -434,12 +434,12 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   if(validate){
     test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
     test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
-    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2+0.1)/sum(test1+0.1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
       apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed after inserting functions.", 
                           " Your model may still run, but this indicates a potential problem. Please contact the", 
-                          " developers for assistance!"),  pause=5, type="w")
+                          " developers for assistance!"),  pause=0, type="w")
       return(list(apollo_probabilities = apollo_probabilities_ORIG, 
                   apollo_randCoeff     = apollo_randCoeff_ORIG, 
                   apollo_lcPars        = apollo_lcPars_ORIG,

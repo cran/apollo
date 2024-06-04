@@ -222,7 +222,7 @@ apollo_mdcev2 <- function(mdcev_settings,functionality){
       # Print table
       if(!apollo_inputs$silent & data){
         apollo_print("\n")
-        apollo_print(paste0('Overview of choices for ', toupper(inputs$modeltype), ' model component ', 
+        apollo_print(paste0('Overview of choices for ', toupper(inputs$modelType), ' model component ', 
                             ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
         print(round(choicematrix,2))
         

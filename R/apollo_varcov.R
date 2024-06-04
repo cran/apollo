@@ -15,6 +15,7 @@
 #'                        the following: \code{apollo_logLike}, \code{apollo_grad} or \code{apollo_inputs} together with \code{apollo_probabilities}.
 #'                        \itemize{
 #'                          \item \strong{\code{apollo_grad}}: Function to calculate the gradient of the model, as returned by \link{apollo_makeGrad}.
+#'                          \item \strong{\code{apollo_hessian}}: Function to calculate the hessian of the model, as returned by \link{apollo_makeHessian}.
 #'                          \item \strong{\code{apollo_inputs}}: List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #'                          \item \strong{\code{apollo_logLike}}: Function to calculate the log-likelihood of the model, as returned by \link{apollo_makeLogLike}.
 #'                          \item \strong{\code{apollo_probabilities}}: apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:
@@ -77,12 +78,16 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
     } else if(is.list(varcov_settings$apollo_inputs)) aGrad <- varcov_settings$apollo_inputs$apollo_control$analyticGrad
   }
   if(!aGrad && varcov_settings$hessianRoutine=='analytic') varcov_settings$hessianRoutine <- 'numDeriv'
+  aHessian <- FALSE
+  test <- varcov_settings$hessianRoutine=='analytic' && is.function(varcov_settings$apollo_hessian)
+  if(test) aHessian <- TRUE
   
   ### Extract relevant values
   apollo_probabilities <- varcov_settings$apollo_probabilities
   apollo_inputs  <- varcov_settings$apollo_inputs
   apollo_logLike <- varcov_settings$apollo_logLike
   apollo_grad    <- varcov_settings$apollo_grad
+  apollo_hessian <- varcov_settings$apollo_hessian
   hessianRoutine <- varcov_settings$hessianRoutine
   dummyVCM       <- matrix(NA, nrow=length(apollo_beta), ncol=length(apollo_beta), 
                            dimnames=list(names(apollo_beta), names(apollo_beta)))
@@ -136,6 +141,8 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
                                           apollo_fixed   = apollo_fixed, 
                                           apollo_logLike = apollo_logLike, 
                                           validateGrad   = TRUE)
+  test <- !is.function(apollo_hessian) && hessianRoutine=="analytic"
+  
   
   ### Scale if requested
   if(varcov_settings$scaleBeta){
@@ -188,10 +195,27 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
   H <- NULL
   methodUsed <- NULL
   
+  oneCore <- environment(apollo_logLike)$singleCore
+  if( oneCore) apollo_inputs <- environment(apollo_logLike)$apollo_inputs
+  if(!oneCore) apollo_inputs <- parallel::clusterEvalQ(cl=environment(apollo_logLike)$cl,
+                                           apollo_inputs)[[1]]
+  
+  analyticHessian=apollo_inputs$apollo_control$analyticHessian
+  
+  ### Attempt to calculate Hessian analytically
+  if(is.null(H) && is.function(apollo_hessian) && hessianRoutine=='analytic'){
+    if(!silent) apollo_print("Computing covariance matrix using analytical Hessian.")
+    H <- tryCatch(apollo_hessian(beta_var_val), 
+                  error=function(e){
+                    if(!silent) apollo_print("Could not calculate analytical Hessian")
+                    if(!silent) apollo_print(e$message)
+                    return(NULL)})
+  }
+  
   ### Attempt to calculate Hessian as as the Jacobian of the analytical gradient
   if(is.null(H) && is.function(apollo_grad) && hessianRoutine=='analytic'){
     methodUsed <- c(methodUsed, 'numerical jacobian of LL analytical gradient')
-    if(!silent) apollo_print("Computing covariance matrix using analytical gradient.")
+    if(!silent) apollo_print("Computing covariance matrix using numerical jacobian of analytical gradient.")
     i <- 0; k <- length(beta_var_val)
     if(varcov_settings$numDeriv_method=="simple") I <- 1 + k else I <- 1 + 8*k
     di <- ceiling(I/20);

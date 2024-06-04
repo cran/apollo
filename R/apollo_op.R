@@ -129,7 +129,7 @@ apollo_op  <- function(op_settings, functionality){
       rownames(choicematrix) <- c("Times chosen", "Percentage chosen overall")
       if(!apollo_inputs$silent & data){
         apollo_print("\n")
-        apollo_print(paste0('Overview of choices for ', toupper(inputs$modeltype), ' model component ', 
+        apollo_print(paste0('Overview of choices for ', toupper(inputs$modelType), ' model component ', 
                             ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
         print(round(choicematrix,2))
       }
@@ -149,8 +149,8 @@ apollo_op  <- function(op_settings, functionality){
     test <- test && apollo_inputs$apollo_control$analyticGrad
     op_settings$gradient <- FALSE
     if(test){
-      tmp1 <- apollo_dVdB2(apollo_beta, apollo_inputs, list(V=op_settings$V))
-      tmp2 <- apollo_dVdB2(apollo_beta, apollo_inputs, op_settings$tau      )
+      tmp1 <- apollo_dVdB(apollo_beta, apollo_inputs, list(V=op_settings$V))
+      tmp2 <- apollo_dVdB(apollo_beta, apollo_inputs, op_settings$tau      )
       if(!is.null(tmp1) && !is.null(tmp2)){
         op_settings$dV   <- lapply(tmp1, `[[`, 1) # list(dV/db1, dV/db2, ...)
         op_settings$dTau <- tmp2 # list(b1=list(dt1/db1, dt2/db1, ...), b2=...)

@@ -22,6 +22,14 @@ apollo_firstRow=function(P, apollo_inputs){
   
   apollo_sequence <- apollo_inputs$database$apollo_sequence
   
+  if(is.data.frame(P)){
+    if(nrow(P)==length(apollo_sequence)){
+      return(subset(P,apollo_sequence==1))
+    }else{
+      stop("INPUT ISSUE - The data.frame passed to apollo_firstRow does not have the same number of rows as the database!")
+    } 
+  }
+  
   ### If P is a list
   if(is.list(P)){
     for(j in 1:length(P)){
@@ -29,17 +37,19 @@ apollo_firstRow=function(P, apollo_inputs){
       isVec <- is.vector(P[[j]]) && !isSca
       isMat <- is.matrix(P[[j]])
       isCub <- is.array(P[[j]]) && !isMat && length(dim(P[[j]]))==3
+      condition <- isSca || (isVec && length(P[[j]])==length(apollo_sequence)) || (isMat && nrow(P[[j]])==length(apollo_sequence)) || (isCub && nrow(P[[j]])==length(apollo_sequence))
+      if(!condition) stop("INPUT ISSUE - The object passed to apollo_firstRow does not have the same number of entries as the database!")
       if(isSca) P[[j]] = rep(P[[j]], sum(apollo_sequence==1))
       if(isVec|isMat) P[[j]] = subset(P[[j]],apollo_sequence==1)
       if(isCub) P[[j]] = P[[j]][(apollo_sequence==1),,,drop=FALSE]
     }
-    ### If P is a data.frame (besides being a list)
-    if(is.data.frame(P)) P <- P[1:sum(apollo_sequence==1),]
   }else{ ### If P is not a list
     isSca <- length(P)==1
     isVec <- is.vector(P) && !isSca
     isMat <- is.matrix(P)
     isCub <- is.array(P) && !isMat && length(dim(P))==3
+    condition <- isSca || (isVec && length(P)==length(apollo_sequence)) || (isMat && nrow(P)==length(apollo_sequence)) || (isCub && nrow(P)==length(apollo_sequence))
+    if(!condition) stop("INPUT ISSUE - The object passed to apollo_firstRow does not have the same number of entries as the database!")
     if(isSca) P = rep(P, sum(apollo_sequence==1))
     if(isVec|isMat) P=subset(P,apollo_sequence==1)
     if(isCub) P=P[(apollo_sequence==1),,,drop=FALSE]

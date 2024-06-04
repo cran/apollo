@@ -47,7 +47,7 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
   if(!is.list(P)) P=list(model=P)
   ## change 8 July
   #if(is.null(P[["model"]]) && !(functionality %in% c("prediction", "gradient", "preprocess")) ) stop('SYNTAX ISSUE - Element called model is missing in list P!')
-  if(is.null(P[["model"]]) && !(functionality %in% c("prediction", "gradient", "preprocess", "report", "components","raw")) ) stop('SYNTAX ISSUE - Element called model is missing in list P!')
+  if(is.null(P[["model"]]) && !(functionality %in% c("prediction", "gradient", "hessian", "preprocess", "report", "components","raw")) ) stop('SYNTAX ISSUE - Element called model is missing in list P!')
   ### end change
   panelData <- apollo_inputs$apollo_control$panelData
   nIndiv <- length(unique(apollo_inputs$database[, apollo_inputs$apollo_control$indivID]))
@@ -144,6 +144,23 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
     return(P)
   }
   
+  # ########################################## #
+  #### functionality="hessian"              ####
+  # ########################################## #
+  
+  if(functionality=="hessian"){
+    if("model" %in% names(P)) P <- P$model
+    K <- length(P[["grad"]])
+    H <- matrix(0, nrow=K, ncol=K)
+    for(k1 in 1:K) for(k2 in 1:k1){
+      #H[k1,k2] <- sum((P[["hess"]][,k1,k2] - 
+      H[k1,k2] <- sum((P[["hess"]][[k1]][[k2]] - 
+                  P[["grad"]][[k1]]*P[["grad"]][[k2]]/P[["like"]])/P[["like"]])
+      H[k2,k1] <- H[k1,k2]
+    }
+    return(H)
+    #return(apply(P[["hess"]], MARGIN=c(2,3), sum))
+  }
   # ######################################### #
   #### functionality="estimation"          ####
   # ######################################### #

@@ -53,8 +53,9 @@ apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
   
   ### Calculate posterior class allocation probs
   post_pi = vector(mode="list", length=classes)
-  nObsPerIndiv <- apollo_inputs$database[,apollo_inputs$apollo_control$indivID]
-  nObsPerIndiv <- as.vector(table(nObsPerIndiv))
+  indivID <- apollo_inputs$database[,apollo_inputs$apollo_control$indivID]
+  nObsPerIndiv <- setNames(sapply(as.list(unique(indivID)),function(x) sum(indivID==x)),unique(indivID))
+
   for(s in 1:classes){
     # adjust dimensionality of pi if necessary
     pi <- lcpars[[class_prob]][[s]]
@@ -65,13 +66,11 @@ apollo_lcConditionals=function(model, apollo_probabilities, apollo_inputs){
       if(rP<rL && is.vector(pi)) pi <- rep(pi, each=nObsPerIndiv)
     }
     if(is.list(L[[s]])){
-      if(!is.null(L[[s]]$model)){
-        L[[s]]=L[[s]]$model
-      }else{
+      if(!is.null(L[[s]]$model)) L[[s]] = L[[s]]$model else{
         stop("SPECIFICATION ISSUE: the within class probabilities are lists that do not contain an entry called model!")
       }
     }
-      post_pi[[s]] = pi*L[[s]]/L[["model"]]
+    post_pi[[s]] = pi*L[[s]]/L[["model"]]
   }; rm(pi, rL, rP)
   
   ### Prepare output

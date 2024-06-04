@@ -267,8 +267,8 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
       if(!is.null(h) ) environment(LL)$apollo_inputs$h                <- h
       if(!is.null(cs)) environment(LL)$apollo_inputs$class_specific   <- cs
       if(w){
-        nObsPerIndiv <- environment(LL)$apollo_inputs$database[,environment(LL)$apollo_inputs$apollo_control$indivID]
-        nObsPerIndiv <- as.vector(table(nObsPerIndiv))
+        indivs <- environment(LL)$apollo_inputs$database[,environment(LL)$apollo_inputs$apollo_control$indivID]
+        nObsPerIndiv <- setNames(sapply(as.list(unique(indivs)),function(x) sum(indivs==x)),unique(indivs))
         environment(LL)$apollo_inputs$database$weights <- rep(h[[cs]], times=nObsPerIndiv)
       } 
     } else {
@@ -288,7 +288,8 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
         apollo_inputs   <- get('apollo_inputs', envir=globalenv())
         if(!is.null(cs)) apollo_inputs$class_specific <- cs
         if( is.list(hh)) apollo_inputs$h              <- hh
-        nObsPerIndiv    <- as.vector(table(apollo_inputs$database[,apollo_inputs$apollo_control$indivID]))
+        indivs <- apollo_inputs$database[,apollo_inputs$apollo_control$indivID]
+        nObsPerIndiv <- setNames(sapply(as.list(unique(indivs)),function(x) sum(indivs==x)),unique(indivs))
         if(w & !is.null(cs)) apollo_inputs$database$weights <- rep(hh[[cs]], times=nObsPerIndiv)
         tmp <- globalenv()
         assign("apollo_inputs", apollo_inputs, tmp)
@@ -351,8 +352,8 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
       if(rP!=1 && rL!=1 && rP!=rL){
         if(rP>rL) piS <- apollo_firstRow(pi[[s]], apollo_inputs) else piS <- pi[[s]]
         if(rP<rL && is.vector(pi[[s]])){ # only works for vector pi
-          nObsPerIndiv <- apollo_inputs$database[,apollo_inputs$apollo_control$indivID]
-          nObsPerIndiv <- as.vector(table(nObsPerIndiv))
+          indivs <- apollo_inputs$database[,apollo_inputs$apollo_control$indivID]
+          nObsPerIndiv <- setNames(sapply(as.list(unique(indivs)),function(x) sum(indivs==x)),unique(indivs))  
           piS <- rep(pi[[s]], each=nObsPerIndiv)
         } 
       } else piS <- pi[[s]]

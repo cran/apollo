@@ -34,7 +34,7 @@
 #'           \item \strong{\code{"gradient"}}: List containing the likelihood and gradient of the model component.
 #'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
 #'           \item \strong{\code{"prediction"}}: List of vectors/matrices/arrays. Returns a list with the probabilities for all alternatives, with an extra element for the probability of the chosen alternative.
-#'           \item \strong{\code{"preprocess"}}: Returns a list with pre-processed inputs, based on \code{mfnl_settings}.
+#'           \item \strong{\code{"preprocess"}}: Returns a list with pre-processed inputs, based on \code{fmnl_settings}.
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'           \item \strong{\code{"report"}}: Overview of dependent variable
 #'           \item \strong{\code{"shares_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when only constants are estimated.
@@ -172,7 +172,7 @@ apollo_fmnl <- function(fmnl_settings, functionality){
         # Print table
         if(!apollo_inputs$silent & data){
           apollo_print("\n")
-          apollo_print(paste0('Overview of choices for ', toupper(inputs$modeltype), ' model component ', 
+          apollo_print(paste0('Overview of choices for ', toupper(inputs$modelType), ' model component ', 
                               ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
           print(round(choicematrix,2))
           
@@ -200,7 +200,8 @@ apollo_fmnl <- function(fmnl_settings, functionality){
     test <- test && apollo_inputs$apollo_control$analyticGrad
     fmnl_settings$gradient <- FALSE
     if(test){
-      fmnl_settings$dV       <- apollo_dVdB(apollo_beta, apollo_inputs, fmnl_settings$V)
+      fmnl_settings$V        <- fmnl_settings$V[fmnl_settings$altnames] # reorder V
+      fmnl_settings$dV       <- apollo_dVdBOld(apollo_beta, apollo_inputs, fmnl_settings$V)
       fmnl_settings$gradient <- !is.null(fmnl_settings$dV)
     }; rm(test)
     
@@ -265,22 +266,23 @@ apollo_fmnl <- function(fmnl_settings, functionality){
   # ############################### #
   
   if(functionality=="shares_LL"){
-    for(i in 1:length(mnl_settings$avail)) if(length(mnl_settings$avail[[i]])==1) mnl_settings$avail[[i]] <- rep(mnl_settings$avail[[i]], mnl_settings$nObs) # turn scalar availabilities into vectors
-    nAvAlt <- rowSums(do.call(cbind, mnl_settings$avail)) # number of available alts in each observation
-    Y = do.call(cbind,mnl_settings$Y)
-    if(var(nAvAlt)==0){
-      Yshares = colSums(Y)/nrow(Y)
-      P = as.vector(Y%*%Yshares)
-    } else {
-      ## Estimate model with constants only
-      mnl_ll = function(b, A, Y) as.vector(Y%*%c(b,0) - log(rowSums( A%*%exp(c(b,0)) )))
-      A = do.call(cbind, mnl_settings$avail)
-      b = maxLik::maxLik(mnl_ll, start=rep(0, mnl_settings$nAlt - 1), 
-                         method='BFGS', finalHessian=FALSE, A=A, Y=Y)$estimate
-      P = exp(mnl_ll(b, A, Y))
-    }
-    if(any(!mnl_settings$rows)) P <- apollo_insertRows(P, mnl_settings$rows, 1)
-    return(P)
+    #for(i in 1:length(mnl_settings$avail)) if(length(mnl_settings$avail[[i]])==1) mnl_settings$avail[[i]] <- rep(mnl_settings$avail[[i]], mnl_settings$nObs) # turn scalar availabilities into vectors
+    #nAvAlt <- rowSums(do.call(cbind, mnl_settings$avail)) # number of available alts in each observation
+    #Y = do.call(cbind,mnl_settings$Y)
+    #if(var(nAvAlt)==0){
+    #  Yshares = colSums(Y)/nrow(Y)
+    #  P = as.vector(Y%*%Yshares)
+    #} else {
+    #  ## Estimate model with constants only
+    #  mnl_ll = function(b, A, Y) as.vector(Y%*%c(b,0) - log(rowSums( A%*%exp(c(b,0)) )))
+    #  A = do.call(cbind, mnl_settings$avail)
+    #  b = maxLik::maxLik(mnl_ll, start=rep(0, mnl_settings$nAlt - 1), 
+    #                     method='BFGS', finalHessian=FALSE, A=A, Y=Y)$estimate
+    #  P = exp(mnl_ll(b, A, Y))
+    #}
+    #if(any(!mnl_settings$rows)) P <- apollo_insertRows(P, mnl_settings$rows, 1)
+    #return(P)
+    return(NA)
   }
   
   # ################################################################# #

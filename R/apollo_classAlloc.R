@@ -103,7 +103,7 @@ apollo_classAlloc <- function(classAlloc_settings){
     test <- test && apollo_inputs$apollo_control$analyticGrad
     classAlloc_settings$gradient <- FALSE
     if(test){
-      classAlloc_settings$dV       <- apollo_dVdB(apollo_beta, apollo_inputs, classAlloc_settings$V)
+      classAlloc_settings$dV       <- apollo_dVdBOld(apollo_beta, apollo_inputs, classAlloc_settings$V)
       classAlloc_settings$gradient <- !is.null(classAlloc_settings$dV)
     }; rm(test)
     

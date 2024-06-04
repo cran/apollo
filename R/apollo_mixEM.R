@@ -128,7 +128,7 @@ apollo_mixEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_in
   database <- apollo_inputs$database # neccesary to circumvent deletion of database across the call stack in apollo_estimate
   draws    <- apollo_inputs$draws    # neccesary to circumvent deletion of draws across the call stack in apollo_estimate
   apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, 
-                  estimate_settings=list(maxIterations=0, writeIter=FALSE,hessianRoutine="none",silent=TRUE))
+                  estimate_settings=list(maxIterations=0,writeIter=FALSE,hessianRoutine="none",silent=TRUE))
   apollo_inputs$database <- database; rm(database)
   apollo_inputs$draws    <- draws;    rm(draws)
   apollo_inputs$apollo_scaling <- estimate_settings$scaling
@@ -233,8 +233,8 @@ apollo_mixEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_in
     cholesky = cholesky[upper.tri((cholesky),diag=TRUE)]
     
     ### Update vector of model parameters on the basis of calculated mu and Omega
-    apollo_beta[1:4]=mu
-    apollo_beta[5:14]=cholesky
+    apollo_beta[1:K]=mu
+    apollo_beta[(K+1):(K+length(cholesky))]=cholesky
     
     ### Calculate likelihood with new parameters
     Lnew=((apollo_probabilities(apollo_beta, apollo_inputs, functionality="conditionals")))

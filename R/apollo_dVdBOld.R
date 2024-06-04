@@ -5,15 +5,14 @@
 #' @param apollo_beta Named numeric vector of parameters.
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param V List of functions
-#' @return Named list. Each element is itself a list of functions: the partial derivatives of the elements of V.
+#' @return Named list. Each element is a function that returns a list, where each element is the partial derivatives of the elements of V.
 #' 
 #' @export
-apollo_dVdB2 <- function(apollo_beta, apollo_inputs, V){
+apollo_dVdBOld <- function(apollo_beta, apollo_inputs, V){
   # Useful variables
   freeparams <- !(names(apollo_beta) %in% apollo_inputs$apollo_fixed)
   freeparams <- names(apollo_beta[freeparams])
   J <- length(V)
-  K <- length(freeparams)
   is.val <- function(e) if(is.symbol(e) || is.numeric(e) || is.character(e) || is.logical(e) ) return(TRUE) else return(FALSE)
   
   # Get apollo_probabilities
@@ -30,12 +29,18 @@ apollo_dVdB2 <- function(apollo_beta, apollo_inputs, V){
   
   # Extract all variables used in apollo_probabilities
   if(is.null(apollo_probabilities)) return(NULL)
-  #if(apollo_inputs$apollo_control$debug) apollo_print("dVdB: Extracting variable definitions")
+  if(apollo_inputs$apollo_control$debug) apollo_print("dVdB: Extracting variable definitions")
   defs     <- tryCatch(apollo_varList(apollo_probabilities, apollo_inputs), error=function(e) NULL)
   if(is.null(defs)){
     if(apollo_inputs$apollo_control$debug) apollo_print('dVdB: Could not extract variable definitions')
     return(NULL)
   }
+  
+  # Check there are no indices
+  #if(length(grep("[", vars$v[,2], fixed=TRUE))>0){
+  #  if(apollo_inputs$apollo_control$debug) apollo_print("dVdB: Analytical gradients cannot be used if utilities contain indices.")
+  #  return(NULL)
+  #}
   
   # Replace values defined elsewhere
   replaceByDef <- function(e, defs){
@@ -61,16 +66,15 @@ apollo_dVdB2 <- function(apollo_beta, apollo_inputs, V){
   V <- lapply(V, replaceByDef, defs=defs)
   
   # Symbolic differentiation
-  #if(apollo_inputs$apollo_control$debug) apollo_print("dVdB: Calculating analytical derivatives")
-  #dV <- lapply(V, Deriv::Deriv, x=freeparams, combine="list")
-  #for(k in 1:length(dV)) environment(dV[[k]]) <- new.env(hash=TRUE, parent=baseenv())
-  dV <- vector(mode="list", length=K)
-  for(k in 1:K){
-    dV[[k]] <- vector(mode="list", length=J)
-    for(j in 1:J) dV[[k]][[j]] <- Deriv::Deriv(f=V[[j]], x=freeparams[k])
-    names(dV[[k]]) <- names(V)
-    environment(dV[[k]][[j]]) <- new.env(hash=TRUE, parent=baseenv())
-  }
-  names(dV) <- freeparams
+  if(apollo_inputs$apollo_control$debug) apollo_print("dVdB: Calculating analytical derivatives")
+  dV <- lapply(V, Deriv::Deriv, x=freeparams, combine="list")
+  for(k in 1:length(dV)) environment(dV[[k]]) <- new.env(hash=TRUE, parent=baseenv())
   return(dV)
 }
+
+#f <- function() b1*x1 + b2*x2
+#body(f)[[2]][[2]]
+#bf <- body(f)
+#bf[[2]][[2]] <- quote(a0 + a1*z1)
+
+#Deriv::Deriv()

@@ -363,7 +363,7 @@ apollo_rrm <- function(rrm_settings, functionality){
       rrm_settings$gradient <- FALSE
       if(test){
         rrm_settings$regrets  <- rrm_settings$regrets[rrm_settings$altnames] # reorder regrets
-        rrm_settings$dR       <- apollo_dVdB(apollo_beta, apollo_inputs, rrm_settings$regrets)
+        rrm_settings$dR       <- apollo_dVdBOld(apollo_beta, apollo_inputs, rrm_settings$regrets)
         rrm_settings$gradient <- !is.null(rrm_settings$dR)
       }; rm(test)
       

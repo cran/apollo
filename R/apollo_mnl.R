@@ -87,7 +87,7 @@ apollo_mnl <- function(mnl_settings, functionality){
     if(is.null(mnl_settings[["componentName"]])) stop('SYNTAX ISSUE - The settings of at least one model component is missing the mandatory "componentName" object.')
     
     # functionality
-    test <- functionality %in% c("estimate","prediction","validate","zero_LL","shares_LL","conditionals","output","raw","preprocess", "components", "gradient", "report")
+    test <- functionality %in% c("estimate","prediction","validate","zero_LL","shares_LL","conditionals","output","raw","preprocess", "components", "gradient","hessian", "report")
     if(!test) stop("SYNTAX ISSUE - Non-permissable setting for \"functionality\" for model component \"",mnl_settings$componentName,"\"")
     
     # Check for mandatory inputs
@@ -262,14 +262,33 @@ apollo_mnl <- function(mnl_settings, functionality){
     # Construct necessary input for gradient (including gradient of utilities)
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
                             error=function(e) return(NULL))
-    test <- !is.null(apollo_beta) && (functionality %in% c("preprocess", "gradient"))
+    test <- !is.null(apollo_beta) && (functionality %in% c("preprocess", "gradient", "hessian"))
     test <- test && all(sapply(mnl_settings$V, is.function))
     test <- test && apollo_inputs$apollo_control$analyticGrad
     mnl_settings$gradient <- FALSE
     if(test){
       mnl_settings$V        <- mnl_settings$V[mnl_settings$altnames] # reorder V
-      mnl_settings$dV       <- apollo_dVdB2(apollo_beta, apollo_inputs, mnl_settings$V)
+      mnl_settings$dV       <- apollo_dVdB(apollo_beta, apollo_inputs, mnl_settings$V)
       mnl_settings$gradient <- !is.null(mnl_settings$dV)
+    }; rm(test)
+    
+    # Construct necessary input for hessian
+    test <- !is.null(mnl_settings$gradient) && mnl_settings$gradient && apollo_inputs$apollo_control$analyticHessian
+    mnl_settings$hessian <- TRUE
+    if(test){
+      mnl_settings$ddV <- list()
+      alts=mnl_settings$altnames
+      pars=names(mnl_settings$dV)
+      for(k1 in pars){
+        mnl_settings$ddV[[k1]] <- list() 
+        for(k2 in pars){
+          mnl_settings$ddV[[k1]][[k2]] <- list() 
+          for(j in alts){
+            mnl_settings$ddV[[k1]][[k2]][[j]] <- Deriv::Deriv(f=mnl_settings$dV[[k1]][[j]], x=k2)
+            if(is.null(mnl_settings$ddV[[k1]][[k2]][[j]])) mnl_settings$hessian <- FALSE
+          }
+        }
+      }
     }; rm(test)
     
     # Return mnl_settings if pre-processing
@@ -313,7 +332,7 @@ apollo_mnl <- function(mnl_settings, functionality){
       if(mnl_settings$nAlt<minAlts) stop("SYNTAX ISSUE - Model component \"",mnl_settings$componentName,"\"  requires at least ", minAlts, " alternatives")
       
       # Check if LLC is required with large numbers of alternatives
-      if(mnl_settings$nAlt>20 && !is.null(apollo_inputs$apollo_control$calculateLLC) && apollo_inputs$apollo_control$calculateLLC) apollo_print(paste0("The number of the alternatives for model component \"",mnl_settings$componentName,"\" is large and you may consider setting apollo_control$calculateLLC=FALSE to avoid the calculation of the log-likelihod with constants only."), pause=5, type="i")
+      if(mnl_settings$nAlt>20 && !is.null(apollo_inputs$apollo_control$calculateLLC) && apollo_inputs$apollo_control$calculateLLC) apollo_print(paste0("The number of the alternatives for model component \"",mnl_settings$componentName,"\" is large and you may consider setting apollo_control$calculateLLC=FALSE to avoid the calculation of the log-likelihod with constants only."), pause=0, type="i")
 
       # Check that choice vector is not empty
       if(length(mnl_settings$choiceVar)==0) stop("SYNTAX ISSUE - Choice vector is empty for model component \"",mnl_settings$componentName,"\"")
@@ -454,12 +473,111 @@ apollo_mnl <- function(mnl_settings, functionality){
       G[[k]] <- Pcho*G[[k]]
     }; rm(dVjk)
     
-    # Restore rows and return
+    # Restore rows 
     if(!all(mnl_settings$rows)){
       Pcho <- apollo_insertRows(Pcho, mnl_settings$rows, 1)
       G    <- lapply(G, apollo_insertRows, r=mnl_settings$rows, val=0)
     }
     return(list(like=Pcho, grad=G))
+  }
+  
+  # ############################# #
+  #### functionality="hessian" ####
+  # ############################# #
+  if(functionality=="hessian"){
+    ### TO DO
+      # Checks before running
+      # Account for availability
+      # Account for removed rows
+    
+    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
+                            error=function(e) stop("INTERNAL ISSUE - ",
+                                                   "apollo_mnl could not ",
+                                                   "fetch apollo_beta for ",
+                                                   "hessian estimation."))
+    
+    ### Calculate necessary input
+    J <- length(mnl_settings$dV[[1]]) # number of alternatives
+    K <- length(mnl_settings$dV) # number of parameters
+    N <- mnl_settings$nObs  # number of obs
+    P <- mnl_settings$probs_MNL(mnl_settings, all=TRUE)
+    L <- P[["chosen"]]
+    L[L==0] <- 1e-50 # Remove zeros
+    P <- P[-which(names(P)=="chosen")]
+    e <- list2env(c(as.list(apollo_beta), apollo_inputs$database, 
+                    list(apollo_inputs=apollo_inputs)), hash=TRUE)
+    r <- all(mnl_settings$rows) # TRUE if all rows are used (no rows excluded)
+    A <- mnl_settings$avail
+    a <- sapply(A, function(a) if(length(a)==1) a==1 else all(a==1)) # TRUE if all available
+    pars <- names(mnl_settings$dV)
+    alts <- names(mnl_settings$dV[[1]])
+    
+    ### Calculate gradient of probabilities for all alternatives and for chosen
+    d1P <- list() ## derivatives of all P
+    d1L <- setNames(vector(mode="list", length=K), pars) ## derivatives of chosen P
+    for(k in 1:K){
+      d1P[[k]] <- setNames(vector(mode="list", length=J), alts)
+      for(j in 1:J) d1P[[k]][[j]]=0
+      d1L[[k]] <- 0
+      for(j in 1:J){
+        # Calculate dVj/dbk, remove rows, expand it and replace unavailables rows by zero if necessary
+        dVjk <- mnl_settings$dV[[k]][[j]]
+        environment(dVjk) <- e
+        dVjk <- dVjk()
+        if(!r) dVjk <- apollo_keepRows(dVjk, mnl_settings$rows)
+        if(length(dVjk)==1 && !a[j]) dVjk <- rep(dVjk, mnl_settings$nObs)
+        if(!a[j]) dVjk <- apollo_setRows(dVjk, !mnl_settings$avail[[j]], 0)
+        # calculate gradient of P
+        for(i in 1:J){
+          d1P[[k]][[i]] = d1P[[k]][[i]] + (ifelse(i==j,1,0) - P[[j]])*dVjk
+        }
+        # calculate gradient of L
+        d1L[[k]] <- d1L[[k]] + (mnl_settings$Y[[j]] - P[[j]])*dVjk
+      }
+      d1L[[k]] <- L*d1L[[k]]
+      d1P[[k]] <- mapply("*",d1P[[k]],P,SIMPLIFY=FALSE)
+    }; rm(dVjk)
+    
+    # Calculate hessian of probability of chosen alternative
+    d2L <- setNames(vector(mode="list", length=K), pars)
+    for(k1 in 1:K){
+      d2L[[k1]] <- setNames(vector(mode="list", length=K), pars)
+      for(k2 in 1:k1){
+        d2L[[k1]][[k2]] <- 0
+        for(j in 1:J){
+          yj  <- mnl_settings$Y[[j]]
+          d1V <- mnl_settings$dV[[k1]][[j]]
+          d2V <- mnl_settings$ddV[[k1]][[k2]][[j]]
+          environment(d1V) <- e; environment(d2V) <- e
+          d1V <- d1V()
+          d2V <- d2V()
+          if(!r){
+            d1V <- apollo_keepRows(d1V, mnl_settings$rows)
+            d2V <- apollo_keepRows(d2V, mnl_settings$rows)
+          } 
+          if(!a[j]){
+            d1V <- apollo_setRows(d1V, !mnl_settings$avail[[j]], 0)
+            d2V <- apollo_setRows(d2V, !mnl_settings$avail[[j]], 0)
+          }
+          d2L[[k1]][[k2]] <- d2L[[k1]][[k2]] + 
+            #(yj + P[[j]])*d2V() + d1V()*d1P[[k2]][[j]]
+            (P[[j]] - yj)*d2V + d1V*d1P[[k2]][[j]]
+        }
+        d2L[[k1]][[k2]] <- d1L[[k2]]*d1L[[k1]]/L - L*d2L[[k1]][[k2]]
+        # Restore rows
+        if(!all(mnl_settings$rows)) d2L[[k1]][[k2]] <- apollo_insertRows(d2L[[k1]][[k2]], mnl_settings$rows, 0)
+        d2L[[k2]][[k1]] <- d2L[[k1]][[k2]]
+      }
+    }
+    
+    # Restore rows in L and d1L (d2L already done above)
+    if(!all(mnl_settings$rows)){
+      L <- apollo_insertRows(L, mnl_settings$rows, 1)
+      d1L <- lapply(d1L, apollo_insertRows, r=mnl_settings$rows, val=0)
+    }
+    
+    # Return list with everything calculated
+    return(list(like = L, grad=d1L, hess=d2L))
   }
   
   # ############ #

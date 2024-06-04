@@ -235,7 +235,7 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
         # Print table
         if(!apollo_inputs$silent & data){
           apollo_print("\n")
-          apollo_print(paste0('Overview of choices for ', toupper(inputs$modeltype), ' model component ', 
+          apollo_print(paste0('Overview of choices for ', toupper(inputs$modelType), ' model component ', 
                               ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
           print(round(choicematrix,2))
           
@@ -249,7 +249,7 @@ apollo_mdcnev <- function(mdcnev_settings,functionality){
         
         if(!apollo_inputs$silent & param){
           if(data) apollo_print('\n')
-          apollo_print(paste0('Nest structure for ', toupper(inputs$modeltype), ' model component ', 
+          apollo_print(paste0('Nest structure for ', toupper(inputs$modelType), ' model component ', 
                               ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
           colnames(inputs$mdcnevStructure) <- inputs$alternatives
           rownames(inputs$mdcnevStructure) <- names(inputs$mdcnevNests)

@@ -93,7 +93,7 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   countHalton=0
   if(!is.na(d$interDrawsType)&&(tolower(d$interDrawsType)=='halton')) countHalton=countHalton+length(c(d$interUnifDraws, d$interNormDraws))
   if(!is.na(d$intraDrawsType)&&(tolower(d$intraDrawsType)=='halton')) countHalton=countHalton+length(c(d$intraUnifDraws, d$intraNormDraws))
-  if(countHalton>5) apollo_print(paste("Your model is using Halton draws in", countHalton, "dimensions. You should consider a different type of draws to avoid issues with collinearity!"), pause=5, type="w")
+  if(countHalton>5) apollo_print(paste("Your model is using Halton draws in", countHalton, "dimensions. You should consider a different type of draws to avoid issues with collinearity!"), pause=0, type="w")
   
   
   # ################################## #
@@ -110,9 +110,7 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
   if(!panelData) indivID <- 1:nObs
   indiv  <- unique(indivID)
   nIndiv <- length(indiv)
-  #obsPerIndiv <- as.vector(table(indivID)) # 20/11/2020 replaced by following two lines
-  obsPerIndiv <- setNames(rep(0, nIndiv), indiv)
-  for(n in 1:nIndiv) obsPerIndiv[n] <- sum(indivID==indiv[n])
+  obsPerIndiv <- setNames(sapply(as.list(indiv),function(x) sum(indivID==x)),indiv)
   nInter <- d$interNDraws
   nIntra <- d$intraNDraws
   namesInter <- c(d$interUnifDraws, d$interNormDraws)
@@ -293,7 +291,7 @@ apollo_makeDraws=function(apollo_inputs, silent=FALSE){
       tmp      <- array(0, tmp)
       if(isInter){
         tmp[,1:nInter             ,] <- drawsList[[i]]
-        tmp[,(nInter+1):(2*nInter),] <-  - drawsList[[i]]
+        tmp[,(nInter+1):(2*nInter),] <-  ifelse(isUnif, 1, 0) - drawsList[[i]]
       } else {
         tmp[,,1:nIntra             ] <- drawsList[[i]]
         tmp[,,(nIntra+1):(2*nIntra)] <- ifelse(isUnif, 1, 0) - drawsList[[i]]

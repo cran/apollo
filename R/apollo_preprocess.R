@@ -29,16 +29,16 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
   if(is.null(names(inputs))) stop('SYNTAX ISSUE - All elements inside the inputs lists for model components must be named, e.g. mnl_settings=list(alternatives=c(...), avail=...).')
   if(is.null(inputs[["componentName"]])) stop('SYNTAX ISSUE - The settings of at least one model component is missing the mandatory "componentName" object.')
   # functionality
-  test <- functionality %in% c("estimate","prediction","validate","zero_LL","shares_LL","conditionals","output","raw","preprocess", "components", "gradient", "report")
+  test <- functionality %in% c("estimate","prediction","validate","zero_LL","shares_LL","conditionals","output","raw","preprocess", "components", "gradient", "report", "hessian")
   if(!test) stop("SYNTAX ISSUE - Non-permissable setting for \"functionality\" for model component \"",inputs$componentName,"\"")
   
   #### MNL, FMNL, NL, CNL, DFT ####
-  if(modelType %in% c("mnl","fmnl","nl","cnl","dft")){
+  if(modelType %in% c("mnl","fmnl","fnl","nl","cnl","dft")){
     # Check for mandatory inputs
-    if(modelType!="fmnl") mandatory <- c("alternatives", "choiceVar") else mandatory <- c("alternatives", "choiceShares")
+    if(!(modelType%in%c("fmnl","fnl"))) mandatory <- c("alternatives", "choiceVar") else mandatory <- c("alternatives", "choiceShares")
     if(modelType!="dft") mandatory <- c(mandatory, "V")
     if(modelType=="cnl") mandatory <- c(mandatory, "cnlNests", "cnlStructure")
-    if(modelType=="nl") mandatory <- c(mandatory, "nlNests", "nlStructure")
+    if(modelType%in%c("nl","fnl")) mandatory <- c(mandatory, "nlNests", "nlStructure")
     if(modelType=="dft") mandatory <- c(mandatory, "attrValues", "altStart", "attrWeights", "attrScalings", "procPars")
     for(i in mandatory) if(!(i %in% names(inputs))) stop('SYNTAX ISSUE - The inputs list for model component "', inputs$componentName, 
                                                          '" needs to include an object called "', i,'"!')
@@ -61,7 +61,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
                               return(max(lenV, lenA, lenC))
                             })
     if(modelType=='cnl') inputs$nestnames <- names(inputs$cnlNests)
-    if(modelType=='nl' ) inputs$nestnames <- names(inputs$nlStructure)
+    if(modelType%in%c('nl',"fnl")) inputs$nestnames <- names(inputs$nlStructure)
     if(modelType=='dft'){
       mandatory2 <- c("error_sd", "timesteps", "phi1", "phi2")
       for(i in mandatory2) if(!(i %in% names(inputs$procPars))) stop('SYNTAX ISSUE - The inputs list for model component "', inputs$componentName, 
@@ -90,7 +90,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
       if(!test) stop("SYNTAX ISSUE - All entries in \"avail\" for model component \"",inputs$componentName,"\" need to be a scalar or a vector with one entry per observation in the \"database\"")
     }
     # choiceVar / choiceShares
-    if(modelType!="fmnl"){
+    if(!(modelType%in%c("fmnl","fnl"))){
       test <- is.vector(inputs$choiceVar) && (length(inputs$choiceVar)==inputs$nObs || length(inputs$choiceVar)==1)
       if(!test) stop("SYNTAX ISSUE - The \"choiceVar\" argument for model component \"",inputs$componentName,"\" needs to be a scalar or a vector with one entry per observation in the \"database\"")
     } else {
@@ -126,7 +126,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
       if(!test) stop('SYNTAX ISSUE - Argument "cnlStructure" for model component "', inputs$componentName,'" must be a numeric matrix.')
     }
     
-    if(modelType=='nl'){
+    if(modelType%in%c('nl','fnl')){
       # nlStructure
       test <- is.list(inputs$nlStructure) && !is.null(names(inputs$nlStructure)) 
       test <- test && all(sapply(inputs$nlStructure, is.vector)) && all(sapply(inputs$nlStructure, is.character))
@@ -183,6 +183,9 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     ### Reorder availabilities
     inputs$avail <- inputs$avail[inputs$altnames]
     
+    ### Reorder choiceshares in fractional model
+    if(!is.null(inputs$choiceShares)) inputs$choiceShares <- inputs$choiceShares[inputs$altnames]
+    
     ### Expand rows if necessary, and update nObs
     if(length(inputs$rows)==1 && inputs$rows=="all") inputs$rows <- rep(TRUE, inputs$nObs)
     inputs$nObs <- sum(inputs$rows)
@@ -190,7 +193,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     if(any(!inputs$rows)){
       inputs$avail <- lapply(inputs$avail, 
                              function(av) if(length(av)==1) return(av) else return(av[inputs$rows]))
-      if(modelType!="fmnl"){
+      if(!(modelType%in%c("fmnl","fnl"))){
         inputs$choiceVar <- apollo_keepRows(inputs$choiceVar, inputs$rows)
       } else {
         inputs$choiceShares <- lapply(inputs$choiceShares, apollo_keepRows, r=inputs$rows)
@@ -237,7 +240,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
       }
     }
     
-    if(modelType!="fmnl"){
+    if(!(modelType%in%c("fmnl","fnl"))){
       ### Create Y
       inputs$Y <- lapply(as.list(inputs$alternatives), function(i) inputs$choiceVar==i)
       
@@ -486,7 +489,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     }
     test <- functionality=='validate' && length(inputs$tau)==1 && modelType=='ol' & !apollo_inputs$silent
     if(test) apollo_print(paste0('OL model component "', inputs$componentName, '" has only two levels. ', 
-                                 'Binary choices such as this are better handled by apollo_mnl.'), pause=3, type="i")
+                                 'Binary choices such as this are better handled by apollo_mnl.'), pause=0, type="i")
     ### added 26 April
     inputs$nAlt = length(inputs$tau) + 1
     

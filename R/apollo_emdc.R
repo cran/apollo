@@ -38,6 +38,12 @@
 #'         }
 #' @export
 apollo_emdc <- function(emdc_settings, functionality="estimate"){
+  
+  if(!all(sort(names(emdc_settings$continuousChoice))==sort(names(emdc_settings$utilities)))) stop("Names of alternatives do not match between continuousChoice and utilities!")
+  if(!all(sort(names(emdc_settings$continuousChoice))==sort(names(emdc_settings$gamma)))) stop("Names of alternatives do not match between continuousChoice and gamma!")
+  if(!is.null(emdc_settings$avail) && (!all(sort(names(emdc_settings$continuousChoice))==sort(names(emdc_settings$avail))))) stop("Names of alternatives do not match between continuousChoice and avail!")
+
+    
   # Rename input if necessary
   map <- c(X = "continuousChoice", B = "budget", A = "avail", 
            V0= "utilityOutside",   V = "utilities")

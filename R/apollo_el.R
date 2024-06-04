@@ -141,7 +141,7 @@ apollo_el <- function(el_settings, functionality){
           }
           if(!apollo_inputs$silent & data){
             apollo_print("\n")
-            apollo_print(paste0('Overview of choices for ', toupper(inputs$modeltype), ' model component', 
+            apollo_print(paste0('Overview of choices for ', toupper(inputs$modelType), ' model component', 
                                 ifelse(inputs$componentName=='model', '', inputs$componentName), ', stage ', s,':'))
             print(round(choicematrix[,,s],2))
           }

@@ -82,6 +82,23 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
     return(P)
   }
   
+  # ############################## #
+  #### functionality=="hessian" ####
+  # ############################## #
+  
+  if(functionality=="hessian"){
+    if(!is.list(P)) stop("INTERNAL ISSUE - Input P should be a list with at least one component (called model)!")
+    if("model" %in% names(P)) P <- P$model
+    if(is.null(P$like) || is.null(P$grad) || is.null(P$hess)) stop("INTERNAL ISSUE - Missing like, grad or hessian elements inside components!")
+    if(apollo_control$workInLogs && apollo_control$analyticHessian) stop("INCORRECT FUNCTION/SETTING USE - Setting workInLogs cannot be used in conjunction with analyticHesian!")
+    
+    if(!is.matrix(P$like)) stop("SPECIFICATION ISSUE - No inter-draws to average over!")
+    P$like <- rowMeans(P$like)
+    P$grad <- lapply(P$grad, function(p) if(is.matrix(p)) rowMeans(p) else p)
+    for(k in 1:length(P$hess)) P$hess[[k]] <- lapply(P$hess[[k]], \(h) if(is.matrix(h)) rowMeans(h) else h)
+    return(P)
+  }
+  
   # ######################################## #
   #### functionality=="zero_LL/shares_LL" ####
   # ######################################## #

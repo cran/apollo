@@ -126,7 +126,7 @@ apollo_ol  <- function(ol_settings, functionality){
       rownames(choicematrix) <- c("Times chosen", "Percentage chosen overall")
       if(!apollo_inputs$silent & data){
         apollo_print("\n")
-        apollo_print(paste0('Overview of choices for ', toupper(inputs$modeltype), ' model component ', 
+        apollo_print(paste0('Overview of choices for ', toupper(inputs$modelType), ' model component ', 
                             ifelse(inputs$componentName=='model', '', inputs$componentName), ':'))
         print(round(choicematrix,2))
       }
@@ -144,8 +144,8 @@ apollo_ol  <- function(ol_settings, functionality){
     test <- test && apollo_inputs$apollo_control$analyticGrad
     ol_settings$gradient <- FALSE
     if(test){
-      tmp1 <- apollo_dVdB2(apollo_beta, apollo_inputs, list(V=ol_settings$V))
-      tmp2 <- apollo_dVdB2(apollo_beta, apollo_inputs, ol_settings$tau      )
+      tmp1 <- apollo_dVdB(apollo_beta, apollo_inputs, list(V=ol_settings$V))
+      tmp2 <- apollo_dVdB(apollo_beta, apollo_inputs, ol_settings$tau      )
       if(!is.null(tmp1) && !is.null(tmp2)){
         ol_settings$dV   <- lapply(tmp1, `[[`, 1) # list(dV/db1, dV/db2, ...)
         ol_settings$dTau <- tmp2 # list(b1=list(dt1/db1, dt2/db1, ...), b2=...)
@@ -155,6 +155,29 @@ apollo_ol  <- function(ol_settings, functionality){
       test <- test && all(sapply(ol_settings$dTau, sapply, is.function))
       ol_settings$gradient <- test
     }; rm(test)
+    
+    # Construct necessary input for hessian
+    test <- !is.null(ol_settings$gradient) && ol_settings$gradient && apollo_inputs$apollo_control$analyticHessian
+    ol_settings$hessian <- TRUE
+    if(test){
+      ol_settings$ddV <- list()
+      ol_settings$ddTau <- list()
+      pars=names(ol_settings$dV)
+      for(k1 in pars){
+        ol_settings$ddV[[k1]] <- list()
+        ol_settings$ddTau[[k1]] <- list()
+        for(k2 in pars){
+          ol_settings$ddV[[k1]][[k2]] <- Deriv::Deriv(f=ol_settings$dV[[k1]], x=k2)
+          if(is.null(ol_settings$ddV[[k1]][[k2]])) ol_settings$hessian <- FALSE
+          ol_settings$ddTau[[k1]][[k2]] <- list() 
+          for(j in 1:length(ol_settings$tau)){  ### loop over thresholds, can do the V one outside loop (above)
+            ol_settings$ddTau[[k1]][[k2]][[j]] <- Deriv::Deriv(f=ol_settings$dTau[[k1]][[j]], x=k2)
+            if(is.null(ol_settings$ddTau[[k1]][[k2]][[j]])) ol_settings$hessian <- FALSE
+          }
+        }
+      }
+    }; rm(test)
+    
     
     # Return ol_settings if pre-processing
     if(functionality=="preprocess"){
@@ -265,6 +288,9 @@ apollo_ol  <- function(ol_settings, functionality){
     t0 <- apollo_setRows(t0, ol_settings$outcomeOrdered==1, -Inf)
     t1 <- apollo_setRows(t1, ol_settings$outcomeOrdered==J,  Inf)
     V  <- ol_settings$V
+    eVT0  <- exp(V - t0)
+    eVT0[is.infinite(eVT0)] <- 0
+    eVT1  <- exp(V - t1)
     for(k in 1:K){
       G[[k]] <- 0
       dV    <- ol_settings$dV[[k]]; environment(dV) <- e
@@ -278,9 +304,6 @@ apollo_ol  <- function(ol_settings, functionality){
       dTau0 <- Reduce("+", mapply("*", ol_settings$Y[-1], dTau, SIMPLIFY=FALSE))
       dTau1 <- Reduce("+", mapply("*", ol_settings$Y[-J], dTau, SIMPLIFY=FALSE))
       # No need to set borders to zero as they already are.
-      eVT0  <- exp(V - t0)
-      eVT0[is.infinite(eVT0)] <- 0
-      eVT1  <- exp(V - t1)
       G[[k]] <- eVT0*(dV - dTau0)/(1 + eVT0)^2 - eVT1*(dV - dTau1)/(1 + eVT1)^2
     }; rm(dV, dTau, dTau0, dTau1, eVT0, eVT1)
     
@@ -290,6 +313,113 @@ apollo_ol  <- function(ol_settings, functionality){
       G    <- lapply(G, apollo_insertRows, r=ol_settings$rows, val=0)
     }
     return(list(like=Pcho, grad=G))
+  }
+  
+  # ############################# #
+  #### functionality="hessian" ####
+  # ############################# #
+  if(functionality=="hessian"){
+
+    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
+                            error=function(e) stop("INTERNAL ISSUE - ",
+                                                   "apollo_mnl could not ",
+                                                   "fetch apollo_beta for ",
+                                                   "hessian estimation."))
+    
+    # Calculate probabilities
+    Pcho <- ol_settings$probs_OL(ol_settings, all=FALSE)
+    if(anyNA(Pcho)) stop("INTERNAL ISSUE - NAs in choice probabilities when calculating the gradient for component ", ol_settings$componentName)
+    
+    J  <- length(ol_settings$tau) + 1 # number of levels (alternatives)
+    K  <- length(ol_settings$dV) # number of parameters
+    d1L  <- list()
+    d2L  <- list()
+    r  <- all(ol_settings$rows) # TRUE if all rows are used (no rows excluded)
+    e  <- list2env(c(as.list(apollo_beta), apollo_inputs$database, list(apollo_inputs=apollo_inputs)), hash=TRUE)
+    t0 <- Reduce("+", mapply("*", ol_settings$Y[-1], ol_settings$tau, SIMPLIFY=FALSE))
+    t1 <- Reduce("+", mapply("*", ol_settings$Y[-J], ol_settings$tau, SIMPLIFY=FALSE))
+    t0 <- apollo_setRows(t0, ol_settings$outcomeOrdered==1, -Inf)
+    t1 <- apollo_setRows(t1, ol_settings$outcomeOrdered==J,  Inf)
+    V  <- ol_settings$V
+    eVT0  <- exp(V - t0)
+    eVT0[is.infinite(eVT0)] <- 0
+    eVT1  <- exp(V - t1)
+    pars <- names(ol_settings$dV)
+    
+    # Calculate gradient
+    for(k in 1:K){
+      d1L[[k]] <- 0
+      d1V    <- ol_settings$dV[[k]]; environment(d1V) <- e
+      d1V    <- d1V()
+      d1Tau  <- ol_settings$dTau[[k]]
+      d1Tau  <- lapply(d1Tau, function(f){ environment(f) <- e; return(f())})
+      if(!r){ # remove rows if necessary
+        d1V   <- apollo_keepRows(d1V, ol_settings$rows)
+        d1Tau <- lapply(d1Tau, apollo_keepRows, r=ol_settings$rows)
+      }
+      d1Tau0 <- Reduce("+", mapply("*", ol_settings$Y[-1], d1Tau, SIMPLIFY=FALSE))
+      d1Tau1 <- Reduce("+", mapply("*", ol_settings$Y[-J], d1Tau, SIMPLIFY=FALSE))
+      d1L[[k]] <- eVT0*(d1V - d1Tau0)/(1 + eVT0)^2 - eVT1*(d1V - d1Tau1)/(1 + eVT1)^2
+    }; rm(d1V, d1Tau, d1Tau0, d1Tau1)
+    
+    # Restore rows and return
+    if(!all(ol_settings$rows)){
+      Pcho <- apollo_insertRows(Pcho, ol_settings$rows, 1)
+      d1L    <- lapply(d1L, apollo_insertRows, r=ol_settings$rows, val=0)
+    }
+    
+    # Calculate hessian of probability of chosen alternative
+    d2L <- setNames(vector(mode="list", length=K), pars)
+    for(k1 in 1:K){
+      d2L[[k1]] <- setNames(vector(mode="list", length=K), pars)
+      d1Vk1    <- ol_settings$dV[[k1]]; environment(d1Vk1) <- e
+      d1Vk1    <- d1Vk1()
+      d1Tauk1  <- ol_settings$dTau[[k1]]
+      d1Tauk1  <- lapply(d1Tauk1, function(f){ environment(f) <- e; return(f())})
+      if(!r){ # remove rows if necessary
+        d1Vk1   <- apollo_keepRows(d1Vk1, ol_settings$rows)
+        d1Tauk1 <- lapply(d1Tauk1, apollo_keepRows, r=ol_settings$rows)
+      }
+      for(k2 in 1:k1){
+        d1Vk2    <- ol_settings$dV[[k2]]; environment(d1Vk2) <- e
+        d1Vk2    <- d1Vk2()
+        d1Tauk2  <- ol_settings$dTau[[k2]]
+        d1Tauk2  <- lapply(d1Tauk2, function(f){ environment(f) <- e; return(f())})
+        d2V    <- ol_settings$ddV[[k1]][[k2]]; environment(d2V) <- e
+        d2V    <- d2V()
+        d2Tau  <- ol_settings$ddTau[[k1]][[k2]]
+        d2Tau  <- lapply(d2Tau, function(f){ environment(f) <- e; return(f())})
+        if(!r){ # remove rows if necessary
+          d1Vk2   <- apollo_keepRows(d1Vk2, ol_settings$rows)
+          d1Tauk2 <- lapply(d1Tauk2, apollo_keepRows, r=ol_settings$rows)
+          d2V     <- apollo_keepRows(d2V, ol_settings$rows)
+          d2Tau   <- lapply(d1Tauk2, apollo_keepRows, r=ol_settings$rows)
+        }
+        d1Tau1k1 <- Reduce("+", mapply("*", ol_settings$Y[-J], d1Tauk1, SIMPLIFY=FALSE))
+        d1Tau0k1 <- Reduce("+", mapply("*", ol_settings$Y[-1], d1Tauk1, SIMPLIFY=FALSE))
+        d1Tau1k2 <- Reduce("+", mapply("*", ol_settings$Y[-J], d1Tauk2, SIMPLIFY=FALSE))
+        d1Tau0k2 <- Reduce("+", mapply("*", ol_settings$Y[-1], d1Tauk2, SIMPLIFY=FALSE))
+        d2Tau1   <- Reduce("+", mapply("*", ol_settings$Y[-J], d2Tau, SIMPLIFY=FALSE))        
+        d2Tau0   <- Reduce("+", mapply("*", ol_settings$Y[-1], d2Tau, SIMPLIFY=FALSE))
+        
+        deVT1k1  <- eVT1*(d1Vk1-d1Tau1k1)
+        deVT0k1  <- eVT0*(d1Vk1-d1Tau0k1)
+        deVT1k2  <- eVT1*(d1Vk2-d1Tau1k2)
+        deVT0k2  <- eVT0*(d1Vk2-d1Tau0k2)
+        d2eVT1   <- eVT1*((d1Vk1-d1Tau1k1)*(d1Vk2-d1Tau1k2)+(d2V-d2Tau1))
+        d2eVT0   <- eVT0*((d1Vk1-d1Tau0k1)*(d1Vk2-d1Tau0k2)+(d2V-d2Tau0))
+        
+        d2L[[k1]][[k2]] <- 1/((1+eVT1)^2)*(-d2eVT1+2*(deVT1k1*deVT1k2)/(1+eVT1))+1/((1+eVT0)^2)*(+d2eVT0-2*(deVT0k1*deVT0k2)/(1+eVT0))
+
+        # Restore rows
+        if(!all(ol_settings$rows)) d2L[[k1]][[k2]] <- apollo_insertRows(d2L[[k1]][[k2]], ol_settings$rows, 0)
+        # symmetry
+        d2L[[k2]][[k1]] <- d2L[[k1]][[k2]]
+      }
+    }
+    
+    # Return list with everything calculated
+    return(list(like = Pcho, grad=d1L, hess=d2L))
   }
   
   # ############ #

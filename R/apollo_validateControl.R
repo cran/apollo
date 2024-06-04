@@ -89,8 +89,12 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   
   if(is.null(apollo_control$calculateLLC)){
     apollo_control$calculateLLC <- TRUE
-  }  
+  }
   
+  if(is.null(apollo_control$analyticHessian)){
+    apollo_control$analyticHessian <- FALSE
+  }
+
   # Check that outputDirectory exists, or set it to working directory by default.
   test <- is.null(apollo_control$outputDirectory) || apollo_control$outputDirectory==''
   if(test){ apollo_control$outputDirectory <- getwd() } else {
@@ -155,6 +159,10 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
     apollo_control$analyticGrad_manualSet <- TRUE
   }
   
+  if(!apollo_control$analyticGrad && apollo_control$analyticHessian){
+    apollo_control$analyticHessian <- FALSE
+  }
+  
   if(apollo_control$HB && apollo_control$analyticGrad){
     #apollo_control$analyticGrad <- FALSE
     #if(debug) apollo_print("Analytic gradients cannot be used with setting HB")
@@ -193,7 +201,7 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   allVars <- c("modelName", "modelDescr", "indivID", "mixing", "nCores", "seed", "HB", 
                "noValidation", "noDiagnostics", "weights", "workInLogs", "panelData", 
                "cpp","subMaxV", "analyticGrad", "matrixMult", "debug", "analyticGrad_manualSet",
-               "outputDirectory", "calculateLLC", "overridePanel", "preventOverridePanel", "noModification")
+               "outputDirectory", "calculateLLC", "overridePanel", "preventOverridePanel", "noModification","analyticHessian")
   unknownVars <- names(apollo_control)[!( names(apollo_control) %in% allVars )]
   if(length(unknownVars)>0){
     apollo_print(paste0("Variable(s) {", paste(unknownVars, collapse=", "), "} were not recognised in apollo_control and will be ignored. Check ?apollo_control for a list of valid control variables."), type="w")

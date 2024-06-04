@@ -139,6 +139,6 @@ apollo_lrTest = function(model1, model2){
   cat("\nLikelihood ratio test-value:   ",round(LR_test_value,2),"\n")
   cat("Degrees of freedom:            ",df,"\n")
   cat("Likelihood ratio test p-value: ",formatC(p),"\n")
-  apollo_print("\nThe p-value from the test is returned insibly as an output from this function. Calling the function via result=apollo_lrTest(...) will save this output in an object called result (or otherwise named object).", type="i")
+  apollo_print("\nThe p-value from the test is returned invisibly as an output from this function. Calling the function via result=apollo_lrTest(...) will save this output in an object called result (or otherwise named object).", type="i")
   return(invisible(p))
 }

@@ -39,7 +39,7 @@
 #'                                  \item \strong{\code{scaleHessian}}: Logical. If TRUE, parameters are scaled to 1 for Hessian estimation. Default is TRUE.
 #'                                  \item \strong{\code{scaling}}: Named vector. Names of elements should match those in \code{apollo_beta}. Optional scaling for parameters. If provided, for each parameter \code{i}, \code{(apollo_beta[i]/scaling[i])} is optimised, but \code{scaling[i]*(apollo_beta[i]/scaling[i])} is used during estimation. For example, if parameter b3=10, while b1 and b2 are close to 1, then setting \code{scaling = c(b3=10)} can help estimation, specially the calculation of the Hessian. Reports will still be based on the non-scaled parameters.
 #'                                  \item \strong{\code{silent}}: Logical. If TRUE, no information is printed to the console during estimation. Default is FALSE.
-#'                                  \item \strong{\code{validateGrad}}: Logical. If TRUE, the analytical gradient (if used) is compared to the numerical one. Default is TRUE.
+#'                                  \item \strong{\code{validateGrad}}: Logical. If TRUE, the analytical gradient (if used) is compared to the numerical one. Default is FALSE.
 #'                                  \item \strong{\code{writeIter}}: Logical. Writes value of the parameters in each iteration to a csv file. Works only if \code{estimation_routine=="bfgs"|"bgw"}. Default is TRUE.
 #'                                 }
 #' @return model object
@@ -71,7 +71,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                   numDeriv_settings=list(), scaling=NA, 
                   bootstrapSE=0, bootstrapSeed=24, silent=FALSE, 
                   scaleHessian=TRUE, scaleAfterConvergence=TRUE,
-                  validateGrad=TRUE,
+                  validateGrad=FALSE,
                   bgw_settings=list())
   prtLvlMan <- is.list(estimate_settings) && !is.null(estimate_settings$printLevel)
   if(length(estimate_settings)==1 && is.na(estimate_settings)) estimate_settings <- default
@@ -92,9 +92,12 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   if(!prtLvlMan && tolower(estimate_settings$estimationRoutine)=="bgw") estimate_settings$printLevel <- 2
   rm(default, tmp, prtLvlMan)
   
+  ### do not use BGW if maxIterations==0
+  if(estimate_settings$maxIterations==0) estimate_settings$estimationRoutine="bfgs"
+    
   ### Set missing BGW settings to default values
   default <- list(maxIterations    = estimate_settings$maxIterations,
-                  maxFunctionEvals = 3*estimate_settings$maxIterations,
+                  maxFunctionEvals = max(1,3*estimate_settings$maxIterations),
                   silent           = estimate_settings$silent,
                   outputDirectory  = apollo_inputs$apollo_control$outputDirectory,
                   modelName        = apollo_inputs$apollo_control$modelName,
@@ -111,6 +114,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   for(i in tmp) estimate_settings$bgw_settings[[i]] <- default[[i]]
   rm(default, tmp)
   #estimate_settings$bgw_settings$writeIter = FALSE ### FORCING BGW TO NOT WRITE ITERATIONS, EVEN IF REQUESTED
+
   
   if(exists("i")) rm(i)
   apollo_inputs$apollo_scaling <- estimate_settings$scaling
@@ -267,7 +271,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                   parallel::detectCores(), ' available cores.')
     if(parallel::detectCores()>2) tmp <- paste0(tmp, ' We recommend using no more ',
                                                 'than ', parallel::detectCores()-1, ' cores.')
-    if(n>1e5) apollo_print(tmp, pause=5, type="i")
+    if(n>1e5) apollo_print(tmp, pause=0, type="i")
     rm(n, tmp)
   }
   
@@ -281,7 +285,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
       txt <- paste0('Element', ifelse(one,' ', 's '), paste0(tmp, collapse=', '), 
                     ' in \'apollo_fixed\' ', ifelse(one,'is ', 'are '),' constrained to ', ifelse(one,'a value ', 'values '),' other than zero or one. This may be intentional. ',
                     'If not, stop this function by pressing the "Escape" key and adjust the starting values accordingly.')
-      apollo_print(txt, pause=5, type="w")
+      apollo_print(txt, pause=0, type="w")
     }
     }
   }
@@ -426,10 +430,23 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
       if(!silent) apollo_print(paste0("Analytical gradients could not be calculated for all components, ", 
                                     "numerical gradients will be used."))
       apollo_inputs$apollo_control$analyticGrad <- FALSE # Not sure this is necessary, but it can't hurt
-      environment(apollo_logLike)$analyticGrad  <- FALSE # fix for iteration counting
+      apollo_inputs$apollo_control$analyticHessian <- FALSE 
+      environment(apollo_logLike)$analyticGrad  <- FALSE
       environment(apollo_logLike)$nIter         <- 1     # fix for iteration counting
     }
   } else grad <- NULL
+  
+  ### Create hessian function
+  if(!is.null(apollo_inputs$apollo_control$analyticHessian) && apollo_inputs$apollo_control$analyticHessian){
+    # apollo_makeHessian will create gradient function ONLY IF all components have analytical hessians.
+    hessian <- apollo_makeHessian(apollo_beta, apollo_fixed, apollo_logLike)
+    if(is.null(hessian)){
+      if(!silent) apollo_print(paste0("Analytical hessians could not be calculated for all components, ", 
+                                      "numerical hessian will be used."))
+      apollo_inputs$apollo_control$analyticHessian <- FALSE 
+      environment(apollo_logLike)$analyticHessian  <- FALSE
+    }
+  } else hessian <- NULL
   
   ### Extract useful values from apollo_logLike
   nObsTot       <- environment(apollo_logLike)$nObsTot
@@ -669,7 +686,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
         }
       }
     } else {
-      apollo_print("The scaling of the model led to differences in the results, and was thus not used. This is unexpected. You may want to contact the developers.", pause=5, type="w")
+      apollo_print("The scaling of the model led to differences in the results, and was thus not used. This is unexpected. You may want to contact the developers.", pause=0, type="w")
       estimate_settings$scaleHessian <- FALSE
       apollo_inputs$apollo_scaling=apollo_scaling_backup
       if(apollo_control$nCores==1) environment(apollo_logLike)$apollo_inputs$apollo_scaling <- apollo_scaling_backup else {
@@ -786,11 +803,11 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   if(!successfulEstimation){
     if(exists("model")){
       if(!is.null(model$message) && grepl("Function evaluation limit", model$message)){
-        if(!silent) apollo_print("Function evaluation limit exceeded. No covariance matrix will be computed. You may wish to use the current estimates as starting values for a new estimation with a higher limit for functional evaluations.",  pause=3, type="w")
+        if(!silent) apollo_print("Function evaluation limit exceeded. No covariance matrix will be computed. You may wish to use the current estimates as starting values for a new estimation with a higher limit for functional evaluations.",  pause=0, type="w")
       }else if(!is.null(model$message) && grepl("limit", model$message)){
-        if(!silent) apollo_print("Iteration limit exceeded. No covariance matrix will be computed. You may wish to use the current estimates as starting values for a new estimation with a higher limit for iterations.",  pause=3, type="w")
+        if(!silent) apollo_print("Iteration limit exceeded. No covariance matrix will be computed. You may wish to use the current estimates as starting values for a new estimation with a higher limit for iterations.",  pause=0, type="w")
       }else{
-        if(!silent) apollo_print("Estimation failed. No covariance matrix to compute.",  pause=3, type="w")
+        if(!silent) apollo_print("Estimation failed. No covariance matrix to compute.",  pause=0, type="w")
       }
       if(estimationRoutine %in% c("bfgs", "bhhh") && model$code==100){
         stop("CALCULATION ISSUE - Estimation failed, no estimated model to return.")
@@ -908,7 +925,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   ### Calculate Rho2, AIC, and BIC
   nFreeParams <- length(apollo_beta) - length(apollo_fixed)
   test <- !is.null(modelTypeList) && !anyNA(model$LL0[1])
-  test <- test && all(tolower(modelTypeList) %in% c("mnl", "nl", "cnl", "el", "dft", "lc", "rrm", "ol", "op"))
+  test <- test && all(tolower(modelTypeList) %in% c("mnl", "fmnl", "nl", "fnl", "cnl", "el", "dft", "lc", "rrm", "ol", "op"))
   if(test & !silent) apollo_print("Calculating other model fit measures")
   if(test) model$rho2_0 <- 1-(model$maximum/model$LL0[1]) else model$rho2_0 <- NA
   if(test) model$adjRho2_0 <- 1-((model$maximum-nFreeParams)/model$LL0[1]) else model$adjRho2_0 <- NA
@@ -1016,7 +1033,8 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                                                  numDeriv_method   = estimate_settings$numDeriv_method, 
                                                  numDeriv_settings = estimate_settings$numDeriv_settings,
                                                  apollo_logLike    = apollo_logLike,
-                                                 apollo_grad       = grad))
+                                                 apollo_grad       = grad,
+                                                 apollo_hessian    = hessian))
   }else{
     varcov <- apollo_varcov(apollo_beta=b, apollo_fixed, 
                             varcov_settings=list(hessianRoutine    = estimate_settings$hessianRoutine,
@@ -1024,7 +1042,8 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                                                  numDeriv_method   = estimate_settings$numDeriv_method, 
                                                  numDeriv_settings = estimate_settings$numDeriv_settings,
                                                  apollo_logLike    = apollo_logLike,
-                                                 apollo_grad       = grad))
+                                                 apollo_grad       = grad,
+                                                 apollo_hessian    = hessian))
   }
   if(is.list(varcov)) for(i in names(varcov)) if(i!="apollo_beta") model[[i]] <- varcov[[i]]
   rm(varcov)

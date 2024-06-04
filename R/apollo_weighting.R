@@ -41,6 +41,7 @@ apollo_weighting=function(P, apollo_inputs, functionality){
   ### weighting function
   wf <- function(p){
     if(is.list(p)) return( lapply(p, wf) )
+    if(all(is.na(p))) return(p) ### added to deal with cases where P fails anyway, e.g. sharesLL for some models
     isVec <- is.vector(p)
     isMat <- is.matrix(p)
     isCub <- is.array(p) && length(dim(p))==3

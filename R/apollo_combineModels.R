@@ -99,6 +99,50 @@ apollo_combineModels=function(P, apollo_inputs, functionality, components=NULL, 
     return( list(model=model) )
   }
   
+  # ############################# #
+  #### functionality="hessian" ####
+  # ############################# #
+  if(functionality=="hessian"){
+    
+    # Checks
+    if(!is.list(P)) stop("INTERNAL ISSUE - Input P should be a list with at least one component")
+    if(any(sapply(P, function(p) is.null(p$like) || is.null(p$grad) || is.null(p$hess)))) stop("INTERNAL ISSUE - Some components are missing the like, grad and/or hess elements")
+    K <- length(P[[1]]$grad) # number of parameters
+    if(any(sapply(P, function(p) length(p$grad))!=K)) stop("INTERNAL ISSUE - Dimensions of gradients from different components imply different number of parameters")
+    if(any(sapply(P, function(p) length(p$hess))!=K)) stop("INTERNAL ISSUE - Dimensions of hessian from different components imply different number of parameters")
+
+    # Remove zeros from components' likelihoods
+    for(i in 1:length(P)) P[[i]]$like[P[[i]]$like==0] <- 1e-50
+    
+    # Pre-calculate necessary elements for the hessian
+    L <- Reduce("*", lapply(P, function(p) p$like))
+    L[L==0] <- 1e-50 # Remove zeros from L
+    d1L <- list()
+    for(k in 1:K) d1L[[k]] <- L*Reduce("+", lapply(P, function(p) p$grad[[k]]/p$like))
+    
+    d2L <- vector(mode="list", length=K)
+   
+    # Loop to calculate hessian
+    for(k1 in 1:K){
+      d2L[[k1]] <- vector(mode="list", length=K)
+      for(k2 in 1:k1){
+        part1 <- d1L[[k2]]*d1L[[k1]]/L
+        part2 <- L*Reduce("+", lapply(P, function(p) (p[["hess"]][[k1]][[k2]] - p[["grad"]][[k1]]*p[["grad"]][[k2]]/p[["like"]])/p[["like"]]))
+        tmp <- part1 + part2
+        if(is.matrix(tmp) && dim(tmp)[2]==1) tmp <- as.vector(tmp)
+        d2L[[k1]][[k2]] = tmp
+        d2L[[k2]][[k1]] = tmp
+      }
+    }; rm(tmp)
+    
+    H <- list(
+      like = L,    # likelihoods L after combining models
+      grad = d1L, # first derivatives of L
+      hess = d2L) # second derivatives of L
+    return(H)
+    
+  }
+  
   # ############################################################# #
   #### functionality=="conditionals/estimate/validate/zero_LL" ####
   # ############################################################# #

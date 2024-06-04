@@ -65,7 +65,9 @@ apollo_mixConditionals=function(model, apollo_probabilities, apollo_inputs){
   ### Get likelihood
   P <- apollo_probabilities(apollo_beta, apollo_inputs, functionality="conditionals")
   
-  obsPerIndiv <- as.vector(table(database[,apollo_control$indivID]))
+  indivID <- database[,apollo_control$indivID]
+  obsPerIndiv <- setNames(sapply(as.list(unique(indivID)),function(x) sum(indivID==x)),unique(indivID))
+  
   conditionals=list()
   for(j in 1:length(randcoeff)){
     if(length(dim(randcoeff[[j]]))==3) randcoeff[[j]]=colSums(aperm(randcoeff[[j]], perm=c(3,1,2)))/dim(randcoeff[[j]])[3]

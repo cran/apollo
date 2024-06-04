@@ -23,7 +23,7 @@ apollo_insertComponentName <- function(e){
                                                     'apollo_cnl',  'apollo_ol', 'apollo_op', 
                                                     'apollo_dft', 'apollo_normalDensity', 
                                                     'apollo_mdcev', 'apollo_mdcnev', 'apollo_ownModel','apollo_lc',
-                                                    "apollo_fmnl"))
+                                                    "apollo_fmnl", "apollo_fnl"))
   
   # If e is NOT of the type: x <- apollo_<model>(...)
   if(!test && length(e)>1) for(i in 1:length(e)) if(!is.null(e[[i]])){ 

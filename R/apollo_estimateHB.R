@@ -408,15 +408,9 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   panelData <- apollo_control$panelData
   indivID   <- database[,apollo_control$indivID]
   nObs  <- nrow(apollo_inputs$database)
-  #nObs <- length(indivID)
-  #if(!panelData) indivID <- 1:nObs
   nIndiv <- length(unique(indivID))
-  #obsPerIndiv <- as.vector(table(indivID))
   indiv <- unique(apollo_inputs$database[,apollo_inputs$apollo_control$indivID])
-  nObsPerIndiv <- rep(0, length(indiv))
-  for(n in 1:length(indiv)) nObsPerIndiv[n] <- sum(apollo_inputs$database[,apollo_inputs$apollo_control$indivID]==indiv[n])
-  names(nObsPerIndiv) <- indiv
-  
+  nObsPerIndiv <- setNames(sapply(as.list(indiv),function(x) sum(indivID==x)),indiv)
   
   if(is.null(model$HB_chains_non_random)){
     fc1 <- NULL

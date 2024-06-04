@@ -96,7 +96,7 @@ apollo_compareInputs <- function(apollo_inputs){
                   ifelse(one, 'that ', 'those '), ' inside apollo_inputs. The latter will be used. ',
                   'If you wish to use the former, stop this function by pressing the "Escape" key, ', 
                   'and rerun apollo_validateInputs before calling this function.')
-    apollo_print(txt, pause=5, type="w")
+    apollo_print(txt, pause=0, type="w")
   }
   
   return(invisible(ans))

@@ -14,7 +14,7 @@ apollo_dVdB(apollo_beta, apollo_inputs, V)
 \item{V}{List of functions}
 }
 \value{
-Named list. Each element is a function that returns a list, where each element is the partial derivatives of the elements of V.
+Named list. Each element is itself a list of functions: the partial derivatives of the elements of V.
 }
 \description{
 Calculates gradients (derivatives) of utility functions.
