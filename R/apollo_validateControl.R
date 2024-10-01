@@ -10,6 +10,7 @@
 #'                         \item \strong{\code{calculateLLC}}: Boolean. TRUE if user wants to calculate LL at constants (if applicable). - TRUE by default.
 #'                         \item \strong{\code{HB}}: Boolean. TRUE if using RSGHB for Bayesian estimation of model.
 #'                         \item \strong{\code{indivID}}: Character. Name of column in the database with each decision maker's ID.
+#'                         \item \strong{\code{memorySaver}}: Boolean. TRUE to reduce memory usage when calculating analytical gradients and hessian - FALSE by default.
 #'                         \item \strong{\code{mixing}}: Boolean. TRUE for models that include random parameters.
 #'                         \item \strong{\code{modelDescr}}: Character. Description of the model. Used in output files.
 #'                         \item \strong{\code{modelName}}: Character. Name of the model. Used when saving the output to files.
@@ -26,6 +27,9 @@
 #' @return Validated version of \code{apollo_control}, with additional element called \code{panelData} set to TRUE for repeated choice data.
 #' @export
 apollo_validateControl=function(database,apollo_control, silent=FALSE){
+  
+  ### If database is a tibble, turn it into a data.frame
+  if('tibble' %in% installed.packages()[,"Package"] && tibble::is_tibble(database)) database <- as.data.frame(database)
   
   if(is.null(apollo_control$debug)) apollo_control$debug <- FALSE
   if(!is.logical(apollo_control$debug) || length(apollo_control$debug)!=1) stop('SYNTAX ISSUE - Setting "debug" in apollo_control should have a logical (boolean) value.')
@@ -95,6 +99,11 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
     apollo_control$analyticHessian <- FALSE
   }
 
+  if(is.null(apollo_control$memorySaver)){
+    apollo_control$memorySaver <- FALSE
+    if(debug) apollo_print("Missing setting memorySaver in apollo_control, set to default of FALSE")
+  }
+  
   # Check that outputDirectory exists, or set it to working directory by default.
   test <- is.null(apollo_control$outputDirectory) || apollo_control$outputDirectory==''
   if(test){ apollo_control$outputDirectory <- getwd() } else {
@@ -201,7 +210,8 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   allVars <- c("modelName", "modelDescr", "indivID", "mixing", "nCores", "seed", "HB", 
                "noValidation", "noDiagnostics", "weights", "workInLogs", "panelData", 
                "cpp","subMaxV", "analyticGrad", "matrixMult", "debug", "analyticGrad_manualSet",
-               "outputDirectory", "calculateLLC", "overridePanel", "preventOverridePanel", "noModification","analyticHessian")
+               "outputDirectory", "calculateLLC", "overridePanel", "preventOverridePanel", 
+               "noModification", "analyticHessian", "memorySaver")
   unknownVars <- names(apollo_control)[!( names(apollo_control) %in% allVars )]
   if(length(unknownVars)>0){
     apollo_print(paste0("Variable(s) {", paste(unknownVars, collapse=", "), "} were not recognised in apollo_control and will be ignored. Check ?apollo_control for a list of valid control variables."), type="w")

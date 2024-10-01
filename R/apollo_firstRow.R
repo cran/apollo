@@ -1,7 +1,7 @@
 #' Keeps only the first row for each individual
 #' 
 #' Given a multi-row input, keeps only the first row for each individual.
-#' 
+#'
 #' This a function to keep only the first row of an object per indidividual. It can handle multiple types of components, including scalars, vectors and three-dimensional arrays (cubes).
 #' The argument database MUST contain a column called 'apollo_sequence', which is created by \link{apollo_validateData}.
 #' 
@@ -15,45 +15,54 @@
 #'         is a cube, then only the first dimension's length is changed, preserving the others.
 #' @export
 apollo_firstRow=function(P, apollo_inputs){
-  ### Fetch functionality
+  ### Functionalities for those where nothing is done
   functionality <- tryCatch(get('functionality', envir=parent.frame(), inherits=FALSE),
                             error=function(e) NULL)
   if(!is.null(functionality) && functionality %in% c('preprocess', 'report')) return(P)
   
-  apollo_sequence <- apollo_inputs$database$apollo_sequence
+  ### Calculate useful values
+  firstR <- apollo_inputs$database$apollo_sequence==1
+  nObs <- length(firstR)
+  K <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
+                error=function(e) NULL)
+  if(!is.null(K)) K <- length(K) - length(apollo_inputs$apollo_fixed)
   
+  ### If P is a data.frame
   if(is.data.frame(P)){
-    if(nrow(P)==length(apollo_sequence)){
-      return(subset(P,apollo_sequence==1))
-    }else{
-      stop("INPUT ISSUE - The data.frame passed to apollo_firstRow does not have the same number of rows as the database!")
-    } 
-  }
-  
-  ### If P is a list
-  if(is.list(P)){
-    for(j in 1:length(P)){
-      isSca <- length(P[[j]])==1
-      isVec <- is.vector(P[[j]]) && !isSca
-      isMat <- is.matrix(P[[j]])
-      isCub <- is.array(P[[j]]) && !isMat && length(dim(P[[j]]))==3
-      condition <- isSca || (isVec && length(P[[j]])==length(apollo_sequence)) || (isMat && nrow(P[[j]])==length(apollo_sequence)) || (isCub && nrow(P[[j]])==length(apollo_sequence))
-      if(!condition) stop("INPUT ISSUE - The object passed to apollo_firstRow does not have the same number of entries as the database!")
-      if(isSca) P[[j]] = rep(P[[j]], sum(apollo_sequence==1))
-      if(isVec|isMat) P[[j]] = subset(P[[j]],apollo_sequence==1)
-      if(isCub) P[[j]] = P[[j]][(apollo_sequence==1),,,drop=FALSE]
+    if(nrow(P)==nObs) return(subset(P, firstR)) else {
+      stop("INPUT ISSUE - The data.frame passed to apollo_firstRow ",
+           "does not have the same number of rows as the database!")
     }
-  }else{ ### If P is not a list
-    isSca <- length(P)==1
-    isVec <- is.vector(P) && !isSca
-    isMat <- is.matrix(P)
-    isCub <- is.array(P) && !isMat && length(dim(P))==3
-    condition <- isSca || (isVec && length(P)==length(apollo_sequence)) || (isMat && nrow(P)==length(apollo_sequence)) || (isCub && nrow(P)==length(apollo_sequence))
-    if(!condition) stop("INPUT ISSUE - The object passed to apollo_firstRow does not have the same number of entries as the database!")
-    if(isSca) P = rep(P, sum(apollo_sequence==1))
-    if(isVec|isMat) P=subset(P,apollo_sequence==1)
-    if(isCub) P=P[(apollo_sequence==1),,,drop=FALSE]
   }
   
+  ### Define recursive function
+  f <- function(x, validNRow, firstR){
+    # If list, apply recursively
+    if(is.list(x)) return(lapply(x, f, validNRow=validNRow, firstR=firstR))
+    # If not numeric or logical, return as is
+    if(!is.numeric(x) && !is.logical(x)) return(x)
+    # If not a list and not numeric
+    isSca <- length(x)==1
+    isVec <- is.vector(x) && !is.array(x)
+    isMat <- is.matrix(x)
+    isCub <- is.array(x) && !isMat && length(dim(x))==3
+    test <- isSca || isVec || isMat || isCub
+    if(!test) stop("INPUT ISSUE - Numeric object given to apollo_firstRow ",
+                   "is not a scalar, vector, matrix or cube.")
+    if(isSca | isVec) nRows <- length(x) else nRows <- nrow(x)
+    if(!(nRows %in% validNRow)) stop("INPUT ISSUE - The object passed to ", 
+                                     "apollo_firstRow does not have a valid ", 
+                                     "number of rows (usually the same as ", 
+                                     "the number of rows in the database).")
+    if(isSca) x <- rep(x, sum(firstR))
+    if(isVec|isMat) x <- subset(x, firstR)
+    if(isCub) x = x[firstR,,, drop=FALSE]
+    return(x)
+  }
+  
+  ### Keep only
+  if(is.null(functionality) || functionality!="gradient") K <- NULL
+  validNRow <- c(1,nObs,K)
+  P <- f(P, validNRow, firstR)
   return(P)
 }

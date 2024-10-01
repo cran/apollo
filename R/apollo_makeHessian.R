@@ -35,6 +35,11 @@ apollo_makeHessian <- function(apollo_beta, apollo_fixed, apollo_logLike){
   if(!is.null(apollo_inputs$apollo_control$debug)) debug <- apollo_inputs$apollo_control$debug else debug <- FALSE
   if(!is.null(apollo_inputs$silent)) silent <- apollo_inputs$silent else silent <- FALSE
   
+  #nSetsHessian <- 1
+  #test <- exists("apollo_inputs") && !is.null(apollo_inputs$apollo_control) && !is.null(apollo_inputs$apollo_control$nSetsHessian)
+  #test <- test && is.numeric(apollo_inputs$apollo_control$nSetsHessian) && is.vector(apollo_inputs$apollo_control$nSetsHessian)
+  #test <- test && length(apollo_inputs$apollo_control$nSetsHessian)==1
+  #if(test) nSetsHessian <- apollo_inputs$apollo_control$nSetsHessian
   
   # # # # # # # # #
   #### Checks ####
@@ -43,7 +48,7 @@ apollo_makeHessian <- function(apollo_beta, apollo_fixed, apollo_logLike){
   ### Check that no models without analytical hessian are used in apollo_probabilities
   if(is.function(apollo_probabilities)){
     tmp <- as.character(body(apollo_probabilities))
-    txt <- c("apollo_fmnl|apollo_op|apollo_normalDensity|apollo_dft|apollo_mdcev|apollo_el|apollo_nl|apollo_cnl|apollo_mdcnev|apollo_op|apollo_emdc1|apollo_emdc2|apollo_emdc|apollo_fnl")
+    txt <- c("apollo_fmnl|apollo_op|apollo_dft|apollo_mdcev|apollo_el|apollo_nl|apollo_cnl|apollo_mdcnev|apollo_op|apollo_emdc1|apollo_emdc2|apollo_emdc|apollo_fnl")
     tmp <- grep(txt, tmp)
     if(length(tmp)>0){
       if(debug) apollo_print("Analytic gradient cannot be built because models with undefined gradient are used inside apollo_probabilities.")
@@ -94,6 +99,80 @@ apollo_makeHessian <- function(apollo_beta, apollo_fixed, apollo_logLike){
   if( !all(d2VAvail) ) return(NULL)
   
   
+  # # # # # # # # # # # # # # # # # # #
+  #### Functions to split the data ####
+  # # # # # # # # # # # # # # # # # # #
+  
+  splitInSets <- function(indivID){
+    # Extract values
+    nObs    <- length(indivID)
+    namesID <- unique(indivID)
+    nIndiv  <- length(namesID)
+    nObsID  <- rep(0, nIndiv)
+    for(n in 1:nIndiv) nObsID[n] <- sum(indivID==namesID[n])
+    # Determine number of sets
+    nSets <- floor(nIndiv/2)
+    #maxNSet <- floor(nIndiv/2)
+    #if(maxNSet<2) nSets <- 1 else nSets <- min(40, maxNSet)
+    # Assign obs and individuals
+    obj         <- ceiling(nObs/nSets)
+    counter     <- 0
+    currentSet  <- 1
+    assignedSetObs <- rep(0, nObs)
+    assignedSetIndiv <- rep(0, nIndiv)
+    i <- 1
+    for(n in 1:nIndiv){
+      assignedSetObs[i:(i+nObsID[n]-1)] <- currentSet
+      assignedSetIndiv[n] <- currentSet
+      i <- i + nObsID[n]
+      counter <- counter + nObsID[n]
+      if(counter>=obj & currentSet<nSets){
+        currentSet <- currentSet + 1
+        counter <- 0
+      }
+    }
+    return(list(assignedSetObs=assignedSetObs, assignedSetIndiv=assignedSetIndiv))
+  }
+  environment(splitInSets) <- new.env(parent=baseenv())
+  
+  extractPiece <- function(x, set, assignedSet, assignedSetIndiv){
+    N <- length(assignedSetIndiv) # nIndiv
+    O <- length(assignedSet)      # nObs
+    # cube
+    if(is.array(x) && length(dim(array))==3){
+      if(dim(x)[1]==O) return(x[assignedSet==set,,,drop=FALSE])
+      if(dim(x)[1]==N) return(x[assignedSetIndiv==set,,,drop=FALSE])
+    }
+    # matrix
+    if(is.matrix(x)){
+      if(dim(x)[1]==O) return(x[assignedSet==set,,drop=FALSE])
+      if(dim(x)[1]==N) return(x[assignedSetIndiv==set,,drop=FALSE])
+    }
+    # vector
+    if(is.vector(x)){
+      if(length(x)==O) return(x[assignedSet==set])
+      if(length(x)==N) return(x[assignedSetIndiv==set])
+    }
+    # data.frame
+    if(is.data.frame(x)){
+      if(nrow(x)==O) return(x[assignedSet==set,])
+      if(nrow(x)==N) return(x[assignedSetIndiv==set,])
+    }
+    # scalar
+    if(is.vector(x) && length(x)==1 && is.numeric(x)){
+      if(x==O) return(sum(assignedSet==set))
+      if(x==N) return(sum(assignedSetIndiv==set))
+    }
+    # list
+    if(is.list(x) && !is.data.frame(x)){
+      return(lapply(x, extractPiece, set=set, assignedSet=assignedSet, assignedSetIndiv=assignedSetIndiv))
+    }
+    # something else
+    return(x)
+  }
+  #environment(extractPiece) <- new.env(parent=baseenv())
+  
+  
   # # # # # # # # # # # # # # # # #
   #### Build Hessian function ####
   # # # # # # # # # # # # # # # # #
@@ -101,21 +180,65 @@ apollo_makeHessian <- function(apollo_beta, apollo_fixed, apollo_logLike){
   ### Split apollo_beta in fixed and variable parts
   bFix <- apollo_beta[apollo_fixed]
   bOrd <- names(apollo_beta)
+  memorySaver <- FALSE
+  test <- !is.null(apollo_inputs$apollo_control$memorySaver)
+  if(test) memorySaver <- apollo_inputs$apollo_control$memorySaver
   
   ### Construct gradient function
   if(singleCore){ # Single core
+    # Calculate split in sets
+    if(memorySaver){
+      indices <- splitInSets(apollo_inputs$database[,apollo_inputs$apollo_control$indivID])
+      nSets   <- max(indices$assignedSetIndiv)
+    } else {
+      indices <- NULL
+      nSets   <- 1
+    }
+    # Single-core hessian function
     hessian <- function(b){
       b <- c(b, bFix)[bOrd]
-      H <- apollo_probabilities(b, apollo_inputs, functionality="hessian")
+      if(nSets==1){
+        H <- apollo_probabilities(b, apollo_inputs, functionality="hessian")
+      } else {
+        H <- 0
+        for(s in 1:nSets){
+          ai <- extractPiece(apollo_inputs, s, indices$assignedSetObs, indices$assignedSetIndiv)
+          H <- H + apollo_probabilities(b, ai, functionality="hessian")
+        }; rm(ai)
+      }
       return( H )
     }
     environment(hessian) <- environment(apollo_logLike)
+    assign("indices", indices, envir=environment(hessian))
+    assign("nSets"  ,   nSets, envir=environment(hessian))
+    assign("extractPiece",extractPiece, envir=environment(hessian))
   } else { # Multi-core
+    # Calculate split in sets
+    if(memorySaver){
+      parallel::clusterExport(cl, "splitInSets", envir=environment())
+      parallel::clusterExport(cl, "extractPiece", envir=environment())
+      parallel::clusterEvalQ(cl=cl, 
+                             {indices <- splitInSets(apollo_inputs$database[,apollo_inputs$apollo_control$indivID])
+                             nSets    <- max(indices$assignedSetIndiv)})
+    } else {
+      parallel::clusterEvalQ(cl=cl, nSets <- 1)
+    }
     hessian <- function(b){
       b <- c(b, bFix)[bOrd]
       parallel::clusterExport(cl, "b", envir=environment())
-      H <- parallel::clusterEvalQ(cl=cl, apollo_probabilities(b, apollo_inputs, functionality="hessian"))
-      H <- do.call("+", H)
+      H <- parallel::clusterEvalQ(cl=cl, {
+        if(nSets==1){
+          Hc <- apollo_probabilities(b, apollo_inputs, functionality="hessian")
+        } else {
+          Hc <- 0
+          for(s in 1:nSets){
+            ai <- extractPiece(apollo_inputs, s, indices$assignedSetObs, indices$assignedSetIndiv)
+            Hc <- Hc + apollo_probabilities(b, ai, functionality="hessian")
+          }; rm(ai)
+        }
+        return( Hc )
+      })
+      H <- Reduce("+", H)
       return( H )
     }
     environment(hessian) <- new.env(parent=baseenv())
@@ -123,12 +246,11 @@ apollo_makeHessian <- function(apollo_beta, apollo_fixed, apollo_logLike){
   }
   
   ### Copy elements to function environment
-  assign("bFix", bFix, envir=environment(hessian))
-  assign("bOrd", bOrd, envir=environment(hessian))
-  assign("silent"     ,     silent, envir=environment(hessian))
-  assign("debug"      ,      debug, envir=environment(hessian))
-  assign("singleCore" , singleCore, envir=environment(hessian))
-  
+  assign("bFix"        ,        bFix, envir=environment(hessian))
+  assign("bOrd"        ,        bOrd, envir=environment(hessian))
+  assign("silent"      ,      silent, envir=environment(hessian))
+  assign("debug"       ,       debug, envir=environment(hessian))
+  assign("singleCore"  ,  singleCore, envir=environment(hessian))
   
   return(hessian)
 }

@@ -74,7 +74,8 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
                           LCNObs        = max(sapply(lc_settings$inClassProb, countOutcomes)), 
                           LCCompNames   = names(lc_settings$inClassProb),
                           modelType     = 'LC',
-                          gradient      = TRUE,
+                          gradient      = TRUE, # ADD CHECK
+                          hessian       = TRUE, # ADD CHECK
                           classAlloc_settings = lc_settings$classProb)
     }
     # Diagnostics function
@@ -137,27 +138,57 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   }
   
   # Count number of rows in classProb
-  nRowsClassProb <- 0
-  if(is.vector(classProb[[1]])) nRowsClassProb <- length(classProb[[1]]) else {
-    if(functionality=="gradient"){
-      nRowsClassProb <- dim(classProb[[1]][["like"]])[1]
-      } else nRowsClassProb <- dim(classProb[[1]])[1]
-  }
+  Dim1 <- function(x){if(is.array(x)) return(dim(x)[[1]]) else return(length(x))}
+  nRowsClassProb <- Dim1(classProb[[1]])
+  if(functionality %in% c("gradient", "hessian")) nRowsClassProb <- Dim1(classProb$like[[1]])
   
   # Count number of rows in inClassProb
-  nRowsInClassProb <- 0
-  ### SH bug fix 10 Oct - needed as a list is also a vector!
-  #if(is.vector(inClassProb[[1]])) nRowsInClassProb <- length(inClassProb[[1]]) else {
-  #  nRowsInClassProb <- dim(inClassProb[[1]])[1]
-  #}
-  ### DP bug fix 13 Aug 2021
-  #if(is.list(inClassProb[[1]])){
-  #  nRowsInClassProb <- length(inClassProb[[1]][[1]])
-  #} else if(is.vector(inClassProb[[1]])) nRowsInClassProb <- length(inClassProb[[1]])
-  if(is.list(inClassProb[[1]])) tmp <- inClassProb[[1]][[1]] else tmp <- inClassProb[[1]]
-  if(is.array(tmp)) nRowsInClassProb <- dim(tmp)[1] else nRowsInClassProb <- length(tmp)
-  rm(tmp)
+  nRowsInClassProb <- Dim1(inClassProb[[1]])
+  if(functionality %in% c("gradient", "hessian")) nRowsInClassProb <- Dim1(inClassProb[[1]]$like)
   
+  # Count number of observations per individual
+  indivID <- get(apollo_control$indivID)
+  nObsPerIndiv <- unique(indivID)
+  nObsPerIndiv <- setNames(sapply(as.list(nObsPerIndiv),
+                                  function(x) sum(indivID==x)), nObsPerIndiv)
+  
+  # Function to resize classProbs
+  resize <- function(x, newL){
+    # If it is a list, apply function recursively
+    if(is.list(x)) return( lapply(x, resize, newL=newL) )
+    # If no change is needed, return as is
+    if(is.array(x) && length(x)==1) x <- as.vector(x)
+    if(is.array(x)) oldL <- dim(x)[1] else oldL <- length(x)
+    isCube <- is.array(x) && length(dim(x))==3
+    if(is.matrix(x) && ncol(x)==1) x <- as.vector(x)
+    if(oldL==1 | oldL==newL) return(x)
+    # If longer
+    if(oldL>newL){
+      if(isCube){
+        x <- apply(x, MARGIN=c(2,3), FUN=rowsum, group=c(1,1,2), reorder=FALSE)
+      } else x <- rowsum(x, group=indivID, reorder=FALSE)
+      x <- x/nObsPerIndiv
+    } 
+    # If shorter
+    if(oldL<newL){
+      if(isCube){
+        tmp <- array(0, dim=c(newL, dim(x)[2:3]))
+        tmp[1:nObsPerIndiv[1],,] <- x[1,,]
+        if(length(nObsPerIndiv)>1) for(n in 2:length(nObsPerIndiv)){
+          tmp[sum(nObsPerIndiv[1:(n-1)]):sum(nObsPerIndiv[1:n]),,] <- x[n,,]
+        }; x <- tmp; rm(tmp)
+      } else if(is.matrix(x)){
+        tmp <- matrix(0, newL, ncol(x))
+        tmp[1:nObsPerIndiv[1],] <- x[1,]
+        if(length(nObsPerIndiv)>1) for(n in 2:length(nObsPerIndiv)){
+          tmp[sum(nObsPerIndiv[1:(n-1)]):sum(nObsPerIndiv[1:n]),] <- x[n,]
+        }; x <- tmp; rm(tmp)
+      } else x <- rep(x, times=nObsPerIndiv)
+    }
+    # Simplify x to a vector if appropriate
+    if(is.matrix(x) && ncol(x)==1) x <- as.vector(x)
+    return(x)
+  }
   
   # ############## #
   #### Validate ####
@@ -205,23 +236,22 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   # ######################################################## #
   if(functionality %in% c("estimate", "conditionals", "output", "zero_LL", "shares_LL")){
     # Match the number of rows in each list
-    # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
-    if( nRowsInClassProb!=nRowsClassProb & nRowsClassProb!=1 ){
-      indivID <- get(apollo_control$indivID) 
-      nObsPerIndiv <- setNames(sapply(as.list(unique(indivID)),function(x) sum(indivID==x)),unique(indivID))
-        
-      if( nRowsInClassProb < nRowsClassProb ){
-        # If classProb is calculated at the obs level while the inClassProb is at the indiv level
-        classProb <- lapply(classProb, rowsum, group=indivID, reorder=FALSE)
-        classProb <- lapply(classProb, function(x) if(is.matrix(x) && ncol(x)==1) return(as.vector(x)) else return(x))
-        classProb <- lapply(classProb, '/', nObsPerIndiv)
-        #if(!apollo_inputs$silent) apollo_print(paste0('Class probabilities for model component "', lc_settings$componentName, 
-        #                                              '" averaged across observations of each individual.'))
-      } else {
-        # If inClassProb is calculated at the obs level while the classProb is at the indiv level
-        classProb <- lapply(classProb, rep, nObsPerIndiv)
-      }
-    }
+    classProb <- resize(classProb, nRowsInClassProb)
+    # # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
+    # if( nRowsInClassProb!=nRowsClassProb & nRowsClassProb!=1 ){
+    #     
+    #   if( nRowsInClassProb < nRowsClassProb ){
+    #     # If classProb is calculated at the obs level while the inClassProb is at the indiv level
+    #     classProb <- lapply(classProb, rowsum, group=indivID, reorder=FALSE)
+    #     classProb <- lapply(classProb, function(x) if(is.matrix(x) && ncol(x)==1) return(as.vector(x)) else return(x))
+    #     classProb <- lapply(classProb, '/', nObsPerIndiv)
+    #     #if(!apollo_inputs$silent) apollo_print(paste0('Class probabilities for model component "', lc_settings$componentName, 
+    #     #                                              '" averaged across observations of each individual.'))
+    #   } else {
+    #     # If inClassProb is calculated at the obs level while the classProb is at the indiv level
+    #     classProb <- lapply(classProb, rep, nObsPerIndiv)
+    #   }
+    # }
     
     # Calculate inClassProb*classProb
     nIndiv <- length(unique(get(apollo_control$indivID)))                                      ## FIX DP 18/05/2020
@@ -244,41 +274,40 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   # ##################### #
   if(functionality %in% c("prediction", "raw")){
     # Match the number of rows in each list
-    # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
-    if( nRowsInClassProb!=nRowsClassProb  & nRowsClassProb!=1 ){
-      indivID <- get(apollo_control$indivID) 
-      nObsPerIndiv <- setNames(sapply(as.list(unique(indivID)),function(x) sum(indivID==x)),unique(indivID))
-    
-      if( nRowsInClassProb < nRowsClassProb ){
-        # If classProb is calculated at the obs level while the inClassProb is at the indiv level
-        stop("SPECIFICATION ISSUE - Class-probability variable for model component \"",lc_settings$componentName,"\" has more elements than in-class-probability.")
-      } else {
-        # If inClassProb is calculated at the obs level while the classProb is at the indiv level
-        S=length(classProb)
-        for(s in 1:S){
-          isMat <- is.matrix(classProb[[s]])
-          isCub <- is.array(classProb[[s]]) && !isMat && length(dim(classProb[[s]]))==3
-          if(isCub){
-            # first average out over intra
-            classProb[[s]]=colSums(aperm(classProb[[s]], perm=c(3,1,2)))/dim(classProb[[s]])[3]
-          } 
-          # now check what's left
-          isVec <- is.vector(classProb[[s]])
-          isMat <- is.matrix(classProb[[s]])
-          if(isVec) classProb[[s]]=rep(classProb[[s]],nObsPerIndiv)
-          if(isMat){
-            tmp <- matrix(0, nrow=sum(nObsPerIndiv), ncol=ncol(classProb[[s]]))
-            for(n in 1:length(nObsPerIndiv)){
-              a <- ifelse(n==1, 1, sum(nObsPerIndiv[1:(n-1)]) + 1)
-              b <- a + nObsPerIndiv[n] - 1 
-              tmp[a:b,] <- rep(classProb[[s]][n,], each=nObsPerIndiv[n])
-            }
-            classProb[[s]] <- tmp
-          } 
-        }
-        
-      }
-    }
+    classProb <- resize(classProb, nRowsInClassProb)
+    # # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
+    # if( nRowsInClassProb!=nRowsClassProb  & nRowsClassProb!=1 ){
+    #   
+    #   if( nRowsInClassProb < nRowsClassProb ){
+    #     # If classProb is calculated at the obs level while the inClassProb is at the indiv level
+    #     stop("SPECIFICATION ISSUE - Class-probability variable for model component \"",lc_settings$componentName,"\" has more elements than in-class-probability.")
+    #   } else {
+    #     # If inClassProb is calculated at the obs level while the classProb is at the indiv level
+    #     S=length(classProb)
+    #     for(s in 1:S){
+    #       isMat <- is.matrix(classProb[[s]])
+    #       isCub <- is.array(classProb[[s]]) && !isMat && length(dim(classProb[[s]]))==3
+    #       if(isCub){
+    #         # first average out over intra
+    #         classProb[[s]]=colSums(aperm(classProb[[s]], perm=c(3,1,2)))/dim(classProb[[s]])[3]
+    #       } 
+    #       # now check what's left
+    #       isVec <- is.vector(classProb[[s]])
+    #       isMat <- is.matrix(classProb[[s]])
+    #       if(isVec) classProb[[s]]=rep(classProb[[s]],nObsPerIndiv)
+    #       if(isMat){
+    #         tmp <- matrix(0, nrow=sum(nObsPerIndiv), ncol=ncol(classProb[[s]]))
+    #         for(n in 1:length(nObsPerIndiv)){
+    #           a <- ifelse(n==1, 1, sum(nObsPerIndiv[1:(n-1)]) + 1)
+    #           b <- a + nObsPerIndiv[n] - 1 
+    #           tmp[a:b,] <- rep(classProb[[s]][n,], each=nObsPerIndiv[n])
+    #         }
+    #         classProb[[s]] <- tmp
+    #       } 
+    #     }
+    #     
+    #   }
+    # }
     
     nClass<- length(classProb)
     for(s in 1:length(inClassProb)){
@@ -305,58 +334,110 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   if(functionality==("gradient")){
     # Initial checks
     if(any(sapply(inClassProb, function(p) is.null(p$like) || is.null(p$grad)))) stop("INTERNAL ISSUE - Some components in inClassProb are missing the 'like' and/or 'grad' elements")
-    if(any(sapply(classProb, function(p) is.null(p$like) || is.null(p$grad)))) stop("INTERNAL ISSUE - Some components in classProb are missing the 'like' and/or 'grad' elements")
+    if(is.null(classProb$like) || is.null(classProb$grad)) stop("INTERNAL ISSUE - Some components in classProb are missing the 'like' and/or 'grad' elements")
     if(apollo_inputs$apollo_control$workInLogs && apollo_inputs$apollo_control$analyticGrad) stop("INCORRECT FUNCTION/SETTING USE - workInLogs cannot be used in conjunction with analyticGrad")
     K <- length(inClassProb[[1]]$grad) # number of parameters
-    if(K!=length(classProb[[1]]$grad)) stop("INTERNAL ISSUE - Dimensions of gradients not consistent between classProb and inClassProb")
+    if(length(classProb$grad)!=K) stop("INTERNAL ISSUE - Dimensions of gradients not consistent between classProb and inClassProb")
     if(any(sapply(inClassProb, function(p) length(p$grad))!=K)) stop("INTERNAL ISSUE - Dimensions of gradients from different components in inClassProb imply different number of parameters")
-    if(any(sapply(classProb, function(p) length(p$grad))!=K)) stop("INTERNAL ISSUE - Dimensions of gradients from different components in classProb imply different number of parameters")
+    if(length(classProb$grad)!=K) stop("INTERNAL ISSUE - Dimensions of gradients from different components in classProb imply different number of parameters")
+    S <- length(classProb$like) # number of classes
+    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
+                            error=function(e) stop("INTERNAL ISSUE - Gradient ",
+                                                   "could not fetch apollo_beta"))
+    parName <- names(apollo_beta)[!(names(apollo_beta) %in% apollo_inputs$apollo_fixed)]
     
-    # Count number of rows in inClassProb
-    nRowsInClassProb <- 0
-    if(is.vector(inClassProb[[1]]$like)) nRowsInClassProb <- length(inClassProb[[1]]$like) else {
-      nRowsInClassProb <- dim(inClassProb[[1]][["like"]])[1]
-    }
-    
-    # Count number of obs in class alloc probabilities
-    nRowsClassProb <- max(sapply(classProb, function(p) length(p$like)))
     # Match the number of rows in each list
-    # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
-    if( nRowsInClassProb!=nRowsClassProb & nRowsClassProb!=1 ){
-      indivID <- get(apollo_control$indivID) 
-      nObsPerIndiv <- setNames(sapply(as.list(unique(indivID)),function(x) sum(indivID==x)),unique(indivID))
-
-      if( nRowsInClassProb < nRowsClassProb ){
-        # If classProb is calculated at the obs level while the inClassProb is at the indiv level
-        for(i in 1:length(classProb)){
-          classProb[[i]]$grad <- lapply(classProb[[i]]$grad, rowsum, group=indivID, reorder=FALSE)
-          classProb[[i]]$grad <- lapply(classProb[[i]]$grad, '/', nObsPerIndiv)
-          classProb[[i]]$like <- rowsum(classProb[[i]]$like, group=indivID, reorder=FALSE)/nObsPerIndiv
-        }
-        #if(!apollo_inputs$silent) apollo_print(paste0('Class probabilities for model component "', lc_settings$componentName, 
-        #                                              '" averaged across observations of each individual.'))
-      } else {
-        # If inClassProb is calculated at the obs level while the classProb is at the indiv level
-        for(i in 1:length(classProb)){
-          classProb[[i]]$grad <- lapply(classProb[[i]]$grad, rep, nObsPerIndiv)
-          classProb[[i]]$like <- rep(classProb[[i]]$like, nObsPerIndiv)
-        }
-      }
-    }
+    classProb <- resize(classProb, nRowsInClassProb)
+    inClassProb <- resize(inClassProb, nRowsInClassProb)
+    # # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
+    # if( nRowsClassProb!=1 && nRowsInClassProb < nRowsClassProb){
+    #   classProb$like <- lapply(classProb$like, \(l) rowsum(l, group=indivID, reorder=FALSE)/nObsPerIndiv)
+    #   for(k in 1:K) classProb$grad[[k]] <- lapply(classProb$grad[[k]], \(g) rowsum(g, group=indivID, reorder=FALSE)/nObsPerIndiv)
+    # }
+    # if( nRowsClassProb!=1 && nRowsInClassProb > nRowsClassProb){
+    #   classProb$like <- lapply(classProb$like, rep, times=nObsPerIndiv)
+    #   for(k in 1:K) classProb$grad[[k]] <- lapply(classProb$grad[[k]], rep, nObsPerIndiv)
+    # }
     
     ### Calculate actual likelihood and gradient
-    nClass <- length(classProb)
-    nParam <- length(inClassProb[[1]]$grad)
-    Pout = list(like=0, grad=list())
-    for(k in 1:nParam) Pout$grad[[k]] <- 0
+    nClass <- length(inClassProb)
+    Pout = list(like=0, grad=setNames(vector(mode="list", length=K), parName))
+    for(k in 1:K) Pout$grad[[k]] <- 0
     for(i in 1:nClass){
-      Pout$like <- Pout$like + inClassProb[[i]]$like*classProb[[i]]$like
-      for(k in 1:nParam) Pout$grad[[k]] <- Pout$grad[[k]] + 
-          inClassProb[[i]]$grad[[k]]*classProb[[i]]$like + inClassProb[[i]]$like*classProb[[i]]$grad[[k]]
+      Pout$like <- Pout$like + inClassProb[[i]]$like*classProb$like[[i]]
+      for(k in 1:K) Pout$grad[[k]] <- Pout$grad[[k]] + 
+          inClassProb[[i]]$grad[[k]]*classProb$like[[i]] + inClassProb[[i]]$like*classProb$grad[[k]][[i]]
+      if(is.array(Pout$grad[[k]])) rownames(Pout$grad[[k]]) <- NULL
+      if(is.vector(Pout$grad[[k]])) names(Pout$grad[[k]]) <- NULL
     }
     
     return(Pout)
-  } 
+  }
+  
+  # ############# #
+  #### Hessian ####
+  # ############# #
+  
+  if(functionality==("hessian")){
+    ### TO DO
+     # Checks
+     # No need to check for rows
+    K <- length(inClassProb[[1]]$grad) # number of parameters
+    S <- length(classProb$like) # number of classes
+    
+    # Match the number of rows in each list
+    classProb <- resize(classProb, nRowsInClassProb)
+    # # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same
+    # if( nRowsClassProb!=1 && nRowsInClassProb < nRowsClassProb){
+    #   classProb$like <- lapply(classProb$like, \(l) rowsum(l, group=indivID, reorder=FALSE)/nObsPerIndiv)
+    #   for(k in 1:K){
+    #     classProb$grad[[k]] <- lapply(classProb$grad[[k]], \(g) rowsum(g, group=indivID, reorder=FALSE)/nObsPerIndiv)
+    #     for(k2 in 1:K) classProb$hess[[k]][[k2]] <- lapply(classProb$hess[[k]][[k2]], \(h) rowsum(h, group=indivID, reorder=FALSE)/nObsPerIndiv)
+    #   }; rm(k, k2)
+    # }
+    # if( nRowsClassProb!=1 && nRowsInClassProb > nRowsClassProb){
+    #   classProb$like <- lapply(classProb$like, rep, times=nObsPerIndiv)
+    #   for(k in 1:K){
+    #     classProb$grad[[k]] <- lapply(classProb$grad[[k]], rep, times=nObsPerIndiv)
+    #     for(k2 in 1:K) classProb$hess[[k]][[k2]] <- lapply(classProb$hess[[k]][[k2]], rep, times=nObsPerIndiv)
+    #   }; rm(k, k2)
+    # }
+    
+    # Calculate likelihood and gradient
+    nClass <- length(classProb$like)
+    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
+                            error=function(e) stop("INTERNAL ISSUE - Gradient ",
+                                                   "could not fetch apollo_beta"))
+    parName <- names(apollo_beta)[!(names(apollo_beta) %in% apollo_inputs$apollo_fixed)]
+    L <- 0
+    G <- setNames(vector(mode="list", length=K), parName)
+    for(k in 1:K) G[[k]] <- 0
+    for(s in 1:S){
+      L <- L + inClassProb[[s]]$like*classProb$like[[s]]
+      if(is.array(L)) rownames(L) <- NULL else names(L) <- NULL
+      for(k in 1:K) G[[k]] <- G[[k]] + 
+          inClassProb[[s]]$grad[[k]]*classProb$like[[s]] + inClassProb[[s]]$like*classProb$grad[[k]][[s]]
+      if(is.array(G[[k]])) rownames(G[[k]]) <- NULL else names(G[[k]]) <- NULL
+    }
+    
+    # Calculate the hessian
+    H <- setNames(vector(mode="list", length=K), parName)
+    for(k1 in 1:K){
+      H[[k1]] <- setNames(vector(mode="list", length=K), parName)
+      for(k2 in 1:K){
+        H[[k1]][[k2]] <- 0
+        for(s in 1:S) H[[k1]][[k2]] <- H[[k1]][[k2]] + 
+            classProb$hess[[k1]][[k2]][[s]]*inClassProb[[s]]$like + 
+            classProb$grad[[k1]][[s]]*inClassProb[[s]]$grad[[k2]] + 
+            classProb$grad[[k2]][[s]]*inClassProb[[s]]$grad[[k1]] + 
+            classProb$like[[s]]*inClassProb[[s]]$hess[[k1]][[k2]]
+        if(is.array(H[[k1]][[k2]])) rownames(H[[k1]][[k2]]) <- NULL else 
+          names(H[[k1]][[k2]]) <- NULL
+      }
+    }
+    
+    return(list(like=L, grad=G, hess=H))
+  }
   
   # ############ #
   #### Report ####

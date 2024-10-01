@@ -11,10 +11,14 @@
 #' @param silent Boolean. TRUE to prevent the function from printing to the 
 #'               console. Default is FALSE.
 #' @return Data.frame. Validated version of database.
+#' @importFrom tibble is_tibble
 #' @export
 apollo_validateData=function(database, apollo_control, silent){
   
   if(nrow(database)==0) stop("INPUT ISSUE - database is empty!")
+  
+  ### If database is a tibble, turn it into a data.frame
+  if('tibble' %in% installed.packages()[,"Package"] && tibble::is_tibble(database)) database <- as.data.frame(database)
   
   if(any(is.na(database))){
     txt <- paste0("Your database contains some entries that are NA. ", 

@@ -35,7 +35,7 @@
 #'                                  \item \strong{\code{numDeriv_method}}: Character. Method used for numerical differentiation when calculating the covariance matrix. Can be \code{"Richardson"} or \code{"simple"}, Only used if analytic gradients are available. See argument \code{method} in \link[numDeriv]{grad} for more details.
 #'                                  \item \strong{\code{numDeriv_settings}}: List. Additional arguments to the method used by numDeriv to calculate the Hessian. See argument \code{method.args} in \link[numDeriv]{grad} for more details.
 #'                                  \item \strong{\code{printLevel}}: Higher values render more verbous outputs. Can take values 0, 1, 2 or 3. Ignored if apollo_control$HB is TRUE. Default is 3.
-#'                                  \item \strong{\code{scaleAfterConvergence}}: Logical. Used to increase numerical precision of convergence. If TRUE, parameters are scaled to 1 after convergence, and the estimation is repeated from this new starting values. Results are reported scaled back, so it is a transparent process for the user. Default is TRUE.
+#'                                  \item \strong{\code{scaleAfterConvergence}}: Logical. Used to increase numerical precision of convergence. If TRUE, parameters are scaled to 1 after convergence, and the estimation is repeated from this new starting values. Results are reported scaled back, so it is a transparent process for the user. Default is FALSE.
 #'                                  \item \strong{\code{scaleHessian}}: Logical. If TRUE, parameters are scaled to 1 for Hessian estimation. Default is TRUE.
 #'                                  \item \strong{\code{scaling}}: Named vector. Names of elements should match those in \code{apollo_beta}. Optional scaling for parameters. If provided, for each parameter \code{i}, \code{(apollo_beta[i]/scaling[i])} is optimised, but \code{scaling[i]*(apollo_beta[i]/scaling[i])} is used during estimation. For example, if parameter b3=10, while b1 and b2 are close to 1, then setting \code{scaling = c(b3=10)} can help estimation, specially the calculation of the Hessian. Reports will still be based on the non-scaled parameters.
 #'                                  \item \strong{\code{silent}}: Logical. If TRUE, no information is printed to the console during estimation. Default is FALSE.
@@ -70,7 +70,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                   maxLik_settings=NULL, numDeriv_method="Richardson", 
                   numDeriv_settings=list(), scaling=NA, 
                   bootstrapSE=0, bootstrapSeed=24, silent=FALSE, 
-                  scaleHessian=TRUE, scaleAfterConvergence=TRUE,
+                  scaleHessian=TRUE, scaleAfterConvergence=FALSE,
                   validateGrad=FALSE,
                   bgw_settings=list())
   prtLvlMan <- is.list(estimate_settings) && !is.null(estimate_settings$printLevel)
@@ -1024,6 +1024,14 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   b <- model$estimate # c(model$estimate, apollo_beta[apollo_fixed])[names(apollo_beta)]
   b[names(apollo_inputs$apollo_scaling)] <- b[names(apollo_inputs$apollo_scaling)]*apollo_inputs$apollo_scaling
   
+  ### Save memory by deleting database and draws from apollo_inputs
+    # if they won't be needed any more (21 Aug 2024)
+  if(bootstrapSE==0){
+    if(debug) apollo_print('Freeing memory on main thread...')
+    apollo_inputs$database <- NULL
+    apollo_inputs$draws    <- NULL
+  }
+  
   ### Calculate varcov
   if((estimationRoutine!="bgw")&&!is.null(model$BHHH_matrix)){
     varcov <- apollo_varcov(apollo_beta=b, apollo_fixed, 
@@ -1051,7 +1059,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   ### Close cluster and delete apollo_logLike
   if(!environment(apollo_logLike)$singleCore){
     parallel::stopCluster(environment(apollo_logLike)$cl)
-  }; rm(apollo_logLike)
+  }; rm(apollo_logLike, grad, hessian)
   
   ### Restore apollo_inputs including database and draws into global environment
   test <- apollo_control$nCores>1

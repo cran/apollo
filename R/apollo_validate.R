@@ -209,6 +209,19 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     if(!all(is.finite(inputs$xNormal))) stop('INPUT ISSUE - Some values inside xNormal are not finite for model component "', inputs$componentName, '"')
   }
   
+  #### NormD ####
+  if(modelType=="tobit"){
+    if(is.vector(inputs$xTobit)) xlength=length(inputs$xTobit)
+    if(is.array(inputs$xTobit)) xlength=dim(inputs$xTobit)[1]
+    if(!is.vector(inputs$outcomeTobit)) stop("INPUT ISSUE - Dependent variable for model component \"",inputs$componentName,"\" needs to be one-dimensional!")
+    if(xlength!=1 && xlength!=length(inputs$outcomeTobit)) stop("INPUT ISSUE - Incompatible dimensions for dependent and explanatory variables for model component \"",inputs$componentName,"\"!")
+    if(!all(is.finite(inputs$xTobit))) stop('INPUT ISSUE - Some values inside xTobit are not finite for model component "', inputs$componentName, '"')
+    if(length(inputs$lowerLimit)!=1) stop("INPUT ISSUE - Lower limit for model component \"",inputs$componentName,"\" needs to be a scalar!")
+    if(length(inputs$upperLimit)!=1) stop("INPUT ISSUE - Upper limit for model component \"",inputs$componentName,"\" needs to be a scalar!") 
+    if(any(inputs$outcomeTobit<inputs$lowerLimit)) stop("INPUT ISSUE - Dependent variable for model component \"",inputs$componentName,"\" below lower limit for some observations!")
+    if(any(inputs$outcomeTobit>inputs$upperLimit)) stop("INPUT ISSUE - Dependent variable for model component \"",inputs$componentName,"\" above upper limit for some observations!")
+  }
+
   #### OL, OP ####
   if(modelType %in% c("ol", "op")){
     # validation of coding is done in apollo_preprocess, as coding is applied in there

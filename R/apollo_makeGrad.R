@@ -49,7 +49,7 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   ### Check that no models without analytical gradient are used in apollo_probabilities
   if(is.function(apollo_probabilities)){
     tmp <- as.character(body(apollo_probabilities))
-    txt <- c("apollo_dft|apollo_mdcev|apollo_el|apollo_nl|apollo_cnl|apollo_mdcnev|apollo_op|apollo_emdc1|apollo_emdc2|apollo_emdc|apollo_fnl")
+    txt <- c("apollo_nl|apollo_dft|apollo_mdcev|apollo_el|apollo_cnl|apollo_mdcnev|apollo_op|apollo_emdc1|apollo_emdc2|apollo_emdc|apollo_fnl")
     tmp <- grep(txt, tmp)
     if(length(tmp)>0){
       if(debug) apollo_print("Analytic gradient cannot be built because models with undefined gradient are used inside apollo_probabilities.")
@@ -109,6 +109,80 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   #rm(compList)
   
   
+  # # # # # # # # # # # # # # # # # # #
+  #### Functions to split the data ####
+  # # # # # # # # # # # # # # # # # # #
+  
+  splitInSets <- function(indivID){
+    # Extract values
+    nObs    <- length(indivID)
+    namesID <- unique(indivID)
+    nIndiv  <- length(namesID)
+    nObsID  <- rep(0, nIndiv)
+    for(n in 1:nIndiv) nObsID[n] <- sum(indivID==namesID[n])
+    # Determine number of sets
+    nSets <- floor(nIndiv/2)
+    #maxNSet <- floor(nIndiv/2)
+    #if(maxNSet<2) nSets <- 1 else nSets <- min(40, maxNSet)
+    # Assign obs and individuals
+    obj         <- ceiling(nObs/nSets)
+    counter     <- 0
+    currentSet  <- 1
+    assignedSetObs <- rep(0, nObs)
+    assignedSetIndiv <- rep(0, nIndiv)
+    i <- 1
+    for(n in 1:nIndiv){
+      assignedSetObs[i:(i+nObsID[n]-1)] <- currentSet
+      assignedSetIndiv[n] <- currentSet
+      i <- i + nObsID[n]
+      counter <- counter + nObsID[n]
+      if(counter>=obj & currentSet<nSets){
+        currentSet <- currentSet + 1
+        counter <- 0
+      }
+    }
+    return(list(assignedSetObs=assignedSetObs, assignedSetIndiv=assignedSetIndiv))
+  }
+  environment(splitInSets) <- new.env(parent=baseenv())
+  
+  extractPiece <- function(x, set, assignedSet, assignedSetIndiv){
+    N <- length(assignedSetIndiv) # nIndiv
+    O <- length(assignedSet)      # nObs
+    # cube
+    if(is.array(x) && length(dim(array))==3){
+      if(dim(x)[1]==O) return(x[assignedSet==set,,,drop=FALSE])
+      if(dim(x)[1]==N) return(x[assignedSetIndiv==set,,,drop=FALSE])
+    }
+    # matrix
+    if(is.matrix(x)){
+      if(dim(x)[1]==O) return(x[assignedSet==set,,drop=FALSE])
+      if(dim(x)[1]==N) return(x[assignedSetIndiv==set,,drop=FALSE])
+    }
+    # vector
+    if(is.vector(x)){
+      if(length(x)==O) return(x[assignedSet==set])
+      if(length(x)==N) return(x[assignedSetIndiv==set])
+    }
+    # data.frame
+    if(is.data.frame(x)){
+      if(nrow(x)==O) return(x[assignedSet==set,])
+      if(nrow(x)==N) return(x[assignedSetIndiv==set,])
+    }
+    # scalar
+    if(is.vector(x) && length(x)==1 && is.numeric(x)){
+      if(x==O) return(sum(assignedSet==set))
+      if(x==N) return(sum(assignedSetIndiv==set))
+    }
+    # list
+    if(is.list(x) && !is.data.frame(x)){
+      return(lapply(x, extractPiece, set=set, assignedSet=assignedSet, assignedSetIndiv=assignedSetIndiv))
+    }
+    # something else
+    return(x)
+  }
+  #environment(extractPiece) <- new.env(parent=baseenv())
+  
+  
   # # # # # # # # # # # # # # # # #
   #### Build gradient function ####
   # # # # # # # # # # # # # # # # #
@@ -116,23 +190,66 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   ### Split apollo_beta in fixed and variable parts
   bFix <- apollo_beta[apollo_fixed]
   bOrd <- names(apollo_beta)
+  memorySaver <- FALSE
+  test <- !is.null(apollo_inputs$apollo_control$memorySaver)
+  if(test) memorySaver <- apollo_inputs$apollo_control$memorySaver
   
   ### Construct gradient function
   if(singleCore){ # Single core
+    # Calculate split in sets
+    if(memorySaver){
+      indices <- splitInSets(apollo_inputs$database[,apollo_inputs$apollo_control$indivID])
+      nSets   <- max(indices$assignedSetIndiv)
+    } else {
+      indices <- NULL
+      nSets   <- 1
+    }
+    # Single-core gradient function
     grad <- function(b, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE){
       b <- c(b, bFix)[bOrd]
-      G <- apollo_probabilities(b, apollo_inputs, functionality="gradient")
+      if(nSets==1){ # Single piece
+        G <- apollo_probabilities(b, apollo_inputs, functionality="gradient")
+      } else { # Multiple pieces
+        G <- list()
+        for(s in 1:nSets){
+          ai <- extractPiece(apollo_inputs, s, indices$assignedSetObs, indices$assignedSetIndiv)
+          G[[s]] <- apollo_probabilities(b, ai, functionality="gradient")
+        }; rm(ai)
+        G <- do.call(rbind, G)
+      }
       return( G )
     }
-    #environment(grad) <- new.env(parent=baseenv()) # parent used to be parent.frame()
-    #assign('apollo_inputs', apollo_inputs, envir=environment(grad))
-    #assign('apollo_probabilities', apollo_probabilities, envir=environment(grad))
     environment(grad) <- environment(apollo_logLike)
+    assign("indices", indices, envir=environment(grad))
+    assign("nSets"  ,   nSets, envir=environment(grad))
+    assign("extractPiece",extractPiece, envir=environment(grad))
   } else { # Multi-core
+    # Calculate split in sets
+    if(memorySaver){
+      parallel::clusterExport(cl, "splitInSets", envir=environment())
+      parallel::clusterExport(cl, "extractPiece", envir=environment())
+      parallel::clusterEvalQ(cl=cl, 
+                            {indices <- splitInSets(apollo_inputs$database[,apollo_inputs$apollo_control$indivID])
+                            nSets    <- max(indices$assignedSetIndiv)})
+    } else {
+      parallel::clusterEvalQ(cl=cl, nSets <- 1)
+    }
+    # Multi-core gradient function
     grad <- function(b, countIter=FALSE, writeIter=FALSE, sumLL=FALSE, getNIter=FALSE){
       b <- c(b, bFix)[bOrd]
       parallel::clusterExport(cl, "b", envir=environment())
-      G <- parallel::clusterEvalQ(cl=cl, apollo_probabilities(b, apollo_inputs, functionality="gradient"))
+      G <- parallel::clusterEvalQ(cl=cl, {
+        if(nSets==1){
+          apollo_probabilities(b, apollo_inputs, functionality="gradient")
+        } else {
+          G <- list()
+          for(s in 1:nSets){
+            ai <- extractPiece(apollo_inputs, s, indices$assignedSetObs, indices$assignedSetIndiv)
+            G[[s]] <- apollo_probabilities(b, ai, functionality="gradient")
+          }; rm(ai)
+          G <- do.call(rbind, G)
+        }
+      })
       G <- do.call(rbind, G)
       return( G )
     }
@@ -143,10 +260,9 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   ### Copy elements to function environment
   assign("bFix", bFix, envir=environment(grad))
   assign("bOrd", bOrd, envir=environment(grad))
-  assign("silent"      ,     silent, envir=environment(grad))
-  assign("debug"       ,      debug, envir=environment(grad))
-  assign("singleCore" ,  singleCore, envir=environment(grad))
-  
+  assign("silent"      ,      silent, envir=environment(grad))
+  assign("debug"       ,       debug, envir=environment(grad))
+  assign("singleCore"  ,  singleCore, envir=environment(grad))
   
   # # # # # # # # # # # # # # # # #
   #### Test gradient function  ####
@@ -193,17 +309,15 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
       
       # If analytical and numeric gradient calculation was successful
       test <- !is.null(gradNum) && all(is.finite(gradNum))
-      dif  <- abs(gradNum - gradAn)
-      test <- test && any(dif[is.finite(dif)]>0.01) # diff should be <0.01 for all elements
       if(test){
-        if(debug){
-          tmp <- cbind(numeric=gradNum, analytic=gradAn, `Diff`=dif)
-          rownames(tmp) <- names(gradNum)
-          #apollo_print(tmp)
-          print(tmp)
+        dif  <- abs(gradNum - gradAn)
+        tmp <- cbind(numeric=gradNum, analytic=gradAn, `Diff`=dif)
+        rownames(tmp) <- names(gradNum)
+        print(tmp)
+        if(any(dif[is.finite(dif)]>0.01)){ # diff should be <0.01 for all elements
+          if(!silent) apollo_print("Analytical gradient is different to numerical one. Numerical gradients will be used.")
+          return(NULL)
         }
-        if(!silent) apollo_print("Analytical gradient is different to numerical one. Numerical gradients will be used.")
-        return(NULL)
       }; rm(test)
     }
     rm(b0_disturbance)

@@ -63,7 +63,7 @@ apollo_classAlloc <- function(classAlloc_settings){
   # Search for any LC _settings that contain a classAlloc_settings element in it
   tmp <- grep('_settings$', ls(apollo_inputs), value=TRUE); tmp2 <- NULL
   for(i in tmp) if(!is.null(apollo_inputs[[i]][['classAlloc_settings']])) tmp2 <- c(tmp2, i)
-  # Load the preprocessed settings only if there is a single one for calssAlloc
+  # Load the preprocessed settings only if there is a single one for classAlloc
   if( length(tmp2)==1 && (functionality!="preprocess") ){
     # Load classAlloc_settings from apollo_inputs
     tmp <- apollo_inputs[[tmp2]][['classAlloc_settings']]
@@ -103,8 +103,30 @@ apollo_classAlloc <- function(classAlloc_settings){
     test <- test && apollo_inputs$apollo_control$analyticGrad
     classAlloc_settings$gradient <- FALSE
     if(test){
-      classAlloc_settings$dV       <- apollo_dVdBOld(apollo_beta, apollo_inputs, classAlloc_settings$V)
+      #classAlloc_settings$dV       <- apollo_dVdBOld(apollo_beta, apollo_inputs, classAlloc_settings$V)
+      classAlloc_settings$dV       <- apollo_dVdB(apollo_beta, apollo_inputs, classAlloc_settings$V)
       classAlloc_settings$gradient <- !is.null(classAlloc_settings$dV)
+    }; rm(test)
+    
+    # Construct necessary input for hessian
+    test <- !is.null(classAlloc_settings$gradient) && classAlloc_settings$gradient && apollo_inputs$apollo_control$analyticHessian
+    classAlloc_settings$hessian <- test
+    if(test){
+      classAlloc_settings$ddV <- list()
+      #alts = names(classAlloc_settings$dV)
+      #pars = names(apollo_beta[!(names(apollo_beta) %in% apollo_inputs$apollo_fixed)])
+      pars = names(classAlloc_settings$dV)
+      alts = names(classAlloc_settings$dV[[1]])
+      for(k1 in pars){
+        classAlloc_settings$ddV[[k1]] <- list()
+        for(k2 in pars){
+          classAlloc_settings$ddV[[k1]][[k2]] <- list() 
+          for(j in alts){
+            classAlloc_settings$ddV[[k1]][[k2]][[j]] <- Deriv::Deriv(f=classAlloc_settings$dV[[k1]][[j]], x=k2)
+            if(is.null(classAlloc_settings$ddV[[k1]][[k2]][[j]])) classAlloc_settings$hessian <- FALSE
+          }
+        }
+      }
     }; rm(test)
     
     # Return classAlloc_settings if pre-processing
@@ -176,41 +198,167 @@ apollo_classAlloc <- function(classAlloc_settings){
   
   if(functionality=="gradient"){
     # Verify everything necesary is available
-    if(is.null(classAlloc_settings$dV) || !all(sapply(classAlloc_settings$dV, is.function))) stop("INTERNAL ISSUE - Analytical gradient could not be calculated. Please set apollo_control$analyticGrad=FALSE.")
-    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
-                            error=function(e) stop("INTERNAL ISSUE - apollo_mnl could not fetch apollo_beta for gradient estimation."))
+    if(is.null(classAlloc_settings$dV) || !all(sapply(unlist(classAlloc_settings$dV), is.function))) stop("INTERNAL ISSUE - Analytical gradient could not be calculated. Please set apollo_control$analyticGrad=FALSE.")
     if(is.null(apollo_inputs$database)) stop("INTERNAL ISSUE - apollo_mnl could not fetch apollo_inputs$database for gradient estimation.")
-    # Calculate probabilities and derivatives of utilities for all alternatives
+    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
+                            error=function(e) stop("INTERNAL ISSUE - ",
+                                                   "apollo_mnl could not ",
+                                                   "fetch apollo_beta for ",
+                                                   "hessian estimation."))
+    
+    ### Calculate necessary input
+    J <- length(classAlloc_settings$dV[[1]]) # number of alternatives
+    K <- length(classAlloc_settings$dV) # number of parameters
+    N <- classAlloc_settings$nObs  # number of obs
     P <- classAlloc_settings$probs_MNL(classAlloc_settings)
-    e <- list2env(c(as.list(apollo_beta), apollo_inputs$database, list(apollo_inputs=apollo_inputs)), hash=TRUE)
-    for(i in 1:length(classAlloc_settings$dV)) environment(classAlloc_settings$dV[[i]]) <- e
-    dV<- lapply(classAlloc_settings$dV, function(dv) dv())
-    if(!all(classAlloc_settings$rows)) for(i in 1:length(dV)) dV[[i]] <- lapply(dV[[i]], apollo_keepRows, classAlloc_settings$rows)
-    for(i in 1:classAlloc_settings$nAlt) dV[[i]] <- lapply(dV[[i]], 
-                                                    function(dvik){ # Make dV=0 for unavailable alternatives
-                                                      test <- length(dvik)==1 && length(classAlloc_settings$avail[[i]])>1
-                                                      if(test) dvik <- rep(dvik, classAlloc_settings$nObs)
-                                                      dvik[!classAlloc_settings$avail[[i]]] <- 0
-                                                      return(dvik)
-                                                    })
-    # Calculate gradient for each alternative
-    K   <- length(dV[[1]])
-    Pd <- list()
-    for(k in 1:K) Pd[[k]] <- Reduce('+', mapply('*', P, lapply(dV, function(dv) dv[[k]]), SIMPLIFY=FALSE))
-    G <- list()
-    for(i in 1:classAlloc_settings$nAlt){
-      G[[i]] <- mapply(function(dvik, pdk) dvik - pdk, dV[[i]], Pd, SIMPLIFY=FALSE)
-      G[[i]] <- lapply(G[[i]],'*',P[[i]])
+    P <- lapply(P, \(p) if(any(p==0)){ p[p==0] <- 1e-50; return(p)} else return(p)) # Remove zeros
+    e <- list2env(c(as.list(apollo_beta), apollo_inputs$database, 
+                    list(apollo_inputs=apollo_inputs)), hash=TRUE)
+    r <- all(classAlloc_settings$rows) # TRUE if all rows are used (no rows excluded)
+    A <- classAlloc_settings$avail
+    a <- sapply(A, function(a) if(length(a)==1) a==1 else all(a==1)) # TRUE if all available
+    pars <- names(classAlloc_settings$dV)
+    alts <- names(classAlloc_settings$dV[[1]])
+    
+    ### Calculate gradient of probabilities for all alternatives
+    # d1P[[param]][[alt]]
+    d1P <- setNames(vector(mode="list", length=K), pars) ## derivatives of all P
+    for(k in 1:K){
+      d1P[[k]] <- setNames(vector(mode="list", length=J), alts)
+      for(j in 1:J) d1P[[k]][[j]]=0
+      for(j in 1:J){
+        # Calculate dVj/dbk, remove rows, expand it and replace unavailables rows by zero if necessary
+        dVjk <- classAlloc_settings$dV[[k]][[j]] # Use this line with dVdB
+        #dVjk <- classAlloc_settings$dV[[j]][[k]] # Use this line with dVdBOld
+        environment(dVjk) <- e
+        dVjk <- dVjk()
+        if(!r) dVjk <- apollo_keepRows(dVjk, classAlloc_settings$rows)
+        if(length(dVjk)==1 && !a[j]) dVjk <- rep(dVjk, classAlloc_settings$nObs)
+        if(!a[j]) dVjk <- apollo_setRows(dVjk, !classAlloc_settings$avail[[j]], 0)
+        # calculate gradient of P
+        for(i in 1:J){
+          d1P[[k]][[i]] = d1P[[k]][[i]] + (ifelse(i==j,1,0) - P[[j]])*dVjk
+        }
+      }
+      d1P[[k]] <- mapply("*",d1P[[k]],P,SIMPLIFY=FALSE)
+    }; rm(dVjk)
+    
+    # TO DO: Delete names
+    
+    # Return list with everything calculated
+    # P[[alt]]
+    # grad[[param]][[alt]]
+    return(list(like=P, grad=d1P))
+  }
+  
+  
+  # ############################# #
+  #### functionality="hessian" ####
+  # ############################# #
+  
+  if(functionality=="hessian"){
+    ### TO DO
+    # Checks before running
+    
+    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
+                            error=function(e) stop("INTERNAL ISSUE - ",
+                                                   "apollo_mnl could not ",
+                                                   "fetch apollo_beta for ",
+                                                   "hessian estimation."))
+    
+    ### Calculate necessary input
+    J <- length(classAlloc_settings$dV[[1]]) # number of alternatives
+    K <- length(classAlloc_settings$dV) # number of parameters
+    N <- classAlloc_settings$nObs  # number of obs
+    P <- classAlloc_settings$probs_MNL(classAlloc_settings)
+    P <- lapply(P, \(p) if(any(p==0)){ p[p==0] <- 1e-50; return(p)} else return(p)) # Remove zeros
+    e <- list2env(c(as.list(apollo_beta), apollo_inputs$database, 
+                    list(apollo_inputs=apollo_inputs)), hash=TRUE)
+    r <- all(classAlloc_settings$rows) # TRUE if all rows are used (no rows excluded)
+    A <- classAlloc_settings$avail
+    a <- sapply(A, function(a) if(length(a)==1) a==1 else all(a==1)) # TRUE if all available
+    pars <- names(classAlloc_settings$dV)
+    alts <- names(classAlloc_settings$dV[[1]])
+    
+    ### Calculate gradient of probabilities for all alternatives
+    # d1P[[param]][[alt]]
+    d1P <- setNames(vector(mode="list", length=K), pars) ## derivatives of all P
+    for(k in 1:K){
+      d1P[[k]] <- setNames(vector(mode="list", length=J), alts)
+      for(j in 1:J) d1P[[k]][[j]]=0
+      for(j in 1:J){
+        # Calculate dVj/dbk, remove rows, expand it and replace unavailables rows by zero if necessary
+        dVjk <- classAlloc_settings$dV[[k]][[j]] # Use this line with dVdB
+        #dVjk <- classAlloc_settings$dV[[j]][[k]] # Use this line with dVdBOld
+        environment(dVjk) <- e
+        dVjk <- dVjk()
+        if(!r) dVjk <- apollo_keepRows(dVjk, classAlloc_settings$rows)
+        if(length(dVjk)==1 && !a[j]) dVjk <- rep(dVjk, classAlloc_settings$nObs)
+        if(!a[j]) dVjk <- apollo_setRows(dVjk, !classAlloc_settings$avail[[j]], 0)
+        # calculate gradient of P
+        for(i in 1:J){
+          d1P[[k]][[i]] = d1P[[k]][[i]] + (ifelse(i==j,1,0) - P[[j]])*dVjk
+        }
+      }
+      d1P[[k]] <- mapply("*",d1P[[k]],P,SIMPLIFY=FALSE)
+    }; rm(dVjk)
+    
+    # Calculate hessian of probability for all alternatives
+    # d2P[[param1]][[param2]][[alt]]
+    d2P <- setNames(vector(mode="list", length=K), pars)
+    for(k1 in 1:K){
+      d2P[[k1]] <- setNames(vector(mode="list", length=K), pars)
+      for(k2 in 1:k1){
+        d2P[[k1]][[k2]] <- setNames(vector(mode="list", length=J), alts)
+        for(i in 1:J) d2P[[k1]][[k2]][[i]] <- 0
+        for(j in 1:J){
+          yj  <- classAlloc_settings$Y[[j]]
+          d1V <- classAlloc_settings$dV[[k1]][[j]]        # Use with dVdB
+          #d1V <- classAlloc_settings$dV[[j]][[k1]]        # Use with dVdBOld
+          d2V <- classAlloc_settings$ddV[[k1]][[k2]][[j]]
+          environment(d1V) <- e; environment(d2V) <- e
+          d1V <- d1V()
+          d2V <- d2V()
+          if(!r){
+            d1V <- apollo_keepRows(d1V, classAlloc_settings$rows)
+            d2V <- apollo_keepRows(d2V, classAlloc_settings$rows)
+          } 
+          if(!a[j]){
+            d1V <- apollo_setRows(d1V, !classAlloc_settings$avail[[j]], 0)
+            d2V <- apollo_setRows(d2V, !classAlloc_settings$avail[[j]], 0)
+          }
+          for(i in 1:J){
+            # Update d2P only if d1V and d2V are not both zero.
+            test <- is.vector(d1V) && length(d1V)==1 && d1V==0 &&
+              is.vector(d2V) && length(d2V)==1 && d2V==0
+            if(!test) d2P[[k1]][[k2]][[i]] <- d2P[[k1]][[k2]][[i]] + 
+                (P[[j]] - ifelse(i==j,1,0))*d2V + d1V*d1P[[k2]][[j]]
+          }
+        }
+        for(i in 1:J){
+          d2P[[k1]][[k2]][[i]] <- d1P[[k2]][[i]]*d1P[[k1]][[i]]/P[[i]] - 
+            P[[i]]*d2P[[k1]][[k2]][[i]]
+        }
+        # Restore rows
+        if(!all(classAlloc_settings$rows)) for(i in 1:J){
+          d2P[[k1]][[k2]][[i]] <- apollo_insertRows(d2P[[k1]][[k2]][[i]], classAlloc_settings$rows, 0)
+        }
+        # Copy symmetric elements
+        for(i in 1:J) d2P[[k2]][[k1]][[i]] <- d2P[[k1]][[k2]][[i]]
+      }
     }
-    # Restore rows and return
+    
+    # Restore rows in L and d1L (d2L already done above)
     if(!all(classAlloc_settings$rows)){
-      P <- lapply(P, apollo_insertRows, r=classAlloc_settings$rows, val=1)
-      for(i in 1:classAlloc_settings$nAlt) G[[i]] <- lapply(G[[i]], apollo_insertRows, r=classAlloc_settings$rows, val=0)
+      P <- lapply(P, apollo_insertRows, r=classAlloc_settings$rows, val=0)
+      for(k in 1:K) d1P[[k]] <- lapply(d1P[[k]], apollo_insertRows, r=classAlloc_settings$rows, val=0)
     }
-    # Change order and return
-    ans <- list()
-    for(i in 1:classAlloc_settings$nAlt) ans[[i]] <- list(like=P[[i]], grad=G[[i]])
-    return(ans)
+    
+    # Return list with everything calculated
+    # P[[alt]]
+    # grad[[param]][[alt]]
+    # hess[[param1]][[param2]][[alt]]
+    return(list(like = P, grad=d1P, hess=d2P))
   }
   
 }

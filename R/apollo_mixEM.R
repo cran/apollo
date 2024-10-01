@@ -67,7 +67,7 @@ apollo_mixEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_in
   transforms         = mixEM_settings[["transforms"]]
   
   ### Load estimate_settings defaults
-  default <- list(estimationRoutine="bfgs", maxIterations=200, writeIter=FALSE, 
+  default <- list(estimationRoutine="bgw", maxIterations=200, writeIter=FALSE, 
                   hessianRoutine="analytic", printLevel=3L, constraints=NULL, maxLik_settings=NULL, 
                   numDeriv_settings=list(), apollo_scaling=NA, scaling=NA, bootstrapSE=0, bootstrapSeed=24, silent=FALSE)
   test <- length(estimate_settings)==1 && is.na(estimate_settings)

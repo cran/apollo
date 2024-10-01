@@ -243,7 +243,7 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   
   # Initial report
   apollo_print(paste0(nRep, " separate runs will be conducted, each using a ",
-                      "random subset of ", round(100*validationSize/nIndivs, 0), 
+                      "random subset of ", round(100*(nIndivs - validationSize)/nIndivs, 0), 
                       "% of individuals for estimation, and the remainder ", 
                       "for validation."))
   if(anyNA(samples)){

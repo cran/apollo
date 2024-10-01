@@ -72,6 +72,9 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   stopping_criterion = lcEM_settings[["EMstoppingCriterion"]]
   EMmaxIterations    = lcEM_settings[["EMmaxIterations"]]
   silent             = lcEM_settings[["silent"]]
+  # set analytic gradient to FALSE for EM part if apollo_lcPars does not use mnl or classAlloc
+  test <- any(grepl("apollo_mnl",deparse(apollo_lcPars))|grepl("apollo_classAlloc",deparse(apollo_lcPars)))
+  if(!test) apollo_inputs$apollo_control$analyticGrad = FALSE
   
   if(!silent){
     apollo_print("Validating inputs of likelihood function (apollo_probabilities)")
@@ -496,6 +499,11 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   ### Update apollo_inputs
   tmp <- apollo_inputs$apollo_scaling
   apollo_inputs = apollo_validateInputs(silent=TRUE)
+  # set analytic gradient to FALSE for EM part if apollo_lcPars does not use mnl or classAlloc
+  test <- any(grepl("apollo_mnl",deparse(apollo_lcPars))|grepl("apollo_classAlloc",deparse(apollo_lcPars)))
+  if(!test) apollo_inputs$apollo_control$analyticGrad = FALSE
+  
+  
   apollo_inputs$apollo_scaling <- tmp
   rm(tmp)
   

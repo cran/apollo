@@ -2,7 +2,7 @@
 #'
 #' Calculates density for a Normal distribution at a specific value with a specified mean and standard deviation and can also perform other operations based on the value of the \code{functionality} argument.
 #'
-#' This function calcualtes the probability of the linear model outcomeNormal = mu + xNormal + epsilon, where epsilon is a random error distributed Normal(0,sigma).
+#' This function calculates the probability of the linear model outcomeNormal = mu + xNormal + epsilon, where epsilon is a random error distributed Normal(0,sigma).
 #' If using this function in the context of an Integrated Choice and Latent Variable (ICLV) model with continuous
 #' indicators, then \code{outcomeNormal} would be the value of the indicator, \code{xNormal} would be the value of the latent variable (possibly
 #' multiplied by a parameter to measure its correlation with the indicator, e.g. xNormal=lambda*LV), and \code{mu} would be
@@ -37,9 +37,9 @@
 #'           \item \strong{\code{"components"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"conditionals"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"estimate"}}: vector/matrix/array. Returns the likelihood for each observation.
-#'           \item \strong{\code{"gradient"}}: Not implemented
+#'           \item \strong{\code{"gradient"}}: List containing the likelihood and gradient of the model component.
 #'           \item \strong{\code{"output"}}: Same as \code{"estimate"} but also writes summary of input data to internal Apollo log.
-#'           \item \strong{\code{"prediction"}}: Not implemented. Returns NA.
+#'           \item \strong{\code{"prediction"}}: Predicted value at the observation level.
 #'           \item \strong{\code{"preprocess"}}: Returns a list with pre-processed inputs, based on \code{normalDensity_settings}.
 #'           \item \strong{\code{"raw"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"report"}}: Dependent variable overview.
@@ -78,7 +78,7 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
   if( !is.null(apollo_inputs[[paste0(normalDensity_settings$componentName, "_settings")]]) && (functionality!="preprocess") ){
     # Load settings from apollo_inputs
     tmp <- apollo_inputs[[paste0(normalDensity_settings$componentName, "_settings")]]
-    # Restore variable lements if they do not exist
+    # Restore variable elements if they do not exist
     if(is.null(tmp$xNormal)) tmp$xNormal <- normalDensity_settings$xNormal
     if(is.null(tmp$mu     )) tmp$mu      <- normalDensity_settings$mu     
     if(is.null(tmp$sigma  )) tmp$sigma   <- normalDensity_settings$sigma  
@@ -102,9 +102,11 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
     }
     # Store model type
     normalDensity_settings$modelType <- modelType
-    # Construct necessary input for gradient
+    # Construct necessary input for analytic gradient
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
                             error=function(e) return(NULL))
+    vParNames <- names(apollo_beta)[!(names(apollo_beta) %in% apollo_inputs$apollo_fixed)]
+    K <- length(vParNames)
     test <- !is.null(apollo_beta) && apollo_inputs$apollo_control$analyticGrad 
     test <- test && (functionality %in% c("preprocess", "gradient"))
     test <- test && is.function(normalDensity_settings$xNormal) 
@@ -113,16 +115,41 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
     normalDensity_settings$gradient <- FALSE
     if(test){
       tmp <- apollo_dVdB(apollo_beta, apollo_inputs, list(normalDensity_settings$xNormal))
-      normalDensity_settings$dX     <- lapply(tmp, `[[`, 1)
+      normalDensity_settings$dX <- lapply(tmp, `[[`, 1)
       tmp <- apollo_dVdB(apollo_beta, apollo_inputs, list(normalDensity_settings$mu     ))
-      normalDensity_settings$dMu    <- lapply(tmp, `[[`, 1)
+      normalDensity_settings$dM <- lapply(tmp, `[[`, 1)
       tmp <- apollo_dVdB(apollo_beta, apollo_inputs, list(normalDensity_settings$sigma  ))
-      normalDensity_settings$dSigma <- lapply(tmp, `[[`, 1)
+      normalDensity_settings$dS <- lapply(tmp, `[[`, 1)
       tmp <-        all( sapply(normalDensity_settings$dX    , is.function) )
       tmp <- tmp && all( sapply(normalDensity_settings$dMu   , is.function) )
       tmp <- tmp && all( sapply(normalDensity_settings$dSigma, is.function) )
       normalDensity_settings$gradient <- tmp
     }; rm(test)
+    # Construct necessary input for analytic hessian
+    test <- !is.null(apollo_beta) && apollo_inputs$apollo_control$analyticHessian
+    test <- test && (functionality %in% c("preprocess", "hessian"))
+    normalDensity_settings$hessian <- test
+    if(test){
+      ddX <- setNames(vector(mode="list", length=K), vParNames)
+      ddM <- setNames(vector(mode="list", length=K), vParNames)
+      ddS <- setNames(vector(mode="list", length=K), vParNames)
+      for(k1 in vParNames){
+        ddX[[k1]] <- setNames(vector(mode="list", length=K), vParNames)
+        ddM[[k1]] <- setNames(vector(mode="list", length=K), vParNames)
+        ddS[[k1]] <- setNames(vector(mode="list", length=K), vParNames)
+        for(k2 in vParNames){
+          ddX[[k1]][[k2]] <- Deriv::Deriv(f=normalDensity_settings$dX[[k1]], x=k2)
+          ddM[[k1]][[k2]] <- Deriv::Deriv(f=normalDensity_settings$dM[[k1]], x=k2)
+          ddS[[k1]][[k2]] <- Deriv::Deriv(f=normalDensity_settings$dS[[k1]], x=k2)
+        }
+        normalDensity_settings$hessian <- !any(sapply(ddX[[k1]], is.null))
+        normalDensity_settings$hessian <- !any(sapply(ddM[[k1]], is.null))
+        normalDensity_settings$hessian <- !any(sapply(ddS[[k1]], is.null))
+      }
+      normalDensity_settings$ddX <- ddX
+      normalDensity_settings$ddM <- ddM
+      normalDensity_settings$ddS <- ddS
+    }
     
     # Return normalDensity_settings if pre-processing
     if(functionality=="preprocess"){
@@ -233,16 +260,16 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
     r <- all(normalDensity_settings$rows)
     for(k in 1:K){
       # Evaluate partial derivatives
-      dX     <- normalDensity_settings$dX[[k]]    ; environment(dX    ) <- e; dX     <- dX()
-      dMu    <- normalDensity_settings$dMu[[k]]   ; environment(dMu   ) <- e; dMu    <- dMu()
-      dSigma <- normalDensity_settings$dSigma[[k]]; environment(dSigma) <- e; dSigma <- dSigma()
+      dX <- normalDensity_settings$dX[[k]]; environment(dX) <- e; dX <- dX()
+      dM <- normalDensity_settings$dM[[k]]; environment(dM) <- e; dM <- dM()
+      dS <- normalDensity_settings$dS[[k]]; environment(dS) <- e; dS <- dS()
       if(!r){ # remove excluded rows
-        dX     <- apollo_keepRows(dX    , normalDensity_settings$rows)
-        dMu    <- apollo_keepRows(dMu   , normalDensity_settings$rows)
-        dSigma <- apollo_keepRows(dSigma, normalDensity_settings$rows)
+        dX <- apollo_keepRows(dX, normalDensity_settings$rows)
+        dM <- apollo_keepRows(dM, normalDensity_settings$rows)
+        dS <- apollo_keepRows(dS, normalDensity_settings$rows)
       }
-      G[[k]] <- L/normalDensity_settings$sigma*( eHatSig*(dX + dMu) + dSigma*(eHatSig^2 - 1) )
-    }; rm(dX, dMu, dSigma)
+      G[[k]] <- L/normalDensity_settings$sigma*( eHatSig*(dX + dM) + dS*(eHatSig^2 - 1) )
+    }; rm(dX, dM, dS)
     
     # Restore rows
     if(!r){
@@ -250,6 +277,75 @@ apollo_normalDensity <- function(normalDensity_settings, functionality){
       G <- lapply(G, apollo_insertRows, r=normalDensity_settings$rows, val=0)
     }
     return(list(like=L, grad=G))
+  }
+  
+  
+  # ############ #
+  #### Hessian ####
+  # ############ #
+  if(functionality=="hessian"){
+    # Checks
+    if(!normalDensity_settings$hessian) stop("INTERNAL ISSUE - Analytical hessian could not be calculated for ", 
+                                              normalDensity_settings$componentName, 
+                                              ". Please set apollo_control$analyticHessian=FALSE.")
+    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
+                            error=function(e) stop("INTERNAL ISSUE - apollo_normalDensity could not fetch apollo_beta for gradient estimation."))
+    if(is.null(apollo_inputs$database)) stop("INTERNAL ISSUE - apollo_normalDensity could not fetch apollo_inputs$database for gradient estimation.")
+    
+    
+    # Calculate likelihood
+    L <- stats::dnorm(normalDensity_settings$outcomeNormal - normalDensity_settings$xNormal,
+                      normalDensity_settings$mu, normalDensity_settings$sigma)
+    
+    # Calculate gradient and Hessian
+    K <- length(normalDensity_settings$dX) # number of parameters
+    parNames <- names(normalDensity_settings$dX)
+    e     <- list2env(c(as.list(apollo_beta), apollo_inputs$database, 
+                        list(apollo_inputs=apollo_inputs)), hash=TRUE)
+    s     <- normalDensity_settings$sigma
+    eHat  <- normalDensity_settings$outcomeNormal - 
+      normalDensity_settings$xNormal - normalDensity_settings$mu
+    eHats <- eHat/s
+    r  <- all(normalDensity_settings$rows)
+    G  <- setNames(vector(mode="list", length=K), parNames)
+    H  <- setNames(vector(mode="list", length=K), parNames)
+    dX <- setNames(vector(mode="list", length=K), parNames)
+    dM <- setNames(vector(mode="list", length=K), parNames)
+    dS <- setNames(vector(mode="list", length=K), parNames)
+    for(i in 1:K){
+      # Evaluate partial derivatives
+      dX[[i]] <- normalDensity_settings$dX[[i]]; environment(dX[[i]]) <- e; dX[[i]] <- dX[[i]]()
+      dM[[i]] <- normalDensity_settings$dM[[i]]; environment(dM[[i]]) <- e; dM[[i]] <- dM[[i]]()
+      dS[[i]] <- normalDensity_settings$dS[[i]]; environment(dS[[i]]) <- e; dS[[i]] <- dS[[i]]()
+      if(!r){
+        dX[[i]] <- apollo_keepRows(dX[[i]], r=normalDensity_settings$rows)
+        dM[[i]] <- apollo_keepRows(dM[[i]], r=normalDensity_settings$rows)
+        dS[[i]] <- apollo_keepRows(dS[[i]], r=normalDensity_settings$rows)
+      }
+      G[[i]] <- L/s*( eHats*(dX[[i]] + dM[[i]]) + dS[[i]]*(eHats^2 - 1) )
+      H[[i]] <- setNames(vector(mode="list", length=K), parNames)
+      for(j in 1:i){
+        ddX <- normalDensity_settings$ddX[[i]][[j]]; environment(ddX) <- e; ddX <- ddX()
+        ddM <- normalDensity_settings$ddM[[i]][[j]]; environment(ddM) <- e; ddM <- ddM()
+        ddS <- normalDensity_settings$ddS[[i]][[j]]; environment(ddS) <- e; ddS <- ddS()
+        if(!r){ # remove excluded rows
+          ddX <- apollo_keepRows(ddX, normalDensity_settings$rows)
+          ddM <- apollo_keepRows(ddM, normalDensity_settings$rows)
+          ddS <- apollo_keepRows(ddS, normalDensity_settings$rows)
+        }
+        H[[i]][[j]] <- (G[[j]]/L - dS[[j]]/s)*G[[i]] + 
+          (L/s) * (eHats*(ddX + ddM) + ddS*(eHats^2 - 1) - 
+                     ((dX[[j]] + dM[[j]])/s + eHats/s*dS[[j]])*(dX[[i]] + dM[[i]] + 2*dS[[i]]*eHats) )
+      }
+    }; rm(dX, dM, dS)
+    
+    # Restore rows and return
+    if(!r){
+      L <- apollo_insertRows(L, normalDensity_settings$rows, 1)
+      G <- lapply(G, apollo_insertRows, r=normalDensity_settings$rows, val=0)
+      for(i in 1:length(H)) H[[i]] <- lapply(H[[i]], apollo_insertRows, r=normalDensity_settings$rows, val=0)
+    }
+    return(list(like=L, grad=G, hess=H))
   }
   
   # ############ #

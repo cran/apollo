@@ -27,7 +27,7 @@ apollo_checkArguments=function(apollo_probabilities=NA,apollo_randCoeff=NA,apoll
   # Check apollo_randCoeff
   if(is.function(apollo_randCoeff)){
     arguments = formals(apollo_randCoeff)
-    if(!all(names(arguments)==c("apollo_beta", "apollo_inputs"))) stop("SYNTAX ISSUE - The arguments for apollo_randCoeff need to be apollo_beta and apollo_inputs")
+    if(length(arguments)!=2 || !all(names(arguments)==c("apollo_beta", "apollo_inputs"))) stop("SYNTAX ISSUE - The arguments for apollo_randCoeff need to be apollo_beta and apollo_inputs")
   } else if(!is.na(apollo_randCoeff)) stop("SYNTAX ISSUE - The argument \"apollo_randCoeff\" should be a function")
   
   # Check apollo_lcPars

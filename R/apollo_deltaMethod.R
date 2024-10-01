@@ -226,12 +226,12 @@ apollo_deltaMethod <- function(model, deltaMethod_settings){
       # Prepare output
       return(data.frame(`Expression`     = ifelse((is.null(names(f))||names(f)==""),f,names(f)),
                        `Value`           = round(eval(str2lang(f), envir=list2env(as.list(b))),4),
-                       `Robust s.e.`     = round(sqrt(t(g)%*%vcov%*%g),4),
-                       `Rob t-ratio (0)` = round(eval(str2lang(f), envir=list2env(as.list(b)))/sqrt(t(g)%*%vcov%*%g),2),
+                       `s.e.`            = round(sqrt(t(g)%*%vcov%*%g),4),
+                       `t-ratio (0)`     = round(eval(str2lang(f), envir=list2env(as.list(b)))/sqrt(t(g)%*%vcov%*%g),2),
                        check.names       = FALSE))
     }
     
-    cat("Running Delta method computation for user-defined function:\n\n")
+    cat("Running Delta method computation for user-defined function using",deltaMethod_settings[["varcov"]],"standard errors\n\n")
     out = delta_from_expression(deltaMethod_settings[["expression"]][1])
     
     if(length(deltaMethod_settings[["expression"]])>1){
@@ -371,7 +371,7 @@ apollo_deltaMethod <- function(model, deltaMethod_settings){
   t = v/se
   
   delta_output=cbind(v,se,t)
-  colnames(delta_output)=c("Value","Robust s.e.","Rob t-ratio (0)")
+  colnames(delta_output)=c("Value","s.e.","t-ratio (0)")
   rownames(delta_output)=operation_name
   
   if(!isFALSE(deltaMethod_settings$printPVal)){
@@ -381,7 +381,7 @@ apollo_deltaMethod <- function(model, deltaMethod_settings){
     if(pMult==1) colnames(delta_output)[4]="p(1-sided)"
   }
   
-  cat("\nRunning Delta method computations\n")
+  cat("\nRunning Delta method computations using",deltaMethod_settings[["varcov"]],"standard errors\n")
   print(delta_output, digits=4)
   cat("\n")
   }
@@ -409,11 +409,11 @@ apollo_deltaMethod <- function(model, deltaMethod_settings){
     utils::write.csv(ratios_trat, filename_ratios_trat)
     utils::write.csv(diffs_trat, filename_diffs_trat)
     cat("\n\nValues for ratios for all pairs saved to ",filename_ratios,"\n",sep="")
-    cat("...Robust standard errors for ratios for all pairs saved to ",filename_ratios_se,"\n",sep="")
-    cat("...Robust t-ratios for ratios for all pairs saved to ",filename_ratios_trat,"\n",sep="")
+    cat("...standard errors for ratios for all pairs saved to ",filename_ratios_se,"\n",sep="")
+    cat("...t-ratios for ratios for all pairs saved to ",filename_ratios_trat,"\n",sep="")
     cat("\n\nValues for differences for all pairs saved to ",filename_diffs,"\n",sep="")
-    cat("...Robust standard errors for differences for all pairs saved to ",filename_diffs_se,"\n",sep="")
-    cat("...Robust t-ratios for differences for all pairs saved to ",filename_diffs_trat,"\n",sep="")
+    cat("...standard errors for differences for all pairs saved to ",filename_diffs_se,"\n",sep="")
+    cat("...t-ratios for differences for all pairs saved to ",filename_diffs_trat,"\n",sep="")
   }else{
     if(!is.null(deltaMethod_settings[["expression"]])) output=out
     if(!is.null(deltaMethod_settings[["operation"]]))  output=delta_output

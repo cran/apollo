@@ -129,7 +129,7 @@ apollo_weighting=function(P, apollo_inputs, functionality){
       # there are multiple model components
       for(m in 1:length(P)){
         if(is.null(P[[m]]$like) || is.null(P[[m]]$grad)) stop("INTERNAL ISSUE - Missing like and/or grad elements inside components when calculating gradient!")
-        nR <- nRows(P$like); W <- 1
+        nR <- nRows(P[[m]]$like); W <- 1
         if(nR==nObs) W <- w
         if(nR==nInd) W <- wInd
         tmp <- W*P[[m]]$like^(W-1)

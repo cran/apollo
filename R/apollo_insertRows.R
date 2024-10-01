@@ -7,9 +7,9 @@
 #' from \code{utilities} from the top down.
 #' 
 #' @param v Numeric scalar, vector, matrix or 3-dim array.
-#' @param r Boolean vector. TRUE for inserting a row from \code{utilities}, \code{FALSE} to insert a new row with value \code{val}.
+#' @param r Boolean vector. TRUE for inserting a row from \code{v}, \code{FALSE} to insert a new row with value \code{val}.
 #' @param val Numeric scalar. Value that will fill new rows.
-#' @return The same argument \code{utilities} but with the rows where \code{r==FALSE} removed.
+#' @return The same argument \code{v} but with rows added where \code{r==FALSE}.
 #' @export
 apollo_insertRows <- function(v, r, val){
   isVec <- is.vector(v)

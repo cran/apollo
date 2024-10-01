@@ -434,6 +434,33 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     inputs$nObs <- min(inputs$nObs, sum(inputs$rows))
   }
   
+  #### Tobit ####
+  if(modelType=="tobit"){
+    if(is.null(inputs$outcomeTobit) ) stop("SYNTAX ISSUE - The tobit_settings list for model component \"",inputs$componentName,"\" needs to include an object called \"outcomeTobit\"!")
+    if(is.null(inputs$xT)      ) stop("SYNTAX ISSUE - The tobit_settings list for model component \"",inputs$componentName,"\" needs to include an object called \"xT\"!")
+    if(is.null(inputs$mu)           ) stop("SYNTAX ISSUE - The tobit_settings list for model component \"",inputs$componentName,"\" needs to include an object called \"mu\"!")
+    if(is.null(inputs$sigma)        ) stop("SYNTAX ISSUE - The tobit_settings list for model component \"",inputs$componentName,"\" needs to include an object called \"sigma\"!")
+    if(is.null(inputs$rows)         ) inputs[["rows"]] <- "all"
+    if(is.null(inputs$lowerLimit)   ){
+      inputs[["lowerLimit"]] <- -Inf
+      apollo_print(paste0('Tobit model component "', inputs$componentName, '" does not have a user provided value for lowerLimit.', 
+                          'This has been set to -Inf by default.'), pause=0, type="i")
+    } 
+    if(is.null(inputs$upperLimit)   ){
+      inputs[["upperLimit"]] <- +Inf
+      apollo_print(paste0('Tobit model component "', inputs$componentName, '" does not have a user provided value for upperLimit', 
+                          'This has been set to +Inf by default.'), pause=0, type="i")
+    }
+    inputs$below=1*(inputs$outcomeTobit<=inputs$lowerLimit)
+    inputs$above=1*(inputs$outcomeTobit>=inputs$upperLimit)
+    inputs$within=1-inputs$below-inputs$above
+
+    # Expand rows if necessary
+    inputs$nObs <- max(length(inputs$outcomeNormal), ifelse(is.array(inputs$xT), dim(inputs$xT)[1], length(inputs$xT)))
+    if(length(inputs$rows)==1 && inputs$rows=="all") inputs$rows <- rep(TRUE, inputs$nObs)
+    inputs$nObs <- min(inputs$nObs, sum(inputs$rows))
+  }
+
   #### OL, OP ####
   if(modelType %in% c("ol", "op")){
     if(is.null(inputs[["outcomeOrdered"]])) stop("SYNTAX ISSUE - The ol_settings list for model component \"",inputs$componentName,"\" needs to include an object called \"outcomeOrdered\"!")

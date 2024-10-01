@@ -599,7 +599,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     outliers <- outliers[order(outliers[,2]),]
     if(printOutliers==TRUE) printOutliers=20
     printOutliers=floor(min(printOutliers,nrow(outliers)))
-    cat("\n",printOutliers,"worst outliers in terms of lowest average per choice prediction:\n")
+    cat("\n",printOutliers,"most extreme outliers in terms of lowest average per choice prediction:\n")
     print(outliers[(1:printOutliers),], row.names=FALSE)
   }
   

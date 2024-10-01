@@ -14,6 +14,7 @@ apollo_validateControl(database, apollo_control, silent = FALSE)
   \item \strong{\code{calculateLLC}}: Boolean. TRUE if user wants to calculate LL at constants (if applicable). - TRUE by default.
   \item \strong{\code{HB}}: Boolean. TRUE if using RSGHB for Bayesian estimation of model.
   \item \strong{\code{indivID}}: Character. Name of column in the database with each decision maker's ID.
+  \item \strong{\code{memorySaver}}: Boolean. TRUE to reduce memory usage when calculating analytical gradients and hessian - FALSE by default.
   \item \strong{\code{mixing}}: Boolean. TRUE for models that include random parameters.
   \item \strong{\code{modelDescr}}: Character. Description of the model. Used in output files.
   \item \strong{\code{modelName}}: Character. Name of the model. Used when saving the output to files.

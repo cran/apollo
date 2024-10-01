@@ -274,7 +274,7 @@ apollo_mnl <- function(mnl_settings, functionality){
     
     # Construct necessary input for hessian
     test <- !is.null(mnl_settings$gradient) && mnl_settings$gradient && apollo_inputs$apollo_control$analyticHessian
-    mnl_settings$hessian <- TRUE
+    mnl_settings$hessian <- test
     if(test){
       mnl_settings$ddV <- list()
       alts=mnl_settings$altnames
@@ -454,7 +454,7 @@ apollo_mnl <- function(mnl_settings, functionality){
     J <- length(mnl_settings$dV[[1]]) # number of alternatives
     K <- length(mnl_settings$dV) # number of parameters
     e <- list2env(c(as.list(apollo_beta), apollo_inputs$database, list(apollo_inputs=apollo_inputs)), hash=TRUE)
-    G <- list()
+    G <- setNames(vector(mode="list", length=K), names(mnl_settings$dV))
     r <- all(mnl_settings$rows) # TRUE if all rows are used (no rows excluded)
     a <- sapply(mnl_settings$avail, function(a) if(length(a)==1) a==1 else all(a==1)) # TRUE if all available
     for(k in 1:K){
@@ -471,6 +471,7 @@ apollo_mnl <- function(mnl_settings, functionality){
         G[[k]] <- G[[k]] + (mnl_settings$Y[[j]] - P[[j]])*dVjk
       }
       G[[k]] <- Pcho*G[[k]]
+      if(is.array(G[[k]])) rownames(G[[k]]) <- NULL else names(G[[k]]) <- NULL
     }; rm(dVjk)
     
     # Restore rows 
@@ -487,8 +488,6 @@ apollo_mnl <- function(mnl_settings, functionality){
   if(functionality=="hessian"){
     ### TO DO
       # Checks before running
-      # Account for availability
-      # Account for removed rows
     
     apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
                             error=function(e) stop("INTERNAL ISSUE - ",
@@ -559,16 +558,18 @@ apollo_mnl <- function(mnl_settings, functionality){
             d1V <- apollo_setRows(d1V, !mnl_settings$avail[[j]], 0)
             d2V <- apollo_setRows(d2V, !mnl_settings$avail[[j]], 0)
           }
-          d2L[[k1]][[k2]] <- d2L[[k1]][[k2]] + 
-            #(yj + P[[j]])*d2V() + d1V()*d1P[[k2]][[j]]
+          # Update d2L only if d1V and d2V are not both zero.
+          test <- is.vector(d1V) && length(d1V)==1 && d1V==0 &&
+            is.vector(d2V) && length(d2V)==1 && d2V==0
+          if(!test) d2L[[k1]][[k2]] <- d2L[[k1]][[k2]] + 
             (P[[j]] - yj)*d2V + d1V*d1P[[k2]][[j]]
         }
         d2L[[k1]][[k2]] <- d1L[[k2]]*d1L[[k1]]/L - L*d2L[[k1]][[k2]]
         # Restore rows
         if(!all(mnl_settings$rows)) d2L[[k1]][[k2]] <- apollo_insertRows(d2L[[k1]][[k2]], mnl_settings$rows, 0)
         d2L[[k2]][[k1]] <- d2L[[k1]][[k2]]
-      }
-    }
+      }; rm(d1V, d2V)
+    }; rm(d1P)
     
     # Restore rows in L and d1L (d2L already done above)
     if(!all(mnl_settings$rows)){

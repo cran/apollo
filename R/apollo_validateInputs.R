@@ -87,7 +87,6 @@
 #' @param silent Logical. TRUE to keep the function from printing to the console. Default is FALSE.
 #' @return List grouping several required input for model estimation.
 #' @export
-#' @importFrom tibble is_tibble
 #' @importFrom utils installed.packages
 apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
                                   apollo_control=NA, 
@@ -123,9 +122,6 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
     stop(txt)
   }
   if(all(names(apollo_beta) %in% apollo_fixed)) stop('SYNTAX ISSUE - All elements in apollo_beta are included in apollo_fixed, so there is nothing to estimate!')
-  
-  ### If database is a tibble, turn it into a data.frame
-  if('tibble' %in% installed.packages()[,"Package"] && tibble::is_tibble(database)) database <- as.data.frame(database)
   
   ### Check if there's everything necessary for mixing
   if(length(apollo_draws)==1 && is.na(apollo_draws)) apollo_draws <- tryCatch( get("apollo_draws", envir=globalenv()), error=function(e) NA )

@@ -58,7 +58,7 @@ Calculates the probabilities of a Nested Logit model and can also perform other 
 \details{
 In this implementation of the Nested Logit model, each nest must have a lambda parameter associated to it.
 For the model to be consistent with utility maximisation, the estimated value of the Lambda parameter of all nests
-should be between 0 and 1. Lambda parameters are inversely proportional to the correlation between the error terms of 
+should be between 0 and 1. Lambda parameters are inversely proportional to the correlation between the error terms of
 alternatives in a nest. If lambda=1, then there is no relevant correlation between the unobserved
 utility of alternatives in that nest.
 The tree must contain an upper nest called \code{"root"}. The lambda parameter of the root is automatically

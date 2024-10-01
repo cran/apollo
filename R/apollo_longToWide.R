@@ -13,10 +13,15 @@
 #'                                }
 #' @return Silently returns a data.frame with the wide format version of the data.
 #'         An overview of the data is printed to screen.
+#' @importFrom tibble is_tibble
 #' @export
 apollo_longToWide=function(longData,longToWide_settings){
   ### CHECKS
   if(!is.data.frame(longData)) stop("INPUT ISSUE - The data object passed to \'apollo_longToWide\' needs to be a data.frame!")
+  
+  ### If database is a tibble, turn it into a data.frame
+  if('tibble' %in% installed.packages()[,"Package"] && tibble::is_tibble(longData)) longData <- as.data.frame(longData)
+  
   if(!is.list(longToWide_settings)) stop("INPUT ISSUE - The \'longToWide_settings\' argument passed to \'apollo_longToWide\' needs to be a list!")
   mandatory <- c("alternative_column", "alternative_specific_attributes", "choice_column", "ID_column", "observation_column")
   for(i in mandatory) if(!(i %in% names(longToWide_settings))) stop('INPUT ISSUE - The \'longToWide_settings\' list needs to include an object called "', i,'"!')
@@ -36,10 +41,10 @@ apollo_longToWide=function(longData,longToWide_settings){
   overview=matrix(0,nrow=length(unique(alt)),ncol=2)
   rownames(overview)=paste0("Alternative ",unique(alt))
   colnames(overview)=c("Available","Chosen")
-  for(j in 1:length(unique(longData$alt))){
-    overview[j,1]=sum(longData$alt==unique(longData$alt)[j])
+  for(j in 1:length(unique(longData[,alternative_column]))){
+    overview[j,1]=sum(longData[,alternative_column]==unique(longData[,alternative_column])[j])
     #overview[j,2]=sum(alt*choice==j)
-    overview[j,2]=sum(subset(longData,longData$alt==unique(longData$alt)[j])$choice)
+    overview[j,2]=sum(subset(longData,longData[,alternative_column]==unique(longData[,alternative_column])[j])$choice)
   }
   ### GENERATED NEW COLUMNS
   #create ID-observation index
@@ -62,7 +67,7 @@ apollo_longToWide=function(longData,longToWide_settings){
   ### CREATE WIDE DATA
   wide=generic_part
   for(j in alternative_names){
-    alt_part=subset(alt_specific_part,alt_specific_part$alt==j)
+    alt_part=subset(alt_specific_part,alt_specific_part[,alternative_column]==j)
     colnames(alt_part)[2:ncol(alt_part)]=paste0(colnames(alt_part[2:ncol(alt_part)]),"_",j)
     alt_part[,paste0("avail_",j)]=1
     ###check which rows are missing, i.e. which ID_obs are not in the unique ones from the generic part
@@ -93,9 +98,9 @@ apollo_longToWide=function(longData,longToWide_settings){
   cat("\n\nLong data had",length(alternative_names),"unique alternatives")
   cat("\nAlternative names were:",alternative_names)
   cat("\n\nThe following notation was used for the wide format:")
-  #cat("\nFor alternative j, the following naming convention has been adopted:")
-  #cat("\n    Attributes:   ",paste0(longToWide_settings$alternative_specific_attributes,"_j"))
-  #cat("\n    Availability:  avail_j")
+  cat("\nFor alternative j, the following naming convention has been adopted:")
+  cat("\n    Attributes:   ",paste0(longToWide_settings$alternative_specific_attributes,"_j"))
+  cat("\n    Availability:  avail_j")
   overview_new=matrix(0,nrow=length(alternative_names),ncol=length(alternative_specific_attributes)+2)
   rownames(overview_new)=paste0("Alternative ",alternative_names)
   colnames(overview_new)=c(alternative_specific_attributes,"Availability","choice_new")
