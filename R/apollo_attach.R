@@ -72,12 +72,14 @@ apollo_attach=function(apollo_beta, apollo_inputs){
   if(is.function(apollo_lcPars)){
     lcpars = apollo_lcPars(apollo_beta, apollo_inputs)
     if("lcpars" %in% search()) detach("lcpars")
-    ### If class_specific>0, keep only class_specific
-    if(!is.null(apollo_inputs[['class_specific']]) && apollo_inputs$class_specific>0){
+    if(functionality=="validate"){
       if(is.null(lcpars[['pi_values']])) stop('SYNTAX ISSUE - "apollo_lcPars" should return a list with an element called "pi_values" containing the allocation probabilities for each class')
       nClass <- length(lcpars$pi_values)
       if(!all(sapply(lcpars, is.list))) stop('SYNTAX ISSUE - "apollo_lcPars" should return a list, all of whose elements must be lists as well')
       if(!all(sapply(lcpars,length)==nClass)) stop('SYNTAX ISSUE - "apollo_lcPars" should return a list, all of whose elements must be lists with the same length')
+    }
+    ### If class_specific>0, keep only class_specific
+    if(!is.null(apollo_inputs[['class_specific']]) && apollo_inputs$class_specific>0){
       for(i in 1:length(lcpars)) lcpars[[i]] <- lcpars[[i]][apollo_inputs$class_specific]
     }
     attach(lcpars,warn.conflicts=FALSE)

@@ -205,11 +205,19 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
     if(modelType=="dft"){
       #### check that either attrWeights or attrScalings is supplied, but not both
       s1 = sum(lengths(inputs[["attrWeights"]]))
+      s2 = sum(lengths(inputs[["attrScalings"]]))
+      if((s1>1)&&(s2>1)) stop('SPECIFICATION ISSUE - \"attrWeights\" and \"attrScalings\" cannot both be defined at the same time for model component "', inputs$componentName,'"!') 
       if(s1>1) inputs$attrnames = names(inputs[["attrWeights"]]) else inputs$attrnames = names(inputs[['attrScalings']])
+      
+      if(s1>1) tmp1 = names(inputs[["attrWeights"]]) else tmp1 = names(inputs[["attrScalings"]])
+      tmp2 = unique(as.vector(sapply(inputs$attrValues,FUN=names)))
+      
+      if(!all(sort(tmp1)==sort(tmp2))) stop('SPECIFICATION ISSUE - The entries for either \"attrWeights\" or \"attrScalings\" for model component "', inputs$componentName,'" need to be the same as for \"attrValues\"!')
+      
       
       # Check that the elements of attrValues match altnames
       test <- all(names(inputs$attrValues) %in% inputs$altnames)
-      if(!test) stop('SYNTAX ISSUE - The "attrValues" attribute names for model component "', inputs$componentName,
+      if(!test) stop('SYNTAX ISSUE - The names for the entries in "attrValues" for model component "', inputs$componentName,
                      '" do not match those given in "alternatives"!') 
       
       # Check for additional warnings

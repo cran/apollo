@@ -9,7 +9,7 @@
 #'                   other arguments of this function.
 #'                   Other settings to include are the following.
 #'                   \itemize{
-#'                     \item \strong{\code{constraintNorm}}: Character vector. Constraints for \emph{random} coefficients 
+#'                     \item \strong{\code{constraintsNorm}}: Character vector. Constraints for \emph{random} coefficients 
 #'                                                          in bayesian estimation. Constraints can be written as 
 #'                                                          "b1>b2", "b1<b2", "b1>0", or "b1<0".
 #'                     \item \strong{\code{fixedA}}: Named numeric vector. Contains the names and fixed mean values of 

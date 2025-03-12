@@ -9,18 +9,18 @@ apollo_emdc1(emdc_settings, functionality = "estimate")
 \arguments{
 \item{emdc_settings}{List of settings for the model. It includes the following.
 \itemize{
-  \item \strong{\code{continuousChoice}}: Named list of numeric vectors. Amount consumed of each inside good. Outside good must not be included. Can also be called "X".
-  \item \strong{\code{budget}}: Numeric vector. Budget. Must be bigger that the expenditure on all inside goods. Can also be called "B".
   \item \strong{\code{avail}}: Named list of numeric vectors. Availability of each product. Can also be called "A".
-  \item \strong{\code{utilityOutside}}: Numeric vector (or matrix or array). Shadow price of the budget. Must be normalised to 0 for at least one individual. Default is 0 for every observation. Can also be called "V0".
-  \item \strong{\code{utilities}}: Named list of numeric vectors (or matrices or arrays). Base utility of each product. Can also be called "V".
-  \item \strong{\code{gamma}}: Named list of numeric vectors. Satiation parameter of each product.
-  \item \strong{\code{delta}}: Lower triangular numeric matrix, or list of lists. Complementarity/substitution parameter.
+  \item \strong{\code{budget}}: Numeric vector. Budget. Must be bigger that the expenditure on all inside goods. Can also be called "B".
+  \item \strong{\code{continuousChoice}}: Named list of numeric vectors. Amount consumed of each inside good. Outside good must not be included. Can also be called "X".
   \item \strong{\code{cost}}: Named list of numeric vectors. Price of each product.
-  \item \strong{\code{sigma}}: Numeric vector or scalar. Standard deviation of the error term. Default is one.
+  \item \strong{\code{delta}}: Lower triangular numeric matrix, or list of lists. Complementarity/substitution parameter.
+  \item \strong{\code{gamma}}: Named list of numeric vectors. Satiation parameter of each product.
   \item \strong{\code{nRep}}: Scalar positive integer. Number of repetitions used when prediction
-  \item \strong{\code{tol}}: Positive scalar. Tolerance of the prediction algorithm.
+  \item \strong{\code{sigma}}: Numeric vector or scalar. Standard deviation of the error term. Default is one.
   \item \strong{\code{timeLimit}}: Positive scalar. Maximum amount of seconds the optimiser can spend calculating a prediction before setting it to NA.
+  \item \strong{\code{tol}}: Positive scalar. Tolerance of the prediction algorithm.
+  \item \strong{\code{utilities}}: Named list of numeric vectors (or matrices or arrays). Base utility of each product. Can also be called "V".
+  \item \strong{\code{utilityOutside}}: Numeric vector (or matrix or array). Shadow price of the budget. Must be normalised to 0 for at least one individual. Default is 0 for every observation. Can also be called "V0".
 }}
 
 \item{functionality}{Character. Either "validate", "zero_LL", "estimate", "conditionals", "raw", "output" or "prediction"}

@@ -85,15 +85,51 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
   for(e in ls(apollo_inputs)){ # e is name of element, E is the element
     if(e %in% asIs) next
     E <- apollo_inputs[[e]]
-    if(is.list(E) && length(E)==nIndiv) asLst <- c(asLst, e) else{
-      if(is.list(E)) E <- E[[1]]
-      if(is.array(E)) nRows <- dim(E)[1] else nRows <- length(E)
-      if(nRows==nObs) byObs <- c(byObs, e)
-      if(nRows==nIndiv) byInd <- c(byInd, e)
-      if(nRows!=nObs & nRows!=nIndiv) asIs <- c(asIs, e)
+    #if(is.list(E) && length(E)==nIndiv) asLst <- c(asLst, e) else{
+    if((is.list(E)&&!is.data.frame(E)) && length(E)==nIndiv && all(names(E)==namesID)) asLst <- c(asLst, e) else{
+      if(is.list(E)&&!is.data.frame(E)) E <- E[[1]]
+      ### set test flag outside here already. If following if block does not apply, then test remains TRUE, and is returned as is (e.g. for vectors)
+      test=TRUE
+      if(e=="draws"){
+        byObs <- c(byObs, e)
+        test=FALSE
+      } 
+      if(( is.array(E) || is.data.frame(E) ) && !is.null(colnames(E)) && apollo_inputs$apollo_control$indivID%in%colnames(E) ){
+        if((dim(E)[1]==nObs)){
+          if(all(E[,apollo_inputs$apollo_control$indivID]==indivID)){
+            test=FALSE
+            byObs <- c(byObs, e)
+          }
+        }
+        if((dim(E)[1]==nIndiv)){
+          if(all(E[,apollo_inputs$apollo_control$indivID]==namesID)){ ## only one per person
+            test=FALSE
+            byInd <- c(byInd, e)
+          }
+        }
+      }
+      if(test) asIs <- c(asIs, e)
     }
-  }; rm(e, E, nRows)
+  }; rm(e, E)
   
+  tmp=subset(asIs,!asIs%in%c("apollo_scaling",
+                             "apollo_beta_names",
+                             "apollo_control",
+                             "apollo_draws",
+                             "apollo_fixed",        
+                             "apollo_HB",
+                             "apollo_lcPars",
+                             "apollo_probabilities",
+                             "apollo_randCoeff",
+                             "class_specific",      
+                             "manualScaling",
+                             "silent"))
+  if(length(tmp)>1){
+    apollo_print(paste0("While preparing your inputs for multi-core estimation, the following objects 
+                 were found in \"apollo_inputs\", but were not split across cores: \"",paste0(tmp,collapse = "\", \""),"\". If these
+                        objects contain observation or individual-specific data, and thus need to be split, 
+                        please add a column with the IDs to these objects, and call this column \"",apollo_inputs$apollo_control$indivID,"\""),type="i")
+  } 
   ### Create and write to disk each fragment of apollo_inputs
   if(debug) cat("Writing pieces to disk") # do not turn to apollo_print
   for(i in 1:nCores){

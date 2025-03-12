@@ -331,11 +331,11 @@ apollo_bootstrap <- function(apollo_beta, apollo_fixed,
     apollo_print(paste0("\n"))
     if(!calledByEstimate){
       apollo_print(paste0("Mean LL across runs: ", round(mean(llStack[,ncol(llStack)]),2)))
-      apollo_print("\nMean parameter values across runs: ")
+      apollo_print("\n\nMean parameter values across runs: ")
       txt=(data.frame(round(colMeans(paramStack[includeRow,]),4)))
       colnames(txt)="Estimate"
       print(txt)
-      apollo_print("\nCovariance matrix across runs:")
+      apollo_print("\n\nCovariance matrix across runs:")
       longNames <- colnames(Sigma)
       maxLen    <- max(nchar(longNames))
       for(i in 1:length(longNames)) longNames[i] <- paste0(paste0(rep(" ", maxLen-nchar(longNames[i])), collapse=""), longNames[i])

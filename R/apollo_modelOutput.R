@@ -526,6 +526,10 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   if(!printFixed && length(model$apollo_fixed)>0) output <- output[!(rownames(output) %in% model$apollo_fixed),]
   apollo_print(output) #print(output, digits=4)
   cat('\n')
+  if(!is.null(model$parameterToInfinity)&&model$parameterToInfinity){
+    apollo_print("Your model did not converge properly, and some of your parameter values are tending to +/- infinity. This could point to an identification issue. If you want to retain these parameters in the model, you may wish to set their value(s) in apollo_beta to the estimated value(s), include the parameter name(s) in apollo_fixed, and re-estimate the model.")
+    cat('\n')
+  }
   
   ### Print diagnostics
   # Model structure

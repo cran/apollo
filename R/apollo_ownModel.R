@@ -5,6 +5,10 @@
 #' 
 #' @param ownModel_settings List of arguments. Only likelihood is mandatory.
 #'                          \itemize{
+#'                           \item \strong{\code{gradient}}: Function or
+#'                                 expression used to calculate the gradient
+#'                                 of the likelihood. If not provided, Apollo 
+#'                                 will attempt to calculate it automatically.
 #'                           \item \strong{\code{likelihood}}: Function or
 #'                                 expression used to calculate the likelihood
 #'                                 of the model. Should evaluate to a vector, 
@@ -13,16 +17,6 @@
 #'                                 expression used to calculate the prediction
 #'                                 of the model. Should evaluate to a vector, 
 #'                                 matrix, or 3-dimensional array.
-#'                           \item \strong{\code{zero_LL}}: Function or
-#'                                 expression used to calculate the likelihood
-#'                                 of the base model (e.g. equiprobable model).
-#'                           \item \strong{\code{shares_LL}}: Function or
-#'                                 expression used to calculate the likelihood
-#'                                 of the constants-only model.
-#'                           \item \strong{\code{gradient}}: Function or
-#'                                 expression used to calculate the gradient
-#'                                 of the likelihood. If not provided, Apollo 
-#'                                 will attempt to calculate it automatically.
 #'                           \item \strong{\code{report}}: List of functions or
 #'                                 expressions used to produce a text report 
 #'                                 summarising the input and parameter 
@@ -30,6 +24,12 @@
 #'                                 elements: "data" (with a summary of the 
 #'                                 input data), and "param" (with a summary of 
 #'                                 the estimated parameters).
+#'                           \item \strong{\code{shares_LL}}: Function or
+#'                                 expression used to calculate the likelihood
+#'                                 of the constants-only model.
+#'                           \item \strong{\code{zero_LL}}: Function or
+#'                                 expression used to calculate the likelihood
+#'                                 of the base model (e.g. equiprobable model).
 #'                          }
 #' @param functionality Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
 #'                      \itemize{

@@ -8,7 +8,7 @@
 #'                         \item \strong{\code{alternatives}}: Character vector. Names of alternatives, elements must match the names in list 'utilities'.
 #'                         \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability.
 #'                         \item \strong{\code{budget}}: Numeric vector. Budget for each observation.
-#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
+#'                         \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                         \item \strong{\code{continuousChoice}}: Named list of numeric vectors. Amount of consumption of each alternative. One element per alternative, as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
 #'                         \item \strong{\code{cost}}: Named list of numeric vectors. Price of each alternative. One element per alternative, each one as long as the number of observations or a scalar. Names must match those in \code{alternatives}.
 #'                         \item \strong{\code{gamma}}: Named list. Gamma parameters for each alternative, excluding any outside good. As many elements as inside good alternatives.
@@ -105,7 +105,7 @@ apollo_mdcev <- function(mdcev_settings,functionality){
       # Set utility of unavailable alternatives and excluded rows to 0 to avoid numerical issues alpha
       inputs$V     <- mapply(function(v,a) apollo_setRows(v, !a, 0), inputs$V    , inputs$avail, SIMPLIFY=FALSE)
       inputs$alpha <- mapply(function(l,a) apollo_setRows(l, !a, 0), inputs$alpha, inputs$avail, SIMPLIFY=FALSE)
-      inputs$gamma <- mapply(function(g,a) apollo_setRows(g, !a, 0), inputs$gamma, inputs$avail, SIMPLIFY=FALSE)
+      inputs$gamma <- mapply(function(g,a) apollo_setRows(g, !a, 1), inputs$gamma, inputs$avail, SIMPLIFY=FALSE)
       # Compute V
       inputs$V[[1]]=(inputs$alpha[[1]]-1)*log(inputs$continuousChoice[[1]])
       for(j in 2:inputs$nAlt){

@@ -4,9 +4,9 @@
 #' 
 #' @param lc_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 #'                  \itemize{
-#'                    \item \strong{inClassProb}: List of probabilities. Conditional likelihood for each class. One element per class, in the same order as \code{classProb}.
 #'                    \item \strong{classProb}: List of probabilities. Allocation probability for each class. One element per class, in the same order as \code{inClassProb}.
 #'                    \item \strong{componentName}: Character. Name given to model component (optional).
+#'                    \item \strong{inClassProb}: List of probabilities. Conditional likelihood for each class. One element per class, in the same order as \code{classProb}.
 #'                  }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param functionality Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
@@ -206,7 +206,11 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
       classprobsum = Reduce("+",classProb)
       if(any(round(classprobsum,10)!=1)) stop("SPECIFICATION ISSUE - Class allocation probabilities in 'classProb' for model component \"",
                                               lc_settings$componentName,"\" must sum to 1.")
+      # check that probs are different across classes
+      if(length(unique(sapply(inClassProb,sum)))!=length(inClassProb))  stop("INPUT ISSUE - At your starting values, the probabilities are the same across some of the classes.",
+                                                                             "Please use different starting values across classes. If you still wish to run your model in the current form, please set noValidation=TRUE in apollo_control.")
     }
+    
     
     # Print diagnostics
     if(!apollo_inputs$apollo_control$noDiagnostics) lc_settings$lc_diagnostics(lc_settings, apollo_inputs)

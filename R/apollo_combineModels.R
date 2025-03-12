@@ -148,6 +148,24 @@ apollo_combineModels=function(P, apollo_inputs, functionality, components=NULL, 
   # ############################################################# #
   
   if(functionality %in% c("conditionals","estimate","validate","zero_LL", "shares_LL", "output")){
+    if(functionality=="validate"){
+      checkRows=function(P){
+        if(is.vector(P)) return(length(P))
+        if(is.array(P)) return(dim(P)[1])
+      }
+      nRows=sapply(P,checkRows)
+      if(apollo_inputs$apollo_control$panelData && apollo_inputs$apollo_control$mixing && !(!is.null(apollo_inputs$apollo_draws$intraDraws) && (apollo_inputs$apollo_draws$intraDraws>0)) && any(nRows==nrow(apollo_inputs$database))) apollo_print("Your model uses multiple components, and for memory efficiency, you may consider calling apollo_panelProd after each component is produced, rather than only after apollo_combineModels",type="i")
+      tmp <- nRows %in% c(1,max(nRows))
+      if(!all(tmp)){
+        if(is.null(names(nRows))) names(nRows) <- names(P)
+        tmp <- ""
+        for(i in 1:length(nRows)) tmp <- paste0(tmp, names(nRows)[i], "=", nRows[i], ifelse(i<length(nRows), ", ", ""))
+        stop("SYNTAX ISSUE - The dimensionalities of model components do not match. ",
+             "Maybe you only applied apollo_panelProd to some components but not others? ", 
+             "Number of rows: ", tmp)
+      } 
+    }
+    
     if(!apollo_inputs$apollo_control$workInLogs){
       P[["model"]] <- Reduce("*", P)
     } else {

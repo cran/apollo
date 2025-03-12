@@ -9,10 +9,10 @@ apollo_classAlloc(classAlloc_settings)
 \arguments{
 \item{classAlloc_settings}{List of inputs of the MNL model. It should contain the following.
 \itemize{
-  \item \strong{\code{utilities}}: Named list of deterministic utilities . Utilities of the classes in class allocation model. Names of elements must match those in \code{avail}, if provided.
   \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of classes, one element per class Names of elements must match those in \code{classes}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
-  \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}. 
   \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
+  \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}. 
+  \item \strong{\code{utilities}}: Named list of deterministic utilities . Utilities of the classes in class allocation model. Names of elements must match those in \code{avail}, if provided.
 }}
 }
 \value{

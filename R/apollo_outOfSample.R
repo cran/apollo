@@ -73,6 +73,21 @@
 #'                                                 sets are to be extracted 
 #'                                                 from the full database.
 #'                                                 Default is 30.}
+#'                                     \item{rmse}{Character matrix with two
+#'                                                 columns. Used to calculate 
+#'                                                 Root Mean Squared Error (RMSE) 
+#'                                                 of prediction. The first 
+#'                                                 column must contain the names 
+#'                                                 of observed outcomes in the 
+#'                                                 database. The second column 
+#'                                                 must contain the names of the 
+#'                                                 predicted outcomes as 
+#'                                                 returned by 
+#'                                                 \code{apollo_prediction}. 
+#'                                                 If omitted or NULL, no RMSE 
+#'                                                 is calculated. This only 
+#'                                                 works for models with a 
+#'                                                 single component.}
 #'                                     \item{samples}{Numeric matrix or 
 #'                                                    data.frame. Optional 
 #'                                                    argument. Must have as 
@@ -106,21 +121,6 @@
 #'                                                           validation sample 
 #'                                                           (>1). Default is 
 #'                                                           0.1.}
-#'                                     \item{rmse}{Character matrix with two
-#'                                                 columns. Used to calculate 
-#'                                                 Root Mean Squared Error (RMSE) 
-#'                                                 of prediction. The first 
-#'                                                 column must contain the names 
-#'                                                 of observed outcomes in the 
-#'                                                 database. The second column 
-#'                                                 must contain the names of the 
-#'                                                 predicted outcomes as 
-#'                                                 returned by 
-#'                                                 \code{apollo_prediction}. 
-#'                                                 If omitted or NULL, no RMSE 
-#'                                                 is calculated. This only 
-#'                                                 works for models with a 
-#'                                                 single component.}
 #'                                   }
 #' @return A matrix with the average log-likelihood per observation for both the 
 #'         estimation and validation samples, for each repetition. Two additional 
@@ -471,6 +471,7 @@ apollo_outOfSample <- function(apollo_beta, apollo_fixed,
   avgLLObs_val = llOutOfSampleStack[,"outOfSample_model"]/(nrow(database)-nObsStack)
   percentDiff  = 100*(avgLLObs_val-avgObsLL_est)/avgObsLL_est
   M <- cbind(avgObsLL_est, avgLLObs_val, percentDiff)
+  rownames(M)=paste0("sample_",1:nrow(M))
   M <- rbind(M, Average = colMeans(M))
   tmp <- colnames(M)
   colnames(M) <- c("LL per obs in estimation sample", 

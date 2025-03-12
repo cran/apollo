@@ -55,6 +55,21 @@ with a default or marked as optional.
                     sets are to be extracted 
                     from the full database.
                     Default is 30.}
+        \item{rmse}{Character matrix with two
+                    columns. Used to calculate 
+                    Root Mean Squared Error (RMSE) 
+                    of prediction. The first 
+                    column must contain the names 
+                    of observed outcomes in the 
+                    database. The second column 
+                    must contain the names of the 
+                    predicted outcomes as 
+                    returned by 
+                    \code{apollo_prediction}. 
+                    If omitted or NULL, no RMSE 
+                    is calculated. This only 
+                    works for models with a 
+                    single component.}
         \item{samples}{Numeric matrix or 
                        data.frame. Optional 
                        argument. Must have as 
@@ -88,21 +103,6 @@ with a default or marked as optional.
                               validation sample 
                               (>1). Default is 
                               0.1.}
-        \item{rmse}{Character matrix with two
-                    columns. Used to calculate 
-                    Root Mean Squared Error (RMSE) 
-                    of prediction. The first 
-                    column must contain the names 
-                    of observed outcomes in the 
-                    database. The second column 
-                    must contain the names of the 
-                    predicted outcomes as 
-                    returned by 
-                    \code{apollo_prediction}. 
-                    If omitted or NULL, no RMSE 
-                    is calculated. This only 
-                    works for models with a 
-                    single component.}
       }}
 }
 \value{

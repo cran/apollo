@@ -98,6 +98,10 @@ apollo_validate <- function(inputs, modelType, functionality, apollo_inputs){
     
     # Checks specific for Exploded Logit (EL)
     if(modelType=="el"){
+      # check that number of stages is less than number of alternatives
+      if(!(length(inputs$choiceVars)<length(inputs$alternatives))) stop("INPUT ISSUE - Number of stages for EL needs to be strictly less than number of alternatives!")
+      # check that number of scales is same as number of stages
+      if(!(length(inputs$choiceVars)==length(inputs$scales))) stop("INPUT ISSUE - Number of stages for EL needs to be equal to number of scale parameters!")
       # check that all availabilities are either 0 or 1
       for(i in 1:length(inputs$avail)) if( !all(unlist(inputs$avail[[i]]) %in% 0:1) ) stop("INPUT ISSUE - Some availability values for model component \"",inputs$componentName,"\" are not 0 or 1.")
       # check that at least 2 alternatives are available in at least one observation

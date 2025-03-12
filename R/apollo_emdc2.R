@@ -15,18 +15,18 @@
 #' 
 #' @param emdc_settings List of settings for the model. It includes the following.
 #'                        \itemize{
-#'                          \item \strong{\code{continuousChoice}}: Named list of numeric vectors. Amount consumed of each inside good. Outside good must not be included. Can also be called "X".
 #'                          \item \strong{\code{avail}}: Named list of numeric vectors. Availability of each product. Can also be called "A".
-#'                          \item \strong{\code{utilityOutside}}: Numeric vector (or matrix or array). Shadow price of the budget. Must be normalised to 0 for at least one individual. Default is 0 for every observation. Can also be called "V0".
-#'                          \item \strong{\code{utilities}}: Named list of numeric vectors (or matrices or arrays). Base utility of each product. Can also be called "V".
+#'                          \item \strong{\code{continuousChoice}}: Named list of numeric vectors. Amount consumed of each inside good. Outside good must not be included. Can also be called "X".
+#'                          \item \strong{\code{cost}}: Named list of numeric vectors. Price of each product.
+#'                          \item \strong{\code{delta}}: Lower triangular numeric matrix, or list of lists. Complementarity/substitution parameter.
 #'                          \item \strong{\code{gamma}}: Named list of numeric vectors. Satiation parameter of each product.
 #'                          \item \strong{\code{sigma}}: Numeric scalar. Scale parameter.
-#'                          \item \strong{\code{delta}}: Lower triangular numeric matrix, or list of lists. Complementarity/substitution parameter.
-#'                          \item \strong{\code{cost}}: Named list of numeric vectors. Price of each product.
-#'                          \item \strong{\code{nRep}}: Scalar positive integer. Number of repetitions used when predictiong
 #'                          \item \strong{\code{nIter}}: Vector of two positive integers. Number of maximum iterations used during prediction, for the upper and lower iterative levels.
-#'                          \item \strong{\code{tolerance}}: Positive scalar Tolerance of the prediction algorithm.
+#'                          \item \strong{\code{nRep}}: Scalar positive integer. Number of repetitions used when predictiong
 #'                          \item \strong{\code{rawPrediction}}: Scalar logical. When functionality is equal to "prediction", it returns the full set of simulations. Defaults is FALSE.
+#'                          \item \strong{\code{tolerance}}: Positive scalar Tolerance of the prediction algorithm.
+#'                          \item \strong{\code{utilities}}: Named list of numeric vectors (or matrices or arrays). Base utility of each product. Can also be called "V".
+#'                          \item \strong{\code{utilityOutside}}: Numeric vector (or matrix or array). Shadow price of the budget. Must be normalised to 0 for at least one individual. Default is 0 for every observation. Can also be called "V0".
 #'                        }
 #' @param functionality Character. Either "validate", "zero_LL", "estimate", "conditionals", "raw", "output" or "prediction"
 #' @return The returned object depends on the value of argument \code{functionality} as follows.

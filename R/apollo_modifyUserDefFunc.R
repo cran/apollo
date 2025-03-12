@@ -136,6 +136,87 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     rm(tmp)
   }; rm(w)
   
+  ### Check that for loops do not use the same index
+  getIndices <- function(e){
+    # Check if it is a function
+    if(is.function(e)) e <- body(e)
+    # Case 1: value
+    isVal <- is.symbol(e) || is.numeric(e) || is.character(e) || 
+      is.logical(e) || is.complex(e)
+    if(isVal) return(NULL)
+    # Case 2: "for" call
+    ans <- c()
+    test1 <- is.call(e) || is.expression(e)
+    test2 <- test1 && length(e)==4 && is.symbol(e[[1]]) && as.character(e[[1]])=='for'
+    if(test2) ans <- as.character(e[[2]])
+    # Case 3: another type of call or expression
+    if(test1) for(i in 1:length(e)) if(!is.null(e[[i]])){
+      ans <- c(ans, getIndices(e[[i]]))
+    }
+    return(ans)
+  }
+  checkIndices <- function(f){
+    argName <- as.character(match.call()[[2]])
+    i <- getIndices(f)
+    if(length(i)>length(unique(i))){
+      tmp <- setNames(as.vector(table(i)), unique(i))
+      stop("SYNTAX ISSUE - ",
+           "Index/indices \"", paste0(names(tmp[tmp>1]), collapse="\", \""),
+           "\" is/are used inside more than one \"for\" loop(s) inside ", 
+           argName, ". Each index should be used inside only one \"for\" loop.")
+    }; return(NULL)
+  }
+  if(is.function(apollo_probabilities)) checkIndices(apollo_probabilities)
+  if(apollo_inputs$apollo_control$mixing && 
+     is.function(apollo_inputs$apollo_randCoeff)){
+    checkIndices(apollo_inputs$apollo_randCoeff)
+  }
+  if(is.function(apollo_inputs$apollo_lcPars)) checkIndices(apollo_inputs$apollo_lcPars)
+  
+  ### Check that variables in the global environemnt are not used inside 
+    # apollo_probabilities, apollo_randCoeff, or apollo_lcPars
+  checkVars <- function(e, vge=NULL, funName=NULL){
+    if(is.null(vge)){
+      vge <- ls(envir=globalenv())
+      vge <- vge[!(vge %in% c("apollo_inputs", "apollo_beta"))]
+    }
+    # If it is a value, ignore
+    test <- is.numeric(e) || is.character(e) || is.logical(e) || is.complex(e)
+    if(test) return(NULL)
+    # If it is a symbol, it shouldn't be in the global environment
+    if(is.symbol(e)){
+      if(as.character(e) %in% vge){
+        tmp <- paste0("Object ", as.character(e), " from ",
+                      "the global environment should not ",
+                      "be used inside ", 
+                      ifelse(is.null(funName), 
+                             "apollo functions", funName), 
+                      ". If needed, save it inside ",
+                      "apollo_inputs and call it as ",
+                      "apollo_inputs$", as.character(e), ".") 
+        apollo_print(tmp, type="w", pause=0)
+      }
+      return(NULL)
+    }
+    # If it is apollo_inputs$something, ignore
+    test <- is.call(e) && length(e)>=2 && is.symbol(e[[1]]) && 
+      (as.character(e[[1]]) %in% c("$","[[")) && 
+      is.symbol(e[[2]]) && as.character(e[[2]])=="apollo_inputs"
+    if(test) return(NULL)
+    # If it is call or expression, go through it element by element
+    if(is.call(e) || is.expression(e)) if(length(e)>=1){
+      for(i in 1:length(e)) checkVars(e[[i]], vge=vge, funName=funName)
+    }
+    return(NULL)
+  }
+  checkVars(body(apollo_probabilities), funName="apollo_probabilities")
+  if(is.function(apollo_inputs$apollo_randCoeff)){
+    checkVars(body(apollo_inputs$apollo_randCoeff), funName="apollo_randCoeff")
+  }
+  if(is.function(apollo_inputs$apollo_lcPars)){
+    checkVars(body(apollo_inputs$apollo_lcPars), funName="apollo_lcPars")
+  }
+  
   
   # # # # # # # # # # # # # # # # # # #
   #### Validate and prepare scaling ####
@@ -248,6 +329,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
                         NULL
                       } )
     if(anyNA(test1)) test1 <- NULL
+    if(sum(test1)==0) test1 <- NULL
     test <- is.null(test1) || noModification
     if(test){
       apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed in initial testing.",
@@ -280,7 +362,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   if(validate){
     test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
     test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
-    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2+0.1)/sum(test1+0.1) - 1) < 0.001
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
       apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed during syntax checking.", 
@@ -323,7 +405,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   if(validate){
     test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
     test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
-    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2+0.1)/sum(test1+0.1) - 1) < 0.001
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
       apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed during loop expansion.", 
@@ -367,7 +449,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     apollo_beta_shifted[names(apollo_inputs$apollo_scaling)] <- apollo_beta_shifted[names(apollo_inputs$apollo_scaling)]/apollo_inputs$apollo_scaling
     test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
     test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
-    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2+0.1)/sum(test1+0.1) - 1) < 0.001
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
       apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed after inserting parameter scaling.", 
@@ -395,7 +477,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   if(validate){
     test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
     test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
-    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2+0.1)/sum(test1+0.1) - 1) < 0.001
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
       apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed after additional syntax processing.", 
@@ -434,7 +516,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   if(validate){
     test2 <- tryCatch(apollo_probabilities(apollo_beta_shifted, apollo_inputs), error=function(e) NULL)
     test <- !is.null(test1) && !is.null(test2) && is.numeric(test1) && is.numeric(test2)
-    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2+0.1)/sum(test1+0.1) - 1) < 0.001
+    test <- test && !any(is.nan(test1)) && !any(is.nan(test2)) && abs(sum(test2)/sum(test1) - 1) < 0.001
     if(!test){
       # If they are different or evaluation of test2 failed, then undo changes
       apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed after inserting functions.", 

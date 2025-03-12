@@ -36,7 +36,12 @@
   "\nPlease cite Apollo in all written material you produce:",
   "\nHess S, Palma D (2019). \"Apollo: a flexible, powerful and customisable",
   "\nfreeware package for choice model estimation and application.\" Journal",
-  "\nof Choice Modelling, 32. doi:10.1016/j.jocm.2019.100170")
+  "\nof Choice Modelling, 32. doi.org/10.1016/j.jocm.2019.100170",
+  "\n",
+  "\nThe developers of Apollo acknowledge the substantial support provided by",
+  "\nthe European Research Council (ERC) through the consolidator grant DECISIONS,",
+  "\nthe proof of concept grant APOLLO, and the advanced grant SYNERGY."
+  )
   
   ### Print message
   txt=paste0(txt0,txt1)

@@ -26,6 +26,7 @@
 #' @param silent Boolean. If TRUE, no messages are printed to screen.
 #' @return Validated version of \code{apollo_control}, with additional element called \code{panelData} set to TRUE for repeated choice data.
 #' @export
+#' @importFrom rstudioapi getActiveDocumentContext
 apollo_validateControl=function(database,apollo_control, silent=FALSE){
   
   ### If database is a tibble, turn it into a data.frame
@@ -35,9 +36,20 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
   if(!is.logical(apollo_control$debug) || length(apollo_control$debug)!=1) stop('SYNTAX ISSUE - Setting "debug" in apollo_control should have a logical (boolean) value.')
   debug <- apollo_control$debug
   
+  ### modelName
   if(is.null(apollo_control$modelName)){
-    apollo_control$modelName <- paste("model_", gsub("[: -]", "" , Sys.time(), perl=TRUE), sep="")
-    if(!silent) apollo_print(paste0('Model name missing in apollo_control, set to default of "', apollo_control$modelName, '".'))
+    fileName <- tryCatch(basename(rstudioapi::getActiveDocumentContext()$path),
+                         error=function(e) "")
+    if(fileName==""){
+      stop("INTERNAL ISSUE - Model name missing in apollo_control and could not be inferred from the file name. Please set this manually.")
+      #apollo_control$modelName <- paste("model_", gsub("[: -]", "" , Sys.time(), perl=TRUE), sep="")
+    } else {
+      test <- grepl(".r", fileName, fixed=TRUE) || grepl(".R", fileName, fixed=TRUE)
+      test <- test & grepl("[rR]$", fileName)
+      if(test) fileName <- substr(fileName, 1, nchar(fileName)-2)
+      apollo_control$modelName <- fileName
+    }
+    if(!silent) apollo_print(paste0('Model name missing in apollo_control, set to "', apollo_control$modelName, '".'))
   }
   
   if(is.null(apollo_control$modelDescr)) apollo_control$modelDescr <- 'No model description provided in apollo_control'

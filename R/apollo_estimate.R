@@ -132,6 +132,9 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                                           names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)])
   }
   
+  ### Stop if apollo_fixed passed to apollo_estimate is different from the one passed via apollo_inputs
+  if(!all(apollo_fixed==apollo_inputs$apollo_fixed)) stop("INPUT ISSUE - The vector 'apollo_fixed' passed to 'apollo_estimate' differs from the one in 'apollo_inputs'. Please run 'apollo_inputs = apollo_validateInputs()' before proceeding with estimation!") 
+  
   ### Warn the user in case elements in apollo_inputs are different from those in the global environment
   apollo_compareInputs(apollo_inputs)
   
@@ -796,7 +799,10 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
       apollo_print(paste0("Final LL: " , round(model$maximum, 4)))
     } else apollo_print("Final LL: Not available.")
     apollo_print("\n")
-    if(!successfulEstimation && any(abs(model$estimate)>20)) apollo_print("Your model did not converge properly, and some of your parameter values are tending to +/- infinity. This could point to an identification issue. If you want to retain these parameters in the model, you may wish to set their value(s) in apollo_beta to the estimated value(s), include the parameter name(s) in apollo_fixed, and re-estimate the model.",type="w")
+    if(!successfulEstimation && any(abs(model$estimate)>20)){
+      apollo_print("Your model did not converge properly, and some of your parameter values are tending to +/- infinity. This could point to an identification issue. If you want to retain these parameters in the model, you may wish to set their value(s) in apollo_beta to the estimated value(s), include the parameter name(s) in apollo_fixed, and re-estimate the model.",type="w")
+      model$parameterToInfinity=TRUE
+    } 
   }
   
   ### If estimation failed, continue only if model exists
@@ -1229,8 +1235,12 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
 
   if(estimationRoutine=="bgw" && !silent){
     cat("\n")
-    apollo_print("Your model was estimated using the BGW algorithm. Please acknowledge this by citing Bunch et al. (1993) - DOI 10.1145/151271.151279")
+    apollo_print("Your model was estimated using the BGW algorithm. Please acknowledge this by citing Bunch et al. (1993) - doi.org/10.1145/151271.151279")
   }
+  if(!silent){
+    cat("\n")
+    apollo_print("Please acknowledge the use of Apollo by citing Hess & Palma (2019) - doi.org/10.1016/j.jocm.2019.100170")
+  } 
   ### assign apollo class to model
   class(model)<-c("apollo",class(model))  
   return(model)

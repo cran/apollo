@@ -10,7 +10,7 @@
 #' centered around its mean beforehand).
 #' @param normalDensity_settings List of arguments to the functions. It must contain the following.
 #'                               \itemize{
-#'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
+#'                                 \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                                 \item \strong{\code{mu}}: Numeric scalar. Intercept of the linear model.
 #'                                 \item \strong{\code{outcomeNormal}}: Numeric vector. Dependent variable.
 #'                                 \item \strong{\code{rows}}: Boolean vector. Consideration of which rows to include. Length equal to the number of observations (nObs), with entries equal to TRUE for rows to include, and FALSE for rows to exclude. Default is \code{"all"}, equivalent to \code{rep(TRUE, nObs)}.

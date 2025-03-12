@@ -6,10 +6,10 @@
 #'                      \itemize{
 #'                       \item \strong{\code{alternatives}}: Named numeric vector. Names of alternatives and their corresponding value in \code{choiceVar}.
 #'                       \item \strong{\code{avail}}: Named list of numeric vectors or scalars. Availabilities of alternatives, one element per alternative. Names of elements must match those in \code{alternatives}. Values can be 0 or 1. These can be scalars or vectors (of length equal to rows in the database). A user can also specify \code{avail=1} to indicate universal availability, or omit the setting completely.
-#'                       \item \strong{altStart}: A named list with as many elements as alternatives. Each element can be a scalar or vector containing the starting preference value for the alternative.  
-#'                       \item \strong{attrScalings}: A named list with as many elements as attributes, or fewer. Each element is a factor that scale the attribute, and can be a scalar, a vector or a matrix/array. They do not need to add up to one for each observation. \code{attrWeights} and \code{attrScalings} are incompatible, and they should not be both defined for an attribute. Default is 1 for all attributes.
-#'                       \item \strong{attrValues}: A named list with as many elements as alternatives. Each element is itself a named list of vectors of the alternative attributes for each observation (usually a column from the database). All alternatives must have the same attributes (can be set to zero if not relevant).
-#'                       \item \strong{attrWeights}: A named list with as many elements as attributes, or fewer. Each element is the weight of the attribute, and can be a scalar, a vector with as many elements as observations, or a matrix/array if random. They should add up to one for each observation and draw (if present), and will be re-scaled if they do not. \code{attrWeights} and \code{attrScalings} are incompatible, and they should not be both defined for an attribute. Default is 1 for all attributes.
+#'                       \item \strong{\code{altStart}}: A named list with as many elements as alternatives. Each element can be a scalar or vector containing the starting preference value for the alternative.  
+#'                       \item \strong{\code{attrScalings}}: A named list with as many elements as attributes, or fewer. Each element is a factor that scale the attribute, and can be a scalar, a vector or a matrix/array. They do not need to add up to one for each observation. \code{attrWeights} and \code{attrScalings} are incompatible, and they should not be both defined for an attribute. Default is 1 for all attributes.
+#'                       \item \strong{\code{attrValues}}: A named list with as many elements as alternatives. Each element is itself a named list of vectors of the alternative attributes for each observation (usually a column from the database). All alternatives must have the same attributes (can be set to zero if not relevant).
+#'                       \item \strong{\code{attrWeights}}: A named list with as many elements as attributes, or fewer. Each element is the weight of the attribute, and can be a scalar, a vector with as many elements as observations, or a matrix/array if random. They should add up to one for each observation and draw (if present), and will be re-scaled if they do not. \code{attrWeights} and \code{attrScalings} are incompatible, and they should not be both defined for an attribute. Default is 1 for all attributes.
 #'                       \item \strong{\code{choiceVar}}: Numeric vector. Contains choices for all observations. It will usually be a column from the database. Values are defined in \code{alternatives}.
 #'                       \item \strong{\code{componentName}}: Character. Name given to model component. If not provided by the user, Apollo will set the name automatically according to the element in \code{P} to which the function output is directed.
 #'                       \item \strong{procPars}: A list containing the four DFT 'process parameters'
@@ -844,6 +844,11 @@ apollo_dft = function(dft_settings,functionality){
   # ############################## #
   
   if (functionality=="validate"){
+    
+    if(!all(dft_settings$procPars$timesteps>0)) stop('SPECIFICATION ISSUE - The starting value for \"timesteps\" for model component "', dft_settings$componentName,'" needs to be strictly positive!')
+    if(!all(dft_settings$procPars$phi1>0)) stop('SPECIFICATION ISSUE - The starting value for \"phi1\" for model component "', dft_settings$componentName,'" needs to be strictly positive!')
+    if(!all((dft_settings$procPars$phi2>=0)&(dft_settings$procPars$phi2<=1))) stop('SPECIFICATION ISSUE - The starting value for \"phi2\" for model component "', dft_settings$componentName,'" needs to be between 0 and 1!')
+
     if(!apollo_inputs$apollo_control$noValidation) apollo_validate(dft_settings, modelType, functionality, apollo_inputs)
     
     if(!apollo_inputs$apollo_control$noDiagnostics) dft_settings$dft_diagnostics(dft_settings, apollo_inputs)

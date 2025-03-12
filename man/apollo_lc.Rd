@@ -9,9 +9,9 @@ apollo_lc(lc_settings, apollo_inputs, functionality)
 \arguments{
 \item{lc_settings}{List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
-  \item \strong{inClassProb}: List of probabilities. Conditional likelihood for each class. One element per class, in the same order as \code{classProb}.
   \item \strong{classProb}: List of probabilities. Allocation probability for each class. One element per class, in the same order as \code{inClassProb}.
   \item \strong{componentName}: Character. Name given to model component (optional).
+  \item \strong{inClassProb}: List of probabilities. Conditional likelihood for each class. One element per class, in the same order as \code{classProb}.
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
