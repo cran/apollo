@@ -43,12 +43,9 @@ Calculates the likelihood function of the extended MDC model. Can also predict a
 \details{
 This model extends the traditional multiple discrete-continuous (MDC) framework by (i) dropping
 the need to define a budget, (ii) making the marginal utility of the outside good deterministic, 
-and (iii) including complementarity and substitution in the model formulation. See the following 
-working paper for more details:
+and (iii) including complementarity and substitution in the model formulation. See the following  paper for more details:
 
-Palma, D. & Hess, S. (Working Paper) Some adaptations of Multiple Discrete-Continuous 
-Extreme Value (MDCEV) models for a computationally tractable treatment of complementarity 
-and substitution effects, and reduced influence of budget assumptions
-
-Avilable at: http://stephanehess.me.uk/publications.html
+Palma, D. & Hess, S. (2022) Extending the Multiple Discrete Continuous (MDC) modelling 
+framework to consider complementarity, substitution, and an unobserved budget. Transportation 
+Reserarch 161B, 13 - 35. https://doi.org/10.1016/j.trb.2022.04.005
 }

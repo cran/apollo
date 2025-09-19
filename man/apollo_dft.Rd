@@ -66,7 +66,7 @@ Calculate probabilities of a Decision Field Theory (DFT) model and can also perf
 \section{References}{
 
 Hancock, T.; Hess, S. and Choudhury, C. (2018) Decision field theory: Improvements to current methodology and comparisons with standard choice modelling techniques. Transportation Research 107B, 18 - 40.
-Hancock, T.; Hess, S. and Choudhury, C. (Submitted) An accumulation of preference: two alternative dynamic models for understanding transport choices.
+Hancock, T.; Hess, S.; Marley A.A.J. and Choudhury, C. (2021), An accumulation of preference: two alternative dynamic models for understanding transport choices, Transportation Research Part B, Volume 149, July 2021, Pages 250-282.
 Roe, R.; Busemeyer, J. and Townsend, J. (2001) Multialternative decision field theory: A dynamic connectionist model of decision making. Psychological Review 108, 370
 }
 

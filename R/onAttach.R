@@ -29,7 +29,7 @@
                  "\n")                                       
     
   txt1 <- paste0("\nApollo ", apolloVersion,
-  "\nhttp://www.ApolloChoiceModelling.com",
+  "\nhttps://www.ApolloChoiceModelling.com",
   "\nSee url for a detailed manual, examples and a user forum.",
   "\nSign up to the user forum to receive updates on new releases.",
   "\n",

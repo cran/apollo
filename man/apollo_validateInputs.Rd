@@ -116,6 +116,6 @@ Searches the user work space (.GlobalEnv) for all necessary input to run \code{a
 \details{
 All arguments to this function are optional. If the function is called without arguments, then it it will look in
 the user workspace (i.e. the global environment) for variables with the same name as its omitted arguments.
-We strongly recommend users to visit \url{http://www.apollochoicemodelling.com/} for examples on how to use Apollo.
+We strongly recommend users to visit \url{https://www.ApolloChoiceModelling.com/} for examples on how to use Apollo.
 In the website, users will also find a detailed manual and a user-group for help and further reference.
 }

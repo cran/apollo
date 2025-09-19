@@ -10,7 +10,7 @@
 #' can be turned off by setting \code{estimate_settings$writeIter} to \code{FALSE}.
 #' By default, \strong{final results are not written into a file nor printed to the console}, so users must make sure 
 #' to call function \link{apollo_modelOutput} and/or \link{apollo_saveOutput} afterwards.
-#' Users are strongly encouraged to visit \url{http://www.apollochoicemodelling.com/} to download examples on how to use the Apollo package.
+#' Users are strongly encouraged to visit \url{https://www.ApolloChoiceModelling.com/} to download examples on how to use the Apollo package.
 #' The webpage also provides a detailed manual for the package, as well as a user-group to get further help.
 #'
 #' @param apollo_beta Named numeric vector. Names and values for parameters.
@@ -54,9 +54,9 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   #### Loading Inputs ####
   # #################### #
   
+   
   test <- is.vector(apollo_beta) && is.function(apollo_probabilities) && is.list(apollo_inputs)
-  if(!test) stop('SYNTAX ISSUE - Arguments apollo_beta, apollo_fixed, apollo_probabilities ", 
-                 "and apollo_inputs must be provided.')
+  if(!test) stop('SYNTAX ISSUE - Arguments apollo_beta, apollo_fixed, apollo_probabilities, and apollo_inputs must be provided.')
   
   ### First checkpoint
   time1 <- Sys.time()
@@ -72,6 +72,8 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                   bootstrapSE=0, bootstrapSeed=24, silent=FALSE, 
                   scaleHessian=TRUE, scaleAfterConvergence=FALSE,
                   validateGrad=FALSE,
+                  load=NULL,
+                  save=FALSE,
                   bgw_settings=list())
   prtLvlMan <- is.list(estimate_settings) && !is.null(estimate_settings$printLevel)
   if(length(estimate_settings)==1 && is.na(estimate_settings)) estimate_settings <- default
@@ -91,6 +93,71 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   for(i in tmp) estimate_settings[[i]] <- default[[i]]
   if(!prtLvlMan && tolower(estimate_settings$estimationRoutine)=="bgw") estimate_settings$printLevel <- 2
   rm(default, tmp, prtLvlMan)
+  
+  ### check for lapply use
+  tmp <- as.character(body(apollo_probabilities))
+  tmp <- grep("lapply", tmp, fixed=TRUE)
+  if(length(tmp)>0){
+    txt='Your \'apollo_probabilities\' function includes the use of \'lapply\'. This will prevent optimisation of your code and the use of analytical gradients even if they are available for your model.'
+    apollo_print(txt, type="w")
+    apollo_inputs$apollo_control$noModification=TRUE
+    apollo_inputs$apollo_control$analyticGrad=FALSE
+  } 
+  
+  # ######################################### #
+  #### Loading pre-processing if requested ####
+  # ######################################### #
+  
+  if(!is.null(estimate_settings$load) && is.environment(estimate_settings$load)){
+    env_loaded=estimate_settings$load
+    estimate_settings$save <- FALSE # no need to save again
+    if(!(length(apollo_fixed)==length(env_loaded$apollo_fixed)&&all(apollo_fixed==env_loaded$apollo_fixed))) stop("INPUT ISSUE - The vector 'apollo_fixed' passed to 'apollo_estimate' differs from the one in the loaded environment.")
+    list2env(as.list(env_loaded), envir = environment())
+    temp_start=apollo_beta
+    ### if any fixed params have changed, need to remake apollo_logLike and gradient
+    if(!all(apollo_beta[apollo_fixed]==apollo_beta_saved[apollo_fixed])){
+      if(!silent) apollo_print("Fixed parameters have changed, re-creating logLike and gradient functions.")
+      apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, 
+                                           apollo_probabilities, apollo_inputs, 
+                                           apollo_estSet=estimate_settings, cleanMemory=TRUE)
+      on.exit({
+        test <- apollo_inputs$apollo_control$nCores>1 && exists('apollo_logLike', inherits=FALSE)
+        test <- test && !anyNA(environment(apollo_logLike)$cl)
+        if(test) parallel::stopCluster(environment(apollo_logLike)$cl)
+      }, add=TRUE)
+      ### Create gradient function if required (and possible)
+      if(!is.null(apollo_inputs$apollo_control$analyticGrad) && apollo_inputs$apollo_control$analyticGrad){
+        # apollo_makeGrad will create gradient function ONLY IF all components have analytical gradient.
+        grad <- apollo_makeGrad(apollo_beta, apollo_fixed, apollo_logLike, validateGrad)
+        if(is.null(grad)){
+          if(!silent) apollo_print(paste0("Analytical gradients could not be calculated for all components, ", 
+                                          "numerical gradients will be used."))
+          apollo_inputs$apollo_control$analyticGrad <- FALSE # Not sure this is necessary, but it can't hurt
+          apollo_inputs$apollo_control$analyticHessian <- FALSE 
+          environment(apollo_logLike)$analyticGrad  <- FALSE
+          environment(apollo_logLike)$nIter         <- 1     # fix for iteration counting
+        }
+      } else grad <- NULL
+      
+      ### Create hessian function
+      if(!is.null(apollo_inputs$apollo_control$analyticHessian) && apollo_inputs$apollo_control$analyticHessian){
+        # apollo_makeHessian will create gradient function ONLY IF all components have analytical hessians.
+        hessian <- apollo_makeHessian(apollo_beta, apollo_fixed, apollo_logLike)
+        if(is.null(hessian)){
+          if(!silent) apollo_print(paste0("Analytical hessians could not be calculated for all components, ", 
+                                          "numerical hessian will be used."))
+          apollo_inputs$apollo_control$analyticHessian <- FALSE 
+          environment(apollo_logLike)$analyticHessian  <- FALSE
+        }
+      } else hessian <- NULL
+    } else {
+      if(!silent) apollo_print("Using pre-processed inputs from the loaded environment.")
+    }
+  }else{
+    if(estimate_settings$save){
+      if(apollo_inputs$apollo_control$nCores>1) stop('SYNTAX ISSUE - Saving pre-processing can only be run for single core')
+      if(apollo_inputs$apollo_control$HB) stop('SYNTAX ISSUE - Saving pre-processing cannot be run for HB')
+    }
   
   ### do not use BGW if maxIterations==0
   if(estimate_settings$maxIterations==0) estimate_settings$estimationRoutine="bfgs"
@@ -503,7 +570,17 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     rm(beta0, beta1, beta1m, base_LL, test2_LL, p)#, beta1p, test1_LL)
     }
   }
+
+  # ######################################## #
+  #### Saving pre-processing if requested ####
+  # ######################################## #
   
+  if(estimate_settings$save){
+    apollo_beta_saved = apollo_beta
+    rm(apollo_beta) ## apollo_beta is not included in env that is returned
+    return(environment())
+  }
+}
   
   # ################################## #
   #### Classical main estimation    ####
@@ -543,10 +620,13 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   #        is.na(apollo_inputs$apollo_draws) & 
   #        is.na(apollo_inputs$apollo_randCoeff) & 
   #        !(apollo_inputs$apollo_control$preventOverridePanel)
+  flagPanelOverride <- FALSE
   test <- !is.function(apollo_inputs$apollo_lcPars) && 
     !apollo_inputs$apollo_control$mixing && 
-    !apollo_inputs$apollo_control$preventOverridePanel # BUG FIX (DP 10/11/2022)
+    !apollo_inputs$apollo_control$preventOverridePanel && # BUG FIX (DP 10/11/2022)
+    apollo_inputs$apollo_control$panelData
   if(test){
+    flagPanelOverride <- TRUE
     if(environment(apollo_logLike)$singleCore){
       environment(apollo_logLike)$apollo_inputs$apollo_control$overridePanel <- TRUE
     } else parallel::clusterEvalQ(cl=environment(apollo_logLike)$cl,
@@ -733,7 +813,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     ##8May## }
     ##8May## colnames(score)=names(btemp)
     ##8May## model$score=score
-    ##8May## if(is.matrix(score)) model$BHHH_matrix   <- var(score)*nrow(score)
+    ##8May## if(is.matrix(score)) model$BHHHhessian   <- var(score)*nrow(score)
     ##8May## # restore scaling
     ##8May## apollo_inputs$apollo_scaling=apollo_scaling_backup
     ##8May## if(apollo_control$nCores==1) environment(apollo_logLike)$apollo_inputs$apollo_scaling <- apollo_scaling_backup else {
@@ -743,9 +823,11 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     ##8May## }
     
     ##8May## NEW VERSION
-    if(!is.null(model$varcovBGW)){
-      model$BHHH_matrix=solve(model$varcovBGW)
+    if(!flagPanelOverride && !is.null(model$varcovBGW)){
+      if(debug) cat("\nUsing BGW BHHH\n")
+      model$BHHHhessian=-solve(model$varcovBGW)
     } else{
+      if(debug) cat("\nUsing Apollo BHHH\n")
       btemp <- model$estimate
       if(!is.null(grad)){
         score <- grad(btemp)
@@ -753,20 +835,20 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
         score <- numDeriv::jacobian(apollo_logLike, btemp)
       }
       colnames(score)=names(btemp)
-      if(is.matrix(score)) model$BHHH_matrix   <- var(score)*nrow(score)
+      if(is.matrix(score)) model$BHHHhessian   <- -var(score)*nrow(score)
       rm(score)
     }
     # descale BHHH matrix if needed
     if(any(apollo_inputs$apollo_scaling!=1)){
       for(j in names(apollo_inputs$apollo_scaling)){
         scale=apollo_inputs$apollo_scaling[j]
-        model$BHHH_matrix[j,]=model$BHHH_matrix[j,]/scale
-        model$BHHH_matrix[,j]=model$BHHH_matrix[,j]/scale
+        model$BHHHhessian[j,]=model$BHHHhessian[j,]/scale
+        model$BHHHhessian[,j]=model$BHHHhessian[,j]/scale
       }
       if(exists("scale", inherits=FALSE)) rm(scale)
     }
     ##8May##
-    model$BHHHvarcov  <- tryCatch(solve(model$BHHH_matrix), error=function(e) return(matrix(NA, nrow=length(btemp), ncol=length(btemp), 
+    model$BHHHvarcov  <- tryCatch(solve(-model$BHHHhessian), error=function(e) return(matrix(NA, nrow=length(btemp), ncol=length(btemp), 
                                                                                             dimnames=list(names(btemp), names(btemp)))))
     model$BHHHse      <- sqrt(diag(model$BHHHvarcov))
     model$BHHHcorrmat <- tryCatch(model$BHHHvarcov/(model$BHHHse%*%t(model$BHHHse)), error=function(e) return(matrix(NA, nrow=length(btemp), ncol=length(btemp), 
@@ -774,6 +856,12 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   
     ### add in fixed params    
     model$BHHHse    <- c(model$BHHHse, apollo_beta[apollo_fixed]*NA)[names(apollo_beta)]
+    
+    if(all(is.na(model$BHHHvarcov))){
+      if(!silent) apollo_print("Estimation succeeded but the BHHH matrix is singular. Apollo will not attempt to compute the covariance matrix.",  pause=0, type="w")
+      estimate_settings$hessianRoutine <- 'none'
+      model$hessianCalcDisabled <- TRUE
+    }
   }
   ###
   
@@ -819,6 +907,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
         stop("CALCULATION ISSUE - Estimation failed, no estimated model to return.")
       }
       estimate_settings$hessianRoutine <- 'none'
+      model$hessianCalcDisabled <- TRUE
     } else stop("CALCULATION ISSUE - Estimation failed, no estimated model to return.")
   }
   
@@ -963,7 +1052,17 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   tmp                     <- names(apollo_beta)[!(names(apollo_beta) %in% apollo_fixed)]
   model$varcov            <- matrix(NA, nrow=length(tmp), ncol=length(tmp), dimnames=list(tmp, tmp))
   model$corrmat           <- model$varcov
+  model$robcorrmat        <- model$varcov
   model$robvarcov         <- model$varcov
+  if(is.null(model$BHHHse)){
+    model$BHHHse          <- setNames(rep(NA, length(apollo_beta)), names(apollo_beta))  
+  }
+  if(is.null(model$BHHHvarcov)){
+    model$BHHHvarcov      <- model$varcov
+  }
+  if(is.null(model$BHHHcorrmat)){
+    model$BHHHcorrmat     <- model$varcov
+  }
   model$bootstrapSE       <- bootstrapSE
   model$apollo_beta       <- temp_start
   model$LLStart           <- sum(testLL)
@@ -1039,9 +1138,9 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   }
   
   ### Calculate varcov
-  if((estimationRoutine!="bgw")&&!is.null(model$BHHH_matrix)){
+  if(!is.null(model$BHHHhessian)){
     varcov <- apollo_varcov(apollo_beta=b, apollo_fixed, 
-                            varcov_settings=list(BHHH_matrix       = model$BHHH_matrix,
+                            varcov_settings=list(BHHHhessian       = model$BHHHhessian,
                                                  hessianRoutine    = estimate_settings$hessianRoutine,
                                                  scaleBeta         = estimate_settings$scaleHessian, 
                                                  numDeriv_method   = estimate_settings$numDeriv_method, 

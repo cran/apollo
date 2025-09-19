@@ -45,7 +45,7 @@ A data.frame with 10,000 rows and 33 variables:
 }
 }
 \source{
-\url{http://www.apollochoicemodelling.com/}
+\url{https://www.ApolloChoiceModelling.com/}
 }
 \usage{
 apollo_drugChoiceData

@@ -29,7 +29,7 @@ apollo_preprocess <- function(inputs, modelType, functionality, apollo_inputs){
   if(is.null(names(inputs))) stop('SYNTAX ISSUE - All elements inside the inputs lists for model components must be named, e.g. mnl_settings=list(alternatives=c(...), avail=...).')
   if(is.null(inputs[["componentName"]])) stop('SYNTAX ISSUE - The settings of at least one model component is missing the mandatory "componentName" object.')
   # functionality
-  test <- functionality %in% c("estimate","prediction","validate","zero_LL","shares_LL","conditionals","output","raw","preprocess", "components", "gradient", "report", "hessian")
+  test <- functionality %in% c("estimate","prediction","validate","zero_LL","shares_LL","conditionals","output","raw","preprocess", "components", "gradient", "report", "hessian", "utilities")
   if(!test) stop("SYNTAX ISSUE - Non-permissable setting for \"functionality\" for model component \"",inputs$componentName,"\"")
   
   #### MNL, FMNL, NL, CNL, DFT ####

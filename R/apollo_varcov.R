@@ -25,7 +25,7 @@
 #'                            \item \strong{\code{functionality}}: Character. Can be either 
 #'                            \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 #'                          }
-#'                          \item \strong{\code{BHHH_matrix}}: Matrix. Optional input, providing the BHHH matrix so it does not get recalculated.
+#'                          \item \strong{\code{BHHHhessian}}: Matrix. Optional input, providing the BHHH matrix so it does not get recalculated.
 #'                          \item \strong{\code{hessianRoutine}}: Character. Name of routine used to calculate the Hessian. Valid values are \code{"analytic"}, \code{"numDeriv"}, \code{"maxLik"} or \code{"none"} to avoid estimating the Hessian and covariance matrix.
 #'                          \item \strong{\code{numDeriv_method}}: Character. Method used for numerical differentiation. Can be \code{"Richardson"} or \code{"simple"}, Only used if analytic gradients are available. See argument \code{method} in \link[numDeriv]{grad} for more details.
 #'                          \item \strong{\code{numDeriv_settings}}: List. Additional arguments to the Richardson method used by numDeriv to calculate the Hessian. See argument \code{method.args} in \link[numDeriv]{grad} for more details.
@@ -370,7 +370,7 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
   ### Calculate scores
   bVar       <- apollo_beta[!(names(apollo_beta) %in% apollo_fixed)]
   newScaling <- setNames(rep(1, length(bVar)), names(bVar))
-  if(is.null(varcov_settings$BHHH_matrix)){
+  if(is.null(varcov_settings$BHHHhessian)){
     if(!silent) apollo_print('Computing score matrix...')
     # Remove hessian scaling
     # If using analytic
@@ -395,21 +395,21 @@ apollo_varcov <- function(apollo_beta, apollo_fixed, varcov_settings){
       # Calculate scores
       score <- numDeriv::jacobian(apollo_logLike, bVar)
     }
-    BHHH_matrix=var(score)*nrow(score)
+    BHHHhessian=-var(score)*nrow(score)
   }else{
-    BHHH_matrix=varcov_settings$BHHH_matrix
+    BHHHhessian=varcov_settings$BHHHhessian
   }
 
   
   ### Calculate robust variance-covariance matrix, s.e. and correlation matrix
   #if(is.matrix(H) && is.matrix(score)){
-  if(is.matrix(H) && is.matrix(BHHH_matrix)){
+  if(is.matrix(H) && is.matrix(BHHHhessian)){
     #bread <- solve(-H)
     #meat  <- split(score, rep(1:nrow(score), ncol(score)))
     #meat  <- Reduce('+', lapply(meat, function(r) r%*%t(r))) # it should include /nrow(score) but with it, it doesn't work.
     bread  <- varcov
     #meat   <- var(score)*nrow(score) # not sure why the *nrow(score) but without it, it doesn't work.
-    meat   <- BHHH_matrix
+    meat   <- -BHHHhessian
     robvarcov     <- bread %*% meat %*% bread
     robse         <- sqrt(diag(robvarcov))
     robcorrmat    <- tryCatch(robvarcov/(robse%*%t(robse)) , error=function(e) return(dummyVCM_small))

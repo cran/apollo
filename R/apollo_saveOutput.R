@@ -15,7 +15,7 @@
 #' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}.
 #' @param saveOutput_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 #'                            \itemize{
-#'                               \item \strong{\code{printChange}}: Boolean. TRUE for printing difference between starting values and estimates. TRUE by default.
+#'                               \item \strong{\code{printChange}}: Boolean. TRUE for printing difference between starting values and estimates. FALSE by default.
 #'                               \item \strong{\code{printClassical}}: Boolean. TRUE for printing classical standard errors. TRUE by default.
 #'                               \item \strong{\code{printCorr}}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. For Bayesian estimation, this setting is used for the covariane of random parameters. TRUE by default.
 #'                               \item \strong{\code{printCovar}}: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. For Bayesian estimation, this setting is used for the correlation of random parameters. TRUE by default.
@@ -43,7 +43,8 @@
 apollo_saveOutput=function(model, saveOutput_settings=NA){
   if(length(saveOutput_settings)==1 && is.na(saveOutput_settings)) saveOutput_settings=list()
   default <- list(printClassical   = TRUE,
-                  printChange      = TRUE,
+                  printBHHH        = FALSE,
+                  printChange      = FALSE,
                   printCorr        = TRUE,
                   printCovar       = TRUE,
                   printDataReport  = TRUE,
@@ -66,6 +67,7 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
   for(i in tmp)  saveOutput_settings[[i]] <- default[[i]]
   rm(tmp, default)
   printClassical  = saveOutput_settings[["printClassical"]]
+  printBHHH       = saveOutput_settings[["printBHHH"]]
   printPVal       = saveOutput_settings[["printPVal"]]
   printT1         = saveOutput_settings[["printT1"]]
   printDiagnostics= saveOutput_settings[["printDiagnostics"]]
@@ -299,6 +301,10 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
       utils::write.csv(model$bootvarcov,paste0(modName,"_bootcovar.csv"))
       cat("Bootstrap covariance matrix saved to",paste(modName, "_bootcovar.csv"   , sep=""),"\n")
     }
+    if(printBHHH==TRUE){
+      utils::write.csv(model$BHHHvarcov,paste0(modName,"_BHHHvarcov.csv"))
+      cat("BHHH covariance matrix saved to",paste0(modName, "_BHHHvarcov.csv"),"\n")
+    }
   }
   if(saveCorr){
     if(printClassical==TRUE){ 
@@ -310,6 +316,10 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
     if(!is.null(model$bootstrapSE) && model$bootstrapSE>0){
       utils::write.csv(model$bootcorrmat, paste0(modName,"_bootcorr.csv"))
       cat("Bootstrap correlation matrix saved to",paste(modName, "_bootcorr.csv"   , sep=""),"\n")
+    }
+    if(printBHHH==TRUE){
+      utils::write.csv(model$BHHHcorrmat,paste0(modName,"_BHHHcorr.csv"))
+      cat("BHHH correlation matrix saved to",paste0(modName, "_BHHHcorr.csv"),"\n")
     }
   }
   

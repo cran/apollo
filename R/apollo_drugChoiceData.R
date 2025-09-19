@@ -54,5 +54,5 @@
 #'   \item{attitude_patent}{Numeric. Level of agreement from 1 (strongly disagree) to 5 (strongly agree) with the phrase 'The original patent holders have valuable experience with their medicines'.}
 #'   \item{attitude_dominance}{Numeric. Level of agreement from 1 (strongly disagree) to 5 (strongly agree) with the phrase 'I believe the dominance of big pharmaceutical companies is unhelpful'.}
 #' }
-#' @source \url{http://www.apollochoicemodelling.com/}
+#' @source \url{https://www.ApolloChoiceModelling.com/}
 "apollo_drugChoiceData"

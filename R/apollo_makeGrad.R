@@ -49,7 +49,7 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
   ### Check that no models without analytical gradient are used in apollo_probabilities
   if(is.function(apollo_probabilities)){
     tmp <- as.character(body(apollo_probabilities))
-    txt <- c("apollo_nl|apollo_dft|apollo_mdcev|apollo_el|apollo_cnl|apollo_mdcnev|apollo_op|apollo_emdc1|apollo_emdc2|apollo_emdc|apollo_fnl")
+    txt <- c("apollo_dft|apollo_mdcev|apollo_el|apollo_cnl|apollo_mdcnev|apollo_op|apollo_emdc1|apollo_emdc2|apollo_emdc|apollo_fnl")
     tmp <- grep(txt, tmp)
     if(length(tmp)>0){
       if(debug) apollo_print("Analytic gradient cannot be built because models with undefined gradient are used inside apollo_probabilities.")
@@ -99,7 +99,7 @@ apollo_makeGrad <- function(apollo_beta, apollo_fixed, apollo_logLike, validateG
                  'only used apollo_mnl, apollo_fmnl, apollo_normalDensity, ',
                  'apollo_ol or apollo_op, then there could be another issue.',
                  'You might want to ask for help in the Apollo forum',
-                 '(http://www.apollochoicemodelling.com/forum) on how to', 
+                 '(https://www.ApolloChoiceModelling.com/forum) on how to', 
                  'solve this issue. If you do, please post your code and',
                  'data (if not confidential).')
     if(!silent) apollo_print(txt,  pause=0, type="i")

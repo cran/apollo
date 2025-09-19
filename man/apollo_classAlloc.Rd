@@ -28,6 +28,7 @@ The returned object depends on the value of argument \code{functionality}, which
           \item \strong{\code{"raw"}}: Same as \code{"estimate"}.
           \item \strong{\code{"report"}}: Same as \code{"estimate"}.
           \item \strong{\code{"shares_LL"}}: List with probabilities for each class in an equal shares setting.
+          \item \strong{\code{"utilities"}}: List of vectors/matrices/arrays. Returns a list with the utilities for all classes in class allocation model.
           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
           \item \strong{\code{"zero_LL"}}: List with probabilities for each class in an equal shares setting.
         }

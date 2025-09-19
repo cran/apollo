@@ -4,7 +4,12 @@
 \alias{apollo_mixUnconditionals}
 \title{Returns draws for continuously distributed random parameters in mixture model}
 \usage{
-apollo_mixUnconditionals(model, apollo_probabilities, apollo_inputs)
+apollo_mixUnconditionals(
+  model,
+  apollo_probabilities,
+  apollo_inputs,
+  obsLevel = FALSE
+)
 }
 \arguments{
 \item{model}{Model object. Estimated model object as returned by function \link{apollo_estimate}.}
@@ -17,6 +22,8 @@ apollo_mixUnconditionals(model, apollo_probabilities, apollo_inputs)
 }}
 
 \item{apollo_inputs}{List grouping most common inputs. Created by function \link{apollo_validateInputs}.}
+
+\item{obsLevel}{Logical. If \code{TRUE}, unconditionals are returned at the observation level rather than person level. This setting only applies to continuous mixture models and is set to TRUE by default only in the presence of intra-individual draws. Otherwise, the default is FALSE.}
 }
 \value{
 List of object, one per random coefficient.

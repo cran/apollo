@@ -23,6 +23,7 @@ apollo_panelProd(P, apollo_inputs, functionality)
   \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
   \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
   \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
+  \item \strong{\code{"utilities"}}: Returns utilities at provided parameter values.
   \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
   \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 }}
@@ -41,6 +42,7 @@ Argument \code{P} with (for most functionalities) the original contents after mu
           \item \strong{\code{"report"}}: Returns \code{P} without changes.
           \item \strong{\code{"shares_LL"}}: Returns \code{P} containing the likelihood of the model after multiplying observations at the individual level.
           \item \strong{\code{"validate"}}: Returns \code{P} containing the likelihood of the model averaged across inter-individual draws. Drops all components except \code{"model"}.
+          \item \strong{\code{"utilities"}}: Returns \code{P} without changes.
           \item \strong{\code{"zero_LL"}}: Returns \code{P} containing the likelihood of the model after multiplying observations at the individual level.
         }
 }

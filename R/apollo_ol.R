@@ -18,7 +18,7 @@
 #'                     \item \strong{\code{outcomeOrdered}}: Numeric vector. Dependent variable. The coding of this variable is assumed to be from 1 to the maximum number of different levels. For example, if the ordered response has three possible values: "never", "sometimes" and "always", then it is assumed that outcomeOrdered contains "1" for "never", "2" for "sometimes", and 3 for "always". If another coding is used, then it should be specified using the \code{coding} argument.
 #'                     \item \strong{\code{rows}}: Boolean vector. TRUE if a row must be considered in the calculations, FALSE if it must be excluded. It must have length equal to the length of argument \code{outcomeOrdered}. Default value is \code{"all"}, meaning all rows are considered in the calculation.
 #'                     \item \strong{\code{tau}}: List of numeric vectors/matrices/3-dim arrays. Thresholds. As many as number of different levels in the dependent variable - 1. Extreme thresholds are fixed at -inf and +inf. Mixing is allowed in thresholds. Can also be a matrix with as many rows as observations and as many columns as thresholds.
-#'                     \item \strong{\code{utilities}}: Numeric vector/matrix/3-sim array. A single explanatory variable (usually a latent variable). Must have the same number of rows as outcomeOrdered.
+#'                     \item \strong{\code{utility}}: Numeric vector/matrix/3-sim array. A single explanatory variable (usually a latent variable). Must have the same number of rows as outcomeOrdered.
 #'                   }
 #' @param functionality Character. Setting instructing Apollo what processing to apply to the likelihood function. This is in general controlled by the functions that call \code{apollo_probabilities}, though the user can also call \code{apollo_probabilities} manually with a given functionality for testing/debugging. Possible values are:
 #'                      \itemize{
@@ -32,6 +32,8 @@
 #'                        \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
 #'                        \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
 #'                        \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
+#'                        \item \strong{\code{"utilities"}}: Returns utilities at provided parameter values.
+#'                        \item \strong{\code{"utilities"}}: Returns utilities at provided parameter values.
 #'                        \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
 #'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 #'                      }
@@ -47,6 +49,7 @@
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'           \item \strong{\code{"report"}}: Dependent variable overview.
 #'           \item \strong{\code{"shares_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when only constants are estimated.
+#'           \item \strong{\code{"utilities"}}: List of vectors/matrices/arrays. Returns the utilities.
 #'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
 #'           \item \strong{\code{"zero_LL"}}: Not implemented. Returns a vector of NA with as many elements as observations.
 #'         }
@@ -246,6 +249,14 @@ apollo_ol  <- function(ol_settings, functionality){
     return(P)
   }
   
+  # ############################### #
+  #### functionality="utilities" ####
+  # ############################### #
+  
+  if(functionality %in% c("utilities")){
+    return(ol_settings$V)
+  }
+
   # ############################################################################ #
   #### functionality="estimate/prediction/conditionals/raw/output/components" ####
   # ############################################################################ #

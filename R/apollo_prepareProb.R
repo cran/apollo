@@ -20,6 +20,7 @@
 #'                        \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
 #'                        \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
 #'                        \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"utilities"}}: Returns utilities at provided parameter values.
 #'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 #'                      }
 #' @return Argument \code{P} with (for most functionalities) the original contents. Output depends on argument \code{functionality}.
@@ -35,6 +36,7 @@
 #'           \item \strong{\code{"report"}}: Returns \code{P} without changes.
 #'           \item \strong{\code{"shares_LL"}}: Returns argument \code{P} without any changes to its content, but gives names to unnamed elements.
 #'           \item \strong{\code{"validate"}}: Returns argument \code{P} without any changes.
+#'           \item \strong{\code{"utilities"}}: Returns \code{P} without changes.
 #'           \item \strong{\code{"zero_LL"}}: Returns argument \code{P} without any changes to its content, but gives names to unnamed elements.
 #'         }
 #' @export
@@ -47,7 +49,7 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
   if(!is.list(P)) P=list(model=P)
   ## change 8 July
   #if(is.null(P[["model"]]) && !(functionality %in% c("prediction", "gradient", "preprocess")) ) stop('SYNTAX ISSUE - Element called model is missing in list P!')
-  if(is.null(P[["model"]]) && !(functionality %in% c("prediction", "gradient", "hessian", "preprocess", "report", "components","raw")) ) stop('SYNTAX ISSUE - Element called model is missing in list P!')
+  if(is.null(P[["model"]]) && !(functionality %in% c("prediction", "gradient", "hessian", "preprocess", "report", "components","raw","utilities")) ) stop('SYNTAX ISSUE - Element called model is missing in list P!')
   ### end change
   panelData <- apollo_inputs$apollo_control$panelData
   nIndiv <- length(unique(apollo_inputs$database[, apollo_inputs$apollo_control$indivID]))
@@ -80,7 +82,7 @@ apollo_prepareProb=function(P, apollo_inputs, functionality){
   #### functionalities with untransformed return ####
   # ############################################### #
   
-  if(functionality %in% c("components", "prediction", "raw", "report")) return(P)
+  if(functionality %in% c("components", "prediction", "raw", "report", "utilities")) return(P)
 
   # ################### #
   #### HB estimation ####

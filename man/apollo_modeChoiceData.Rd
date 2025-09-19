@@ -36,7 +36,7 @@ A data.frame with 8,000 rows and 25 variables:
 }
 }
 \source{
-\url{http://www.apollochoicemodelling.com/}
+\url{https://www.ApolloChoiceModelling.com/}
 }
 \usage{
 apollo_modeChoiceData

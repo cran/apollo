@@ -21,6 +21,7 @@
 #'           \item \strong{\code{"raw"}}: Same as \code{"estimate"}.
 #'           \item \strong{\code{"report"}}: Same as \code{"estimate"}.
 #'           \item \strong{\code{"shares_LL"}}: List with probabilities for each class in an equal shares setting.
+#'           \item \strong{\code{"utilities"}}: List of vectors/matrices/arrays. Returns a list with the utilities for all classes in class allocation model.
 #'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
 #'           \item \strong{\code{"zero_LL"}}: List with probabilities for each class in an equal shares setting.
 #'         }
@@ -167,6 +168,14 @@ apollo_classAlloc <- function(classAlloc_settings){
     #if(all(testL==0)) stop("CALCULATION ISSUE - All observations have zero probability at starting value for model component \"",classAlloc_settings$componentName,"\"")
     #if(any(testL==0) && !apollo_inputs$silent && apollo_inputs$apollo_control$debug) apollo_print(paste0("Some observations have zero probability at starting value for model component \"",classAlloc_settings$componentName,"\"", sep=""))
     return(invisible(testL))
+  }
+  
+  # ############################### #
+  #### functionality="utilities" ####
+  # ############################### #
+  
+  if(functionality %in% c("utilities")){
+    return(classAlloc_settings$V)
   }
   
   # ############################################ #

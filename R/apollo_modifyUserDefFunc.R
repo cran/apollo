@@ -332,7 +332,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     if(sum(test1)==0) test1 <- NULL
     test <- is.null(test1) || noModification
     if(test){
-      apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed in initial testing.",
+      if(is.null(test1)) apollo_print(paste0("The pre-processing of 'apollo_probabilities' failed in initial testing.",
                           " Your model may still run, but this indicates a potential problem. Please contact the", 
                           " developers for assistance!"),  pause=0, type="w")
       return(list(apollo_probabilities = apollo_probabilities, # returns version with names inserted

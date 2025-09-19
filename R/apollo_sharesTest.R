@@ -25,6 +25,24 @@
 #' @return Nothing
 #' @export
 apollo_sharesTest=function(model, apollo_probabilities, apollo_inputs, sharesTest_settings){
+  
+  ### check for multiple components
+  tmp <- as.character(body(apollo_probabilities))
+  tmp <- grep("apollo_combineModels", tmp, fixed=TRUE)
+  if(length(tmp)>0 && is.null(sharesTest_settings[["modelComponent"]])) stop("SYNTAX ISSUE - Your model includes multiple components. Please specify which component to use in sharesTest_settings$modelComponent!")
+
+  ### check for MDCEV
+  tmp <- as.character(body(apollo_probabilities))
+  tmp <- grep("apollo_mdcev", tmp, fixed=TRUE)
+  if(length(tmp)>0) stop("SYNTAX ISSUE - Your model makes use of \`apollo_mdcev\'. The \'apollo_sharesTest\' function is not implemented for such models!")
+  tmp <- as.character(body(apollo_probabilities))
+  tmp <- grep("apollo_mdcnev", tmp, fixed=TRUE)
+  if(length(tmp)>0) stop("SYNTAX ISSUE - Your model makes use of \`apollo_mdcnev\'. The \'apollo_sharesTest\' function is not implemented for such models!")
+  tmp <- as.character(body(apollo_probabilities))
+  tmp <- grep("apollo_emdc", tmp, fixed=TRUE)
+  if(length(tmp)>0) stop("SYNTAX ISSUE - Your model makes use of \`apollo_emdc\'. The \'apollo_sharesTest\' function is not implemented for such models!")
+  
+  
   if(is.null(sharesTest_settings[["alternatives"]])) stop("SYNTAX ISSUE - The sharesTest_settings list needs to include an object called \"alternatives\"!")
   if(is.null(sharesTest_settings[["choiceVar"]])) stop("SYNTAX ISSUE - The sharesTest_settings list needs to include an object called \"choiceVar\"!")
   if(is.null(sharesTest_settings[["subsamples"]])) sharesTest_settings[["subsamples"]]=NA

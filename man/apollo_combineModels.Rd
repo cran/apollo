@@ -29,6 +29,7 @@ apollo_combineModels(
   \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
   \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
   \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
+  \item \strong{\code{"utilities"}}: Returns utilities at provided parameter values.
   \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
   \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 }}
@@ -49,6 +50,7 @@ Argument \code{P} with (for most functionalities) an extra element called "model
           \item \strong{\code{"preprocess"}}: Returns \code{P} without changes.
           \item \strong{\code{"raw"}}: Returns \code{P} without changes.
           \item \strong{\code{"shares_LL"}}: Returns \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
+          \item \strong{\code{"utilities"}}: Returns \code{P} without changes.
           \item \strong{\code{"validate"}}: Returns \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
           \item \strong{\code{"zero_LL"}}: Returns \code{P} with an extra component called \code{"model"}, which is the product of all other elements of \code{P}.
         }

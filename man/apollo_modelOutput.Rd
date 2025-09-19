@@ -11,6 +11,7 @@ apollo_modelOutput(model, modelOutput_settings = NA)
 
 \item{modelOutput_settings}{List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
+  \item \strong{\code{printBHHH}}: Logical. TRUE for printing BHHH standard errors. FALSE by default.                               
   \item \strong{\code{printChange}}: Logical. TRUE for printing difference between starting values and estimates. FALSE by default.
   \item \strong{\code{printClassical}}: Logical. TRUE for printing classical standard errors. TRUE by default.
   \item \strong{\code{printCorr}}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. For Bayesian estimation, this setting is used for the covariane of random parameters. FALSE by default.

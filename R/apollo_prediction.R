@@ -3,7 +3,7 @@
 #' Calculates \code{apollo_probabilities} with functionality="prediction".
 #' 
 #' Structure of predictions are simplified before returning, e.g. list of vectors are turned into a matrix.
-#' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}.
+#' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}. A user can also simply provide a vector of parameter values instead of a whole model object, allowing for prediction to take place without having estimated a model.
 #' @param apollo_probabilities Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 #'                          \itemize{
 #'                            \item \strong{\code{apollo_beta}}: Named numeric vector. Names and values of model parameters.
@@ -50,6 +50,15 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   runs           = prediction_settings$runs
   apollo_inputs$nRep <- prediction_settings$nRep # Copy nRep into apollo_inputs
   
+  flag_model <- TRUE
+  # allow prediction from a parameter vector instead of a model object
+  if(!is.list(model) && is.vector(model)){
+    model = apollo_estimate(model,apollo_inputs$apollo_fixed,apollo_probabilities,apollo_inputs,
+                            estimate_settings=list(estimationRoutine="bfgs",maxIterations=0,silent=TRUE))
+    if(runs>1) stop("INCORRECT FUNCTION/SETTING USE - The calculation of confidence intervals for \'apollo_prediction\' is not applicable if providing \'apollo_prediction\' with a vector of parameters instead of a model object!")
+    flag_model <- FALSE
+  }
+  
   # Validate input
   if(!is.null(model$apollo_control$HB) && model$apollo_control$HB && runs>1) stop("INCORRECT FUNCTION/SETTING USE - The calculation of confidence intervals for \'apollo_prediction\' is not applicables for models estimated using HB!") 
   if(!is.null(model$apollo_control$mixing) && model$apollo_control$mixing && !silent) apollo_print("Your model contains continuous random parameters. apollo_prediction will perform averaging across draws for these. For predictions at the level of individual draws, please call the apollo_probabilities function using model$estimate as the parameters, and with functionality=\"raw\".", type="i")
@@ -67,7 +76,15 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
   apollo_randCoeff  = apollo_inputs[["apollo_randCoeff"]]
   apollo_lcPars     = apollo_inputs[["apollo_lcPars"]]
   apollo_checkArguments(apollo_probabilities,apollo_randCoeff,apollo_lcPars)
-  if(!silent) apollo_print("Running predictions from model using parameter estimates...")
+  if(!silent){
+    if(flag_model){
+      apollo_print("Running predictions from model using estimated parameters...")
+      cat("\n")
+    }else{
+      apollo_print("Running predictions using vector of parameters provided by caller...")
+      cat("\n")
+    } 
+  }
   apollo_beta  = model$estimate
   apollo_fixed = model$apollo_fixed
   predictions  = apollo_probabilities(apollo_beta, apollo_inputs, functionality="prediction")
@@ -144,6 +161,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         } else modelComponentType <- 'default'
         # Extract predictions
         M <- predictions[[m]]
+        if(length(dim(M))==3 && modelComponentType=="mdcev") next ### Bug fix 03/02/2025
         M <- M[,-(1:2),drop=FALSE] # remove ID and Observation
         # Print it a format appropriate to the model type
         if(modelComponentType %in% c('mdcev','mdcnev')){ # MDCEV
@@ -200,9 +218,23 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
                                        `Un-weighted average`  = colMeans(M/w, na.rm=TRUE), 
                                        `Weighted aggregate`   =  colSums(M  , na.rm=TRUE))
           if(!is.numeric(w)) M <- rbind(Aggregate=colSums(M, na.rm=TRUE), Average=colMeans(M, na.rm=TRUE))
-        }
-        ##print(M, digits=4)
-        print(round(M,2))
+          ##print(M, digits=4)
+          print(round(M,2))
+          ### add simulated choice
+          if(!is.null(prediction_settings$simChoice) && prediction_settings$simChoice){
+          probs=predictions[[m]][,-c(1:2,ncol(predictions[[m]])),drop=FALSE]
+          sim_choice = function(P){
+            if(all(is.na(P))){
+              return(NA)
+            }else{
+              P[is.na(P)]=0
+              return(colnames(probs)[sample(1:length(P), size=1, prob=P)])
+            } 
+          }
+          predictions[[m]]=cbind(predictions[[m]], 
+                                 simChoice = apply(probs, 1, sim_choice))
+          }        
+          }
         
         if(!silent) apollo_print("\n")
       }
@@ -211,6 +243,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         txt <- paste0(txt, 'list, with one element per model component. For each ', 
                       'model component, the list element is given by a matrix ',
                       'containing the predictions at the estimated values.')
+        if(!is.null(prediction_settings$simChoice) && prediction_settings$simChoice && !silent) txt <- paste0(txt," Simulated choices were requested, and these were added as a final column to the predicted probabilities for any discrete choice model component.")  
       }
       if(!silent) apollo_print(txt)
     }
@@ -325,6 +358,21 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
         rownames(tmp) <- colnames(ans[[m]]$at_estimates)[-(1:2)]
         if(tolower(rownames(tmp)[nrow(tmp)])=='chosen') tmp <- tmp[-nrow(tmp),]
         print(tmp, digits=4)
+        
+        ### add simulated choice
+        if(!is.null(prediction_settings$simChoice) && prediction_settings$simChoice){
+          probs=ans[[m]]$at_estimates[,-c(1:2,ncol(ans[[m]]$at_estimates)),drop=FALSE]
+          sim_choice = function(P){
+            if(all(is.na(P))){
+              return(NA)
+            }else{
+              P[is.na(P)]=0
+              return(colnames(probs)[sample(1:length(P), size=1, prob=P)])
+            } 
+          }
+          ans[[m]]$at_estimates=cbind(ans[[m]]$at_estimates, 
+                                      simChoice = apply(probs, 1, sim_choice))
+        }
       }
       if(!silent) apollo_print("\n")
     }
@@ -342,6 +390,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
                     'a data.frame containing the predictions at the estimated values, and an array ', 
                     'with predictions for different values of the parameters drawn from their ',
                     'asymptotic distribution.')    }
+    if(!is.null(prediction_settings$simChoice) && prediction_settings$simChoice && !silent) txt <- paste0(txt," Simulated choices were requested, and these were added as a final column to the predicted probabilities for any discrete choice model component.")  
     if(!silent) apollo_print(txt)
   }
   if(length(ans)==1) ans=ans[[1]]

@@ -246,15 +246,29 @@ apollo_expandLoop <- function(f, apollo_inputs, validate=TRUE){
   if(is.null(apollo_beta)) stop('INTERNAL ISSUE - apollo_expandLoop could not fetch apollo_beta.')
   
   #### Process and return ####
-  defs  <- apollo_varList(f, apollo_inputs)
-  # maybe add apollo_randCoeff and apollo_lcPar?
-  test <- anyNA(apollo_inputs$draws)
-  if(test) env <- list2env(c(as.list(apollo_beta), apollo_inputs$database), hash=TRUE, parent=parent.frame()) else {
-    env <- list2env(c(as.list(apollo_beta), apollo_inputs$database, apollo_inputs$draws), 
-                    hash=TRUE, parent=parent.frame())
+  env <- c(as.list(apollo_beta), apollo_inputs$database)
+  if(is.function(apollo_inputs$apollo_randCoeff)){
+    env <- c(env, apollo_inputs$draws)
+    tmp <- apollo_inputs$apollo_randCoeff
+    environment(tmp) <- list2env(env, hash=TRUE, parent=parent.frame())
+    env <- c(env, tmp(apollo_beta, apollo_inputs) ); rm(tmp)
+  } 
+  if(is.function(apollo_inputs$apollo_lcPars)){
+    tmp <- apollo_inputs$apollo_lcPars
+    environment(tmp) <- list2env(env, hash=TRUE, parent=parent.frame())
+    env <- c(env, tmp(apollo_beta, apollo_inputs)); rm(tmp)
   }
+  env <- list2env(env, hash=TRUE, parent=parent.frame())
   env$apollo_inputs <- apollo_inputs
-  fNew1  <- expandLoop(f, defs, env)
+  # maybe add apollo_randCoeff and apollo_lcPar?
+  #test <- anyNA(apollo_inputs$draws)
+  #if(test) env <- list2env(c(as.list(apollo_beta), apollo_inputs$database), hash=TRUE, parent=parent.frame()) else {
+  #  env <- list2env(c(as.list(apollo_beta), apollo_inputs$database, apollo_inputs$draws), 
+  #                  hash=TRUE, parent=parent.frame())
+  #}
+  #env$apollo_inputs <- apollo_inputs
+  defs  <- apollo_varList(f, apollo_inputs)
+  fNew1 <- expandLoop(f, defs, env)
   if(validate) fVal1 <- evalf(fNew1)
   # Replace and simplify
   defs  <- apollo_varList(fNew1, apollo_inputs)

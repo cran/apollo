@@ -4,7 +4,7 @@
 #' 
 #' This model extends the traditional multiple discrete-continuous (MDC) framework by (i) making the 
 #' marginal utility of the outside good deterministic, and (ii) including complementarity and 
-#' substitution in the model formulation. See the following working paper for more details:
+#' substitution in the model formulation. See the following paper for more details:
 #' 
 #' Palma, D. & Hess, S. (2022) Extending the Multiple Discrete Continuous (MDC) modelling 
 #' framework to consider complementarity, substitution, and an unobserved budget. Transportation 
@@ -251,7 +251,7 @@ apollo_emdc1 <- function(emdc_settings, functionality="estimate"){
     }
     
     # Likelihood
-    ll <- log(Jdet)
+    ll <- tryCatch(log(Jdet),warning=function(w) NA)
     ll <- ll + Reduce("+", mapply(function(w, m, a) dnorm(-w, sd=sigma, log=TRUE)*m*a, W, M, A, SIMPLIFY=FALSE))
     ll <- ll + Reduce("+", mapply(function(w, m, a) pnorm(-w, sd=sigma, log.p=TRUE)*(1-m)*a, W, M, A, SIMPLIFY=FALSE))
     
@@ -483,6 +483,10 @@ apollo_emdc1 <- function(emdc_settings, functionality="estimate"){
     ### Prepare output
     Xsd <- apply(Xsd, MARGIN=2, sqrt)
     Msd <- apply(Msd, MARGIN=2, sqrt)
+    colnames(Xmean) <- paste0(colnames(Xmean), "_ECont" )
+    colnames(Xsd)   <- paste0(colnames(Xsd  ), "_sdCont")
+    colnames(Mmean) <- paste0(colnames(Mmean), "_EDisc" )
+    colnames(Msd)   <- paste0(colnames(Msd  ), "_sdDisc")
     return( cbind(Xmean, Xsd, Mmean, Msd) )
   }
   

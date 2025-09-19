@@ -17,6 +17,7 @@
 #'                        \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
 #'                        \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
 #'                        \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
+#'                        \item \strong{\code{"utilities"}}: Returns utilities at provided parameter values.
 #'                        \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
 #'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 #'                      }
@@ -32,6 +33,7 @@
 #'           \item \strong{\code{"raw"}}: Returns \code{P} without changes.
 #'           \item \strong{\code{"report"}}: Returns \code{P} without changes.
 #'           \item \strong{\code{"shares_LL"}}: Returns \code{P} without changes.
+#'           \item \strong{\code{"utilities"}}: Returns \code{P} without changes.
 #'           \item \strong{\code{"validate"}}: Returns \code{P} containing the likelihood of the model averaged across inter-individual draws. Drops all components except \code{"model"}.
 #'           \item \strong{\code{"zero_LL"}}: Returns \code{P} without changes.
 #'         }
@@ -64,7 +66,7 @@ apollo_avgInterDraws <- function(P, apollo_inputs, functionality){
   #### functionalities with untransformed return ####
   # ############################################### #
   
-  if(functionality%in%c("components","preprocess","raw", "report")) return(P)
+  if(functionality%in%c("components","preprocess","raw", "report", "utilities")) return(P)
   
   # ############################### #
   #### functionality=="gradient" ####

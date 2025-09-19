@@ -13,4 +13,4 @@ bibentry(bibtype = "Manual",
          author  = c(person("Stephane", "Hess"), person("David", "Palma")),
          year    = year,
          note    = note,
-         url     = "http://www.ApolloChoiceModelling.com")
+         url     = "https://www.ApolloChoiceModelling.com")

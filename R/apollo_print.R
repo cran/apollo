@@ -26,7 +26,7 @@ apollo_print <- function(txt, nSignifD=4, widthLim=11, pause=0, type="t"){
     if(type=="w"){
       # Attach WARNING in red text and yellow background
       ###txt <- strwrap(paste0("WARNING: ", txt), exdent=2)
-      txt <- strwrap(txt, exdent=2)
+      txt <- strwrap(txt, exdent=2, indent=9); txt[1] <- trimws(txt[1])
       #if(nchar(txt[1])>8) txt[1] <- substr(txt[1], 9, nchar(txt[1]))
       txt <- paste(txt, collapse="\n")
       # Print to screen
@@ -38,7 +38,7 @@ apollo_print <- function(txt, nSignifD=4, widthLim=11, pause=0, type="t"){
     if(type=="i"){
       # Attach INFORMATION in red text and yellow background
       ###txt <- strwrap(paste0("INFORMATION: ", txt), exdent=2)
-      txt <- strwrap(txt, exdent=2)
+      txt <- strwrap(txt, exdent=2, indent=13); txt[1] <- trimws(txt[1])
       #if(nchar(txt[1])>12) txt[1] <- substr(txt[1], 13, nchar(txt[1]))
       txt <- paste(txt, collapse="\n")
       # Print to screen

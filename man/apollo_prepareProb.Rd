@@ -24,6 +24,7 @@ apollo_prepareProb(P, apollo_inputs, functionality)
   \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
   \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
   \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+  \item \strong{\code{"utilities"}}: Returns utilities at provided parameter values.
   \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 }}
 }
@@ -41,6 +42,7 @@ Argument \code{P} with (for most functionalities) the original contents. Output 
           \item \strong{\code{"report"}}: Returns \code{P} without changes.
           \item \strong{\code{"shares_LL"}}: Returns argument \code{P} without any changes to its content, but gives names to unnamed elements.
           \item \strong{\code{"validate"}}: Returns argument \code{P} without any changes.
+          \item \strong{\code{"utilities"}}: Returns \code{P} without changes.
           \item \strong{\code{"zero_LL"}}: Returns argument \code{P} without any changes to its content, but gives names to unnamed elements.
         }
 }

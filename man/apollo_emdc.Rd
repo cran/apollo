@@ -43,7 +43,7 @@ Calculates the likelihood function of the MDC model with exogenous budget. Can a
 \details{
 This model extends the traditional multiple discrete-continuous (MDC) framework by (i) making the 
 marginal utility of the outside good deterministic, and (ii) including complementarity and 
-substitution in the model formulation. See the following working paper for more details:
+substitution in the model formulation. See the following  paper for more details:
 
 Palma, D. & Hess, S. (2022) Extending the Multiple Discrete Continuous (MDC) modelling 
 framework to consider complementarity, substitution, and an unobserved budget. Transportation 

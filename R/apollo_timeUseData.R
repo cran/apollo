@@ -33,5 +33,5 @@
 #'   \item{occ_full_time}{Numeric. 1 if the respondent works full time.}
 #'   \item{weekend}{Numeric. 1 if the current date is a weekend.}
 #' }
-#' @source \url{http://www.apollochoicemodelling.com/}
+#' @source \url{https://www.ApolloChoiceModelling.com/}
 "apollo_timeUseData"

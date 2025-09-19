@@ -22,6 +22,7 @@
 #'                        \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
 #'                        \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
 #'                        \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
+#'                        \item \strong{\code{"utilities"}}: Returns utilities at provided parameter values.
 #'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 #'                      }
 #' @return The returned object depends on the value of argument \code{functionality} as follows.
@@ -36,6 +37,7 @@
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'           \item \strong{\code{"report"}}: Class allocation overview.
 #'           \item \strong{\code{"shares_LL"}}: Same as \code{"estimate"}
+#'           \item \strong{\code{"utilities"}}: List of vectors/matrices/arrays. Returns a list with the utilities for all models components, for each class.
 #'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but also runs a set of tests on the given arguments.
 #'           \item \strong{\code{"zero_LL"}}: Same as \code{"estimate"}
 #'         }
@@ -145,6 +147,7 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
   # Count number of rows in inClassProb
   nRowsInClassProb <- Dim1(inClassProb[[1]])
   if(functionality %in% c("gradient", "hessian")) nRowsInClassProb <- Dim1(inClassProb[[1]]$like)
+  if(functionality %in% c("prediction", "raw", "utilities")) nRowsInClassProb <- Dim1(inClassProb[[1]]$chosen)
   
   # Count number of observations per individual
   indivID <- get(apollo_control$indivID)
@@ -207,7 +210,7 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
       if(any(round(classprobsum,10)!=1)) stop("SPECIFICATION ISSUE - Class allocation probabilities in 'classProb' for model component \"",
                                               lc_settings$componentName,"\" must sum to 1.")
       # check that probs are different across classes
-      if(length(unique(sapply(inClassProb,sum)))!=length(inClassProb))  stop("INPUT ISSUE - At your starting values, the probabilities are the same across some of the classes.",
+      if(length(unique(sapply(inClassProb,sum)))!=length(inClassProb))  stop("INPUT ISSUE - At your starting values, the probabilities are the same across some of the classes. ",
                                                                              "Please use different starting values across classes. If you still wish to run your model in the current form, please set noValidation=TRUE in apollo_control.")
     }
     
@@ -273,10 +276,10 @@ apollo_lc <- function(lc_settings, apollo_inputs, functionality){
     return( Pout )
   }
   
-  # ##################### #
-  #### Prediction, raw ####
-  # ##################### #
-  if(functionality %in% c("prediction", "raw")){
+  # ################################ #
+  #### Prediction, raw, utilities ####
+  # ################################ #
+  if(functionality %in% c("prediction", "raw", "utilities")){
     # Match the number of rows in each list
     classProb <- resize(classProb, nRowsInClassProb)
     # # The dimension of classProb is changed if necessary, dim(inClassProb) remains the same

@@ -11,7 +11,7 @@ apollo_saveOutput(model, saveOutput_settings = NA)
 
 \item{saveOutput_settings}{List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
-   \item \strong{\code{printChange}}: Boolean. TRUE for printing difference between starting values and estimates. TRUE by default.
+   \item \strong{\code{printChange}}: Boolean. TRUE for printing difference between starting values and estimates. FALSE by default.
    \item \strong{\code{printClassical}}: Boolean. TRUE for printing classical standard errors. TRUE by default.
    \item \strong{\code{printCorr}}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. For Bayesian estimation, this setting is used for the covariane of random parameters. TRUE by default.
    \item \strong{\code{printCovar}}: Boolean. TRUE for printing parameters covariance matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. For Bayesian estimation, this setting is used for the correlation of random parameters. TRUE by default.

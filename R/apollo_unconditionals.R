@@ -11,6 +11,7 @@
 #'                            \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
+#' @param obsLevel Logical. If \code{TRUE}, unconditionals are returned at the observation level rather than person level. This setting only applies to continuous mixture models and is set to TRUE by default only in the presence of intra-individual draws. Otherwise, the default is FALSE.
 #' @return Depends on whether the model uses continuous mixtures or latent class. 
 #'         \itemize{
 #'           \item If the model contains a continuous mixture, it returns a list with one object per
@@ -26,7 +27,7 @@
 #'                 two elements described above will be returned.
 #'         }
 #' @export
-apollo_unconditionals <- function(model, apollo_probabilities, apollo_inputs){
+apollo_unconditionals <- function(model, apollo_probabilities, apollo_inputs, obsLevel=FALSE){
   if(is.null(apollo_inputs$silent)) silent = FALSE else silent = apollo_inputs$silent
   apollo_beta  = model$estimate
   apollo_fixed = model$apollo_fixed
@@ -55,7 +56,7 @@ apollo_unconditionals <- function(model, apollo_probabilities, apollo_inputs){
     ans[["latentClass"]] <- apollo_lcUnconditionals(model, apollo_probabilities, apollo_inputs)
     return(ans)
   }
-  if(continuous) return(apollo_mixUnconditionals(model, apollo_probabilities, apollo_inputs))
+  if(continuous) return(apollo_mixUnconditionals(model, apollo_probabilities, apollo_inputs, obsLevel))
   if(latentClass) return(apollo_lcUnconditionals(model, apollo_probabilities, apollo_inputs))
   
 }

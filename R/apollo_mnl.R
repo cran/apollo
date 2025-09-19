@@ -23,6 +23,7 @@
 #'                        \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
 #'                        \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
 #'                        \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
+#'                        \item \strong{\code{"utilities"}}: Returns utilities at provided parameter values.
 #'                        \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
 #'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 #'                      }
@@ -39,6 +40,7 @@
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'           \item \strong{\code{"report"}}: Choice overview
 #'           \item \strong{\code{"shares_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when only constants are estimated.
+#'           \item \strong{\code{"utilities"}}: List of vectors/matrices/arrays. Returns the utilities.
 #'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}
 #'           \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
 #'         }
@@ -87,7 +89,7 @@ apollo_mnl <- function(mnl_settings, functionality){
     if(is.null(mnl_settings[["componentName"]])) stop('SYNTAX ISSUE - The settings of at least one model component is missing the mandatory "componentName" object.')
     
     # functionality
-    test <- functionality %in% c("estimate","prediction","validate","zero_LL","shares_LL","conditionals","output","raw","preprocess", "components", "gradient","hessian", "report")
+    test <- functionality %in% c("estimate","prediction","validate","zero_LL","shares_LL","conditionals","output","raw","preprocess", "components", "gradient","hessian", "report", "utilities")
     if(!test) stop("SYNTAX ISSUE - Non-permissable setting for \"functionality\" for model component \"",mnl_settings$componentName,"\"")
     
     # Check for mandatory inputs
@@ -433,6 +435,14 @@ apollo_mnl <- function(mnl_settings, functionality){
     return(P)
   }
   
+  # ############################### #
+  #### functionality="utilities" ####
+  # ############################### #
+
+  if(functionality %in% c("utilities")){
+    return(mnl_settings$V)
+  }
+
   # ############################## #
   #### functionality="gradient" ####
   # ############################## #

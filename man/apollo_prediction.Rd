@@ -13,7 +13,7 @@ apollo_prediction(
 )
 }
 \arguments{
-\item{model}{Model object. Estimated model object as returned by function \link{apollo_estimate}.}
+\item{model}{Model object. Estimated model object as returned by function \link{apollo_estimate}. A user can also simply provide a vector of parameter values instead of a whole model object, allowing for prediction to take place without having estimated a model.}
 
 \item{apollo_probabilities}{Function. Returns probabilities of the model to be estimated. Must receive three arguments:
 \itemize{

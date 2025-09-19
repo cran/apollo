@@ -19,12 +19,7 @@
 apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE, cleanMemory=FALSE){
   
   #### Split data ####
-  #apollo_control <- apollo_inputs[["apollo_control"]]
-  #database       <- apollo_inputs[["database"]]
-  ### change 27 July
-  ###silent         <- apollo_inputs$silent
-  if(silent==FALSE) silent         <- apollo_inputs$silent
-  ### end change
+  if(silent==FALSE) silent <- apollo_inputs$silent
   debug          <- apollo_inputs$apollo_control$debug
   
   ### Extract useful elements
@@ -32,18 +27,12 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
   indivID <- apollo_inputs$database[,apollo_inputs$apollo_control$indivID]
   namesID <- unique(indivID)
   nIndiv  <- length(namesID)
-  #nObsID  <- as.vector(table(indivID))
   nObsID  <- rep(0, nIndiv)
   for(n in 1:nIndiv) nObsID[n] <- sum(indivID==namesID[n])
   mixing  <- apollo_inputs$apollo_control$mixing
   nCores  <- apollo_inputs$apollo_control$nCores
   
   ### Figure out how to split the database per individual
-  #database <- database[order(indivID),]
-  #indivID  <- database[,apollo_control$indivID] # update order
-  #namesID  <- unique(indivID)                   # update order
-  #apollo_inputs$database <- database            # update order
-  #rm(database); gc()
   if(debug) apollo_print(paste0('Attempting to split data into ', nCores, ' pieces.'))
   obj          <- ceiling(nObs/nCores)
   counter      <- 0
@@ -77,39 +66,37 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
   for(i in 1:nCores) inputPieceFile[i] <- tempfile()
   
   ### Identify elements to split
-  # For lists, it looks at its first element
+  # Function to check if ids are included in the object
+  containsID <- function(e){
+    id <- apollo_inputs$apollo_control$indivID 
+    if(is.vector(e)) return(FALSE)
+    if(is.data.frame(e)) return(id %in% names(e))
+    if(is.array(e) && !is.null(colnames(e))) return(id %in% colnames(e))
+    return(FALSE)
+  }
+  # For lists, it looks at first element, then assumes all others are the same
   asLst <- c() # one element per individual
   byObs <- c() # one row per observation
   byInd <- c() # one row per individual
   asIs  <- c('apollo_scaling') # none of the above
   for(e in ls(apollo_inputs)){ # e is name of element, E is the element
     if(e %in% asIs) next
+    if(e=="draws"){ byObs <- c(byObs, e); next }
     E <- apollo_inputs[[e]]
-    #if(is.list(E) && length(E)==nIndiv) asLst <- c(asLst, e) else{
-    if((is.list(E)&&!is.data.frame(E)) && length(E)==nIndiv && all(names(E)==namesID)) asLst <- c(asLst, e) else{
-      if(is.list(E)&&!is.data.frame(E)) E <- E[[1]]
-      ### set test flag outside here already. If following if block does not apply, then test remains TRUE, and is returned as is (e.g. for vectors)
-      test=TRUE
-      if(e=="draws"){
-        byObs <- c(byObs, e)
-        test=FALSE
-      } 
-      if(( is.array(E) || is.data.frame(E) ) && !is.null(colnames(E)) && apollo_inputs$apollo_control$indivID%in%colnames(E) ){
-        if((dim(E)[1]==nObs)){
-          if(all(E[,apollo_inputs$apollo_control$indivID]==indivID)){
-            test=FALSE
-            byObs <- c(byObs, e)
-          }
-        }
-        if((dim(E)[1]==nIndiv)){
-          if(all(E[,apollo_inputs$apollo_control$indivID]==namesID)){ ## only one per person
-            test=FALSE
-            byInd <- c(byInd, e)
-          }
-        }
-      }
-      if(test) asIs <- c(asIs, e)
+    # Lists (not df)
+    if(is.list(E) && !is.data.frame(E)){
+      # Named with one element per indiv
+      if(length(E)==nIndiv && all(names(E)==namesID)){ asLst <- c(asLst, e); next }
+      # Check first element
+      E <- E[1]
     }
+    # Arrays or df with IDs
+    if( (is.array(E) || is.data.frame(E)) && containsID(E) ){
+      if(dim(E)[1]==nObs  ){ byObs <- c(byObs, e); next }
+      if(dim(E)[1]==nIndiv){ byInd <- c(byInd, e); next }
+    }
+    # If none of the above, then copy as is
+    asIs <- c(asIs, e)
   }; rm(e, E)
   
   tmp=subset(asIs,!asIs%in%c("apollo_scaling",
@@ -124,12 +111,15 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
                              "class_specific",      
                              "manualScaling",
                              "silent"))
-  if(length(tmp)>1){
-    apollo_print(paste0("While preparing your inputs for multi-core estimation, the following objects 
-                 were found in \"apollo_inputs\", but were not split across cores: \"",paste0(tmp,collapse = "\", \""),"\". If these
-                        objects contain observation or individual-specific data, and thus need to be split, 
-                        please add a column with the IDs to these objects, and call this column \"",apollo_inputs$apollo_control$indivID,"\""),type="i")
-  } 
+  if(length(tmp)>=1) apollo_print( paste0("While preparing your inputs for multi-core estimation, ", 
+                                          "the following objects were found in \"apollo_inputs\", ", 
+                                          "but were not split across cores: \"", 
+                                          paste0(tmp,collapse = "\", \""),
+                                          "\". If these objects contain observation or ", 
+                                          "individual-specific data, and thus need to be split, ", 
+                                          "please add a column with the IDs to these objects, ", 
+                                          "and call this column \"", 
+                                          apollo_inputs$apollo_control$indivID,"\""),type="i")
   ### Create and write to disk each fragment of apollo_inputs
   if(debug) cat("Writing pieces to disk") # do not turn to apollo_print
   for(i in 1:nCores){

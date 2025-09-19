@@ -6,6 +6,7 @@
 #' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}.
 #' @param modelOutput_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 #'                             \itemize{
+#'                               \item \strong{\code{printBHHH}}: Logical. TRUE for printing BHHH standard errors. FALSE by default.                               
 #'                               \item \strong{\code{printChange}}: Logical. TRUE for printing difference between starting values and estimates. FALSE by default.
 #'                               \item \strong{\code{printClassical}}: Logical. TRUE for printing classical standard errors. TRUE by default.
 #'                               \item \strong{\code{printCorr}}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. For Bayesian estimation, this setting is used for the covariane of random parameters. FALSE by default.
@@ -32,6 +33,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
     modelOutput_settings[["printModelStructure"]] = modelOutput_settings[["printDiagnostics"]]
     modelOutput_settings[["printDataReport"]]     = modelOutput_settings[["printDiagnostics"]]
   } 
+  if(is.null(modelOutput_settings[["printBHHH"]])) modelOutput_settings[["printBHHH"]] = FALSE
   if(is.null(modelOutput_settings[["printClassical"]])) modelOutput_settings[["printClassical"]] = TRUE
   if(is.null(modelOutput_settings[["printPVal"]])) modelOutput_settings[["printPVal"]] = FALSE
   if(is.null(modelOutput_settings[["printT1"]])) modelOutput_settings[["printT1"]] = FALSE
@@ -45,6 +47,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   if(is.null(modelOutput_settings[["printFixed"]])) modelOutput_settings[["printFixed"]] = TRUE
   
   printClassical   = modelOutput_settings[["printClassical"]]
+  printBHHH        = modelOutput_settings[["printBHHH"]]
   printPVal        = modelOutput_settings[["printPVal"]]
   printT1          = modelOutput_settings[["printT1"]]
   printDiagnostics = modelOutput_settings[["printDiagnostics"]]
@@ -94,7 +97,14 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   cat("Model run at                                : ", paste(model$startTime),"\n", sep="")
   cat("Estimation method                           : ", model$estimationRoutine, "\n", sep="")
   if(!apollo_control$HB){
-    cat("Model diagnosis                             : ",model$message,"\n", sep="")
+    cat("Estimation diagnosis                        : ",model$message,"\n", sep="")
+    if(is.null(model$hessianMethodsAttempted) || model$hessianMethodsAttempted=="none"){
+      if(!is.null(model$hessianCalcDisabled) && model$hessianCalcDisabled){
+        cat("Optimisation diagnosis                      : Unknown (no Hessian calculated)\n")
+      }else{
+        cat("Optimisation diagnosis                      : Unknown (no Hessian requested by user)\n")
+      }
+    } 
     if(!is.null(model$hessianEigenValue)){
       isC  <- is.complex(model$hessianEigenValue)
       anyZ <- !isC && any(model$hessianEigenValue==0)
@@ -395,6 +405,9 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   #### CLASSICAL OUTPUT  ####
   # ####################### #
   
+  ### if BHHH matrix is not provided, replace by NAs for output
+  if(is.null(model$BHHHse)) model$BHHHse <- rep(NA, length(model$estimate))
+  
   ### change 7 August (next line, and then replacing 2 by multiplier in several lines belwo)
   if(printPVal==2) pMult <- 2 else pMult <- 1
   output=cbind(model$estimate,
@@ -407,17 +420,26 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
                model$estimate/model$robse,
                pMult*(1-stats::pnorm(abs(model$estimate/model$robse))),
                (model$estimate-1)/model$robse,
-               pMult*(1-stats::pnorm(abs((model$estimate-1)/model$robse))))
+               pMult*(1-stats::pnorm(abs((model$estimate-1)/model$robse))),
+               model$BHHHse,
+               model$estimate/model$BHHHse,
+               pMult*(1-stats::pnorm(abs(model$estimate/model$BHHHse))),
+               (model$estimate-1)/model$BHHHse,
+               pMult*(1-stats::pnorm(abs((model$estimate-1)/model$BHHHse)))
+               )
   #output <- signif(output,4)
   ### change 7
   if(pMult==2){
     colnames(output) <- c('Estimate',
                           's.e.', 't.rat.(0)', 'p(2-sided)','t.rat(1)','p(2-sided)', 
-                          'Rob.s.e.','Rob.t.rat.(0)','p(2-sided)','Rob.t.rat.(1)','p(2-sided)')
+                          'Rob.s.e.','Rob.t.rat.(0)','p(2-sided)','Rob.t.rat.(1)','p(2-sided)',
+                          'BHHH.s.e.','BHHH.t.rat.(0)','p(2-sided)','BHHH.t.rat.(1)','p(2-sided)'
+                          )
   } else {
     colnames(output) <- c('Estimate',
                           's.e.', 't.rat.(0)', 'p(1-sided)','t.rat(1)','p(1-sided)', 
-                          'Rob.s.e.','Rob.t.rat.(0)','p(1-sided)','Rob.t.rat.(1)','p(1-sided)')
+                          'Rob.s.e.','Rob.t.rat.(0)','p(1-sided)','Rob.t.rat.(1)','p(1-sided)',
+                          'BHHH.s.e.','BHHH.t.rat.(0)','p(1-sided)','BHHH.t.rat.(1)','p(1-sided)')
   }
   rownames(output) <- names(model$estimate)
   # If there is a bootstrap covariance matrix
@@ -439,8 +461,9 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   
   dropcolumns = NULL
   if(printClassical==FALSE) dropcolumns = c(dropcolumns,2,3,4,5,6)
-  if(printT1==FALSE) dropcolumns = c(dropcolumns,5,6,10,11,15,16)
-  if(printPVal==FALSE) dropcolumns = c(dropcolumns,4,6,9,11,14,16)
+  if(printBHHH==FALSE) dropcolumns = c(dropcolumns,12,13,14,15,16)
+  if(printT1==FALSE) dropcolumns = c(dropcolumns,5,6,10,11,15,16,20,21)
+  if(printPVal==FALSE) dropcolumns = c(dropcolumns,4,6,9,11,14,16,19,21)
   dropcolumns = unique(dropcolumns)
   if(length(dropcolumns)>0) output = output[,-dropcolumns, drop=FALSE]
   
@@ -572,6 +595,13 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       colnames(tmp) <- longNames
       apollo_print(tmp) #print(tmp, digits=4)
     }
+    if(printBHHH==TRUE){
+      cat("\n")
+      cat("BHHH covariance matrix:\n")
+      tmp <- model$BHHHvarcov
+      colnames(tmp) <- longNames
+      apollo_print(tmp) #print(tmp, digits=4)
+    }
   }
   
   if(printCorr){
@@ -591,6 +621,13 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       cat("\n")
       cat("Bootstrap correlation matrix:\n")
       tmp <- model$bootcorrmat
+      colnames(tmp) <- longNames
+      apollo_print(tmp) #print(tmp, digits=4)
+    }
+    if(printBHHH==TRUE){
+      cat("\n")
+      cat("BHHH correlation matrix:\n")
+      tmp <- model$BHHHcorrmat
       colnames(tmp) <- longNames
       apollo_print(tmp) #print(tmp, digits=4)
     }

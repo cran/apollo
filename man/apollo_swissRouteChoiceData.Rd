@@ -26,7 +26,7 @@ A data frame with 3,492 rows and 16 variables:
 }
 }
 \source{
-\url{http://www.apollochoicemodelling.com/}
+\url{https://www.ApolloChoiceModelling.com/}
 }
 \usage{
 apollo_swissRouteChoiceData
@@ -38,13 +38,13 @@ A Stated Preference dataset containing 3,492 route choices among two alternative
 This dataset is to be used for discrete choice modelling.
 Data comes from 388 individuals who participated in a Stated
 Choice (SC) survey, providing a total of 3,492 observations.
-Each choice scenario includes two alternatives described in
+Each choice scenario includes two rail alternatives described in
 terms of travel time, cost, headway and interchanges. Additional
 information on respondents is available.
-This dataset comes from the following publication.
-Vrtic, M. & Axhausen, K.W. (2003), The impact of tilting trains in 
-Switzerland: A route choice model of regional and long
-distance public transport trips. 82nd annual meeting of 
-the transportation research board, Washington, DC.
+This dataset comes from the following publication: Axhausen, K.W., 
+Hess, S., König, A., Abay, G., Bates, J.J. & Bierlaire, M. (2008), 
+Income and distance elasticities of values of travel time savings: 
+New Swiss results, Transport Policy, 15(3), pp. 173-185. 
+https://doi.org/10.1016/j.tranpol.2008.02.001
 }
 \keyword{datasets}

@@ -1,7 +1,7 @@
 Package: apollo
 Type: Package
 Title: Tools for Choice Model Estimation and Application
-Version: 0.3.5
+Version: 0.3.6
 Authors@R: c(
     person("Stephane", "Hess", email="S.Hess@leeds.ac.uk", role=c("aut","cre")),
     person("David", "Palma", email="D.Palma@leeds.ac.uk", role="aut"),
@@ -18,13 +18,13 @@ Description: Choice models are a widely used technique across numerous scientifi
     number of pre and post-estimation routines, including for computing posterior
     (individual-level) distributions are available. 
     For examples, a manual, and a support forum, visit 
-    <http://www.ApolloChoiceModelling.com>. For more information on choice 
+    <https://www.ApolloChoiceModelling.com>. For more information on choice 
     models see Train, K. (2009) <isbn:978-0-521-74738-7> and Hess, 
     S. & Daly, A.J. (2014) <isbn:978-1-781-00314-5> for an overview 
     of the field.
 License: GPL-2
-URL: http://www.apolloChoiceModelling.com
-BugReports: http://www.apolloChoiceModelling.com/forum/
+URL: https://www.ApolloChoiceModelling.com
+BugReports: https://www.ApolloChoiceModelling.com/forum/
 Encoding: UTF-8
 LazyData: true
 Depends: R (>= 4.3.0), stats, utils
@@ -34,12 +34,12 @@ Imports: Rcpp (>= 1.0.0), maxLik, mnormt, mvtnorm, graphics,
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen
 Suggests: knitr, rmarkdown, testthat
 VignetteBuilder: knitr
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 NeedsCompilation: yes
-Packaged: 2025-03-12 09:21:23 UTC; stephane.hess
+Packaged: 2025-09-19 09:58:32 UTC; stephane.hess
 Author: Stephane Hess [aut, cre],
   David Palma [aut],
   Thomas Hancock [ctb]
 Maintainer: Stephane Hess <S.Hess@leeds.ac.uk>
 Repository: CRAN
-Date/Publication: 2025-03-12 17:00:02 UTC
+Date/Publication: 2025-09-19 11:20:07 UTC

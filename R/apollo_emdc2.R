@@ -4,14 +4,11 @@
 #' 
 #' This model extends the traditional multiple discrete-continuous (MDC) framework by (i) dropping
 #' the need to define a budget, (ii) making the marginal utility of the outside good deterministic, 
-#' and (iii) including complementarity and substitution in the model formulation. See the following 
-#' working paper for more details:
+#' and (iii) including complementarity and substitution in the model formulation. See the following  paper for more details:
 #' 
-#' Palma, D. & Hess, S. (Working Paper) Some adaptations of Multiple Discrete-Continuous 
-#' Extreme Value (MDCEV) models for a computationally tractable treatment of complementarity 
-#' and substitution effects, and reduced influence of budget assumptions
-#' 
-#' Avilable at: http://stephanehess.me.uk/publications.html
+#' Palma, D. & Hess, S. (2022) Extending the Multiple Discrete Continuous (MDC) modelling 
+#' framework to consider complementarity, substitution, and an unobserved budget. Transportation 
+#' Reserarch 161B, 13 - 35. https://doi.org/10.1016/j.trb.2022.04.005
 #' 
 #' @param emdc_settings List of settings for the model. It includes the following.
 #'                        \itemize{
@@ -252,7 +249,7 @@ apollo_emdc2 <- function(emdc_settings, functionality="estimate"){
     }
     
     # Likelihood
-    ll <- log(Jdet)
+    ll <- tryCatch(log(Jdet),warning=function(w) NA)
     ll <- ll + Reduce("+", mapply(function(w, m, a) dnorm(-w, sd=sigma, log=TRUE)*m*a, W, M, A, SIMPLIFY=FALSE))
     ll <- ll + Reduce("+", mapply(function(w, m, a) pnorm(-w, sd=sigma, log.p=TRUE)*(1-m)*a, W, M, A, SIMPLIFY=FALSE))
     

@@ -8,7 +8,7 @@
 An object of class \code{data.frame} with 2826 rows and 20 columns.
 }
 \source{
-\url{http://www.apollochoicemodelling.com/}
+\url{https://www.ApolloChoiceModelling.com/}
 }
 \usage{
 apollo_timeUseData

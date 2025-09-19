@@ -5,14 +5,14 @@
 #' This dataset is to be used for discrete choice modelling.
 #' Data comes from 388 individuals who participated in a Stated
 #' Choice (SC) survey, providing a total of 3,492 observations.
-#' Each choice scenario includes two alternatives described in
+#' Each choice scenario includes two rail alternatives described in
 #' terms of travel time, cost, headway and interchanges. Additional
 #' information on respondents is available.
-#' This dataset comes from the following publication.
-#' Vrtic, M. & Axhausen, K.W. (2003), The impact of tilting trains in 
-#' Switzerland: A route choice model of regional and long
-#' distance public transport trips. 82nd annual meeting of 
-#' the transportation research board, Washington, DC.
+#' This dataset comes from the following publication: Axhausen, K.W., 
+#' Hess, S., König, A., Abay, G., Bates, J.J. & Bierlaire, M. (2008), 
+#' Income and distance elasticities of values of travel time savings: 
+#' New Swiss results, Transport Policy, 15(3), pp. 173-185. 
+#' https://doi.org/10.1016/j.tranpol.2008.02.001
 #' @format A data frame with 3,492 rows and 16 variables:
 #' \describe{
 #'   \item{ID}{Numeric. Identification number of the individual.}
@@ -32,5 +32,5 @@
 #'   \item{business}{Numeric. 1 if the purpose of the trip is business. 0 otherwise.}
 #'   \item{leisure}{Numeric. 1 if the purpose of the trip is leisure. 0 otherwise.}
 #' }
-#' @source \url{http://www.apollochoicemodelling.com/}
+#' @source \url{https://www.ApolloChoiceModelling.com/}
 "apollo_swissRouteChoiceData"

@@ -90,7 +90,7 @@ apollo_makeHessian <- function(apollo_beta, apollo_fixed, apollo_logLike){
                  'because you coded your own model functions. If however you',
                  'only used apollo_mnl, then there could be another issue.',
                  'You might want to ask for help in the Apollo forum',
-                 '(http://www.apollochoicemodelling.com/forum) on how to', 
+                 '(https://www.ApolloChoiceModelling.com/forum) on how to', 
                  'solve this issue. If you do, please post your code and',
                  'data (if not confidential).')
     if(!silent) apollo_print(txt,  pause=0, type="i")

@@ -11,11 +11,12 @@
 #'                            \item \strong{\code{functionality}}: Character. Can be either \strong{\code{"components"}}, \strong{\code{"conditionals"}}, \strong{\code{"estimate"}} (default), \strong{\code{"gradient"}}, \strong{\code{"output"}}, \strong{\code{"prediction"}}, \strong{\code{"preprocess"}}, \strong{\code{"raw"}}, \strong{\code{"report"}}, \strong{\code{"shares_LL"}}, \strong{\code{"validate"}} or \strong{\code{"zero_LL"}}.
 #'                          }
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
+#' @param obsLevel Logical. If \code{TRUE}, unconditionals are returned at the observation level rather than person level. This setting only applies to continuous mixture models and is set to TRUE by default only in the presence of intra-individual draws. Otherwise, the default is FALSE.
 #' @return List of object, one per random coefficient.
 #'         With inter-individual draws only, this will be a matrix, with one row per individual, and one column per draw.
 #'         With intra-individual draws, this will be a three-dimensional array, with one row per observation, inter-individual draws in the second dimension, and intra-individual draws in the third dimension.
 #' @export
-apollo_mixUnconditionals <- function(model, apollo_probabilities, apollo_inputs){
+apollo_mixUnconditionals <- function(model, apollo_probabilities, apollo_inputs, obsLevel=FALSE){
   
   if(is.null(apollo_inputs$silent)) silent = FALSE else silent = apollo_inputs$silent
   apollo_beta  = model$estimate
@@ -52,8 +53,7 @@ apollo_mixUnconditionals <- function(model, apollo_probabilities, apollo_inputs)
                        function(f) if(is.function(f)){ environment(f) <- env; return(f()) } else { return(f) })
   }
   
-  if(apollo_draws$intraNDraws==0){
-    
+  if(apollo_draws$intraNDraws==0 & !obsLevel){
     indivID <- database[,apollo_control$indivID]
     nObsPerIndiv <- setNames(sapply(as.list(unique(indivID)),function(x) sum(indivID==x)),unique(indivID))
     nIndiv       <- length(nObsPerIndiv)
@@ -65,6 +65,12 @@ apollo_mixUnconditionals <- function(model, apollo_probabilities, apollo_inputs)
     }
   }
   
-  if(!silent) apollo_print("Unconditional distributions computed") 
+  if(!silent){
+    if(apollo_draws$intraNDraws==0 & !obsLevel){
+      apollo_print("Unconditional distributions computed at individual level")
+    } else {
+      apollo_print("Unconditional distributions computed at observation level")
+    }
+  }
   return(randcoeff)
 }

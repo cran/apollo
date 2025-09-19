@@ -93,6 +93,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   #### Validation of likelihood function ####
   # ####################################### #
   apollo_test_beta=apollo_beta
+  testLL = apollo_probabilities(apollo_test_beta, apollo_inputs, functionality="estimate")
   if(!apollo_control$noValidation){
     ### Validation using HB estimation
     
@@ -126,7 +127,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
       rm(dists_normal, dists_lnp, dists_lnn, dists_cnp, dists_cnn, dists_sb)
     }
     apollo_probabilities(apollo_test_beta, apollo_inputs, functionality="validate")
-    testLL = apollo_probabilities(apollo_test_beta, apollo_inputs, functionality="estimate")
+    #testLL = apollo_probabilities(apollo_test_beta, apollo_inputs, functionality="estimate")
     if(!workInLogs) testLL=log(testLL)
     # Maybe here we could return the value of the likelihood and print and error with cat, instead of simply stopping
     if(anyNA(testLL)) stop('CALCULATION ISSUE - Log-likelihood calculation fails at starting values!')

@@ -32,6 +32,7 @@
 #'                        \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
 #'                        \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
 #'                        \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
+#'                        \item \strong{\code{"utilities"}}: Returns utilities at provided parameter values.
 #'                        \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
 #'                        \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 #'                      }
@@ -47,6 +48,7 @@
 #'           \item \strong{\code{"raw"}}: Same as \code{"prediction"}
 #'           \item \strong{\code{"report"}}: List with tree structure and choice overview.
 #'           \item \strong{\code{"shares_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when only constants are estimated.
+#'           \item \strong{\code{"utilities"}}: List of vectors/matrices/arrays. Returns the utilities.
 #'           \item \strong{\code{"validate"}}: Same as \code{"estimate"}, but it also runs a set of tests to validate the function inputs.
 #'           \item \strong{\code{"zero_LL"}}: vector/matrix/array. Returns the probability of the chosen alternative when all parameters are zero.
 #'         }
@@ -341,6 +343,14 @@ apollo_nl <- function(nl_settings, functionality){
     return(P)
   }
   
+  # ############################### #
+  #### functionality="utilities" ####
+  # ############################### #
+  
+  if(functionality %in% c("utilities")){
+    return(nl_settings$V)
+  }
+
   # ############################################################################ #
   #### functionality="estimate/prediction/conditionals/raw/output/components" ####
   # ############################################################################ #
@@ -362,6 +372,13 @@ apollo_nl <- function(nl_settings, functionality){
   #### Gradient ####
   # ############## #
   if(functionality=="gradient"){
+    
+    # Verify everything necessary is available
+    if(is.null(nl_settings$dV)) stop("INTERNAL ISSUE - Analytical gradients cannot be calculated because the derivatives of the utilities are not available. Please set apollo_control$analyticGrad=FALSE.")
+    for(k in 1:length(nl_settings$dV)) if(!all( sapply(nl_settings$dV[[k]], is.function) )) stop("INTERNAL ISSUE - Analytical gradients cannot be calculated because not al the derivatives of the utilities are functions. Please set apollo_control$analyticGrad=FALSE.")
+    apollo_beta <- tryCatch(get("apollo_beta", envir=parent.frame(), inherits=TRUE),
+                            error=function(e) stop("INTERNAL ISSUE - apollo_mnl could not fetch apollo_beta for gradient estimation."))
+    if(is.null(apollo_inputs$database)) stop("INTERNAL ISSUE - apollo_mnl could not fetch apollo_inputs$database for gradient estimation.")
     
     # Calculate probabilities
     P <- nl_settings$probs_NL(nl_settings, all=FALSE)
