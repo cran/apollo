@@ -54,8 +54,14 @@ apollo_firstRow=function(P, apollo_inputs){
                                      "apollo_firstRow does not have a valid ", 
                                      "number of rows (usually the same as ", 
                                      "the number of rows in the database).")
-    if(isSca) x <- rep(x, sum(firstR))
-    if(isVec|isMat) x <- subset(x, firstR)
+    if(isSca){
+      x <- rep(x, sum(firstR))
+      return(x)
+    } 
+    if(isVec|isMat){
+      x <- subset(x, firstR)
+      return(x)
+    } 
     if(isCub) x = x[firstR,,, drop=FALSE]
     return(x)
   }

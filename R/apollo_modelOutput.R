@@ -19,6 +19,7 @@
 #'                               \item \strong{\code{printModelStructure}}: Logical. TRUE for printing model structure. TRUE by default.
 #'                               \item \strong{\code{printOutliers}}: Logical or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
 #'                               \item \strong{\code{printPVal}}: Logical or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
+#'                               \item \strong{\code{printRobust}}: Logical. TRUE for printing robust standard errors. TRUE by default.
 #'                               \item \strong{\code{printT1}}: Logical. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
 #'                             }
 #' @return A matrix of coefficients, s.d. and t-tests (invisible)
@@ -35,6 +36,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   } 
   if(is.null(modelOutput_settings[["printBHHH"]])) modelOutput_settings[["printBHHH"]] = FALSE
   if(is.null(modelOutput_settings[["printClassical"]])) modelOutput_settings[["printClassical"]] = TRUE
+  if(is.null(modelOutput_settings[["printRobust"]])) modelOutput_settings[["printRobust"]] = TRUE
   if(is.null(modelOutput_settings[["printPVal"]])) modelOutput_settings[["printPVal"]] = FALSE
   if(is.null(modelOutput_settings[["printT1"]])) modelOutput_settings[["printT1"]] = FALSE
   if(is.null(modelOutput_settings[["printCovar"]])) modelOutput_settings[["printCovar"]] = FALSE
@@ -47,6 +49,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   if(is.null(modelOutput_settings[["printFixed"]])) modelOutput_settings[["printFixed"]] = TRUE
   
   printClassical   = modelOutput_settings[["printClassical"]]
+  printRobust      = modelOutput_settings[["printRobust"]]
   printBHHH        = modelOutput_settings[["printBHHH"]]
   printPVal        = modelOutput_settings[["printPVal"]]
   printT1          = modelOutput_settings[["printT1"]]
@@ -59,6 +62,13 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   printChange      = modelOutput_settings[["printChange"]]
   printFunctions   = modelOutput_settings[["printFunctions"]]
   printFixed       = modelOutput_settings[["printFixed"]]
+  
+  noCov = !is.null(model$estimate_settings) && (model$estimate_settings$hessianRoutine=="none")
+  if(noCov){
+    printBHHH = TRUE
+    printClassical = FALSE
+    printRobust = FALSE
+  } 
   
   test <- !is.null(model$manualScaling) && length(model$manualScaling)==1 && is.logical(model$manualScaling)
   if(test) scaling_used <- model$manualScaling else {
@@ -461,6 +471,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   
   dropcolumns = NULL
   if(printClassical==FALSE) dropcolumns = c(dropcolumns,2,3,4,5,6)
+  if(printRobust==FALSE) dropcolumns = c(dropcolumns,7,8,9,10,11)
   if(printBHHH==FALSE) dropcolumns = c(dropcolumns,12,13,14,15,16)
   if(printT1==FALSE) dropcolumns = c(dropcolumns,5,6,10,11,15,16,20,21)
   if(printPVal==FALSE) dropcolumns = c(dropcolumns,4,6,9,11,14,16,19,21)
@@ -539,9 +550,13 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   
   cat("\n")
   
-  if(!printClassical & anyNA(model$se[!(names(model$estimate) %in% model$apollo_fixed)]) ){
+  if(!printClassical & !noCov & anyNA(model$se[!(names(model$estimate) %in% model$apollo_fixed)]) ){
     apollo_print('Classical standard errors could not be calculated for some parameters. This could point to an identification or estimation problem.', type="w")
   }
+  if(!printRobust & !noCov & anyNA(model$robse[!(names(model$estimate) %in% model$apollo_fixed)]) ){
+    apollo_print('Robust standard errors could not be calculated for some parameters. This could point to an identification or estimation problem.', type="w")
+  }
+    
   
   if(scaling_used) apollo_print("These outputs have had the scaling used in estimation applied to them.")
   cat("Estimates:\n")
@@ -583,11 +598,13 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       colnames(tmp) <- longNames
       apollo_print(tmp) #print(tmp, digits=4)
     }
+    if(printRobust==TRUE){
     cat("\n")
     cat("Robust covariance matrix:\n")
     tmp <- model$robvarcov
     colnames(tmp) <- longNames
     apollo_print(tmp) #print(tmp, digits=4)
+    }
     if(model$bootstrapSE>0){
       cat("\n")
       cat("Bootstrap covariance matrix:\n")
@@ -612,11 +629,13 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
       colnames(tmp) <- longNames
       apollo_print(tmp) #print(tmp, digits=4)
     }
-    cat("\n")
-    cat("Robust correlation matrix:\n")
-    tmp <- model$robcorrmat
-    colnames(tmp) <- longNames
-    apollo_print(tmp) #print(tmp, digits=4)
+    if(printRobust==TRUE){
+      cat("\n")
+      cat("Robust correlation matrix:\n")
+      tmp <- model$robcorrmat
+      colnames(tmp) <- longNames
+      apollo_print(tmp) #print(tmp, digits=4)
+    }
     if(model$bootstrapSE>0){
       cat("\n")
       cat("Bootstrap correlation matrix:\n")

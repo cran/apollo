@@ -238,9 +238,9 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
             distParam <- apply(betterParams, MARGIN=1, function(x) sqrt(sum((x-candParam)^2)) )
             failedT1Rows <- betterLLRows[ distParam<dTest ]
             
-            # Test 2: small gradient norm and close to another
+            # Test 2: small gradient norm and far from a better solution
             distLL <- abs(as.vector(LL[betterLLRows,s+1] - candLL))
-            failedT2Rows <- betterLLRows[ gradientNorm[betterLLRows]<gTest & distLL>=llTest ]
+            failedT2Rows <- betterLLRows[ gradientNorm[j]<gTest & distLL>=llTest ]
             
             if(length(failedT1Rows)>0 | length(failedT2Rows)>0){
                active[j] <- FALSE
@@ -248,7 +248,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
                if(length(failedT1Rows)>0) apollo_print(paste0("- Failed test 1: Too close to ", 
                                                               paste0(failedT1Rows, collapse=', '), 
                                                               " in parameter space."))
-               if(length(failedT2Rows)>0) apollo_print(paste0("- Failed test 2: Converging to a worse solution than", 
+               if(length(failedT2Rows)>0) apollo_print(paste0("- Failed test 2: Converging to a worse solution than ", 
                                                               paste0(failedT2Rows, collapse=', ')))
             }
             

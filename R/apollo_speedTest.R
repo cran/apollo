@@ -26,7 +26,7 @@
 #'                                     \item \strong{\code{nDrawsTry}}: Numeric vector. Number of inter and intra-person draws to try. Default value is c(50, 100, 200).
 #'                                     \item \strong{\code{nRep}}: Numeric scalar. Number of times the likelihood is evaluated for each combination of threads and draws. Default is 10.
 #'                                   }
-#' @return A matrix with the average time per evaluation for each number of threads and draws combination. A graph is also plotted.
+#' @return A list of two matrices, one with the average time per evaluation for each number of threads and draws combination, and one with the RAM used. A graph is also plotted.
 #' @importFrom graphics matplot title legend
 #' @export
 apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, speedTest_settings=NA){
@@ -80,6 +80,7 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
   
   if(nRep<=10) stepPrint <- 1 else stepPrint <- floor(nRep/10)
   timeTaken <- matrix(0, nrow=length(nCoresTry), ncol=length(nDrawsTry))
+  ramUsed <- matrix(0, nrow=length(nCoresTry), ncol=length(nDrawsTry))
   for(j in 1:length(nDrawsTry)){
     
     for(i in 1:length(nCoresTry)){
@@ -132,6 +133,7 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
         mbRAM <- mbRAM + gcClusters
       }
       cat(' ', sprintf("%7.1f", mbRAM), sep='')
+      ramUsed[i,j] <- as.numeric(mbRAM)
       
       if(exists('apollo_logLike') && !anyNA(environment(apollo_logLike)$cl)) parallel::stopCluster(environment(apollo_logLike)$cl)
     }
@@ -140,6 +142,8 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
   
   colnames(timeTaken) <- paste('draws', nDrawsTry, sep='')
   rownames(timeTaken) <- paste('cores', nCoresTry, sep='')
+  colnames(ramUsed) <- paste('draws', nDrawsTry, sep='')
+  rownames(ramUsed) <- paste('cores', nCoresTry, sep='')
   
   graphics::matplot(x=nCoresTry, y=timeTaken,
           type='o', lty=1, lwd=2, cex=1.5, fg='gray',
@@ -151,8 +155,13 @@ apollo_speedTest=function(apollo_beta, apollo_fixed, apollo_probabilities, apoll
                                    pch=1:length(nDrawsTry), col=1:length(nDrawsTry), lty=1,
                                    bg='transparent', bty='n', horiz=TRUE) 
   
-  cat('\nSummary of results (sec. per call to LL function)','\n', sep="")
+  cat('\nSummary of results:')
+  cat('\n  sec. per call to LL function','\n', sep="")
   print(round(timeTaken,4))
-  invisible(timeTaken)
+  cat('\n  RAM used in MB','\n', sep="")
+  print(round(ramUsed,4))
+  output=list(timeTaken, RAM=ramUsed)
+  names(output)=c("timeTaken","RAM")
+  invisible(output)
 }
 

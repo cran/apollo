@@ -17,6 +17,7 @@
 #'                              \item \strong{\code{nRep}}: Scalar integer. Only used for models that require simulation for prediction (e.g. MDCEV). Number of draws used to calculate prediction. Default is 100.
 #'                              \item \strong{\code{runs}}: Numeric. Number of runs to use for computing confidence intervals of predictions.
 #'                              \item \strong{\code{silent}}: Boolean. If TRUE, this function won't print any output to screen.
+#'                              \item \strong{\code{simChoice}}: Boolean. If TRUE, simulated choices are added to the output. FALSE by default.
 #'                              \item \strong{\code{summary}}: Boolean. If TRUE, a summary of the prediction is printed to screen. TRUE by default.
 #'                            }
 #' @param modelComponent \strong{Deprecated}. Same as \code{modelComponent} inside \code{prediction_settings}.
@@ -118,6 +119,7 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
       predictions[[m]] <- data.frame(ID = apollo_inputs$database[,apollo_inputs$apollo_control$indivID],
                                      Observation = apollo_inputs$database$apollo_sequence,
                                      do.call(cbind, M))
+      colnames(predictions[[m]])[-(1:2)] <- names(M)
     } else {
     if(is.matrix(M) | is.vector(M)) predictions[[m]] <- data.frame(ID = apollo_inputs$database[,apollo_inputs$apollo_control$indivID],
                                                                    Observation = apollo_inputs$database$apollo_sequence, M)
@@ -233,6 +235,8 @@ apollo_prediction <- function(model, apollo_probabilities, apollo_inputs, predic
           }
           predictions[[m]]=cbind(predictions[[m]], 
                                  simChoice = apply(probs, 1, sim_choice))
+          altnames=colnames(probs)
+          predictions[[m]]$simChoice = factor(predictions[[m]]$simChoice, levels=altnames)
           }        
           }
         

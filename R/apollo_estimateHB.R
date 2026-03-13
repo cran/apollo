@@ -93,42 +93,41 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   #### Validation of likelihood function ####
   # ####################################### #
   apollo_test_beta=apollo_beta
+  # create testLL outside validation as used later as starting LL
+  apollo_test_beta=apollo_beta
+  if(!is.null(apollo_HB$gVarNamesFixed)){
+    r <- ( names(apollo_beta) %in% apollo_HB$gVarNamesFixed )
+    r <- names(apollo_beta)[r]
+    apollo_test_beta[r] <- apollo_HB$FC[r]
+  }
+  if(!is.null(apollo_HB$gVarNamesNormal)){
+    r <- ( names(apollo_beta) %in% apollo_HB$gVarNamesNormal )
+    r <- names(apollo_beta)[r]
+    dists_normal=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==1])
+    dists_lnp=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==2])
+    dists_lnn=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==3])
+    dists_cnp=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==4])
+    dists_cnn=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==5])
+    dists_sb=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==6])
+    if(length(dists_normal)>0) apollo_test_beta[dists_normal] <- apollo_HB$svN[dists_normal]
+    if(length(dists_lnp)>0) apollo_test_beta[dists_lnp] <- exp(apollo_HB$svN[dists_lnp])
+    if(length(dists_lnn)>0) apollo_test_beta[dists_lnn] <- -exp(apollo_HB$svN[dists_lnn])
+    if(length(dists_cnp)>0) apollo_test_beta[dists_cnp] <- apollo_HB$svN[dists_cnp]*(apollo_HB$svN[dists_cnp]>0)
+    if(length(dists_cnn)>0) apollo_test_beta[dists_cnn] <- apollo_HB$svN[dists_cnn]*(apollo_HB$svN[dists_cnn]<0)
+    if(length(dists_sb)>0){
+      names(apollo_HB$gMINCOEF)=names(apollo_HB$svN)
+      names(apollo_HB$gMAXCOEF)=names(apollo_HB$svN)
+      apollo_test_beta[dists_sb] <- apollo_HB$gMINCOEF[dists_sb]+(apollo_HB$gMAXCOEF[dists_sb]-apollo_HB$gMINCOEF[dists_sb])/(1+exp(-apollo_HB$svN[dists_sb]))
+    }
+    rm(dists_normal, dists_lnp, dists_lnn, dists_cnp, dists_cnn, dists_sb)
+  }
   testLL = apollo_probabilities(apollo_test_beta, apollo_inputs, functionality="estimate")
+  if(!workInLogs) testLL=log(testLL)
+  
   if(!apollo_control$noValidation){
     ### Validation using HB estimation
-    
     if(!silent) cat("Testing probability function (apollo_probabilities)\n")
-    
-    apollo_test_beta=apollo_beta
-    if(!is.null(apollo_HB$gVarNamesFixed)){
-      r <- ( names(apollo_beta) %in% apollo_HB$gVarNamesFixed )
-      r <- names(apollo_beta)[r]
-      apollo_test_beta[r] <- apollo_HB$FC[r]
-    }
-    if(!is.null(apollo_HB$gVarNamesNormal)){
-      r <- ( names(apollo_beta) %in% apollo_HB$gVarNamesNormal )
-      r <- names(apollo_beta)[r]
-      dists_normal=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==1])
-      dists_lnp=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==2])
-      dists_lnn=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==3])
-      dists_cnp=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==4])
-      dists_cnn=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==5])
-      dists_sb=names(apollo_HB$gDIST[r][apollo_HB$gDIST[r]==6])
-      if(length(dists_normal)>0) apollo_test_beta[dists_normal] <- apollo_HB$svN[dists_normal]
-      if(length(dists_lnp)>0) apollo_test_beta[dists_lnp] <- exp(apollo_HB$svN[dists_lnp])
-      if(length(dists_lnn)>0) apollo_test_beta[dists_lnn] <- -exp(apollo_HB$svN[dists_lnn])
-      if(length(dists_cnp)>0) apollo_test_beta[dists_cnp] <- apollo_HB$svN[dists_cnp]*(apollo_HB$svN[dists_cnp]>0)
-      if(length(dists_cnn)>0) apollo_test_beta[dists_cnn] <- apollo_HB$svN[dists_cnn]*(apollo_HB$svN[dists_cnn]<0)
-      if(length(dists_sb)>0){
-        names(apollo_HB$gMINCOEF)=names(apollo_HB$svN)
-        names(apollo_HB$gMAXCOEF)=names(apollo_HB$svN)
-        apollo_test_beta[dists_sb] <- apollo_HB$gMINCOEF[dists_sb]+(apollo_HB$gMAXCOEF[dists_sb]-apollo_HB$gMINCOEF[dists_sb])/(1+exp(-apollo_HB$svN[dists_sb]))
-      }
-      rm(dists_normal, dists_lnp, dists_lnn, dists_cnp, dists_cnn, dists_sb)
-    }
     apollo_probabilities(apollo_test_beta, apollo_inputs, functionality="validate")
-    #testLL = apollo_probabilities(apollo_test_beta, apollo_inputs, functionality="estimate")
-    if(!workInLogs) testLL=log(testLL)
     # Maybe here we could return the value of the likelihood and print and error with cat, instead of simply stopping
     if(anyNA(testLL)) stop('CALCULATION ISSUE - Log-likelihood calculation fails at starting values!')
     ### Test for unused parameters
@@ -155,7 +154,6 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
       if(is.na(test2_LL)) test2_LL <- base_LL + 2 # Avoids errors if test2_LL is NA
       if(base_LL==test1_LL & base_LL==test2_LL) stop("SPECIFICATION ISSUE - Parameter ",p," does not influence the log-likelihood of your model!")
     }
-    
   }
   
   # ################################## #

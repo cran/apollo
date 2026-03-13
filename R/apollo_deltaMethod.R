@@ -47,7 +47,7 @@
 #'                             }
 #' @return Matrix containing value, s.e. and t-ratio resulting from the requested expression or operation. This is also printed to screen.
 #' @export
-#' @importFrom stringr str_replace
+#' @importFrom stringr str_replace_all
 apollo_deltaMethod <- function(model, deltaMethod_settings){
   
   #### Validation ####
@@ -99,7 +99,7 @@ apollo_deltaMethod <- function(model, deltaMethod_settings){
       test2 <- test[!(test %in% names(model$estimate)[!(names(model$estimate) %in% model$apollo_fixed)])]
       if(length(test2)==length(test)) stop("SYNTAX ISSUE - The expression ",e_name," needs to include at least one parameter that was not fixed in estimation!")
       if(length(test2)>0){
-        for(tmp in test2) tmp_e[s]=stringr::str_replace(tmp_e[s],tmp,as.character(model$estimate[tmp]))
+        for(tmp in test2) tmp_e[s]=stringr::str_replace_all(tmp_e[s],tmp,as.character(model$estimate[tmp]))
         apollo_print(paste0("The expression ",e_name," includes parameters that were fixed in estimation: ",
                             paste(test2, collapse=", ")))
         apollo_print(paste0("These have been replaced by their fixed values, giving:\n",

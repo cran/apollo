@@ -32,7 +32,6 @@ apollo_rrm(rrm_settings, functionality)
   \item \strong{\code{"raw"}}: For debugging, produces probabilities of all alternatives and individual model components at the level of an observation, at the level of individual draws.
   \item \strong{\code{"report"}}: Prepares output summarising model and choiceset structure.
   \item \strong{\code{"shares_LL"}}: Produces overall model likelihood with constants only.
-  \item \strong{\code{"utilities"}}: Returns utilities at provided parameter values.
   \item \strong{\code{"validate"}}: Validates model specification, produces likelihood of the full model, at the level of individual decision-makers, after averaging across draws.
   \item \strong{\code{"zero_LL"}}: Produces overall model likelihood with all parameters at zero.
 }}

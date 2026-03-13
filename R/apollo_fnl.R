@@ -346,7 +346,8 @@ apollo_fnl <- function(fnl_settings, functionality){
   # ############################### #
   
   if(functionality %in% c("utilities")){
-    return(fnl_settings$V)
+    V <- mapply(function(v,a) apollo_setRows(v, !a, NA), fnl_settings$V, fnl_settings$avail, SIMPLIFY=FALSE)
+    return(V)
   }
 
   # ############################################################################ #

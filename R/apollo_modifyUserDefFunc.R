@@ -71,6 +71,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
          " directly in apollo_probabilities without the 'apollo_beta[...]' syntax.")
   }
   
+  if(!apollo_inputs$apollo_control$dropRedefCheck){
   ### Check that names of params in apollo_beta, database, apollo_randCoeff & apollo_lcPars are not re-defined
   tmp <- gsub("(", "", tmp, fixed=TRUE)
   tmp <- gsub(")", "", tmp, fixed=TRUE)
@@ -113,16 +114,17 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
     }; rm(env, lcp, i, test)
   }; if(exists('rnd')) rm(rnd)
   rm(tmp)
+}
   
   ### Check there are no references to database inside apollo_probabilities
   if(is.function(apollo_probabilities)){
     tmp <- as.character(body(apollo_probabilities))
-    tmp <- gsub("apollo_inputs$database", " ", tmp, fixed=TRUE)
-    tmp <- grep("database", tmp, fixed=TRUE)
-    if(length(tmp)>0) stop("SYNTAX ISSUE - The database object is 'attached' and elements should thus be called",
+    tmp1 <- grep("apollo_inputs$database", tmp, fixed=TRUE)#gsub("apollo_inputs$database", " ", tmp, fixed=TRUE)
+    tmp2 <- grep("database", tmp, fixed=TRUE)
+    if(length(tmp2)>length(tmp1)) stop("SYNTAX ISSUE - The database object is 'attached' and elements should thus be called",
                            " directly in apollo_probabilities without the 'database$' prefix. If there is a specific",
                            " reason for doing so, the  'apollo_inputs$database$' prefix has to be used.")
-    rm(tmp)
+    rm(tmp,tmp1,tmp2)
   }
   
   ### Check apollo_weighting is called if apollo_control$weights are defined (unless apollo_inputs$EM is TRUE)
@@ -383,6 +385,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   apollo_lcPars_ORIG        <- apollo_inputs$apollo_lcPars
   
   
+  if(!apollo_inputs$apollo_control$dropLoopExpansion){
   ### Expand loop
   if(is.function(apollo_inputs$apollo_randCoeff) && apollo_inputs$apollo_control$mixing){
     if(debug) apollo_print("- Expanding loops in apollo_randCoeff.")
@@ -420,11 +423,18 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
                   success              = FALSE))
     }
   }
+  }
   ### Update ORIG version to keep changes so far
   apollo_probabilities_ORIG <- apollo_probabilities
   apollo_randCoeff_ORIG     <- apollo_inputs$apollo_randCoeff
   apollo_lcPars_ORIG        <- apollo_inputs$apollo_lcPars
   
+  ### Only run scaling if used
+  ### Fetch estimate_settings
+  estimate_settings <- get("estimate_settings", envir=parent.frame(), inherits=FALSE)
+  if(estimate_settings$scaleAfterConvergence|
+     estimate_settings$scaleHessian|
+     apollo_inputs$manualScaling){
   ### Insert scaling (only if no apollo_inputs$apollo_scaling is found inside)
   test <- as.character(body(apollo_probabilities))
   test <- grepl('apollo_inputs$apollo_scaling', test, fixed=TRUE)
@@ -468,6 +478,7 @@ apollo_modifyUserDefFunc <- function(apollo_beta, apollo_fixed,
   apollo_probabilities_ORIG <- apollo_probabilities
   apollo_randCoeff_ORIG     <- apollo_inputs$apollo_randCoeff
   apollo_lcPars_ORIG        <- apollo_inputs$apollo_lcPars
+  }
   
   ### Introduce quotes into apollo_rrm
   if(debug) apollo_print("- Inserting quotes in settings for apollo_rrm (if present)")

@@ -45,7 +45,6 @@
 #' @importFrom stats rnorm
 #' @importFrom utils stack
 #' @importFrom parallel clusterCall stopCluster
-#' @export
 apollo_lcEM_new=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, lcEM_settings=NA, estimate_settings=NA){
   
   apollo_print("The use of apollo_lcEM has a number of requirements. No checks are run for these, so the user needs to ensure these conditions are met by their model:", type="i")
@@ -150,12 +149,12 @@ apollo_lcEM_new=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo
     
     idx1 <- match(needle_key[1], code_key)
     idx2 <- match(needle_key[2], code_key)
-    if (is.na(idx1) || is.na(idx2) || idx2 != idx1 + 1)
+    if(is.na(idx1) || is.na(idx2) || idx2 != idx1 + 1){
       txt=paste0("Original apollo_probabilities function did not contain the following two lines next to each other:\n",
                  search_lines[1], "\n", search_lines[2], "\n",
                  "Please check the function and try again.")
       stop(apollo_print(txt))
-
+    }
     # replace the two-line chunk with your five-line block
     new_code <- c(
       code[1:(idx1 - 1)],   # everything before the first target line
@@ -176,10 +175,16 @@ apollo_lcEM_new=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo
     search_lines = c("lc_settings = list(inClassProb = P, classProb=pi_values)",
                      "P[[\"model\"]] = apollo_lc(lc_settings, apollo_inputs, functionality)"),
     repl_lines   = c(
-      'P=list(part_1=exp(rowSums(mapply("*",apollo_inputs$pi,lapply(P,function(x) log(x))))))',
-      'classProb <- apollo_firstRow(pi_values, apollo_inputs)',
-      'P[["part_2"]] <- exp(rowSums(mapply("*", apollo_inputs$pi, lapply(classProb, function(x) log(x)))))',
-      'P <- apollo_combineModels(P, apollo_inputs, functionality)'
+        'P[["part_1"]] = 0',
+        'P[["part_2"]] = 0',
+        'classProb <- apollo_firstRow(pi_values, apollo_inputs)',
+        'for(ss in 1:length(apollo_inputs$pi)){',
+        ' P[["part_1"]] = P[["part_1"]] + apollo_inputs$pi[[ss]] * log(P[[ss]])',
+        ' P[["part_2"]] = P[["part_2"]] + apollo_inputs$pi[[ss]] * log(classProb[[ss]])',
+        '}',
+        ' P[["part_1"]] = exp(P[["part_1"]])',
+        ' P[["part_2"]] = exp(P[["part_2"]])',
+        'P <- apollo_combineModels(P, apollo_inputs, functionality,components=c("part_1","part_2"))'
     )
   )
   
@@ -235,7 +240,7 @@ apollo_lcEM_new=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo
   apollo_inputs$apollo_control$noValidation  <- TRUE
   apollo_inputs$apollo_control$noDiagnostics <- TRUE
   ### Get a model object. Call to apollo_estimate is different depending on needing a covariance matrix or not
-  if(lcEM_settings$postEM>0 && iteration<EMmaxIterations){
+  if(lcEM_settings$postEM>0){#} && iteration<EMmaxIterations){
     if(lcEM_settings$postEM==1) apollo_print("Computing covariance matrix...")
     if(lcEM_settings$postEM>1) apollo_print("Continuing with classical estimation...")
     ### Set maxIter and writeIter

@@ -83,7 +83,7 @@
 #' @param recycle Logical. If TRUE, an older version of \code{apollo_inputs} is looked for in the calling environment (parent frame), and any
 #'                element in that old version created by the user is copied into the new \code{apollo_inputs} returned by this function.
 #'                For \code{recycle=TRUE} to work, the old version of \code{apollo_inputs} \strong{must} be named "apollo_inputs".
-#'                If FALSE, nothing is copied from any older version of apollo_inputs. FALSE is the default.
+#'                If FALSE, nothing is copied from any older version of apollo_inputs. TRUE is the default.
 #' @param silent Logical. TRUE to keep the function from printing to the console. Default is FALSE.
 #' @return List grouping several required input for model estimation.
 #' @export
@@ -92,7 +92,7 @@ apollo_validateInputs <- function(apollo_beta=NA, apollo_fixed=NA, database=NA,
                                   apollo_control=NA, 
                                   apollo_HB=NA, apollo_draws=NA,
                                   apollo_randCoeff=NA, apollo_lcPars=NA,
-                                  recycle=FALSE, silent=FALSE){
+                                  recycle=TRUE, silent=FALSE){
   
   ### Try to recover mandatory variables from global environment if not provided
   tmp <- c("database", paste0("apollo_", c("beta", "fixed", "control"))) 

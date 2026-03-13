@@ -13,7 +13,7 @@ apollo_validateInputs(
   apollo_draws = NA,
   apollo_randCoeff = NA,
   apollo_lcPars = NA,
-  recycle = FALSE,
+  recycle = TRUE,
   silent = FALSE
 )
 }
@@ -103,7 +103,7 @@ Other settings to include are the following.
 \item{recycle}{Logical. If TRUE, an older version of \code{apollo_inputs} is looked for in the calling environment (parent frame), and any
 element in that old version created by the user is copied into the new \code{apollo_inputs} returned by this function.
 For \code{recycle=TRUE} to work, the old version of \code{apollo_inputs} \strong{must} be named "apollo_inputs".
-If FALSE, nothing is copied from any older version of apollo_inputs. FALSE is the default.}
+If FALSE, nothing is copied from any older version of apollo_inputs. TRUE is the default.}
 
 \item{silent}{Logical. TRUE to keep the function from printing to the console. Default is FALSE.}
 }

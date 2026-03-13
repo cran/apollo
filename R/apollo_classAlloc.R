@@ -175,7 +175,8 @@ apollo_classAlloc <- function(classAlloc_settings){
   # ############################### #
   
   if(functionality %in% c("utilities")){
-    return(classAlloc_settings$V)
+    V <- mapply(function(v,a) apollo_setRows(v, !a, NA), classAlloc_settings$V, classAlloc_settings$avail, SIMPLIFY=FALSE)
+    return(V)
   }
   
   # ############################################ #

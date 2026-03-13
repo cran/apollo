@@ -11,6 +11,7 @@ apollo_saveOutput(model, saveOutput_settings = NA)
 
 \item{saveOutput_settings}{List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 \itemize{
+   \item \strong{\code{printBHHH}}: Logical. TRUE for printing BHHH standard errors. FALSE by default.                               
    \item \strong{\code{printChange}}: Boolean. TRUE for printing difference between starting values and estimates. FALSE by default.
    \item \strong{\code{printClassical}}: Boolean. TRUE for printing classical standard errors. TRUE by default.
    \item \strong{\code{printCorr}}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. For Bayesian estimation, this setting is used for the covariane of random parameters. TRUE by default.
@@ -23,6 +24,7 @@ apollo_saveOutput(model, saveOutput_settings = NA)
    \item \strong{\code{printModelStructure}}: Boolean. TRUE for printing model structure. TRUE by default.
    \item \strong{\code{printOutliers}}: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
    \item \strong{\code{printPVal}}: Boolean or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
+   \item \strong{\code{printRobust}}: Logical. TRUE for printing robust standard errors. TRUE by default.
    \item \strong{\code{printT1}}: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
    \item \strong{\code{saveEst}}: Boolean. TRUE for saving estimated parameters and standard errors to a CSV file. TRUE by default.
    \item \strong{\code{saveCorr}}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. FALSE by default.

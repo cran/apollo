@@ -95,6 +95,8 @@ apollo_makeCluster <- function(apollo_probabilities, apollo_inputs, silent=FALSE
       if(dim(E)[1]==nObs  ){ byObs <- c(byObs, e); next }
       if(dim(E)[1]==nIndiv){ byInd <- c(byInd, e); next }
     }
+    # If a function, remove its environment
+    if(is.function(e)) environment(e) <- new.env(parent=globalenv())
     # If none of the above, then copy as is
     asIs <- c(asIs, e)
   }; rm(e, E)

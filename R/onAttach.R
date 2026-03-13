@@ -40,7 +40,10 @@
   "\n",
   "\nThe developers of Apollo acknowledge the substantial support provided by",
   "\nthe European Research Council (ERC) through the consolidator grant DECISIONS,",
-  "\nthe proof of concept grant APOLLO, and the advanced grant SYNERGY."
+  "\nthe proof of concept grant APOLLO, and the advanced grant SYNERGY.",
+  "\n",
+  "\nApollo is integrated into SurveyEngine, a leading stated choice platform",
+  "\nTry it at www.surveyengine.com/apollo"
   )
   
   ### Print message

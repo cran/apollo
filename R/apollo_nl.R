@@ -348,7 +348,8 @@ apollo_nl <- function(nl_settings, functionality){
   # ############################### #
   
   if(functionality %in% c("utilities")){
-    return(nl_settings$V)
+    V <- mapply(function(v,a) apollo_setRows(v, !a, NA), nl_settings$V, nl_settings$avail, SIMPLIFY=FALSE)
+    return(V)
   }
 
   # ############################################################################ #

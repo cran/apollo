@@ -30,6 +30,7 @@ apollo_prediction(
   \item \strong{\code{nRep}}: Scalar integer. Only used for models that require simulation for prediction (e.g. MDCEV). Number of draws used to calculate prediction. Default is 100.
   \item \strong{\code{runs}}: Numeric. Number of runs to use for computing confidence intervals of predictions.
   \item \strong{\code{silent}}: Boolean. If TRUE, this function won't print any output to screen.
+  \item \strong{\code{simChoice}}: Boolean. If TRUE, simulated choices are added to the output. FALSE by default.
   \item \strong{\code{summary}}: Boolean. If TRUE, a summary of the prediction is printed to screen. TRUE by default.
 }}
 

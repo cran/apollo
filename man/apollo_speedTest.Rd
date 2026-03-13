@@ -34,7 +34,7 @@ apollo_speedTest(
 }}
 }
 \value{
-A matrix with the average time per evaluation for each number of threads and draws combination. A graph is also plotted.
+A list of two matrices, one with the average time per evaluation for each number of threads and draws combination, and one with the RAM used. A graph is also plotted.
 }
 \description{
 Measures the evaluation time of a model for different number of cores and draws.

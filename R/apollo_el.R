@@ -248,7 +248,8 @@ apollo_el <- function(el_settings, functionality){
   # ############################### #
   
   if(functionality %in% c("utilities")){
-    return(el_settings$V)
+    V <- mapply(function(v,a) apollo_setRows(v, !a, 0), el_settings$V, el_settings$avail[[1]], SIMPLIFY=FALSE)
+    return(V)
   }
 
   # ###################################################### #

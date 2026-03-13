@@ -338,7 +338,8 @@ apollo_cnl2 <- function(cnl_settings, functionality){
   # ############################### #
   
   if(functionality %in% c("utilities")){
-    return(cnl_settings$V)
+    V <- mapply(function(v,a) apollo_setRows(v, !a, NA), cnl_settings$V, cnl_settings$avail, SIMPLIFY=FALSE)
+    return(V)
   }
 
   # ############################################################################ #

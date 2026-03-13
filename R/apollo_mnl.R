@@ -171,6 +171,9 @@ apollo_mnl <- function(mnl_settings, functionality){
     # Record availability of chosen alternative
     mnl_settings$chosenAvail <- Reduce('+', mapply('*', mnl_settings$Y, mnl_settings$avail, SIMPLIFY=FALSE))
     
+    # Save teh seting to substract the maximum utility into mnl_setings
+    mnl_settings$subMaxV <- apollo_inputs$apollo_control$subMaxV
+    
     # Determine which mnl likelihood to use (R or C++)
     if(apollo_inputs$apollo_control$cpp & !apollo_inputs$silent) apollo_print("No C++ optimisation for MNL available")
     # Using R likelihood
@@ -185,7 +188,7 @@ apollo_mnl <- function(mnl_settings, functionality){
       V <- mapply(function(v,a) apollo_setRows(v, !a, 0), mnl_settings$V, mnl_settings$avail, SIMPLIFY=FALSE)
       # if probabilities for all alternatives are requested, then P is a list
       if(all){
-        if(apollo_inputs$apollo_control$subMaxV){
+        if(mnl_settings$subMaxV){
           ### work with subtracting the maxV
           maxV <- do.call(pmax, V)
           V <- lapply(V, "-", maxV)
@@ -440,7 +443,8 @@ apollo_mnl <- function(mnl_settings, functionality){
   # ############################### #
 
   if(functionality %in% c("utilities")){
-    return(mnl_settings$V)
+    V <- mapply(function(v,a) apollo_setRows(v, !a, NA), mnl_settings$V, mnl_settings$avail, SIMPLIFY=FALSE)
+    return(V)
   }
 
   # ############################## #

@@ -15,6 +15,7 @@
 #' @param model Model object. Estimated model object as returned by function \link{apollo_estimate}.
 #' @param saveOutput_settings List. Contains settings for this function. User input is required for all settings except those with a default or marked as optional. 
 #'                            \itemize{
+#'                               \item \strong{\code{printBHHH}}: Logical. TRUE for printing BHHH standard errors. FALSE by default.                               
 #'                               \item \strong{\code{printChange}}: Boolean. TRUE for printing difference between starting values and estimates. FALSE by default.
 #'                               \item \strong{\code{printClassical}}: Boolean. TRUE for printing classical standard errors. TRUE by default.
 #'                               \item \strong{\code{printCorr}}: Boolean. TRUE for printing parameters correlation matrix. If \code{printClassical=TRUE}, both classical and robust matrices are printed. For Bayesian estimation, this setting is used for the covariane of random parameters. TRUE by default.
@@ -27,6 +28,7 @@
 #'                               \item \strong{\code{printModelStructure}}: Boolean. TRUE for printing model structure. TRUE by default.
 #'                               \item \strong{\code{printOutliers}}: Boolean or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
 #'                               \item \strong{\code{printPVal}}: Boolean or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
+#'                               \item \strong{\code{printRobust}}: Logical. TRUE for printing robust standard errors. TRUE by default.
 #'                               \item \strong{\code{printT1}}: Boolean. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
 #'                               \item \strong{\code{saveEst}}: Boolean. TRUE for saving estimated parameters and standard errors to a CSV file. TRUE by default.
 #'                               \item \strong{\code{saveCorr}}: Boolean. TRUE for saving estimated correlation matrix to a CSV file. FALSE by default.
@@ -43,6 +45,7 @@
 apollo_saveOutput=function(model, saveOutput_settings=NA){
   if(length(saveOutput_settings)==1 && is.na(saveOutput_settings)) saveOutput_settings=list()
   default <- list(printClassical   = TRUE,
+                  printRobust      = TRUE,
                   printBHHH        = FALSE,
                   printChange      = FALSE,
                   printCorr        = TRUE,
@@ -67,6 +70,7 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
   for(i in tmp)  saveOutput_settings[[i]] <- default[[i]]
   rm(tmp, default)
   printClassical  = saveOutput_settings[["printClassical"]]
+  printRobust     = saveOutput_settings[["printRobust"]]
   printBHHH       = saveOutput_settings[["printBHHH"]]
   printPVal       = saveOutput_settings[["printPVal"]]
   printT1         = saveOutput_settings[["printT1"]]
@@ -295,8 +299,10 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
       utils::write.csv(model$varcov,paste0(modName,"_covar.csv"))
       cat("Classical covariance matrix saved to",paste0(modName, "_covar.csv"),"\n")
       }
-    utils::write.csv(model$robvarcov,paste0(modName,"_robcovar.csv"))
-    cat("Robust covariance matrix saved to",paste0(modName, "_robcovar.csv"),"\n")
+    if(printRobust==TRUE){ 
+      utils::write.csv(model$robvarcov,paste0(modName,"_robcovar.csv"))
+      cat("Robust covariance matrix saved to",paste0(modName, "_robcovar.csv"),"\n")
+    }
     if(!is.null(model$bootstrapSE) && model$bootstrapSE>0){
       utils::write.csv(model$bootvarcov,paste0(modName,"_bootcovar.csv"))
       cat("Bootstrap covariance matrix saved to",paste(modName, "_bootcovar.csv"   , sep=""),"\n")
@@ -311,8 +317,10 @@ apollo_saveOutput=function(model, saveOutput_settings=NA){
       utils::write.csv(model$corrmat,paste0(modName,"_corr.csv"))
       cat("Classical correlation matrix saved to",paste(modName, "_covar.csv"   , sep=""),"\n")
     }
-    utils::write.csv(model$robcorrmat,paste0(modName,"_robcorr.csv"))
-    cat("Robust correlation matrix saved to",paste0(modName, "_robcorr.csv"),"\n")
+    if(printRobust==TRUE){ 
+      utils::write.csv(model$robcorrmat,paste0(modName,"_robcorr.csv"))
+      cat("Robust correlation matrix saved to",paste0(modName, "_robcorr.csv"),"\n")
+    }
     if(!is.null(model$bootstrapSE) && model$bootstrapSE>0){
       utils::write.csv(model$bootcorrmat, paste0(modName,"_bootcorr.csv"))
       cat("Bootstrap correlation matrix saved to",paste(modName, "_bootcorr.csv"   , sep=""),"\n")

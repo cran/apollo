@@ -533,6 +533,7 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
     ### Set maxIter and writeIter
     if(!is.list(estimate_settings)) estimate_settings = list()
     if(lcEM_settings$postEM<2) estimate_settings$maxIterations <- 0
+    estimate_settings$estimationRoutine="bgw"
     estimate_settings$writeIter <- FALSE
     estimate_settings$silent    <- ifelse(lcEM_settings$postEM<2, TRUE, FALSE)
     ### Calculate S.E.

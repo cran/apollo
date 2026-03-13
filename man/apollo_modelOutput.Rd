@@ -24,6 +24,7 @@ apollo_modelOutput(model, modelOutput_settings = NA)
   \item \strong{\code{printModelStructure}}: Logical. TRUE for printing model structure. TRUE by default.
   \item \strong{\code{printOutliers}}: Logical or Scalar. TRUE for printing 20 individuals with worst average fit across observations. FALSE by default. If Scalar is given, this replaces the default of 20.
   \item \strong{\code{printPVal}}: Logical or Scalar. TRUE or 1 for printing p-values for one-sided test, 2 for printing p-values for two-sided test, FALSE for not printing p-values. FALSE by default.
+  \item \strong{\code{printRobust}}: Logical. TRUE for printing robust standard errors. TRUE by default.
   \item \strong{\code{printT1}}: Logical. If TRUE, t-test for H0: apollo_beta=1 are printed. FALSE by default.
 }}
 }

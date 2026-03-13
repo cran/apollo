@@ -111,6 +111,14 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
     apollo_control$analyticHessian <- FALSE
   }
 
+  if(is.null(apollo_control$dropLoopExpansion)){
+    apollo_control$dropLoopExpansion <- FALSE
+  }
+  
+  if(is.null(apollo_control$dropRedefCheck)){
+    apollo_control$dropRedefCheck <- FALSE
+  }
+
   if(is.null(apollo_control$memorySaver)){
     apollo_control$memorySaver <- FALSE
     if(debug) apollo_print("Missing setting memorySaver in apollo_control, set to default of FALSE")
@@ -223,7 +231,8 @@ apollo_validateControl=function(database,apollo_control, silent=FALSE){
                "noValidation", "noDiagnostics", "weights", "workInLogs", "panelData", 
                "cpp","subMaxV", "analyticGrad", "matrixMult", "debug", "analyticGrad_manualSet",
                "outputDirectory", "calculateLLC", "overridePanel", "preventOverridePanel", 
-               "noModification", "analyticHessian", "memorySaver")
+               "noModification", "analyticHessian", "memorySaver","dropLoopExpansion",
+               "dropRedefCheck")
   unknownVars <- names(apollo_control)[!( names(apollo_control) %in% allVars )]
   if(length(unknownVars)>0){
     apollo_print(paste0("Variable(s) {", paste(unknownVars, collapse=", "), "} were not recognised in apollo_control and will be ignored. Check ?apollo_control for a list of valid control variables."), type="w")

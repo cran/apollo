@@ -36,7 +36,7 @@
 #'                                  \item \strong{\code{numDeriv_settings}}: List. Additional arguments to the method used by numDeriv to calculate the Hessian. See argument \code{method.args} in \link[numDeriv]{grad} for more details.
 #'                                  \item \strong{\code{printLevel}}: Higher values render more verbous outputs. Can take values 0, 1, 2 or 3. Ignored if apollo_control$HB is TRUE. Default is 3.
 #'                                  \item \strong{\code{scaleAfterConvergence}}: Logical. Used to increase numerical precision of convergence. If TRUE, parameters are scaled to 1 after convergence, and the estimation is repeated from this new starting values. Results are reported scaled back, so it is a transparent process for the user. Default is FALSE.
-#'                                  \item \strong{\code{scaleHessian}}: Logical. If TRUE, parameters are scaled to 1 for Hessian estimation. Default is TRUE.
+#'                                  \item \strong{\code{scaleHessian}}: Logical. If TRUE, parameters are scaled to 1 for Hessian estimation. Default is FALSE.
 #'                                  \item \strong{\code{scaling}}: Named vector. Names of elements should match those in \code{apollo_beta}. Optional scaling for parameters. If provided, for each parameter \code{i}, \code{(apollo_beta[i]/scaling[i])} is optimised, but \code{scaling[i]*(apollo_beta[i]/scaling[i])} is used during estimation. For example, if parameter b3=10, while b1 and b2 are close to 1, then setting \code{scaling = c(b3=10)} can help estimation, specially the calculation of the Hessian. Reports will still be based on the non-scaled parameters.
 #'                                  \item \strong{\code{silent}}: Logical. If TRUE, no information is printed to the console during estimation. Default is FALSE.
 #'                                  \item \strong{\code{validateGrad}}: Logical. If TRUE, the analytical gradient (if used) is compared to the numerical one. Default is FALSE.
@@ -70,7 +70,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                   maxLik_settings=NULL, numDeriv_method="Richardson", 
                   numDeriv_settings=list(), scaling=NA, 
                   bootstrapSE=0, bootstrapSeed=24, silent=FALSE, 
-                  scaleHessian=TRUE, scaleAfterConvergence=FALSE,
+                  scaleHessian=FALSE, scaleAfterConvergence=FALSE,
                   validateGrad=FALSE,
                   load=NULL,
                   save=FALSE,
@@ -174,7 +174,8 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                   printFinalResults       = FALSE,
                   writeIter               = estimate_settings$writeIter,
                   writeIterMode           = "overWrite",
-                  userScaleVector         = NULL)
+                  userScaleVector         = NULL,
+                  userRequestIndLevelGradients = TRUE)
   
   if(length(estimate_settings$bgw_settings)==1 && is.na(estimate_settings$bgw_settings)) estimate_settings$bgw_settings <- default
   tmp <- names(default)[!(names(default) %in% names(estimate_settings$bgw_settings))] # options missing in estimate_settings
@@ -380,7 +381,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   
   ### Check and modify user-defined functions
   L <- apollo_modifyUserDefFunc(apollo_beta, apollo_fixed, apollo_probabilities,
-                                apollo_inputs, validate=TRUE, 
+                                apollo_inputs, validate=!apollo_control$noValidation, 
                                 noModification=apollo_control$noModification)
   
   ### check if scaling was inserted
@@ -428,6 +429,8 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   
   ### Call apollo_estimateHB
   if(apollo_control$HB){
+    # Set see for HB estimation
+    set.seed(apollo_inputs$apollo_control$seed)
     # Scale starting parameters (this should always happen)
     if(length(apollo_inputs$apollo_scaling)>0 && !anyNA(apollo_inputs$apollo_scaling)){
       r <- names(apollo_beta) %in% names(apollo_inputs$apollo_scaling)
@@ -653,7 +656,13 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   # Checks if main estimation was successful
   successfulEstimation <- FALSE
   if(exists("model")){
-    if(estimationRoutine=="bfgs" & model$code==0) successfulEstimation <- TRUE
+    if(estimationRoutine=="bfgs" & model$code==0){
+      if(model$iterations == estimate_settings$maxLik_settings$iterlim){
+        model$message       <- "Iteration limit reached"
+      }else{
+        successfulEstimation <- TRUE
+      } 
+    } 
     if(estimationRoutine=="bgw"){
       if(!silent) apollo_print(model$message)
       if(model$code %in% c(3,4,5,6)) successfulEstimation <- TRUE
@@ -1080,6 +1089,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   model$timeEstPostscaling <- as.numeric(difftime(time2c,time2b,units='secs'))
   model$timeTaken <- as.numeric(difftime(Sys.time(),time1,units='secs'))
   model$timePost  <- NA
+  model$estimate_settings <- estimate_settings
   rm(tmp)
   
   ### Save constraints (NULL if none or given in maxLik format)
@@ -1124,6 +1134,9 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   # ############################ #
   #### Hessian & covar matrix ####
   # ############################ #
+  
+  ### Save IDs before deleting data from apollo_inputs
+  indivIDtemp <- apollo_inputs$database[, apollo_control$indivID]
   
   ### Create a de-scaled copy of model$estimate
   b <- model$estimate # c(model$estimate, apollo_beta[apollo_fixed])[names(apollo_beta)]
@@ -1223,6 +1236,14 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     if(apollo_inputs$apollo_control$nCores>1) apollo_inputs <- tryCatch(readRDS(file=fileName), error=function(e) NULL)
     if(is.null(apollo_inputs)) stop('INTERNAL ISSUE - apollo_inputs could not be restored from disk after bootstrap')
     rm(bVar, dummyVCM)
+  }
+  
+  ### Prepare gradient at individual level if flagPanelOverride=TRUE
+  if(flagPanelOverride){
+    if(!is.null(model$indLevelGradients) && !any(is.na(model$indLevelGradients))){
+      model$indLevelGradients <- rowsum(model$indLevelGradients,
+                                        group=indivIDtemp, reorder=FALSE)
+    }
   }
   
   # #################### #
