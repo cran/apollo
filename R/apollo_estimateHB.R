@@ -15,7 +15,6 @@
 #' @param apollo_inputs List grouping most common inputs. Created by function \link{apollo_validateInputs}.
 #' @param estimate_settings List. Options controlling the estimation process, as used for in \link{apollo_estimate}.
 #' @return model object
-#' @importFrom RSGHB doHB
 #' @importFrom mvtnorm rmvnorm
 #' @importFrom stats sd cor cov runif
 #' @export
@@ -190,7 +189,7 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   ## removed 2 May
   currentWD <- getwd()  
   if(dir.exists(apollo_inputs$apollo_control$outputDirectory)) setwd(apollo_inputs$apollo_control$outputDirectory)
-  model <- RSGHB::doHB(apollo_HB_likelihood, database, apollo_HB)
+  model <- doHB(apollo_HB_likelihood, database, apollo_HB)
   setwd(currentWD)
   
   ### Rename RSGHB components in model object
@@ -538,6 +537,6 @@ apollo_estimateHB <- function(apollo_beta, apollo_fixed, apollo_probabilities, a
   model$timePost  <- as.numeric(difftime(time4,time3,units='secs'))
   
   ### assign apollo class to model
-  class(model)<-c("apollo",class(model))  
+  class(model)<-unique(c("apollo","RSGHB",class(model)))  
   return(model)
 }

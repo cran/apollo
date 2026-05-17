@@ -8,12 +8,12 @@
 #' \enumerate{
 #'   \item Randomly draw \code{nCandidates} candidates from an interval given by the user.
 #'   \item Label all candidates with a valid log-likelihood (LL) as active.
-#'   \item Apply \code{bfgsIter} iterations of the BFGS algorithm to each active candidate.
+#'   \item Apply \code{bgwIter} iterations of the BGW algorithm to each active candidate.
 #'   \item Apply the following tests to each active candidate:
 #'   \enumerate{
 #'     \item Has the BGFS search converged?
-#'     \item Are the candidate parameters after BFGS closer than \code{dTest} from any other candidate with higher LL?
-#'     \item Is the LL of the candidate after BFGS further than \code{distLL} from a candidate with better LL, and its gradient smaller than \code{gTest}?
+#'     \item Are the candidate parameters after BGW closer than \code{dTest} from any other candidate with higher LL?
+#'     \item Is the LL of the candidate after BGW further than \code{distLL} from a candidate with better LL, and its gradient smaller than \code{gTest}?
 #'   }
 #'   \item Mark any candidates for which at least one test results in yes as inactive.
 #'   \item Go back to step 3, unless only one candidate is active, or the maximum number of iterations (\code{maxStages}) has been reached.
@@ -32,7 +32,7 @@
 #'                                   \itemize{
 #'                                     \item \strong{\code{apolloBetaMax}}: Vector. Maximum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta + 0.1}.
 #'                                     \item \strong{\code{apolloBetaMin}}: Vector. Minimum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta - 0.1}.
-#'                                     \item \strong{\code{bfgsIter}}: Numeric scalar. Number od BFGS iterations to perform at each stage to each remaining candidate. Default is 20.
+#'                                     \item \strong{\code{bgwIter}}: Numeric scalar. Number of BGW iterations to perform at each stage to each remaining candidate. Default is 20.
 #'                                     \item \strong{\code{dTest}}: Numeric scalar. Tolerance for test 1. A candidate is discarded if its distance in parameter space to a better one is smaller than \code{dTest}. Default is 1.
 #'                                     \item \strong{\code{gTest}}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is \code{10^(-3)}.
 #'                                     \item \strong{\code{llTest}}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is 3.
@@ -45,14 +45,14 @@
 #' @importFrom numDeriv hessian
 #' @importFrom maxLik maxLik
 apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs, searchStart_settings=NA){
-   
+
    # # # # # # # # # # #
    #### Initialise  ####
    # # # # # # # # # # #
    
    ### Load defaults
    default <- list(nCandidates=100, apolloBetaMin=apollo_beta - 0.1, apolloBetaMax=apollo_beta + 0.1,
-                   smartStart=FALSE, maxStages=5, dTest=1, gTest=10^-3, llTest=3, bfgsIter=20)
+                   smartStart=FALSE, maxStages=5, dTest=1, gTest=10^-3, llTest=3, bgwIter=20)
    if(length(searchStart_settings)==1 && is.na(searchStart_settings)) searchStart_settings <- default
    tmp <- names(default)[!(names(default) %in% names(searchStart_settings))] # options missing in searchStart_settings
    for(i in tmp) searchStart_settings[[i]] <- default[[i]]
@@ -66,9 +66,23 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
    dTest         = searchStart_settings[["dTest"]]
    gTest         = searchStart_settings[["gTest"]]
    llTest        = searchStart_settings[["llTest"]]
-   bfgsIter      = searchStart_settings[["bfgsIter"]]
+   bgwIter      = searchStart_settings[["bgwIter"]]
    if(!is.null(apollo_inputs$silent)) silent <- apollo_inputs$silent else silent <- FALSE
    if(!is.null(apollo_inputs$apollo_control$seed)) seed <- apollo_inputs$apollo_control$seed + 4 else seed <- 13 + 4
+   
+   bgw_settings <- list(maxIterations    = bgwIter,
+                   maxFunctionEvals = max(1,3*bgwIter),
+                   silent           = TRUE,
+                   outputDirectory  = apollo_inputs$apollo_control$outputDirectory,
+                   modelName        = apollo_inputs$apollo_control$modelName,
+                   printLevel       = 0, 
+                   printNonDefaultSettings = FALSE, 
+                   printStartingValues     = FALSE,
+                   printFinalResults       = FALSE,
+                   writeIter               = FALSE,
+                   writeIterMode           = "overWrite",
+                   #userScaleVector         = NULL,
+                   userRequestIndLevelGradients = TRUE)
    
    ### Checks
    if(nCandidates<2) stop("SYNTAX ISSUE - Argument 'nCandidates' should be at least 2.")
@@ -84,8 +98,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
    if(!silent) apollo_print("Pre-processing likelihood function...")
    # Create multi-core version of likelihood (if needed)
    apollo_logLike <- apollo_makeLogLike(apollo_beta, apollo_fixed, 
-                                        apollo_probabilities, apollo_inputs, 
-                                        list(estimationRoutine='BHHH'))
+                                        apollo_probabilities, apollo_inputs)
    on.exit(if(exists('apollo_logLike') && apollo_inputs$apollo_control$nCores>1) parallel::stopCluster(environment(apollo_logLike)$cl))
    # Create gradient function if required (and possible)
    if(!is.null(apollo_inputs$apollo_control$analyticGrad) && apollo_inputs$apollo_control$analyticGrad){
@@ -183,10 +196,10 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
       
       apollo_print('\n')
       apollo_print(paste0("Stage ", s, ", ", length(activeRows), " active candidates."))
-      apollo_print(paste("Estimating", bfgsIter, "BFGS iteration(s) for each active candidate."))
+      apollo_print(paste("Estimating", bgwIter, "BGW iteration(s) for each active candidate."))
       cat(" Candidate......LLstart.....LLfinish.....GradientNorm...Converged")
       
-      # Apply BFGS for each active candidate
+      # Apply BGW for each active candidate
       LL               <- cbind(LL, NA)
       colnames(LL)     <- paste0("LL", 1:ncol(LL))
       candidates[[s+1]]<- matrix(NA, nrow=nCandidates, ncol=K)
@@ -199,13 +212,17 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
          if(!converged[j]){ # If it hasn't converged yet
             candidateParam <- as.vector(candidates[[s]][j,])
             names(candidateParam) <- names(beta_var_val)
-            model <- maxLik::maxLik(apollo_logLike, start=candidateParam,
-                                    method="bfgs", print.level=0, grad=grad, 
-                                    finalHessian=FALSE, iterlim=bfgsIter)
+            
+            f <- function(b) apollo_logLike(b, logP=FALSE, countIter=FALSE, writeIter=FALSE)
+            model <- bgw::bgw_mle(calcR=f, betaStart=candidateParam, calcJ=grad, bgw_settings=bgw_settings)
+            
+            #model <- maxLik::maxLik(apollo_logLike, start=candidateParam,
+            #                        method="bfgs", print.level=0, grad=grad, 
+            #                        finalHessian=FALSE, iterlim=bfgsIter)
             candidates[[s+1]][j,] <- model$estimate
             LL[j,s+1]             <- model$maximum
             gradientNorm[j]       <- sqrt(sum(model$gradient^2))
-            converged[j]          <- ifelse(model$code==0, TRUE, FALSE)
+            converged[j]          <- ifelse(model$code %in% c(3,4,5,6), TRUE, FALSE)
          } else {# if it has converged already
             candidates[[s+1]][j,] <- candidates[[s]][j,]
             LL[j,s+1]             <- LL[j,s]
@@ -269,7 +286,7 @@ apollo_searchStart <- function(apollo_beta, apollo_fixed, apollo_probabilities, 
       print(as.matrix(round(bestCandParam,4)))
       
       # Write current state to file
-      tryCatch(utils::write.csv(cbind(candidates[[1]], LL), fileName, row.names=FALSE), 
+      tryCatch(utils::write.csv(cbind(candidates[[1]], LL,converged=converged*1), fileName, row.names=FALSE), 
                error=function(e) apollo_print(paste0("Stage update ",s," could not be written to file", fileName)))
       
       # Next iteration

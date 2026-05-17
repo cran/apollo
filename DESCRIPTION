@@ -1,7 +1,7 @@
 Package: apollo
 Type: Package
 Title: Tools for Choice Model Estimation and Application
-Version: 0.3.7
+Version: 0.3.8
 Authors@R: c(
     person("Stephane", "Hess", email="S.Hess@leeds.ac.uk", role=c("aut","cre")),
     person("David", "Palma", email="D.Palma@leeds.ac.uk", role="aut"),
@@ -29,17 +29,18 @@ Encoding: UTF-8
 LazyData: true
 Depends: R (>= 4.3.0), stats, utils
 Imports: Rcpp (>= 1.0.0), maxLik, mnormt, mvtnorm, graphics,
-        randtoolbox, numDeriv, parallel, Deriv, matrixStats, RSGHB,
-        coda, tibble, stringr, bgw (>= 0.1.4), cli, Rsolnp, rstudioapi
+        randtoolbox, numDeriv, parallel, Deriv, matrixStats, coda,
+        tibble, stringr, bgw (>= 0.1.4), cli, Rsolnp, rstudioapi,
+        MCMCpack
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen
 Suggests: knitr, rmarkdown, testthat
 VignetteBuilder: knitr
 RoxygenNote: 7.3.3
 NeedsCompilation: yes
-Packaged: 2026-03-12 21:04:34 UTC; stephane.hess
+Packaged: 2026-05-17 19:45:55 UTC; stephane.hess
 Author: Stephane Hess [aut, cre],
   David Palma [aut],
   Thomas Hancock [ctb]
 Maintainer: Stephane Hess <S.Hess@leeds.ac.uk>
 Repository: CRAN
-Date/Publication: 2026-03-13 08:00:23 UTC
+Date/Publication: 2026-05-17 22:40:16 UTC

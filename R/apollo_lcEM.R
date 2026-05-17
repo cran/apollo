@@ -519,6 +519,7 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   
   #### POST-EM TASKS
   apollo_inputs$EM = FALSE
+  apollo_inputs$apollo_fixed=apollo_fixed_base
   ### Reinstate original functions inside apollo_inputs
   test <- apollo_inputs$apollo_control$mixing && is.function(apollo_inputs$apollo_randCoeff)
   if(test) apollo_inputs$apollo_randCoeff <- apollo_randCoeff_ORIG
@@ -526,6 +527,11 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   ### Avoid diagnostics and validation
   apollo_inputs$apollo_control$noValidation  <- TRUE
   apollo_inputs$apollo_control$noDiagnostics <- TRUE
+  rm(s)
+  apollo_beta_backup=apollo_beta
+  target_env <- parent.frame()
+  rm("apollo_beta", envir = target_env)
+  apollo_probabilities=apollo_probabilities_ORIG
   ### Get a model object. Call to apollo_estimate is different depending on needing a covariance matrix or not
   if(lcEM_settings$postEM>0 && iteration<EMmaxIterations){
     if(lcEM_settings$postEM==1) apollo_print("Computing covariance matrix...")
@@ -560,6 +566,6 @@ apollo_lcEM=function(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inp
   if(lcEM_settings$postEM>1) model$nIter = paste0(model$nIter," (EM) & ",classicalIter, " (",estimate_settings$estimationRoutine,")")
   if(iteration>=EMmaxIterations) model$nIter = paste0(iteration," (convergence not reached)")
   model$LLStart <- LLStart
-  
+  assign("apollo_beta", apollo_beta_backup, envir = target_env)
   return(model)
 }

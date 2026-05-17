@@ -30,7 +30,7 @@ apollo_searchStart(
 \itemize{
   \item \strong{\code{apolloBetaMax}}: Vector. Maximum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta + 0.1}.
   \item \strong{\code{apolloBetaMin}}: Vector. Minimum possible value of parameters when generating candidates. Ignored if smartStart is TRUE. Default is \code{apollo_beta - 0.1}.
-  \item \strong{\code{bfgsIter}}: Numeric scalar. Number od BFGS iterations to perform at each stage to each remaining candidate. Default is 20.
+  \item \strong{\code{bgwIter}}: Numeric scalar. Number of BGW iterations to perform at each stage to each remaining candidate. Default is 20.
   \item \strong{\code{dTest}}: Numeric scalar. Tolerance for test 1. A candidate is discarded if its distance in parameter space to a better one is smaller than \code{dTest}. Default is 1.
   \item \strong{\code{gTest}}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is \code{10^(-3)}.
   \item \strong{\code{llTest}}: Numeric scalar. Tolerance for test 2. A candidate is discarded if the norm of its gradient is smaller than \code{gTest} AND its LL is further than \code{llTest} from a better candidate. Default is 3.
@@ -52,12 +52,12 @@ following steps.
 \enumerate{
   \item Randomly draw \code{nCandidates} candidates from an interval given by the user.
   \item Label all candidates with a valid log-likelihood (LL) as active.
-  \item Apply \code{bfgsIter} iterations of the BFGS algorithm to each active candidate.
+  \item Apply \code{bgwIter} iterations of the BGW algorithm to each active candidate.
   \item Apply the following tests to each active candidate:
   \enumerate{
     \item Has the BGFS search converged?
-    \item Are the candidate parameters after BFGS closer than \code{dTest} from any other candidate with higher LL?
-    \item Is the LL of the candidate after BFGS further than \code{distLL} from a candidate with better LL, and its gradient smaller than \code{gTest}?
+    \item Are the candidate parameters after BGW closer than \code{dTest} from any other candidate with higher LL?
+    \item Is the LL of the candidate after BGW further than \code{distLL} from a candidate with better LL, and its gradient smaller than \code{gTest}?
   }
   \item Mark any candidates for which at least one test results in yes as inactive.
   \item Go back to step 3, unless only one candidate is active, or the maximum number of iterations (\code{maxStages}) has been reached.

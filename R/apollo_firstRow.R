@@ -39,8 +39,8 @@ apollo_firstRow=function(P, apollo_inputs){
   f <- function(x, validNRow, firstR){
     # If list, apply recursively
     if(is.list(x)) return(lapply(x, f, validNRow=validNRow, firstR=firstR))
-    # If not numeric or logical, return as is
-    if(!is.numeric(x) && !is.logical(x)) return(x)
+    # If not numeric, character or logical, return as is
+    if(!is.numeric(x) && !is.character(x) && !is.logical(x)) return(x)
     # If not a list and not numeric
     isSca <- length(x)==1
     isVec <- is.vector(x) && !is.array(x)

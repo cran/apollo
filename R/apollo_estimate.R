@@ -28,7 +28,9 @@
 #'                                  \item \strong{\code{bootstrapSE}}: Numeric. Number of bootstrap samples to calculate standard errors. Default is 0, meaning no bootstrap s.e. will be calculated. Number must zero or a positive integer. Only used if \code{apollo_control$estMethod!="HB"}.
 #'                                  \item \strong{\code{bootstrapSeed}}: Numeric scalar (integer). Random number generator seed to generate the bootstrap samples. Only used if \code{bootstrapSE>0}. Default is 24.
 #'                                  \item \strong{\code{constraints}}: Character vector. Linear constraints on parameters to estimate. For example \code{c('b1>0', 'b1 + 2*b2>1')}. Only \code{>}, \code{<} and \code{=} can be used. Inequalities cannot be mixed with equality constraints, e.g. \code{c(b1-b2=0, b2>0)} will fail. All parameter names must be on the left side. Fixed parameters cannot go into constraints. Alternatively, constraints can be defined as in \link[maxLik]{maxLik}. Constraints can only be used with maximum likelihood estimation and the BFGS routine in particular.
+#'                                  \item \strong{\code{convergenceCheck}}: Logical. Checks gradient-based convergence for BGW estimation. Default is FALSE.
 #'                                  \item \strong{\code{estimationRoutine}}: Character. Estimation method. Can take values "bfgs", "bgw", "bhhh", or "nr". Used only if \code{apollo_control$HB} is FALSE. Default is "bgw".
+#'                                  \item \strong{\code{forceCovarianceMatrix}}: Logical. Forces the computation of the covariance matrix even if a model has not converged. Default is FALSE.
 #'                                  \item \strong{\code{hessianRoutine}}: Character. Name of routine used to calculate the Hessian of the log-likelihood function after estimation. Valid values are \code{"analytic"} (default), \code{"numDeriv"} (to use the numeric routine in package numDeric), \code{"maxLik"} (to use the numeric routine in packahe maxLik), and \code{"none"} to avoid calculating the Hessian and the covariance matrix. Only used if \code{apollo_control$HB=FALSE}.
 #'                                  \item \strong{\code{maxIterations}}: Numeric. Maximum number of iterations of the estimation routine before stopping. Used only if \code{apollo_control$HB} is FALSE. Default is 200.
 #'                                  \item \strong{\code{maxLik_settings}}: List. Additional settings for maxLik. See argument \code{control} in \link[maxLik]{maxBFGS}, \link[maxLik]{maxBHHH} and \link[maxLik]{maxNM} for more details. Only used for maximum likelihood estimation.
@@ -74,6 +76,8 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
                   validateGrad=FALSE,
                   load=NULL,
                   save=FALSE,
+                  forceCovarianceMatrix=FALSE,
+                  convergenceCheck=FALSE,
                   bgw_settings=list())
   prtLvlMan <- is.list(estimate_settings) && !is.null(estimate_settings$printLevel)
   if(length(estimate_settings)==1 && is.na(estimate_settings)) estimate_settings <- default
@@ -642,6 +646,28 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     f <- function(b) apollo_logLike(b, logP=FALSE, countIter=FALSE, writeIter=FALSE)
     model <- bgw::bgw_mle(calcR=f, betaStart=beta_var_val, calcJ=grad, bgw_settings=bgw_settings)
     model$nIter <- model$iterations
+    ### BGW returns gradient of -LL, not of LL, so here, we change the sign
+    if(!is.null(model$gradient)) model$gradient <- -model$gradient
+    ### check for gradient-based convergence
+    if(model$code%in%c(3,4,5,6) & estimate_settings$convergenceCheck && !is.null(model$varcovBGW)){
+    model$convStat=model$gradient %*% model$varcovBGW %*% model$gradient
+    if(model$convStat>10^-4){
+      if(!silent) apollo_print(paste0("The convergence statistic is ",signif(model$convStat),". Estimation will restart at current solution with new Hessian approximation.\n"), type="i")
+      modelBackup=model
+      model <- tryCatch(bgw::bgw_mle(calcR=f, betaStart=modelBackup$estimate, calcJ=grad, bgw_settings=bgw_settings), 
+                         error=function(e) NA)
+      model$iterations <- model$iterations+modelBackup$iterations
+      model$nIter <- model$iterations
+      if(model$code%in%c(3,4,5,6) & estimate_settings$convergenceCheck){
+        model$convStat=model$gradient %*% model$varcovBGW %*% model$gradient
+        if(!silent){
+         apollo_print(paste0("The new convergence statistic is ",signif(model$convStat),"."), type="i")
+         cat("\n")
+        }
+    } 
+    }
+    }
+    ###
     rm(f)
   }else{
     model <- maxLik::maxLik(apollo_logLike, grad=grad, start=beta_var_val,
@@ -738,6 +764,8 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
         model <- tryCatch(bgw::bgw_mle(calcR=f, betaStart=b, calcJ=grad, bgw_settings=bgw_settings), 
                           error=function(e) NA)
         if(is.list(model)) model$nIter <- model$iterations else rm(model)
+        ### BGW returns gradient of -LL, not of LL, so here, we change the sign
+        if(!is.null(model$gradient)) model$gradient <- -model$gradient
         rm(f)
       } else {
         model <- tryCatch(maxLik::maxLik(apollo_logLike, grad=grad, start=b/abs(b),
@@ -803,7 +831,7 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   
   ### temp BHHH
   ### anything marked ##8May## was commented out with now directly descaling the BHHH matrix
-  if(successfulEstimation){
+  ### also do when not successful if(successfulEstimation){
     #if(!silent) apollo_print('Computing score matrix...')
     # descale
     ##8May## btemp <- model$estimate[names(apollo_inputs$apollo_scaling)]*apollo_inputs$apollo_scaling
@@ -857,7 +885,8 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
       if(exists("scale", inherits=FALSE)) rm(scale)
     }
     ##8May##
-    model$BHHHvarcov  <- tryCatch(solve(-model$BHHHhessian), error=function(e) return(matrix(NA, nrow=length(btemp), ncol=length(btemp), 
+    if(successfulEstimation){
+      model$BHHHvarcov  <- tryCatch(solve(-model$BHHHhessian), error=function(e) return(matrix(NA, nrow=length(btemp), ncol=length(btemp), 
                                                                                             dimnames=list(names(btemp), names(btemp)))))
     model$BHHHse      <- sqrt(diag(model$BHHHvarcov))
     model$BHHHcorrmat <- tryCatch(model$BHHHvarcov/(model$BHHHse%*%t(model$BHHHse)), error=function(e) return(matrix(NA, nrow=length(btemp), ncol=length(btemp), 
@@ -868,10 +897,11 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     
     if(all(is.na(model$BHHHvarcov))){
       if(!silent) apollo_print("Estimation succeeded but the BHHH matrix is singular. Apollo will not attempt to compute the covariance matrix.",  pause=0, type="w")
+      if(any(abs(model$estimate)>20)) apollo_print("Some of your parameter values may be tending to +/- infinity. This could point to an identification issue. If you want to retain these parameters in the model, you may wish to set their value(s) in apollo_beta to the estimated value(s), include the parameter name(s) in apollo_fixed, and re-estimate the model.",type="w")
       estimate_settings$hessianRoutine <- 'none'
       model$hessianCalcDisabled <- TRUE
-    }
-  }
+    }}
+  ### }
   ###
   
   ### Print estimated parameters
@@ -906,16 +936,34 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
   if(!successfulEstimation){
     if(exists("model")){
       if(!is.null(model$message) && grepl("Function evaluation limit", model$message)){
-        if(!silent) apollo_print("Function evaluation limit exceeded. No covariance matrix will be computed. You may wish to use the current estimates as starting values for a new estimation with a higher limit for functional evaluations.",  pause=0, type="w")
+        if(!silent){
+          if(!estimate_settings$forceCovarianceMatrix){
+            apollo_print("Function evaluation limit exceeded. No covariance matrix will be computed. You may wish to use the current estimates as starting values for a new estimation with a higher limit for functional evaluations.",  pause=0, type="w")  
+          }else{
+            apollo_print("Function evaluation limit exceeded. You may wish to use the current estimates as starting values for a new estimation with a higher limit for functional evaluations.",  pause=0, type="w")  
+          }
+        } 
       }else if(!is.null(model$message) && grepl("limit", model$message)){
-        if(!silent) apollo_print("Iteration limit exceeded. No covariance matrix will be computed. You may wish to use the current estimates as starting values for a new estimation with a higher limit for iterations.",  pause=0, type="w")
+        if(!silent){
+          if(!estimate_settings$forceCovarianceMatrix){
+            apollo_print("Iteration limit exceeded. No covariance matrix will be computed. You may wish to use the current estimates as starting values for a new estimation with a higher limit for iterations.",  pause=0, type="w")
+          }else{
+            apollo_print("Iteration limit exceeded. You may wish to use the current estimates as starting values for a new estimation with a higher limit for iterations.",  pause=0, type="w")
+          }
+        } 
       }else{
-        if(!silent) apollo_print("Estimation failed. No covariance matrix to compute.",  pause=0, type="w")
+        if(!silent){
+          if(!estimate_settings$forceCovarianceMatrix){
+            apollo_print("Estimation failed. No covariance matrix to compute.",  pause=0, type="w")
+          }else{
+            apollo_print("Estimation failed.",  pause=0, type="w")
+          }
+        } 
       }
       if(estimationRoutine %in% c("bfgs", "bhhh") && model$code==100){
         stop("CALCULATION ISSUE - Estimation failed, no estimated model to return.")
       }
-      estimate_settings$hessianRoutine <- 'none'
+      if(!estimate_settings$forceCovarianceMatrix) estimate_settings$hessianRoutine <- 'none'
       model$hessianCalcDisabled <- TRUE
     } else stop("CALCULATION ISSUE - Estimation failed, no estimated model to return.")
   }
@@ -1246,6 +1294,12 @@ apollo_estimate  <- function(apollo_beta, apollo_fixed, apollo_probabilities, ap
     }
   }
   
+  ### check if sign on individual level gradients needs reversing
+  if(!is.null(model$indLevelGradients)&!is.null(model$gradient)&&!any(is.na(model$indLevelGradients))&&!any(is.na(model$gradient))&&!any(model$gradient==0)){
+    # check for sign diff
+    if(round(sum(model$indLevelGradients[,1]/model$gradient[1]), 4)!=1) model$indLevelGradients <- -model$indLevelGradients
+    }
+
   # #################### #
   #### Prepare output ####
   # #################### #

@@ -40,7 +40,6 @@
 #'                            }
 #' @return nothing
 #' @export
-#' @importFrom RSGHB writeModel
 #' @importFrom utils capture.output
 apollo_saveOutput=function(model, saveOutput_settings=NA){
   if(length(saveOutput_settings)==1 && is.na(saveOutput_settings)) saveOutput_settings=list()

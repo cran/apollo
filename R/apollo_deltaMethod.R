@@ -396,12 +396,12 @@ apollo_deltaMethod <- function(model, deltaMethod_settings){
     output[["diffs"]]=diffs
     output[["diffs_se"]]=diffs_se
     output[["diffs_trat"]]=diffs_trat
-    filename_ratios = paste(model$apollo_control$modelName,"_deltaMethod_ratios_value.csv",sep="")
-    filename_diffs = paste(model$apollo_control$modelName,"_deltaMethod_diffs_value.csv",sep="")
-    filename_ratios_se = paste(model$apollo_control$modelName,"_deltaMethod_ratios_se.csv",sep="")
-    filename_diffs_se = paste(model$apollo_control$modelName,"_deltaMethod_diffs_se.csv",sep="")
-    filename_ratios_trat = paste(model$apollo_control$modelName,"_deltaMethod_ratios_trat.csv",sep="")
-    filename_diffs_trat = paste(model$apollo_control$modelName,"_deltaMethod_diffs_trat.csv",sep="")
+    filename_ratios = paste(model$apollo_control$outputDirectory,model$apollo_control$modelName,"_deltaMethod_ratios_value.csv",sep="")
+    filename_diffs = paste(model$apollo_control$outputDirectory,model$apollo_control$modelName,"_deltaMethod_diffs_value.csv",sep="")
+    filename_ratios_se = paste(model$apollo_control$outputDirectory,model$apollo_control$modelName,"_deltaMethod_ratios_se.csv",sep="")
+    filename_diffs_se = paste(model$apollo_control$outputDirectory,model$apollo_control$modelName,"_deltaMethod_diffs_se.csv",sep="")
+    filename_ratios_trat = paste(model$apollo_control$outputDirectory,model$apollo_control$modelName,"_deltaMethod_ratios_trat.csv",sep="")
+    filename_diffs_trat = paste(model$apollo_control$outputDirectory,model$apollo_control$modelName,"_deltaMethod_diffs_trat.csv",sep="")
     utils::write.csv(ratios, filename_ratios)
     utils::write.csv(diffs, filename_diffs)
     utils::write.csv(ratios_se, filename_ratios_se)

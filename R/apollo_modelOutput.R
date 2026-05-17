@@ -108,7 +108,7 @@ apollo_modelOutput=function(model, modelOutput_settings=NA){
   cat("Estimation method                           : ", model$estimationRoutine, "\n", sep="")
   if(!apollo_control$HB){
     cat("Estimation diagnosis                        : ",model$message,"\n", sep="")
-    if(is.null(model$hessianMethodsAttempted) || model$hessianMethodsAttempted=="none"){
+    if(is.null(model$hessianMethodsAttempted) || any(model$hessianMethodsAttempted=="none")){
       if(!is.null(model$hessianCalcDisabled) && model$hessianCalcDisabled){
         cat("Optimisation diagnosis                      : Unknown (no Hessian calculated)\n")
       }else{
